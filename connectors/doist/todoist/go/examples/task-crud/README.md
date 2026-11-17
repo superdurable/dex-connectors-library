@@ -1,6 +1,6 @@
 # Todoist CRUD and list example
 
-[TodoistTaskCRUDFlow](flow/workflow.go) has two explicitly different start modes:
+[TodoistTaskCRUDFlow](flow/workflow.go) has four start modes:
 
 - `list` (the default) calls `NewListTasksStep`, persists one task page, and
   completes without any write. Supply the returned cursor in another list run
@@ -11,6 +11,13 @@
   `NewUpdateTaskStep`, reads the task back, locates the changed task through
   `NewListTasksStep`, deletes only that task using `NewDeleteTaskStep`, and
   confirms that `NewGetTaskStep` returns `notFound`.
+- `reopen` restores the completed task named by `taskId` with
+  `NewReopenTaskStep`. Start with `{"mode":"reopen","taskId":"<completed task ID>"}`;
+  the Flow records the restored ID in its outcome.
+- `close` closes the task named by `taskId` with a deduplicated Sync command
+  through `NewCloseTaskStep`. Start with `{"mode":"close","taskId":"<task ID>"}`;
+  the Flow records the closed ID in its outcome. A recurring task advances to
+  its next occurrence.
 
 Every provider call runs inside a connector Step. The created task ID, update
 and delete results, request, page counter, and final outcome are registered
@@ -48,7 +55,7 @@ mkdir -p /tmp/todoist-release
 GOWORK=off go run ./cmd/connectorctl release-artifact \
   --manifest connectors/doist/todoist/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/doist/todoist/go \
-  --version v0.4.0 --tag connectors/doist/todoist/go/v0.4.0 \
+  --version v0.5.0 --tag connectors/doist/todoist/go/v0.5.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/todoist-release/connector-release.json \
   --digest-output /tmp/todoist-release/connector-release.json.sha256

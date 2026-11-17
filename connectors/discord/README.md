@@ -1,10 +1,10 @@
 # Discord Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/discord/go@v0.3.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/discord/go@v0.4.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/discord`.
 
-Read Discord channels and messages, send bot messages, and add reactions
+Read and manage Discord channels and messages, send bot messages, and add reactions
 through the [Discord HTTP API](https://discord.com/developers/docs/reference)
 with typed Dex Query and Mutation Steps. Use the
 [channel announcement example](go/examples/channel-announcement/README.md) to post
@@ -13,19 +13,43 @@ an announcement, react to it, and confirm it with a read-back.
 Its Go module is `github.com/superdurable/dex-connectors-library/connectors/discord/go`.
 The connector ID is `discord`.
 
-The TypeScript package is `@superdurable/connector-discord` at v0.1.0. It supports all four operations and no Triggers. See the [TypeScript package](typescript/README.md) and its [runnable announcement example](typescript/examples/channel-announcement/README.md).
+The TypeScript package is `@superdurable/connector-discord` at v0.1.0. It supports `getChannel`, `listChannelMessages`, `createMessage`, and `addReaction`, and no Triggers. The new Channel management operations are Go-only. See the [TypeScript package](typescript/README.md) and its [runnable announcement example](typescript/examples/channel-announcement/README.md).
 
 ## Operations
 
 | Factory | Kind | Input | Required branch | Optional branches |
 | --- | --- | --- | --- | --- |
 | `NewGetChannelStep` | Query | `GetChannelInput` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewListGuildChannelsStep` | Query | `ListGuildChannelsInput` | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewCreateGuildChannelStep` | Mutation | `CreateGuildChannelInput` | `created` | `providerRejected`, `uncertain`, `defect` |
+| `NewUpdateChannelStep` | Mutation | `UpdateChannelInput` | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewDeleteChannelStep` | Mutation | `DeleteChannelInput` | `deleted` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewListGuildMembersStep` | Query | `ListGuildMembersInput` | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewBanGuildMemberStep` | Mutation | `BanGuildMemberInput` | `banned` | `notFound`, `providerRejected`, `defect` |
+| `NewKickGuildMemberStep` | Mutation | `KickGuildMemberInput` | `kicked` | `notFound`, `providerRejected`, `defect` |
+| `NewAddGuildMemberRoleStep` | Mutation | `GuildMemberRoleInput` | `added` | `notFound`, `providerRejected`, `defect` |
+| `NewRemoveGuildMemberRoleStep` | Mutation | `GuildMemberRoleInput` | `removed` | `notFound`, `providerRejected`, `defect` |
+| `NewTimeoutGuildMemberStep` | Mutation | `TimeoutGuildMemberInput` | `timedOut` | `notFound`, `providerRejected`, `defect` |
+| `NewUnbanGuildMemberStep` | Mutation | `UnbanGuildMemberInput` | `unbanned` | `notFound`, `providerRejected`, `defect` |
+| `NewGetMessageStep` | Query | `GetMessageInput` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewDeleteMessageStep` | Mutation | `DeleteMessageInput` | `deleted` | `notFound`, `providerRejected`, `defect` |
 | `NewListChannelMessagesStep` | Query | `ListChannelMessagesInput` | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `NewCreateMessageStep` | Mutation | `CreateMessageInput` | `created` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `NewAddReactionStep` | Mutation | `AddReactionInput` | `added` | `notFound`, `providerRejected`, `defect` |
 
 - `getChannel` reads `GET /channels/{channel.id}` and returns the channel's ID,
   type number, server ID, name, topic, and newest message ID.
+- `listGuildChannels` reads `GET /guilds/{guild.id}/channels`, excluding threads and channels the bot cannot view.
+- `createGuildChannel` creates a server text channel with `name` and optional `topic`. Discord has no channel creation deduplication key, so the limited mutation sends at most twice after an unknown outcome, then selects `uncertain` without a confirmed ID. A confirmed ID is read back on recovery.
+- `updateChannel` replaces an explicit name or topic; a nil pointer keeps that field, while an empty topic clears it. `deleteChannel` deletes one guild channel and returns Discord's deleted channel summary. Both are safe to repeat for the same ID.
+- `listGuildMembers` reads one page of 1 to 1000 members; zero selects 100, and `AfterUserID` continues a full page. It returns user IDs, nicknames, role IDs, and timeout timestamps, without other profile fields. Discord requires the Server Members privileged intent, enabled under **Bot > Privileged Gateway Intents**.
+- `banGuildMember`, `kickGuildMember`, `addGuildMemberRole`, `removeGuildMemberRole`, and `unbanGuildMember` target explicit server, user, and optional role IDs. Their PUT or DELETE requests are safe to repeat for the same IDs. `banGuildMember` does not erase message history.
+- `timeoutGuildMember` sets an explicit RFC3339 timestamp with an absolute PATCH; Discord accepts at most 28 days into the future. A malformed 200 response retries because the write result is unknown.
+- `getMessage` reads one message by channel and message ID. The announcement
+  example reads its newly posted message back by ID.
+- `deleteMessage` deletes one message and accepts Discord's empty 204 response.
+  The bot may delete its own messages; deleting another author's message in a
+  server requires `MANAGE_MESSAGES` permission.
 - `listChannelMessages` reads one page of up to 100 messages (zero asks for
   Discord's 50), newest first. Set at most one of `BeforeMessageID`, such as the
   previous page's `OldestMessageID`, and `AfterMessageID`. `IsFull` reports a
@@ -38,7 +62,7 @@ The TypeScript package is `@superdurable/connector-discord` at v0.1.0. It suppor
 
 Channel, message, and emoji IDs are Discord snowflakes of 17 to 20 digits; any
 other value selects `defect` before a request, so input can never change the
-request path. Message `Content`, channel `Name`, and `Topic` are untrusted
+request path. Channel management writes require `MANAGE_CHANNELS`; member actions require the relevant `BAN_MEMBERS`, `KICK_MEMBERS`, `MANAGE_ROLES`, or `MODERATE_MEMBERS` permission, granted by the server owner under **Server Settings > Roles**. The bot's role must outrank the target. Existing bot tokens remain valid. Message `Content`, channel `Name`, and `Topic` are untrusted
 provider text: escape them before rendering HTML. A bot without the Message
 Content intent reads empty content for server messages that do not mention it.
 
@@ -136,7 +160,7 @@ reset token applies without restarting the Worker. It travels only in the
 receipt, or log. Create it under **Bot > Reset Token** at
 [discord.com/developers/applications](https://discord.com/developers/applications)
 and store it only in Dex Web **Connections**. Grant the bot only View Channels,
-Read Message History, Send Messages, and Add Reactions in the channels it uses.
+Read Message History, Send Messages, and Add Reactions in the channels it uses. Grant channel and member management permissions only when running those operations.
 
 ## Verification
 
@@ -158,7 +182,9 @@ secret-safe Failures. The example's real Dex suite covers the complete
 announcement, a post whose first response was lost, an unwired `notFound`, and
 invalid start input.
 
-No test runs against the real Discord API yet.
+The mock-backed real Dex suite also runs the temporary channel and member moderation examples. No test runs against the real Discord API yet.
+
+Channel API contracts: [Discord Guild resource](https://github.com/discord/discord-api-docs/blob/main/developers/resources/guild.mdx), [Discord Channel resource](https://github.com/discord/discord-api-docs/blob/main/developers/resources/channel.mdx).
 
 ## Python package
 

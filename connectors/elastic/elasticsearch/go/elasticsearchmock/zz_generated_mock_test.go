@@ -16,7 +16,35 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createIndex/createdProducts/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[elasticsearch.IndexResult](`{"index":"products"}`)
+			return err
+		}},
+		{name: "deleteIndex/deletedProducts/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[elasticsearch.IndexResult](`{"index":"products"}`)
+			return err
+		}},
+		{name: "getIndex/productsIndex/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[elasticsearch.IndexDetails](`{"index":"products","metadata":{"settings":{},"mappings":{},"aliases":{}}}`)
+			return err
+		}},
+		{name: "listIndices/productIndices/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[elasticsearch.IndexList](`{"indices":[{"index":"products","metadata":{"settings":{},"mappings":{},"aliases":{}}}]}`)
+			return err
+		}},
+		{name: "getDocument/retrievedProduct/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[elasticsearch.RetrievedDocument](`{"index":"products","id":"sku-42","source":{"title":"Meridian","category":"release"}}`)
+			return err
+		}},
 		{name: "indexDocument/indexedProduct/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[elasticsearch.IndexedDocument](`{"index":"products","id":"sku-42"}`)
+			return err
+		}},
+		{name: "createDocument/createdProduct/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[elasticsearch.IndexedDocument](`{"index":"products","id":"generated-42"}`)
+			return err
+		}},
+		{name: "updateDocument/updatedProduct/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[elasticsearch.IndexedDocument](`{"index":"products","id":"sku-42"}`)
 			return err
 		}},
@@ -38,8 +66,29 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateIndex().Definition().Operation.OperationID != "createIndex" {
+		t.Errorf("createIndex mock has another definition")
+	}
+	if mock.DeleteIndex().Definition().Operation.OperationID != "deleteIndex" {
+		t.Errorf("deleteIndex mock has another definition")
+	}
+	if mock.GetIndex().Definition().Operation.OperationID != "getIndex" {
+		t.Errorf("getIndex mock has another definition")
+	}
+	if mock.ListIndices().Definition().Operation.OperationID != "listIndices" {
+		t.Errorf("listIndices mock has another definition")
+	}
+	if mock.GetDocument().Definition().Operation.OperationID != "getDocument" {
+		t.Errorf("getDocument mock has another definition")
+	}
 	if mock.IndexDocument().Definition().Operation.OperationID != "indexDocument" {
 		t.Errorf("indexDocument mock has another definition")
+	}
+	if mock.CreateDocument().Definition().Operation.OperationID != "createDocument" {
+		t.Errorf("createDocument mock has another definition")
+	}
+	if mock.UpdateDocument().Definition().Operation.OperationID != "updateDocument" {
+		t.Errorf("updateDocument mock has another definition")
 	}
 	if mock.DeleteDocument().Definition().Operation.OperationID != "deleteDocument" {
 		t.Errorf("deleteDocument mock has another definition")

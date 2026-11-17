@@ -699,6 +699,1931 @@
       },
       "name": "listEntries-defect",
       "operation": "listEntries"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000301",
+      "exchanges": [
+        {
+          "body": "{\"sys\":{\"id\":\"asset-meridian\",\"type\":\"Asset\"},\"fields\":{\"title\":\"Meridian logo\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/assets/asset-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "data": {
+            "fields": {
+              "title": "Meridian logo"
+            },
+            "sys": {
+              "id": "asset-meridian",
+              "type": "Asset"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "assetId": "asset-meridian",
+        "environmentId": "master",
+        "spaceId": "space123"
+      },
+      "name": "getAsset-success",
+      "operation": "getAsset"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000302",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/assets/asset-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "assetId": "asset-meridian",
+        "environmentId": "master",
+        "spaceId": "space123"
+      },
+      "name": "getAsset-notFound",
+      "operation": "getAsset"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000303",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/assets/asset-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "assetId": "asset-meridian",
+        "environmentId": "master",
+        "spaceId": "space123"
+      },
+      "name": "getAsset-providerRejected",
+      "operation": "getAsset"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000304",
+      "exchanges": [
+        {
+          "body": "{\"sys\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/assets/asset-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "assetId": "asset-meridian",
+        "environmentId": "master",
+        "spaceId": "space123"
+      },
+      "name": "getAsset-invalidResponse",
+      "operation": "getAsset"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000305",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "assetId": "asset-meridian",
+        "environmentId": "master",
+        "spaceId": "bad/space"
+      },
+      "name": "getAsset-defect",
+      "operation": "getAsset"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000306",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/assets/asset-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "assetId": "asset-meridian",
+        "environmentId": "master",
+        "spaceId": "space123"
+      },
+      "name": "getAsset-rateLimit",
+      "operation": "getAsset"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000307",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/assets/asset-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "assetId": "asset-meridian",
+        "environmentId": "master",
+        "spaceId": "space123"
+      },
+      "name": "getAsset-serverUnavailable",
+      "operation": "getAsset"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000308",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/assets/asset-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "assetId": "asset-meridian",
+        "environmentId": "master",
+        "spaceId": "space123"
+      },
+      "name": "getAsset-transportFailure",
+      "operation": "getAsset"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000309",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"sys\":{\"id\":\"asset-meridian\",\"type\":\"Asset\"},\"fields\":{\"title\":\"Meridian logo\"}}],\"total\":1,\"skip\":2,\"limit\":10}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/assets",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": {
+            "items": [
+              {
+                "fields": {
+                  "title": "Meridian logo"
+                },
+                "sys": {
+                  "id": "asset-meridian",
+                  "type": "Asset"
+                }
+              }
+            ],
+            "limit": 10,
+            "skip": 2,
+            "total": 1
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "space123"
+      },
+      "name": "listAssets-success",
+      "operation": "listAssets"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000310",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/assets",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "space123"
+      },
+      "name": "listAssets-providerRejected",
+      "operation": "listAssets"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000311",
+      "exchanges": [
+        {
+          "body": "{\"items\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/assets",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "space123"
+      },
+      "name": "listAssets-invalidResponse",
+      "operation": "listAssets"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000312",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "bad/space"
+      },
+      "name": "listAssets-defect",
+      "operation": "listAssets"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000313",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/assets",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "space123"
+      },
+      "name": "listAssets-rateLimit",
+      "operation": "listAssets"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000314",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/assets",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "space123"
+      },
+      "name": "listAssets-serverUnavailable",
+      "operation": "listAssets"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000315",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/assets",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "space123"
+      },
+      "name": "listAssets-transportFailure",
+      "operation": "listAssets"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000316",
+      "exchanges": [
+        {
+          "body": "{\"sys\":{\"id\":\"article\",\"type\":\"ContentType\"},\"name\":\"Article\",\"fields\":[{\"id\":\"title\",\"type\":\"Text\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/content_types/article",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "data": {
+            "fields": [
+              {
+                "id": "title",
+                "type": "Text"
+              }
+            ],
+            "name": "Article",
+            "sys": {
+              "id": "article",
+              "type": "ContentType"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contentTypeId": "article",
+        "environmentId": "master",
+        "spaceId": "space123"
+      },
+      "name": "getContentType-success",
+      "operation": "getContentType"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000317",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/content_types/article",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contentTypeId": "article",
+        "environmentId": "master",
+        "spaceId": "space123"
+      },
+      "name": "getContentType-notFound",
+      "operation": "getContentType"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000318",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/content_types/article",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contentTypeId": "article",
+        "environmentId": "master",
+        "spaceId": "space123"
+      },
+      "name": "getContentType-providerRejected",
+      "operation": "getContentType"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000319",
+      "exchanges": [
+        {
+          "body": "{\"sys\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/content_types/article",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contentTypeId": "article",
+        "environmentId": "master",
+        "spaceId": "space123"
+      },
+      "name": "getContentType-invalidResponse",
+      "operation": "getContentType"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000320",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contentTypeId": "article",
+        "environmentId": "master",
+        "spaceId": "bad/space"
+      },
+      "name": "getContentType-defect",
+      "operation": "getContentType"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000321",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/content_types/article",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contentTypeId": "article",
+        "environmentId": "master",
+        "spaceId": "space123"
+      },
+      "name": "getContentType-rateLimit",
+      "operation": "getContentType"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000322",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/content_types/article",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contentTypeId": "article",
+        "environmentId": "master",
+        "spaceId": "space123"
+      },
+      "name": "getContentType-serverUnavailable",
+      "operation": "getContentType"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000323",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/content_types/article",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contentTypeId": "article",
+        "environmentId": "master",
+        "spaceId": "space123"
+      },
+      "name": "getContentType-transportFailure",
+      "operation": "getContentType"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000324",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"sys\":{\"id\":\"article\",\"type\":\"ContentType\"},\"name\":\"Article\"}],\"total\":1,\"skip\":2,\"limit\":10}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/content_types",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": {
+            "items": [
+              {
+                "name": "Article",
+                "sys": {
+                  "id": "article",
+                  "type": "ContentType"
+                }
+              }
+            ],
+            "limit": 10,
+            "skip": 2,
+            "total": 1
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "space123"
+      },
+      "name": "listContentTypes-success",
+      "operation": "listContentTypes"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000325",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/content_types",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "space123"
+      },
+      "name": "listContentTypes-providerRejected",
+      "operation": "listContentTypes"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000326",
+      "exchanges": [
+        {
+          "body": "{\"items\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/content_types",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "space123"
+      },
+      "name": "listContentTypes-invalidResponse",
+      "operation": "listContentTypes"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000327",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "bad/space"
+      },
+      "name": "listContentTypes-defect",
+      "operation": "listContentTypes"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000328",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/content_types",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "space123"
+      },
+      "name": "listContentTypes-rateLimit",
+      "operation": "listContentTypes"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000329",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/content_types",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "space123"
+      },
+      "name": "listContentTypes-serverUnavailable",
+      "operation": "listContentTypes"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000330",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/content_types",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "space123"
+      },
+      "name": "listContentTypes-transportFailure",
+      "operation": "listContentTypes"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000331",
+      "exchanges": [
+        {
+          "body": "{\"sys\":{\"id\":\"space123\",\"type\":\"Space\"},\"name\":\"Meridian\",\"locales\":[{\"code\":\"en-US\",\"default\":true,\"name\":\"English\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "data": {
+            "locales": [
+              {
+                "code": "en-US",
+                "default": true,
+                "name": "English"
+              }
+            ],
+            "name": "Meridian",
+            "sys": {
+              "id": "space123",
+              "type": "Space"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spaceId": "space123"
+      },
+      "name": "getSpace-success",
+      "operation": "getSpace"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000332",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spaceId": "space123"
+      },
+      "name": "getSpace-notFound",
+      "operation": "getSpace"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000333",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spaceId": "space123"
+      },
+      "name": "getSpace-providerRejected",
+      "operation": "getSpace"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000334",
+      "exchanges": [
+        {
+          "body": "{\"sys\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spaceId": "space123"
+      },
+      "name": "getSpace-invalidResponse",
+      "operation": "getSpace"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000335",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spaceId": "bad/space"
+      },
+      "name": "getSpace-defect",
+      "operation": "getSpace"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000336",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spaceId": "space123"
+      },
+      "name": "getSpace-rateLimit",
+      "operation": "getSpace"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000337",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spaceId": "space123"
+      },
+      "name": "getSpace-serverUnavailable",
+      "operation": "getSpace"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000338",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spaceId": "space123"
+      },
+      "name": "getSpace-transportFailure",
+      "operation": "getSpace"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000339",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"code\":\"en-US\",\"default\":true,\"name\":\"English\"}],\"total\":1,\"skip\":2,\"limit\":10}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/locales",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": {
+            "items": [
+              {
+                "code": "en-US",
+                "default": true,
+                "name": "English"
+              }
+            ],
+            "limit": 10,
+            "skip": 2,
+            "total": 1
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "space123"
+      },
+      "name": "listLocales-success",
+      "operation": "listLocales"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000340",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/locales",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "space123"
+      },
+      "name": "listLocales-providerRejected",
+      "operation": "listLocales"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000341",
+      "exchanges": [
+        {
+          "body": "{\"items\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/locales",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "space123"
+      },
+      "name": "listLocales-invalidResponse",
+      "operation": "listLocales"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000342",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "bad/space"
+      },
+      "name": "listLocales-defect",
+      "operation": "listLocales"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000343",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/locales",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "space123"
+      },
+      "name": "listLocales-rateLimit",
+      "operation": "listLocales"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000344",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/locales",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "space123"
+      },
+      "name": "listLocales-serverUnavailable",
+      "operation": "listLocales"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000345",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/locales",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "environmentId": "master",
+        "limit": 10,
+        "skip": 2,
+        "spaceId": "space123"
+      },
+      "name": "listLocales-transportFailure",
+      "operation": "listLocales"
     }
   ],
   "schemaVersion": 1

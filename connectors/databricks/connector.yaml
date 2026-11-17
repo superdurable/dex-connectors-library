@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: databricks
   displayName: Databricks
-  description: Read the current state of a Databricks job run.
+  description: Create, inspect, rename, and delete Databricks jobs; inspect, start, and cancel runs.
   company: Databricks
   categories: [analytics, databases-storage]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: databricks
   languages:
@@ -33,12 +33,12 @@ spec:
       - name: timeout
         goName: Timeout
         type: duration
-        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow job run reads.
+        description: Maximum duration of one Jobs API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow workspace responses.
         default: 15s
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete job run response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large job run metadata.
+        description: Maximum complete Jobs API response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large job or run pages.
         default: 1048576
   auth:
     type: apiKey
@@ -53,8 +53,171 @@ spec:
       startURL: https://docs.databricks.com/aws/en/dev-tools/auth/pat
       steps:
         - Sign in to the target Databricks workspace, open Settings > Developer > Access Tokens > Manage > Generate new token, select Other APIs and the jobs scope when scope selection is required, then copy the secret opaque token into Dex Web api_token. Blank is invalid. Token creation can be disabled by a workspace administrator; revoke or rotate it on the same page.
-        - Set the required baseUrl to the non-secret HTTPS workspace root shown in your browser address, without /api or a trailing path. Leave timeout and maxResponseBytes blank for their displayed defaults. In Jobs & Pipelines > select a job > Runs, copy the numeric run ID from /runs/<run-id> and pass it as runId. This operation currently accepts IDs through 9007199254740991 for cross-language JSON safety.
+        - Set the required baseUrl to the non-secret HTTPS workspace root shown in your browser address, without /api or a trailing path. Leave timeout and maxResponseBytes blank for their displayed defaults. In Jobs & Pipelines select a job to find its numeric job ID, then open Runs to find a numeric run ID. Pass IDs as decimal strings; getJobRun accepts IDs through 9007199254740991 for cross-language JSON safety. A blank ID is invalid.
+        - To create a job, open Jobs & Pipelines > Create job in the same workspace. Choose a name, then select a notebook under Workspace and an existing cluster under Compute; pass the notebook's absolute workspace path beginning with / and the cluster's opaque ID copied from its Compute details page. All three fields are required. A created job consumes workspace quota and remains until deleted in Databricks.
   operations:
+    - name: createJob
+      goName: CreateJob
+      inputType: CreateJobInput
+      outputType: JobSummary
+      kind: mutation
+      description: Create a notebook job on an existing cluster.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Databricks created the job and returned its ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Databricks definitively rejected job creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A job may have been created but no job ID was confirmed after bounded sends., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      mocks:
+        - name: notebookJobCreated
+          branch: created
+          description: Create a notebook job for the disposable example.
+          default: true
+          output: {id: "123", name: "Dex example job"}
+    - name: updateJobName
+      goName: UpdateJobName
+      inputType: UpdateJobNameInput
+      outputType: JobSummary
+      kind: mutation
+      description: Replace the name of one existing job without changing its tasks or schedule.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: Databricks accepted the name replacement.}
+        - {id: notFound, goName: NotFound, description: Databricks found no accessible job with that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Databricks definitively rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: jobRenamed
+          branch: updated
+          description: Rename the example job.
+          default: true
+          output: {id: "123", name: "Dex renamed job"}
+    - name: deleteJob
+      goName: DeleteJob
+      inputType: DeleteJobInput
+      outputType: DeletedJob
+      kind: mutation
+      description: Delete one saved job by immutable ID; active runs may stop asynchronously.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: Databricks removed the job.}
+        - {id: notFound, goName: NotFound, description: Databricks found no accessible job with that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Databricks definitively rejected deletion., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: jobDeleted
+          branch: deleted
+          description: Delete the disposable example job.
+          default: true
+          output: {id: "123"}
+    - name: listJobs
+      goName: ListJobs
+      inputType: ListJobsInput
+      outputType: JobPage
+      kind: query
+      description: List one page of jobs with bounded identity and name fields.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Databricks returned a job page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Databricks rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Databricks returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One job is returned.
+          output: {jobs: [{id: "11223344", name: Example job}], nextPageToken: ""}
+    - name: getJob
+      goName: GetJob
+      inputType: GetJobInput
+      outputType: JobSummary
+      kind: query
+      description: Read a job identity and name without task settings.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Databricks returned the job.}
+        - {id: notFound, goName: NotFound, description: Databricks did not expose the job., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Databricks rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Databricks returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example job is returned.
+          output: {id: "11223344", name: Example job}
+    - name: listJobRuns
+      goName: ListJobRuns
+      inputType: ListJobRunsInput
+      outputType: JobRunPage
+      kind: query
+      description: List one page of runs for a job without task details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Databricks returned a run page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Databricks rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Databricks returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One run is returned.
+          output: {runs: [{id: "455644833", status: RUNNING, resultState: ""}], nextPageToken: ""}
+    - name: runJob
+      goName: RunJob
+      inputType: RunJobInput
+      outputType: StartedJobRun
+      kind: mutation
+      description: Start a saved job once using a stable Databricks idempotency token.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: started, goName: Started, description: Databricks returned the started run ID.}
+        - {id: notFound, goName: NotFound, description: Databricks did not expose the job., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Databricks rejected the run request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Databricks returned an invalid run ID., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: startedDefault
+          branch: started
+          default: true
+          description: One run is started.
+          output: {runId: "455644833"}
+    - name: cancelJobRun
+      goName: CancelJobRun
+      inputType: CancelJobRunInput
+      outputType: CancelledJobRun
+      kind: mutation
+      description: Request cancellation of a job run by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: cancelled, goName: Cancelled, description: Databricks accepted the cancellation request.}
+        - {id: notFound, goName: NotFound, description: Databricks did not expose the run., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Databricks rejected cancellation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: cancelledDefault
+          branch: cancelled
+          default: true
+          description: A run cancellation is accepted.
+          output: {runId: "455644833"}
     - name: getJobRun
       goName: GetJobRun
       inputType: GetJobRunInput
@@ -63,7 +226,7 @@ spec:
       description: Read a job run ID, current state, and optional terminal result state without task details.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Databricks returned the job run.}
         - {id: notFound, goName: NotFound, description: Databricks did not expose the job run., optional: true}

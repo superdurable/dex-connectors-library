@@ -16,6 +16,35 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createJob/notebookJobCreated/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[databricks.JobSummary](`{"id":"123","name":"Dex example job"}`)
+			return err
+		}},
+		{name: "updateJobName/jobRenamed/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[databricks.JobSummary](`{"id":"123","name":"Dex renamed job"}`)
+			return err
+		}},
+		{name: "deleteJob/jobDeleted/1", decode: func() error { _, err := connectormock.DecodeOutput[databricks.DeletedJob](`{"id":"123"}`); return err }},
+		{name: "listJobs/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[databricks.JobPage](`{"jobs":[{"id":"11223344","name":"Example job"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "getJob/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[databricks.JobSummary](`{"id":"11223344","name":"Example job"}`)
+			return err
+		}},
+		{name: "listJobRuns/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[databricks.JobRunPage](`{"runs":[{"id":"455644833","status":"RUNNING","resultState":""}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "runJob/startedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[databricks.StartedJobRun](`{"runId":"455644833"}`)
+			return err
+		}},
+		{name: "cancelJobRun/cancelledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[databricks.CancelledJobRun](`{"runId":"455644833"}`)
+			return err
+		}},
 		{name: "getJobRun/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[databricks.JobRunStatus](`{"id":"455644833","status":"RUNNING","resultState":""}`)
 			return err
@@ -30,6 +59,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateJob().Definition().Operation.OperationID != "createJob" {
+		t.Errorf("createJob mock has another definition")
+	}
+	if mock.UpdateJobName().Definition().Operation.OperationID != "updateJobName" {
+		t.Errorf("updateJobName mock has another definition")
+	}
+	if mock.DeleteJob().Definition().Operation.OperationID != "deleteJob" {
+		t.Errorf("deleteJob mock has another definition")
+	}
+	if mock.ListJobs().Definition().Operation.OperationID != "listJobs" {
+		t.Errorf("listJobs mock has another definition")
+	}
+	if mock.GetJob().Definition().Operation.OperationID != "getJob" {
+		t.Errorf("getJob mock has another definition")
+	}
+	if mock.ListJobRuns().Definition().Operation.OperationID != "listJobRuns" {
+		t.Errorf("listJobRuns mock has another definition")
+	}
+	if mock.RunJob().Definition().Operation.OperationID != "runJob" {
+		t.Errorf("runJob mock has another definition")
+	}
+	if mock.CancelJobRun().Definition().Operation.OperationID != "cancelJobRun" {
+		t.Errorf("cancelJobRun mock has another definition")
+	}
 	if mock.GetJobRun().Definition().Operation.OperationID != "getJobRun" {
 		t.Errorf("getJobRun mock has another definition")
 	}

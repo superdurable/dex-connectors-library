@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: discord
   displayName: Discord
-  description: Read Discord channels and bounded pages of channel messages, send nonce-deduplicated bot messages, and add reactions.
+  description: Read and manage Discord channels, messages, and members, send and delete bot messages, and add reactions.
   company: Discord
   categories: [communication]
-  version: v0.3.0
+  version: v0.4.0
 spec:
   provider: discord
   languages:
@@ -52,8 +52,232 @@ spec:
         - Open Bot, choose Reset Token, and copy the token Discord shows once into the secret field below; resetting it again on the same page rejects the old value, so paste any replacement here.
         - Under Bot > Privileged Gateway Intents enable Message Content Intent when Flows read message content in servers; without it Discord returns empty content for messages that do not mention the bot.
         - Open OAuth2 > URL Generator, select the bot scope and the View Channels, Read Message History, Send Messages, and Add Reactions permissions, open the generated URL, and add the bot to the server whose channels the Flows use.
+        - For channel creation, updates, or deletion, the server owner must additionally grant the bot Manage Channels in Server Settings > Roles; existing tokens remain valid, and missing permission selects providerRejected.
+        - For member listing, enable Bot > Privileged Gateway Intents > Server Members Intent on the application page; the existing token remains valid, and Discord requires this intent for the list endpoint.
+        - "For member actions, grant only the needed optional server role permissions in Server Settings > Roles: Ban Members, Kick Members, Manage Roles, or Moderate Members. The bot's role must rank above the target member or role."
         - In Discord, enable User Settings > Advanced > Developer Mode, then right-click a channel and choose Copy Channel ID to find the 17 to 20 digit channel IDs that Flow input names.
   operations:
+    - name: listGuildMembers
+      goName: ListGuildMembers
+      inputType: ListGuildMembersInput
+      outputType: GuildMemberPage
+      kind: query
+      description: List one bounded page of server members.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Discord returned one page of members.}
+        - {id: notFound, goName: NotFound, description: Discord found no server or target member., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Discord denied the member operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Discord returned invalid or oversized member data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: listGuildMembersDefault, branch: listed, default: true, description: Example member response., output: {members: [{userId: "400000000000000001", nickname: releasebot, roleIds: []}]}}
+    - name: banGuildMember
+      goName: BanGuildMember
+      inputType: BanGuildMemberInput
+      outputType: GuildMemberChange
+      kind: mutation
+      description: Ban one server member without deleting prior messages.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: banned, goName: Banned, description: Discord banned the member.}
+        - {id: notFound, goName: NotFound, description: Discord found no server or target member., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Discord denied the member operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: banGuildMemberDefault, branch: banned, default: true, description: Example member response., output: {guildId: "200000000000000001", userId: "400000000000000001"}}
+    - name: kickGuildMember
+      goName: KickGuildMember
+      inputType: KickGuildMemberInput
+      outputType: GuildMemberChange
+      kind: mutation
+      description: Remove one member from a server.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: kicked, goName: Kicked, description: Discord removed the member.}
+        - {id: notFound, goName: NotFound, description: Discord found no server or target member., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Discord denied the member operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: kickGuildMemberDefault, branch: kicked, default: true, description: Example member response., output: {guildId: "200000000000000001", userId: "400000000000000001"}}
+    - name: addGuildMemberRole
+      goName: AddGuildMemberRole
+      inputType: GuildMemberRoleInput
+      outputType: GuildMemberChange
+      kind: mutation
+      description: Add one role to a server member.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: added, goName: Added, description: Discord added the role.}
+        - {id: notFound, goName: NotFound, description: Discord found no server or target member., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Discord denied the member operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: addGuildMemberRoleDefault, branch: added, default: true, description: Example member response., output: {guildId: "200000000000000001", userId: "400000000000000001", roleId: "500000000000000001"}}
+    - name: removeGuildMemberRole
+      goName: RemoveGuildMemberRole
+      inputType: GuildMemberRoleInput
+      outputType: GuildMemberChange
+      kind: mutation
+      description: Remove one role from a server member.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: removed, goName: Removed, description: Discord removed the role.}
+        - {id: notFound, goName: NotFound, description: Discord found no server or target member., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Discord denied the member operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: removeGuildMemberRoleDefault, branch: removed, default: true, description: Example member response., output: {guildId: "200000000000000001", userId: "400000000000000001", roleId: "500000000000000001"}}
+    - name: timeoutGuildMember
+      goName: TimeoutGuildMember
+      inputType: TimeoutGuildMemberInput
+      outputType: GuildMemberChange
+      kind: mutation
+      description: Set one member's absolute communication timeout.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: timedOut, goName: TimedOut, description: Discord set the absolute timeout.}
+        - {id: notFound, goName: NotFound, description: Discord found no server or target member., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Discord denied the member operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: timeoutGuildMemberDefault, branch: timedOut, default: true, description: Example member response., output: {guildId: "200000000000000001", userId: "400000000000000001", timeoutUntil: "2026-11-18T12:00:00Z"}}
+    - name: unbanGuildMember
+      goName: UnbanGuildMember
+      inputType: UnbanGuildMemberInput
+      outputType: GuildMemberChange
+      kind: mutation
+      description: Remove one user's server ban.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: unbanned, goName: Unbanned, description: Discord removed the ban.}
+        - {id: notFound, goName: NotFound, description: Discord found no server or target member., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Discord denied the member operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: unbanGuildMemberDefault, branch: unbanned, default: true, description: Example member response., output: {guildId: "200000000000000001", userId: "400000000000000001"}}
+    - name: listGuildChannels
+      goName: ListGuildChannels
+      inputType: ListGuildChannelsInput
+      outputType: GuildChannels
+      kind: query
+      description: List visible channels in one Discord server, excluding threads.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Discord returned the visible guild channels.}
+        - {id: notFound, goName: NotFound, description: Discord found no server with that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Discord denied access to the server., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Discord returned invalid or oversized channel data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: announcementChannels, branch: listed, default: true, description: One visible created channel., output: {channels: [{id: "100000000000000003", type: 0, guildId: "200000000000000001", name: dex-updates, topic: Dex updates}]}}
+    - name: createGuildChannel
+      goName: CreateGuildChannel
+      inputType: CreateGuildChannelInput
+      outputType: Channel
+      kind: mutation
+      description: Create one server text channel with bounded repeat sends.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Discord created the channel and returned its ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Discord denied channel creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A channel may exist without a confirmed ID after bounded sends., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 2}
+      mocks:
+        - {name: createdTextChannel, branch: created, default: true, description: Create an example text channel., output: {id: "100000000000000003", type: 0, guildId: "200000000000000001", name: dex-updates, topic: Dex updates}}
+    - name: updateChannel
+      goName: UpdateChannel
+      inputType: UpdateChannelInput
+      outputType: Channel
+      kind: mutation
+      description: Replace the name or topic of one guild channel.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: Discord returned the updated channel.}
+        - {id: notFound, goName: NotFound, description: Discord found no channel with that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Discord denied the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Discord returned invalid channel data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: updatedTextChannel, branch: updated, default: true, description: Update the example channel., output: {id: "100000000000000003", type: 0, guildId: "200000000000000001", name: dex-updates, topic: Dex updates}}
+    - name: deleteChannel
+      goName: DeleteChannel
+      inputType: DeleteChannelInput
+      outputType: Channel
+      kind: mutation
+      description: Delete one guild channel by ID.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: Discord returned the deleted channel.}
+        - {id: notFound, goName: NotFound, description: Discord found no channel with that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Discord denied channel deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Discord returned invalid channel data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: deletedTextChannel, branch: deleted, default: true, description: Delete the example channel., output: {id: "100000000000000003", type: 0, guildId: "200000000000000001", name: dex-updates, topic: Dex updates}}
+    - name: getMessage
+      goName: GetMessage
+      inputType: GetMessageInput
+      outputType: Message
+      kind: query
+      description: Read one message in a channel by its snowflake ID.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Discord returned the requested message.}
+        - {id: notFound, goName: NotFound, description: Discord found no channel or message with those IDs., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Discord denied access to the message., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Discord returned an invalid or oversized message response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: announcementMessage
+          branch: found
+          description: Read the announcement sent by the example Flow.
+          default: true
+          output: {id: "300000000000000001", channelId: "100000000000000001", author: {id: "400000000000000001", username: releasebot, isBot: true}, content: "Release today @everyone", timestamp: "2026-10-26T12:00:00Z", type: 0}
+    - name: deleteMessage
+      goName: DeleteMessage
+      inputType: DeleteMessageInput
+      outputType: DeletedMessage
+      kind: mutation
+      description: Delete one message the bot sent or has permission to manage.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: Discord deleted the message.}
+        - {id: notFound, goName: NotFound, description: Discord found no channel or message with those IDs., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Discord denied deletion of the message., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: deletedAnnouncement
+          branch: deleted
+          description: Delete the bot's announcement from the example Flow.
+          default: true
+          output: {channelId: "100000000000000001", messageId: "300000000000000001"}
     - name: getChannel
       goName: GetChannel
       inputType: GetChannelInput

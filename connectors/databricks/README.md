@@ -1,6 +1,6 @@
 # Databricks connector
 
-The Go, Python, and TypeScript `getJobRun` Query reads a job run ID, current `status.state`, and optional legacy terminal result state. Task details and user metadata stay out of Dex Results.
+The Go, Python, and TypeScript `getJobRun` Query reads a job run ID, current `status.state`, and optional legacy terminal result state. Go also supports `createJob`, `updateJobName`, `deleteJob`, `listJobs`, `getJob`, `listJobRuns`, `runJob`, and `cancelJobRun`. These operations return bounded IDs, names, and states; task details and user metadata stay out of Dex Results.
 
 ## Connect
 
@@ -8,6 +8,12 @@ Follow the [Databricks personal access token guide](https://docs.databricks.com/
 
 Set required `baseUrl` to the workspace HTTPS root from the signed-in browser address, with no `/api` path. `timeout` is a per-request Go duration and `maxResponseBytes` is a byte limit; blank uses their displayed defaults. Find a run ID under **Jobs & Pipelines > job > Runs** or in a Jobs API response and pass it as a decimal `runId` string. The implementations accept IDs through 9007199254740991 for exact TypeScript JSON decoding. See [Get a single job run](https://docs.databricks.com/api/jobs/v2/get-run).
 
+For Go job operations, open **Jobs & Pipelines** in the same workspace to find a decimal `jobId` and a run's decimal `runId`. `listJobs` accepts an optional exact `name`, a `limit` of 1–100 (blank or zero uses the provider's 20-item default), and a `pageToken` from the preceding response. `listJobRuns` requires `jobId` and accepts a `limit` of 1–25 and optional `pageToken`; blank starts at the first page. Both return `nextPageToken`, blank after the last page. `getJob` requires `jobId`. `runJob` starts the saved job with its stored parameters and sends the Dex call ID as Databricks' `idempotency_token`, so a repeated attempt returns the same run. `cancelJobRun` requests cancellation by `runId`; it does not wait for the run to stop. See the Databricks [Jobs API](https://docs.databricks.com/api/jobs/v2/list-jobs) and [Run API](https://docs.databricks.com/api/jobs/v2/run).
+
+`createJob` requires a visible name, an absolute notebook path beginning with `/`, and an opaque existing cluster ID from **Compute > cluster details**. It sends one task named `main`. Databricks does not expose a creation idempotency key, so the sync Step checkpoints each send and permits at most three possibly effective sends under the `limited` tier. A response containing `job_id` confirms creation; a later attempt can read that ID back. If the cap is reached without a confirmed ID, `uncertain` means the workspace may contain a duplicate job. See [Create job](https://docs.databricks.com/api/jobs/v2/create-job).
+
+`updateJobName` uses Jobs `update` to replace only the name of the given decimal `jobId`; tasks and scheduling remain intact. `deleteJob` removes that ID; active runs may stop asynchronously. Both operations are `safe` to repeat and accept empty 200 or 204 replies. See [Update job settings](https://docs.databricks.com/api/jobs/v2/update-job) and [Delete job](https://docs.databricks.com/api/jobs/v2/delete-job).
+
 ## Examples and verification
 
-Run the [Go](go/examples/job-run-inspection/README.md), [Python](python/examples/job_run_inspection/README.md), or [TypeScript](typescript/examples/job-run-inspection/README.md) example with the static `databricks` connection. Go-recorded conformance checks requests, branches, retries, and outputs. Real Dex integration tests use fixture providers. Live Databricks authorization and job run retrieval remain unverified.
+Run the [Go](go/examples/job-run-inspection/README.md), [Python](python/examples/job_run_inspection/README.md), or [TypeScript](typescript/examples/job-run-inspection/README.md) example with the static `databricks` connection. The Go worker also registers `DatabricksJobListing` and `DatabricksJobCreation`. The latter creates a persistent saved job from explicit start input; delete it in Jobs & Pipelines after a live trial. Go-recorded conformance checks requests, branches, retries, and outputs. Real Dex integration tests use fixture providers. Live Databricks authorization and all provider operations remain unverified.

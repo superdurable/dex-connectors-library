@@ -8,7 +8,8 @@ import { DatabricksClient } from '../src/client.js';
 import { GetJobRunInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/databricks/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/databricks/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'getJobRun');
 const connection = { provider: 'databricks', name: 'databricks' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeDatabricks, '/api'));
 

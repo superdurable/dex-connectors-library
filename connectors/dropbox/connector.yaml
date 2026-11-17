@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: dropbox
   displayName: Dropbox
-  description: List folders, read metadata, download bounded files, and overwrite bounded files through typed Dex operations.
+  description: Search, list, download, upload, copy, move, and delete Dropbox files and folders through typed Dex operations.
   company: Dropbox
   categories: [files-documents]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: dropbox
   languages:
@@ -210,3 +210,103 @@ spec:
           default: true
           description: One example text file is overwritten.
           output: {file: {id: 'id:example', name: example.txt, pathDisplay: /example.txt, kind: file}}
+    - name: searchFiles
+      goName: SearchFiles
+      inputType: SearchFilesInput
+      outputType: SearchFilesPage
+      kind: query
+      description: Search one bounded page of Dropbox file and folder names.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Dropbox returned a search page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox conclusively rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox returned malformed or oversized search results., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One matching file is returned.
+          output: {entries: [{id: 'id:example', name: example.txt, pathDisplay: /example.txt, kind: file}], hasMore: false}
+    - name: ensureFolder
+      goName: EnsureFolder
+      inputType: EnsureFolderInput
+      outputType: EnsuredFolder
+      kind: mutation
+      description: Create one Dropbox folder if absent and confirm it exists.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: ensured, goName: Ensured, description: Dropbox created the folder or confirmed it already exists.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox conclusively rejected the folder request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox returned malformed or oversized folder metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: ensuredDefault
+          branch: ensured
+          default: true
+          description: One example folder is ensured.
+          output: {path: /example}
+    - name: deletePath
+      goName: DeletePath
+      inputType: DeletePathInput
+      outputType: DeletedPath
+      kind: mutation
+      description: Delete one Dropbox file or folder if it exists.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Dropbox deleted the path or confirmed it was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox conclusively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox returned malformed or oversized deletion metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One example path is deleted.
+          output: {path: /example.txt}
+    - name: copyPath
+      goName: CopyPath
+      inputType: TransferPathInput
+      outputType: EntryMetadata
+      kind: mutation
+      description: Copy a file or folder to a fixed destination without autorename; reconcile uncertain outcomes before bounded resend.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: copied, goName: Copied, description: Dropbox confirmed the destination entry.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox conclusively rejected the copy., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A copy may have completed but its destination cannot be attributed to this call., optional: true}
+        - {id: defect, goName: Defect, description: "Local paths, credentials, or dispatch checkpoint are invalid.", optional: true}
+      mocks:
+        - name: copiedDefault
+          branch: copied
+          default: true
+          description: An example file was copied to a fixed path.
+          output: {id: 'id:copy', name: copy.txt, pathDisplay: /copy.txt, kind: file}
+    - name: movePath
+      goName: MovePath
+      inputType: TransferPathInput
+      outputType: EntryMetadata
+      kind: mutation
+      description: Move or rename a file or folder to a fixed destination without autorename; reconcile uncertain outcomes before bounded resend.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: moved, goName: Moved, description: Dropbox confirmed the destination entry.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox conclusively rejected the move., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A move may have completed but its destination cannot be attributed to this call., optional: true}
+        - {id: defect, goName: Defect, description: "Local paths, credentials, or dispatch checkpoint are invalid.", optional: true}
+      mocks:
+        - name: movedDefault
+          branch: moved
+          default: true
+          description: An example file was moved to a fixed path.
+          output: {id: 'id:example', name: moved.txt, pathDisplay: /moved.txt, kind: file}

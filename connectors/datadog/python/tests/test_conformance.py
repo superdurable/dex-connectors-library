@@ -14,10 +14,16 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/datadog/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/datadog/scenarios.json")
+    if scenario["operation"] in {"queryMetrics", "listMonitors"}
+]
 CONNECTION = sdk.ConnectionRef("datadog", "datadog")
 ADAPTER = conformance.PythonOperationAdapter(
-    "datadog", CONNECTION, datadog,
+    "datadog",
+    CONNECTION,
+    datadog,
     lambda http_client, _: datadog.Client(
         datadog.Config(base_url="http://localhost"),
         conformance.static_credentials(
