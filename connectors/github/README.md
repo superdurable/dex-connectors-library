@@ -259,9 +259,14 @@ the cap.
 A `401` without a refreshed token selects `authorizationRevoked`. Any other
 `403`, such as for an archived repository, missing issue access, or an
 organization's OAuth App restriction, selects `insufficientScope`, and `404`
-selects `notFound`. `410` for a repository with issues disabled, `422` for
-invalid input such as an unknown assignee, and other `4xx` select
-`providerRejected`. Failures name the status, never the provider body. Both
+selects `notFound`. `400`, `411`, `413`, `414`, `415`, and `422`, such as for
+invalid input like an unknown assignee, select `providerRejected`. Each of
+these definite refusals of the first send records `canResend`; after an earlier
+possible send it selects `uncertain`, because the refusal cannot prove no issue
+exists. Any other status, such as `410` for a repository with issues disabled,
+`408`, `409`, or a redirect, leaves the outcome unknown and is read back and
+resent below the cap. A dispatch checkpoint that cannot be read returns Retry
+without sending. Failures name the status, never the provider body. Both
 issue operations allow unlimited Execute attempts within 65 minutes, like the
 change queries.
 
@@ -299,8 +304,9 @@ fence. A `429`, a secondary rate limit, a `5xx`, a timeout, and a transport
 failure retry the Step, which sends the same update again. A `401` refreshes
 the token once and sends again; without a new token it selects
 `authorizationRevoked`. Any other `403` selects `insufficientScope`, `404`
-selects `notFound`, and `410` for a deleted issue, `422`, and other `4xx`
-select `providerRejected`. A `2xx` whose issue is not the requested number in
+selects `notFound`, and `400`, `422`, and the other definite refusals select
+`providerRejected`; `410` for a deleted issue and any other status that does
+not prove a refusal retry the Step. A `2xx` whose issue is not the requested number in
 the requested state, such as a transferred issue whose redirect was read
 instead of updated, selects `invalidResponse`.
 
@@ -349,8 +355,10 @@ and matches a comment by the connection's account that holds the marker. A miss
 retries and sends again only below the cap; at the cap the Step selects
 `uncertain`. Set `CreateIssueCommentStepConfig.MaxSends` to change one Step's
 cap. A `403`, such as for a locked issue, selects `insufficientScope`, `404`
-selects `notFound`, and `410`, `422`, and other `4xx` select
-`providerRejected`.
+selects `notFound`, and `422` and the other definite refusals select
+`providerRejected`, after recording `canResend` for a first send; after an
+earlier possible send they select `uncertain`. A `410` or any other status that
+does not prove a refusal is read back and resent below the cap.
 
 The [issue filing example](go/examples/issue-filing/README.md) checks up to
 three pages of open issues with the requested labels for a matching title, then
@@ -407,7 +415,7 @@ scripts an unknown create outcome:
 Install the published module:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/github/go@v0.25.0
+go get github.com/superdurable/dex-connectors-library/connectors/github/go@v0.25.1
 ```
 
 Verify it independently:
@@ -463,7 +471,7 @@ refresh and reauthorization do not require restarting the application.
 
 ## TypeScript package
 
-The TypeScript package `@superdurable/connector-github` implements every Go operation at package version `v0.2.0`, including `listIssues` and every issue write with both authorization methods, on `@superdurable/connectors-sdk` `0.11.0`. `newCreateIssueStep` uses the same hidden Call ID marker, single-dispatch fence, `limited` tier with at most 3 sends, saved issue number, and read-back over the newest 150 issues the account created as Go, and accepts a per-Step `maxSends`. `newSetIssueStateStep` and `newReplaceIssueLabelsStep` send the same absolute `PATCH` and `PUT` as Go and repeat them after an unknown outcome, and `newCreateIssueCommentStep` uses the same marker, fence, saved comment ID, and comment-page read-back as Go. Its generated operation-specific Step factories preserve Go branch identities, and its generated OAuth declaration drives token refresh and credential decoding. The runnable [repository releases Flow](typescript/examples/repository-releases/README.md) uses the static `github-repository-releases` connection and verifies a successful page and an unwired scope rejection through a real Dex Worker. The [issue filing Flow](typescript/examples/issue-filing/README.md) checks open issues for a matching title, creates the issue, and comments on, relabels, and closes it when the input asks; its real-Dex tests cover a retried create that reads back instead of filing a duplicate a retried close that sends the same state again, and a retried comment that reads back instead of posting a duplicate. The Go-recorded [provider conformance scenarios](../../conformance/connectors/github/scenarios.json) cover every operation branch, rate limits, availability retries, transport failures, read-back, and uncertainty. Live GitHub authorization and provider calls remain unverified.
+The TypeScript package `@superdurable/connector-github` implements every Go operation at package version `v0.2.1`, including `listIssues` and every issue write with both authorization methods, on `@superdurable/connectors-sdk` `0.11.0`. `newCreateIssueStep` uses the same hidden Call ID marker, single-dispatch fence, `limited` tier with at most 3 sends, saved issue number, and read-back over the newest 150 issues the account created as Go, and accepts a per-Step `maxSends`. `newSetIssueStateStep` and `newReplaceIssueLabelsStep` send the same absolute `PATCH` and `PUT` as Go and repeat them after an unknown outcome, and `newCreateIssueCommentStep` uses the same marker, fence, saved comment ID, and comment-page read-back as Go. Its generated operation-specific Step factories preserve Go branch identities, and its generated OAuth declaration drives token refresh and credential decoding. The runnable [repository releases Flow](typescript/examples/repository-releases/README.md) uses the static `github-repository-releases` connection and verifies a successful page and an unwired scope rejection through a real Dex Worker. The [issue filing Flow](typescript/examples/issue-filing/README.md) checks open issues for a matching title, creates the issue, and comments on, relabels, and closes it when the input asks; its real-Dex tests cover a retried create that reads back instead of filing a duplicate a retried close that sends the same state again, and a retried comment that reads back instead of posting a duplicate. The Go-recorded [provider conformance scenarios](../../conformance/connectors/github/scenarios.json) cover every operation branch, rate limits, availability retries, transport failures, read-back, and uncertainty. Live GitHub authorization and provider calls remain unverified.
 
 ## Python package
 

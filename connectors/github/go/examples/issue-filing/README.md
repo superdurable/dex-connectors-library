@@ -42,7 +42,7 @@ because Dex Web Start Flow invokes `WaitFor` on the start Step.
 
 ## Release baseline
 
-- GitHub Connector `v0.25.0`
+- GitHub Connector `v0.25.1`
 - dexcli `v1.47.3` or a later stable release
 
 ## 1. Prepare a clean local test project
@@ -57,12 +57,12 @@ cd github-issue-filing-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/github/go/v0.25.0/connectors/github/go/examples/issue-filing/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/github/go/v0.25.1/connectors/github/go/examples/issue-filing/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/github-issue-filing-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/github/go@v0.25.0
+go get github.com/superdurable/dex-connectors-library/connectors/github/go@v0.25.1
 go mod tidy
 ```
 
@@ -128,7 +128,7 @@ Dex Web writes that configuration when you save the connection.
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/github/go/examples/issue-filing@v0.25.0
+  github.com/superdurable/dex-connectors-library/connectors/github/go/examples/issue-filing@v0.25.1
 ```
 
 Set `DEX_BLOB_CACHE_DIR` to move its blob cache. If Dex is unreachable, the
@@ -185,7 +185,7 @@ pages, an already tracked title, a created issue that the default
 mocks follow up, and a scripted `uncertain` create that fails the
 Flow.
 
-Before `v0.25.0` is published, build a local release artifact from the
+Before `v0.25.1` is published, build a local release artifact from the
 repository root and pass its directory to dexcli:
 
 ```bash
@@ -193,12 +193,12 @@ mkdir -p /tmp/github-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/github/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/github/go \
-  --version v0.25.0 --tag connectors/github/go/v0.25.0 \
+  --version v0.25.1 --tag connectors/github/go/v0.25.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/github-release/connector-release.json \
   --digest-output /tmp/github-release/connector-release.json.sha256
 dexcli dev --flow-rendering-dir "$PWD/build" --connector-release-override github=/tmp/github-release
 ```
 
-The test project must still resolve `connectors/github/go@v0.25.0` without a
+The test project must still resolve `connectors/github/go@v0.25.1` without a
 `replace`, as the compatibility gate does with a local module proxy.

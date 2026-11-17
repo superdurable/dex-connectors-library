@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-github",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "GitHub queries and issue writes for Dex Flows",
   "repository": {
     "type": "git",

@@ -324,7 +324,7 @@ func (operation CreateIssueOperation) Invoke(call sdkgo.Call, input CreateIssueI
 	}
 	decision := fence.Decide()
 	if decision.Kind == singledispatch.FailClosed {
-		return writer.uncertain(sdkgo.FailureProtocol, "GitHub dispatch checkpoint cannot be trusted", sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[CreatedIssue](providerFailure(createIssueOperationID, sdkgo.FailureAvailability, "GitHub dispatch checkpoint could not be read; nothing was sent"), 0)
 	}
 	credential, failure := operation.client.resolveCredential(call, createIssueOperationID)
 	if failure == nil && credential.AuthMethodID != RepositoryAuthMethodID {
@@ -332,7 +332,7 @@ func (operation CreateIssueOperation) Invoke(call sdkgo.Call, input CreateIssueI
 		failure = &scopeFailure
 	}
 	if failure != nil {
-		if decision.Kind != singledispatch.SendAllowed {
+		if decision.Kind != singledispatch.SendAllowed || decision.MaximumPriorSends > 0 {
 			// An earlier attempt may have created the issue, and this connection cannot read it back.
 			return sdkgo.NewMutationUncertain(writer.requested, *failure, sdkgo.Receipt{})
 		}
@@ -405,16 +405,29 @@ func (writer *issueWriter) dispatch(fence *singledispatch.Fence, request createI
 		if writer.client.hasReplacementCredential(writer.call) {
 			return writer.retryUnprocessed(fence, providerFailure(createIssueOperationID, sdkgo.FailureAuthentication, "GitHub access token was refreshed for retry"), 0)
 		}
-		return writer.branch(CreateIssueBranchAuthorizationRevoked, sdkgo.FailureAuthentication, "GitHub authorization is invalid or revoked", responseReceipt)
+		return writer.refuse(fence, claimSendCount, CreateIssueBranchAuthorizationRevoked, sdkgo.FailureAuthentication, "GitHub authorization is invalid or revoked", responseReceipt)
 	case status == http.StatusForbidden:
-		return writer.branch(CreateIssueBranchInsufficientScope, sdkgo.FailureAuthorization, "GitHub authorization is forbidden or lacks scope", responseReceipt)
+		return writer.refuse(fence, claimSendCount, CreateIssueBranchInsufficientScope, sdkgo.FailureAuthorization, "GitHub authorization is forbidden or lacks scope", responseReceipt)
 	case status == http.StatusNotFound:
-		return writer.branch(CreateIssueBranchNotFound, sdkgo.FailureNotFound, "GitHub repository was not found", responseReceipt)
-	case status >= 500:
-		return writer.reconcileUnknownSend(providerFailure(createIssueOperationID, sdkgo.FailureAvailability, "GitHub issue creation outcome is unknown after HTTP "+strconv.Itoa(status)), isBelowSendCap, responseReceipt)
+		return writer.refuse(fence, claimSendCount, CreateIssueBranchNotFound, sdkgo.FailureNotFound, "GitHub repository was not found", responseReceipt)
+	case isDefiniteRefusalStatus(status):
+		return writer.refuse(fence, claimSendCount, CreateIssueBranchProviderRejected, statusFailureKind(status), "GitHub rejected the issue with HTTP "+strconv.Itoa(status), responseReceipt)
 	default:
-		return writer.branch(CreateIssueBranchProviderRejected, statusFailureKind(status), "GitHub rejected the issue with HTTP "+strconv.Itoa(status), responseReceipt)
+		// A 5xx, 408, 409, redirect, or other status does not prove whether GitHub created the issue.
+		return writer.reconcileUnknownSend(providerFailure(createIssueOperationID, sdkgo.FailureAvailability, "GitHub issue creation outcome is unknown after HTTP "+strconv.Itoa(status)), isBelowSendCap, responseReceipt)
 	}
+}
+
+// refuse selects a definite refusal of the first send after recording canResend; after an
+// earlier possible send, the refusal cannot prove no issue exists, so it selects uncertain.
+func (writer *issueWriter) refuse(fence *singledispatch.Fence, claimSendCount int32, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string, refusalReceipt sdkgo.Receipt) sdkgo.MutationAttempt[CreatedIssue] {
+	if claimSendCount > 1 {
+		return writer.uncertain(kind, message, refusalReceipt)
+	}
+	if err := fence.RecordCanResend(); err != nil {
+		return sdkgo.NewMutationRetry[CreatedIssue](providerFailure(createIssueOperationID, sdkgo.FailureAvailability, "GitHub refusal checkpoint could not be recorded"), 0)
+	}
+	return writer.branch(branch, kind, message, refusalReceipt)
 }
 
 // send performs the single fenced POST. It never retries inside the fence.
@@ -781,6 +794,17 @@ func issuesPath(owner string, repository string) string {
 
 func isSingleLineText(value string) bool {
 	return utf8.ValidString(value) && strings.IndexFunc(value, unicode.IsControl) == -1
+}
+
+// isDefiniteRefusalStatus reports a status that proves GitHub refused a write.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func statusFailureKind(statusCode int) sdkgo.FailureKind {

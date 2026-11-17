@@ -50,6 +50,26 @@ it('never sends again with a Step maxSends of 1', async () => {
   expect(requests.filter(request => request.startsWith('POST'))).toHaveLength(1);
 });
 
+it('returns Retry without sending for an untrusted checkpoint', async () => {
+  const requests: string[] = [];
+  const context = new FenceContext();
+  context.attempt = 2;
+  context.marker = { callId: 'another-call', attempt: 1, state: 'notSent' };
+  const call = { id: callId, connection, operation: { connectorId: 'github', operationId: 'createIssue' }, context } as unknown as Call;
+  expect((await client([201], requests).createIssue().invoke(call, { owner: 'octocat', repository: 'hello-world', title: 'Crash' })).kind).toBe('retry');
+  expect(requests).toHaveLength(0);
+});
+
+it('records canResend for a definite first-send refusal and treats an unlisted status as unknown', async () => {
+  const input = { owner: 'octocat', repository: 'hello-world', title: 'Crash' };
+  const refusedContext = new FenceContext();
+  const refused = await client([422], []).createIssue().invoke({ id: callId, connection, operation: { connectorId: 'github', operationId: 'createIssue' }, context: refusedContext } as unknown as Call, input);
+  expect(refused).toMatchObject({ kind: 'branch', branch: 'providerRejected' });
+  expect(refusedContext.marker).toMatchObject({ state: 'canResend' });
+  const gone = await client([410], []).createIssue().invoke({ id: callId, connection, operation: { connectorId: 'github', operationId: 'createIssue' }, context: new FenceContext() } as unknown as Call, input);
+  expect(gone.kind).toBe('retry');
+});
+
 it('reads back before sending again below the cap', async () => {
   const requests: string[] = [];
   const context = new FenceContext();

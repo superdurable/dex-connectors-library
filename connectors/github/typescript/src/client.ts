@@ -170,6 +170,8 @@ export class GitHubClient {
       if (response.status === 401) return { branch: 'authorizationRevoked', failure: failure(operation, 'AUTHENTICATION', 'GitHub authorization is invalid or revoked'), receipt };
       if (response.status === 403) return { branch: 'insufficientScope', failure: failure(operation, 'AUTHORIZATION', 'GitHub authorization is forbidden or lacks scope'), receipt };
       if (response.status === 404) return { branch: 'notFound', failure: failure(operation, 'NOT_FOUND', 'GitHub resource was not found'), receipt };
+      // A repeat-safe write retries a status that does not prove a refusal, such as 410.
+      if (method !== 'GET' && ![400, 411, 413, 414, 415, 422].includes(response.status)) return { failure: failure(operation, 'PROVIDER_REJECTION', 'GitHub rejected the request'), retryAfterMs: 0, receipt };
       if (method !== 'GET') {
         // A write names the rejected status; 400 and 422 report invalid input.
         const kind = response.status === 400 || response.status === 422 ? 'VALIDATION' : 'PROVIDER_REJECTION';
