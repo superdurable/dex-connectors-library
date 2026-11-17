@@ -84,6 +84,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[keap.ContactTagChange](`{"contactId":"123","tagId":"567","changed":true}`)
 			return err
 		}},
+		{name: "getOrder/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.OrderProfile](`{"id":"678","title":"Example order","status":"DRAFT"}`)
+			return err
+		}},
+		{name: "listOrders/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.OrdersPage](`{"orders":[{"id":"678","title":"Example order","status":"DRAFT"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "createOrder/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.OrderProfile](`{"id":"678","title":"Example order","status":"DRAFT"}`)
+			return err
+		}},
+		{name: "updateOrderTitle/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.OrderProfile](`{"id":"678","title":"Example order","status":"DRAFT"}`)
+			return err
+		}},
+		{name: "deleteOrder/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.OrderDeletion](`{"orderId":"678","deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -144,5 +164,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.RemoveContactTag().Definition().Operation.OperationID != "removeContactTag" {
 		t.Errorf("removeContactTag mock has another definition")
+	}
+	if mock.GetOrder().Definition().Operation.OperationID != "getOrder" {
+		t.Errorf("getOrder mock has another definition")
+	}
+	if mock.ListOrders().Definition().Operation.OperationID != "listOrders" {
+		t.Errorf("listOrders mock has another definition")
+	}
+	if mock.CreateOrder().Definition().Operation.OperationID != "createOrder" {
+		t.Errorf("createOrder mock has another definition")
+	}
+	if mock.UpdateOrderTitle().Definition().Operation.OperationID != "updateOrderTitle" {
+		t.Errorf("updateOrderTitle mock has another definition")
+	}
+	if mock.DeleteOrder().Definition().Operation.OperationID != "deleteOrder" {
+		t.Errorf("deleteOrder mock has another definition")
 	}
 }

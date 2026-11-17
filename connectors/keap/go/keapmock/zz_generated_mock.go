@@ -35,6 +35,11 @@ type Mock struct {
 	listContactTags   *connectormock.Query[keap.ListContactTagsInput, keap.ContactTagsPage]
 	applyContactTag   *connectormock.Mutation[keap.ContactTagInput, keap.ContactTagChange]
 	removeContactTag  *connectormock.Mutation[keap.ContactTagInput, keap.ContactTagChange]
+	getOrder          *connectormock.Query[keap.OrderIDInput, keap.OrderProfile]
+	listOrders        *connectormock.Query[keap.ListOrdersInput, keap.OrdersPage]
+	createOrder       *connectormock.Mutation[keap.CreateOrderInput, keap.OrderProfile]
+	updateOrderTitle  *connectormock.Mutation[keap.UpdateOrderTitleInput, keap.OrderProfile]
+	deleteOrder       *connectormock.Mutation[keap.OrderIDInput, keap.OrderDeletion]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -59,6 +64,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		listContactTags:   connectormock.NewQuery[keap.ListContactTagsInput, keap.ContactTagsPage](t, keap.ListContactTagsDefinition),
 		applyContactTag:   connectormock.NewMutation[keap.ContactTagInput, keap.ContactTagChange](t, keap.ApplyContactTagDefinition),
 		removeContactTag:  connectormock.NewMutation[keap.ContactTagInput, keap.ContactTagChange](t, keap.RemoveContactTagDefinition),
+		getOrder:          connectormock.NewQuery[keap.OrderIDInput, keap.OrderProfile](t, keap.GetOrderDefinition),
+		listOrders:        connectormock.NewQuery[keap.ListOrdersInput, keap.OrdersPage](t, keap.ListOrdersDefinition),
+		createOrder:       connectormock.NewMutation[keap.CreateOrderInput, keap.OrderProfile](t, keap.CreateOrderDefinition),
+		updateOrderTitle:  connectormock.NewMutation[keap.UpdateOrderTitleInput, keap.OrderProfile](t, keap.UpdateOrderTitleDefinition),
+		deleteOrder:       connectormock.NewMutation[keap.OrderIDInput, keap.OrderDeletion](t, keap.DeleteOrderDefinition),
 	}
 	mock.getContact.Default(GetContactDefault())
 	mock.listContacts.Default(ListContactsDefault())
@@ -77,6 +87,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listContactTags.Default(ListContactTagsDefault())
 	mock.applyContactTag.Default(ApplyContactTagDefault())
 	mock.removeContactTag.Default(RemoveContactTagDefault())
+	mock.getOrder.Default(GetOrderDefault())
+	mock.listOrders.Default(ListOrdersDefault())
+	mock.createOrder.Default(CreateOrderDefault())
+	mock.updateOrderTitle.Default(UpdateOrderTitleDefault())
+	mock.deleteOrder.Default(DeleteOrderDefault())
 	connection, err := keap.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "keap", Name: connectionName})
 	if err != nil {
 		t.Fatalf("keap mock connection: %v", err)
@@ -173,6 +188,31 @@ func (mock *Mock) RemoveContactTag() *connectormock.Mutation[keap.ContactTagInpu
 	return mock.removeContactTag
 }
 
+// GetOrder returns the getOrder script.
+func (mock *Mock) GetOrder() *connectormock.Query[keap.OrderIDInput, keap.OrderProfile] {
+	return mock.getOrder
+}
+
+// ListOrders returns the listOrders script.
+func (mock *Mock) ListOrders() *connectormock.Query[keap.ListOrdersInput, keap.OrdersPage] {
+	return mock.listOrders
+}
+
+// CreateOrder returns the createOrder script.
+func (mock *Mock) CreateOrder() *connectormock.Mutation[keap.CreateOrderInput, keap.OrderProfile] {
+	return mock.createOrder
+}
+
+// UpdateOrderTitle returns the updateOrderTitle script.
+func (mock *Mock) UpdateOrderTitle() *connectormock.Mutation[keap.UpdateOrderTitleInput, keap.OrderProfile] {
+	return mock.updateOrderTitle
+}
+
+// DeleteOrder returns the deleteOrder script.
+func (mock *Mock) DeleteOrder() *connectormock.Mutation[keap.OrderIDInput, keap.OrderDeletion] {
+	return mock.deleteOrder
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetContact() sdkgo.Query[keap.GetContactInput, keap.ContactProfile] {
@@ -225,6 +265,21 @@ func (operations mockOperations) ApplyContactTag() sdkgo.Mutation[keap.ContactTa
 }
 func (operations mockOperations) RemoveContactTag() sdkgo.Mutation[keap.ContactTagInput, keap.ContactTagChange] {
 	return operations.mock.removeContactTag
+}
+func (operations mockOperations) GetOrder() sdkgo.Query[keap.OrderIDInput, keap.OrderProfile] {
+	return operations.mock.getOrder
+}
+func (operations mockOperations) ListOrders() sdkgo.Query[keap.ListOrdersInput, keap.OrdersPage] {
+	return operations.mock.listOrders
+}
+func (operations mockOperations) CreateOrder() sdkgo.Mutation[keap.CreateOrderInput, keap.OrderProfile] {
+	return operations.mock.createOrder
+}
+func (operations mockOperations) UpdateOrderTitle() sdkgo.Mutation[keap.UpdateOrderTitleInput, keap.OrderProfile] {
+	return operations.mock.updateOrderTitle
+}
+func (operations mockOperations) DeleteOrder() sdkgo.Mutation[keap.OrderIDInput, keap.OrderDeletion] {
+	return operations.mock.deleteOrder
 }
 
 // GetContactFound selects the found branch: Keap returned the contact.
@@ -892,3 +947,190 @@ func RemoveContactTagRemovedDefault() connectormock.Case[keap.ContactTagChange] 
 func RemoveContactTagDefault() connectormock.Case[keap.ContactTagChange] {
 	return RemoveContactTagRemovedDefault()
 }
+
+// GetOrderFound selects the found branch: Keap returned the order.
+func GetOrderFound(value keap.OrderProfile, failure *sdkgo.Failure) connectormock.Case[keap.OrderProfile] {
+	return connectormock.Branch(keap.GetOrderBranchFound, value, failure)
+}
+
+// GetOrderNotFound selects the notFound branch: Keap did not find the order.
+func GetOrderNotFound(value keap.OrderProfile, failure *sdkgo.Failure) connectormock.Case[keap.OrderProfile] {
+	return connectormock.Branch(keap.GetOrderBranchNotFound, value, failure)
+}
+
+// GetOrderProviderRejected selects the providerRejected branch: Keap rejected the lookup.
+func GetOrderProviderRejected(value keap.OrderProfile, failure *sdkgo.Failure) connectormock.Case[keap.OrderProfile] {
+	return connectormock.Branch(keap.GetOrderBranchProviderRejected, value, failure)
+}
+
+// GetOrderInvalidResponse selects the invalidResponse branch: Keap returned invalid order JSON.
+func GetOrderInvalidResponse(value keap.OrderProfile, failure *sdkgo.Failure) connectormock.Case[keap.OrderProfile] {
+	return connectormock.Branch(keap.GetOrderBranchInvalidResponse, value, failure)
+}
+
+// GetOrderDefect selects the defect branch: Input or credentials are invalid.
+func GetOrderDefect(value keap.OrderProfile, failure *sdkgo.Failure) connectormock.Case[keap.OrderProfile] {
+	return connectormock.Branch(keap.GetOrderBranchDefect, value, failure)
+}
+
+// GetOrderRetry asks Dex to retry the getOrder Step, after the delay when it is positive.
+func GetOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.OrderProfile] {
+	return connectormock.Retry[keap.OrderProfile](failure, after)
+}
+
+// GetOrderFoundDefault is the manifest mock foundDefault: A sample order is returned.
+func GetOrderFoundDefault() connectormock.Case[keap.OrderProfile] {
+	value := connectormock.MustDecodeOutput[keap.OrderProfile](`{"id":"678","title":"Example order","status":"DRAFT"}`)
+	return connectormock.Branch(keap.GetOrderBranchFound, value, nil)
+}
+
+// GetOrderDefault is the manifest default, foundDefault, which New installs.
+func GetOrderDefault() connectormock.Case[keap.OrderProfile] { return GetOrderFoundDefault() }
+
+// ListOrdersListed selects the listed branch: Keap returned an order page.
+func ListOrdersListed(value keap.OrdersPage, failure *sdkgo.Failure) connectormock.Case[keap.OrdersPage] {
+	return connectormock.Branch(keap.ListOrdersBranchListed, value, failure)
+}
+
+// ListOrdersProviderRejected selects the providerRejected branch: Keap rejected the list request.
+func ListOrdersProviderRejected(value keap.OrdersPage, failure *sdkgo.Failure) connectormock.Case[keap.OrdersPage] {
+	return connectormock.Branch(keap.ListOrdersBranchProviderRejected, value, failure)
+}
+
+// ListOrdersInvalidResponse selects the invalidResponse branch: Keap returned invalid order list JSON.
+func ListOrdersInvalidResponse(value keap.OrdersPage, failure *sdkgo.Failure) connectormock.Case[keap.OrdersPage] {
+	return connectormock.Branch(keap.ListOrdersBranchInvalidResponse, value, failure)
+}
+
+// ListOrdersDefect selects the defect branch: Input or credentials are invalid.
+func ListOrdersDefect(value keap.OrdersPage, failure *sdkgo.Failure) connectormock.Case[keap.OrdersPage] {
+	return connectormock.Branch(keap.ListOrdersBranchDefect, value, failure)
+}
+
+// ListOrdersRetry asks Dex to retry the listOrders Step, after the delay when it is positive.
+func ListOrdersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.OrdersPage] {
+	return connectormock.Retry[keap.OrdersPage](failure, after)
+}
+
+// ListOrdersListedDefault is the manifest mock listedDefault: A sample order page is returned.
+func ListOrdersListedDefault() connectormock.Case[keap.OrdersPage] {
+	value := connectormock.MustDecodeOutput[keap.OrdersPage](`{"orders":[{"id":"678","title":"Example order","status":"DRAFT"}],"nextPageToken":""}`)
+	return connectormock.Branch(keap.ListOrdersBranchListed, value, nil)
+}
+
+// ListOrdersDefault is the manifest default, listedDefault, which New installs.
+func ListOrdersDefault() connectormock.Case[keap.OrdersPage] { return ListOrdersListedDefault() }
+
+// CreateOrderCreated selects the created branch: Keap created the order.
+func CreateOrderCreated(value keap.OrderProfile, failure *sdkgo.Failure) connectormock.Case[keap.OrderProfile] {
+	return connectormock.Branch(keap.CreateOrderBranchCreated, value, failure)
+}
+
+// CreateOrderProviderRejected selects the providerRejected branch: Keap rejected the order.
+func CreateOrderProviderRejected(value keap.OrderProfile, failure *sdkgo.Failure) connectormock.Case[keap.OrderProfile] {
+	return connectormock.Branch(keap.CreateOrderBranchProviderRejected, value, failure)
+}
+
+// CreateOrderUncertain returns an uncertain createOrder outcome.
+func CreateOrderUncertain(value keap.OrderProfile, failure sdkgo.Failure) connectormock.Case[keap.OrderProfile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateOrderDefect selects the defect branch: Input or credentials are invalid.
+func CreateOrderDefect(value keap.OrderProfile, failure *sdkgo.Failure) connectormock.Case[keap.OrderProfile] {
+	return connectormock.Branch(keap.CreateOrderBranchDefect, value, failure)
+}
+
+// CreateOrderRetry asks Dex to retry the createOrder Step, after the delay when it is positive.
+func CreateOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.OrderProfile] {
+	return connectormock.Retry[keap.OrderProfile](failure, after)
+}
+
+// CreateOrderCreatedDefault is the manifest mock createdDefault: A sample order is created.
+func CreateOrderCreatedDefault() connectormock.Case[keap.OrderProfile] {
+	value := connectormock.MustDecodeOutput[keap.OrderProfile](`{"id":"678","title":"Example order","status":"DRAFT"}`)
+	return connectormock.Branch(keap.CreateOrderBranchCreated, value, nil)
+}
+
+// CreateOrderDefault is the manifest default, createdDefault, which New installs.
+func CreateOrderDefault() connectormock.Case[keap.OrderProfile] { return CreateOrderCreatedDefault() }
+
+// UpdateOrderTitleUpdated selects the updated branch: Keap updated the order.
+func UpdateOrderTitleUpdated(value keap.OrderProfile, failure *sdkgo.Failure) connectormock.Case[keap.OrderProfile] {
+	return connectormock.Branch(keap.UpdateOrderTitleBranchUpdated, value, failure)
+}
+
+// UpdateOrderTitleNotFound selects the notFound branch: Keap did not find the order.
+func UpdateOrderTitleNotFound(value keap.OrderProfile, failure *sdkgo.Failure) connectormock.Case[keap.OrderProfile] {
+	return connectormock.Branch(keap.UpdateOrderTitleBranchNotFound, value, failure)
+}
+
+// UpdateOrderTitleProviderRejected selects the providerRejected branch: Keap rejected the update.
+func UpdateOrderTitleProviderRejected(value keap.OrderProfile, failure *sdkgo.Failure) connectormock.Case[keap.OrderProfile] {
+	return connectormock.Branch(keap.UpdateOrderTitleBranchProviderRejected, value, failure)
+}
+
+// UpdateOrderTitleInvalidResponse selects the invalidResponse branch: Keap returned invalid order JSON.
+func UpdateOrderTitleInvalidResponse(value keap.OrderProfile, failure *sdkgo.Failure) connectormock.Case[keap.OrderProfile] {
+	return connectormock.Branch(keap.UpdateOrderTitleBranchInvalidResponse, value, failure)
+}
+
+// UpdateOrderTitleDefect selects the defect branch: Input or credentials are invalid.
+func UpdateOrderTitleDefect(value keap.OrderProfile, failure *sdkgo.Failure) connectormock.Case[keap.OrderProfile] {
+	return connectormock.Branch(keap.UpdateOrderTitleBranchDefect, value, failure)
+}
+
+// UpdateOrderTitleRetry asks Dex to retry the updateOrderTitle Step, after the delay when it is positive.
+func UpdateOrderTitleRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.OrderProfile] {
+	return connectormock.Retry[keap.OrderProfile](failure, after)
+}
+
+// UpdateOrderTitleUpdatedDefault is the manifest mock updatedDefault: A sample order is updated.
+func UpdateOrderTitleUpdatedDefault() connectormock.Case[keap.OrderProfile] {
+	value := connectormock.MustDecodeOutput[keap.OrderProfile](`{"id":"678","title":"Example order","status":"DRAFT"}`)
+	return connectormock.Branch(keap.UpdateOrderTitleBranchUpdated, value, nil)
+}
+
+// UpdateOrderTitleDefault is the manifest default, updatedDefault, which New installs.
+func UpdateOrderTitleDefault() connectormock.Case[keap.OrderProfile] {
+	return UpdateOrderTitleUpdatedDefault()
+}
+
+// DeleteOrderDeleted selects the deleted branch: Keap accepted the order deletion.
+func DeleteOrderDeleted(value keap.OrderDeletion, failure *sdkgo.Failure) connectormock.Case[keap.OrderDeletion] {
+	return connectormock.Branch(keap.DeleteOrderBranchDeleted, value, failure)
+}
+
+// DeleteOrderNotFound selects the notFound branch: Keap did not find the order.
+func DeleteOrderNotFound(value keap.OrderDeletion, failure *sdkgo.Failure) connectormock.Case[keap.OrderDeletion] {
+	return connectormock.Branch(keap.DeleteOrderBranchNotFound, value, failure)
+}
+
+// DeleteOrderProviderRejected selects the providerRejected branch: Keap rejected the deletion.
+func DeleteOrderProviderRejected(value keap.OrderDeletion, failure *sdkgo.Failure) connectormock.Case[keap.OrderDeletion] {
+	return connectormock.Branch(keap.DeleteOrderBranchProviderRejected, value, failure)
+}
+
+// DeleteOrderInvalidResponse selects the invalidResponse branch: Keap returned invalid deletion JSON.
+func DeleteOrderInvalidResponse(value keap.OrderDeletion, failure *sdkgo.Failure) connectormock.Case[keap.OrderDeletion] {
+	return connectormock.Branch(keap.DeleteOrderBranchInvalidResponse, value, failure)
+}
+
+// DeleteOrderDefect selects the defect branch: Input or credentials are invalid.
+func DeleteOrderDefect(value keap.OrderDeletion, failure *sdkgo.Failure) connectormock.Case[keap.OrderDeletion] {
+	return connectormock.Branch(keap.DeleteOrderBranchDefect, value, failure)
+}
+
+// DeleteOrderRetry asks Dex to retry the deleteOrder Step, after the delay when it is positive.
+func DeleteOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.OrderDeletion] {
+	return connectormock.Retry[keap.OrderDeletion](failure, after)
+}
+
+// DeleteOrderDeletedDefault is the manifest mock deletedDefault: A sample order is deleted.
+func DeleteOrderDeletedDefault() connectormock.Case[keap.OrderDeletion] {
+	value := connectormock.MustDecodeOutput[keap.OrderDeletion](`{"orderId":"678","deleted":true}`)
+	return connectormock.Branch(keap.DeleteOrderBranchDeleted, value, nil)
+}
+
+// DeleteOrderDefault is the manifest default, deletedDefault, which New installs.
+func DeleteOrderDefault() connectormock.Case[keap.OrderDeletion] { return DeleteOrderDeletedDefault() }

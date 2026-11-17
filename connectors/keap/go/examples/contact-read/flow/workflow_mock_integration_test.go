@@ -24,7 +24,7 @@ import (
 func TestContactReadUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := keapmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, NewDirectoryFlow(mock.Connection()), NewCompanyFlow(mock.Connection()), NewNoteFlow(mock.Connection()), NewTagFlow(mock.Connection())})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, NewDirectoryFlow(mock.Connection()), NewCompanyFlow(mock.Connection()), NewNoteFlow(mock.Connection()), NewTagFlow(mock.Connection()), NewOrderFlow(mock.Connection())})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -103,4 +103,15 @@ func TestContactReadUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Len(t, tags.Tags, 1)
 	require.Equal(t, "567", tags.Tags[0].ID)
 	require.Len(t, mock.ListContactTags().Calls(), 1)
+	orderFlow := NewOrderFlow(mock.Connection())
+	orderFlowID := "keap-order-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, orderFlow, orderFlowID, keap.OrderIDInput{OrderID: "678"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	orderResult, err := client.WaitForFlow(ctx, orderFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, orderResult.Status, orderResult.ErrorMessage)
+	var order keap.OrderProfile
+	require.NoError(t, orderResult.DecodeSingleOutput(&order))
+	require.Equal(t, "678", order.ID)
+	require.Len(t, mock.GetOrder().Calls(), 1)
 }

@@ -65,5 +65,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"listContactTags":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListContactTags(), reference),
 		"applyContactTag":   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.ApplyContactTag(), reference, scenario.CallID),
 		"removeContactTag":  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.RemoveContactTag(), reference, scenario.CallID),
+		"getOrder":          newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetOrder(), reference),
+		"listOrders":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListOrders(), reference),
+		"createOrder":       newConformanceMutationInvocation(t, scenario.Input, context, client.CreateOrder(), reference, scenario.CallID),
+		"updateOrderTitle":  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateOrderTitle(), reference, scenario.CallID),
+		"deleteOrder":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteOrder(), reference, scenario.CallID),
 	}}
 }

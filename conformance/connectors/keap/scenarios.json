@@ -6327,6 +6327,1944 @@
       },
       "name": "applyContactTag-resultRejected",
       "operation": "applyContactTag"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"678\",\"title\":\"Example order\",\"status\":\"DRAFT\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/orders/678",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "678",
+          "status": "DRAFT",
+          "title": "Example order"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "678"
+      },
+      "name": "getOrder-happy",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/orders/678",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "678"
+      },
+      "name": "getOrder-rejected",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/orders/678",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "678"
+      },
+      "name": "getOrder-invalid",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/orders/678",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "678"
+      },
+      "name": "getOrder-notFound",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/orders/678",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "678"
+      },
+      "name": "getOrder-rateLimit",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/orders/678",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "678"
+      },
+      "name": "getOrder-unavailable",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/orders/678",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "678"
+      },
+      "name": "getOrder-serverFailure",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/orders/678",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "678"
+      },
+      "name": "getOrder-transportFailure",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "bad/id"
+      },
+      "name": "getOrder-defect",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{\"orders\":[{\"id\":\"678\",\"title\":\"Example order\",\"status\":\"DRAFT\"}],\"next_page_token\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/orders",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "",
+          "orders": [
+            {
+              "id": "678",
+              "status": "DRAFT",
+              "title": "Example order"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listOrders-happy",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/orders",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextPageToken": "",
+          "orders": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listOrders-rejected",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/orders",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextPageToken": "",
+          "orders": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listOrders-invalid",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/orders",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listOrders-rateLimit",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/orders",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listOrders-unavailable",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/orders",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listOrders-serverFailure",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/orders",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listOrders-transportFailure",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextPageToken": "",
+          "orders": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": -1,
+        "pageToken": "cursor-1"
+      },
+      "name": "listOrders-defect",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"678\",\"title\":\"Example order\",\"status\":\"DRAFT\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/orders",
+          "requestBody": {
+            "contact_id": "123",
+            "order_items": [
+              {
+                "product_id": "901",
+                "quantity": 2
+              }
+            ],
+            "order_time": "2026-11-17T08:00:00Z",
+            "order_title": "Example order",
+            "order_type": "OFFLINE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "678",
+          "status": "DRAFT",
+          "title": "Example order"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "input": {
+        "contactId": "123",
+        "orderTime": "2026-11-17T08:00:00Z",
+        "orderType": "OFFLINE",
+        "productId": "901",
+        "quantity": 2,
+        "title": "Example order"
+      },
+      "name": "createOrder-happy",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/orders",
+          "requestBody": {
+            "contact_id": "123",
+            "order_items": [
+              {
+                "product_id": "901",
+                "quantity": 2
+              }
+            ],
+            "order_time": "2026-11-17T08:00:00Z",
+            "order_title": "Example order",
+            "order_type": "OFFLINE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "input": {
+        "contactId": "123",
+        "orderTime": "2026-11-17T08:00:00Z",
+        "orderType": "OFFLINE",
+        "productId": "901",
+        "quantity": 2,
+        "title": "Example order"
+      },
+      "name": "createOrder-rejected",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/orders",
+          "requestBody": {
+            "contact_id": "123",
+            "order_items": [
+              {
+                "product_id": "901",
+                "quantity": 2
+              }
+            ],
+            "order_time": "2026-11-17T08:00:00Z",
+            "order_title": "Example order",
+            "order_type": "OFFLINE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "input": {
+        "contactId": "123",
+        "orderTime": "2026-11-17T08:00:00Z",
+        "orderType": "OFFLINE",
+        "productId": "901",
+        "quantity": 2,
+        "title": "Example order"
+      },
+      "name": "createOrder-rateLimit",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/orders",
+          "requestBody": {
+            "contact_id": "123",
+            "order_items": [
+              {
+                "product_id": "901",
+                "quantity": 2
+              }
+            ],
+            "order_time": "2026-11-17T08:00:00Z",
+            "order_title": "Example order",
+            "order_type": "OFFLINE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "input": {
+        "contactId": "123",
+        "orderTime": "2026-11-17T08:00:00Z",
+        "orderType": "OFFLINE",
+        "productId": "901",
+        "quantity": 2,
+        "title": "Example order"
+      },
+      "name": "createOrder-unavailable",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/orders",
+          "requestBody": {
+            "contact_id": "123",
+            "order_items": [
+              {
+                "product_id": "901",
+                "quantity": 2
+              }
+            ],
+            "order_time": "2026-11-17T08:00:00Z",
+            "order_title": "Example order",
+            "order_type": "OFFLINE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "input": {
+        "contactId": "123",
+        "orderTime": "2026-11-17T08:00:00Z",
+        "orderType": "OFFLINE",
+        "productId": "901",
+        "quantity": 2,
+        "title": "Example order"
+      },
+      "name": "createOrder-serverFailure",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/orders",
+          "requestBody": {
+            "contact_id": "123",
+            "order_items": [
+              {
+                "product_id": "901",
+                "quantity": 2
+              }
+            ],
+            "order_time": "2026-11-17T08:00:00Z",
+            "order_title": "Example order",
+            "order_type": "OFFLINE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "input": {
+        "contactId": "123",
+        "orderTime": "2026-11-17T08:00:00Z",
+        "orderType": "OFFLINE",
+        "productId": "901",
+        "quantity": 2,
+        "title": "Example order"
+      },
+      "name": "createOrder-transportFailure",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "input": {
+        "contactId": "123",
+        "orderTime": "2026-11-17T08:00:00Z",
+        "orderType": "BAD",
+        "productId": "901",
+        "quantity": 2,
+        "title": "Example order"
+      },
+      "name": "createOrder-defect",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "68e39186-c796-5462-ab32-63076ef2148e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"678\",\"title\":\"Example order\",\"status\":\"DRAFT\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/orders/678",
+          "query": {
+            "update_mask": [
+              "order_title"
+            ]
+          },
+          "requestBody": {
+            "order_title": "Example order"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "678",
+          "status": "DRAFT",
+          "title": "Example order"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68e39186-c796-5462-ab32-63076ef2148e",
+      "input": {
+        "orderId": "678",
+        "title": "Example order"
+      },
+      "name": "updateOrderTitle-happy",
+      "operation": "updateOrderTitle"
+    },
+    {
+      "callId": "68e39186-c796-5462-ab32-63076ef2148e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/orders/678",
+          "query": {
+            "update_mask": [
+              "order_title"
+            ]
+          },
+          "requestBody": {
+            "order_title": "Example order"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68e39186-c796-5462-ab32-63076ef2148e",
+      "input": {
+        "orderId": "678",
+        "title": "Example order"
+      },
+      "name": "updateOrderTitle-rejected",
+      "operation": "updateOrderTitle"
+    },
+    {
+      "callId": "68e39186-c796-5462-ab32-63076ef2148e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/orders/678",
+          "query": {
+            "update_mask": [
+              "order_title"
+            ]
+          },
+          "requestBody": {
+            "order_title": "Example order"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68e39186-c796-5462-ab32-63076ef2148e",
+      "input": {
+        "orderId": "678",
+        "title": "Example order"
+      },
+      "name": "updateOrderTitle-invalid",
+      "operation": "updateOrderTitle"
+    },
+    {
+      "callId": "68e39186-c796-5462-ab32-63076ef2148e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/orders/678",
+          "query": {
+            "update_mask": [
+              "order_title"
+            ]
+          },
+          "requestBody": {
+            "order_title": "Example order"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68e39186-c796-5462-ab32-63076ef2148e",
+      "input": {
+        "orderId": "678",
+        "title": "Example order"
+      },
+      "name": "updateOrderTitle-notFound",
+      "operation": "updateOrderTitle"
+    },
+    {
+      "callId": "68e39186-c796-5462-ab32-63076ef2148e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/orders/678",
+          "query": {
+            "update_mask": [
+              "order_title"
+            ]
+          },
+          "requestBody": {
+            "order_title": "Example order"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68e39186-c796-5462-ab32-63076ef2148e",
+      "input": {
+        "orderId": "678",
+        "title": "Example order"
+      },
+      "name": "updateOrderTitle-rateLimit",
+      "operation": "updateOrderTitle"
+    },
+    {
+      "callId": "68e39186-c796-5462-ab32-63076ef2148e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/orders/678",
+          "query": {
+            "update_mask": [
+              "order_title"
+            ]
+          },
+          "requestBody": {
+            "order_title": "Example order"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68e39186-c796-5462-ab32-63076ef2148e",
+      "input": {
+        "orderId": "678",
+        "title": "Example order"
+      },
+      "name": "updateOrderTitle-unavailable",
+      "operation": "updateOrderTitle"
+    },
+    {
+      "callId": "68e39186-c796-5462-ab32-63076ef2148e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/orders/678",
+          "query": {
+            "update_mask": [
+              "order_title"
+            ]
+          },
+          "requestBody": {
+            "order_title": "Example order"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68e39186-c796-5462-ab32-63076ef2148e",
+      "input": {
+        "orderId": "678",
+        "title": "Example order"
+      },
+      "name": "updateOrderTitle-serverFailure",
+      "operation": "updateOrderTitle"
+    },
+    {
+      "callId": "68e39186-c796-5462-ab32-63076ef2148e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/orders/678",
+          "query": {
+            "update_mask": [
+              "order_title"
+            ]
+          },
+          "requestBody": {
+            "order_title": "Example order"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68e39186-c796-5462-ab32-63076ef2148e",
+      "input": {
+        "orderId": "678",
+        "title": "Example order"
+      },
+      "name": "updateOrderTitle-transportFailure",
+      "operation": "updateOrderTitle"
+    },
+    {
+      "callId": "68e39186-c796-5462-ab32-63076ef2148e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68e39186-c796-5462-ab32-63076ef2148e",
+      "input": {
+        "orderId": "bad/id",
+        "title": "Example order"
+      },
+      "name": "updateOrderTitle-defect",
+      "operation": "updateOrderTitle"
+    },
+    {
+      "callId": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/orders/678",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "orderId": "678"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
+      "input": {
+        "orderId": "678"
+      },
+      "name": "deleteOrder-happy",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/orders/678",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "orderId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
+      "input": {
+        "orderId": "678"
+      },
+      "name": "deleteOrder-rejected",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
+      "exchanges": [
+        {
+          "body": "invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/orders/678",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false,
+          "orderId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
+      "input": {
+        "orderId": "678"
+      },
+      "name": "deleteOrder-invalid",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/orders/678",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "orderId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
+      "input": {
+        "orderId": "678"
+      },
+      "name": "deleteOrder-notFound",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/orders/678",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
+      "input": {
+        "orderId": "678"
+      },
+      "name": "deleteOrder-rateLimit",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/orders/678",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
+      "input": {
+        "orderId": "678"
+      },
+      "name": "deleteOrder-unavailable",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/orders/678",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
+      "input": {
+        "orderId": "678"
+      },
+      "name": "deleteOrder-serverFailure",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/orders/678",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
+      "input": {
+        "orderId": "678"
+      },
+      "name": "deleteOrder-transportFailure",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "orderId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
+      "input": {
+        "orderId": "bad/id"
+      },
+      "name": "deleteOrder-defect",
+      "operation": "deleteOrder"
+    },
+    {
+      "attempts": 3,
+      "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/orders",
+          "requestBody": {
+            "contact_id": "123",
+            "order_items": [
+              {
+                "product_id": "901",
+                "quantity": 2
+              }
+            ],
+            "order_time": "2026-11-17T08:00:00Z",
+            "order_title": "Example order",
+            "order_type": "OFFLINE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/orders",
+          "requestBody": {
+            "contact_id": "123",
+            "order_items": [
+              {
+                "product_id": "901",
+                "quantity": 2
+              }
+            ],
+            "order_time": "2026-11-17T08:00:00Z",
+            "order_title": "Example order",
+            "order_type": "OFFLINE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/orders",
+          "requestBody": {
+            "contact_id": "123",
+            "order_items": [
+              {
+                "product_id": "901",
+                "quantity": 2
+              }
+            ],
+            "order_time": "2026-11-17T08:00:00Z",
+            "order_title": "Example order",
+            "order_type": "OFFLINE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "input": {
+        "contactId": "123",
+        "orderTime": "2026-11-17T08:00:00Z",
+        "orderType": "OFFLINE",
+        "productId": "901",
+        "quantity": 2,
+        "title": "Example order"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createOrder-uncertain",
+      "operation": "createOrder"
     }
   ],
   "schemaVersion": 1
