@@ -47,7 +47,7 @@ export interface Config {
   timeoutMs?: number;
   /** Maximum bytes accepted from one Hacker News response; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse. */
   maxResponseBytes?: number;
-  /** Hacker News Search API base URL that searchStories reads, documented at https://hn.algolia.com/api; this is a fixed public endpoint that needs no key and is not secret, so leave the field blank unless a loopback test server is being used. */
+  /** Hacker News Search API base URL that searchStories, searchItems, and getArticleThread read, documented at https://hn.algolia.com/api; this is a fixed public endpoint that needs no key and is not secret, so leave the field blank unless a loopback test server is being used. */
   searchBaseUrl?: string;
 }
 

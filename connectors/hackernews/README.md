@@ -35,12 +35,24 @@ the operations it implements.
 | `NewListStoryIDsStep` | `ListStoryIDsInput` | `listed` | `providerRejected`, `invalidResponse`, `defect` |
 | `NewGetItemStep` | `GetItemInput` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `NewSearchStoriesStep` | `SearchStoriesInput` | `searched` | `providerRejected`, `invalidResponse`, `defect` |
+| `NewSearchItemsStep` | `SearchItemsInput` | `searched` | `providerRejected`, `invalidResponse`, `defect` |
+| `NewGetArticleThreadStep` | `GetArticleThreadInput` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `NewGetUserStep` | `GetUserInput` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
 `GetUser` reads the public profile for a case-sensitive Hacker News username,
 including creation time, karma, profile HTML, submitted item IDs, and a profile URL.
 Its Query repeats safely after temporary failures. The story search example can
 read the first matching story author's profile when `LookupFirstAuthor` is true.
+
+`SearchItems` searches the Hacker News Search API across stories, comments,
+polls, and poll options. `Type` narrows to one of those item types; blank searches
+all types. It returns one bounded page with a `NextPage` cursor and item links.
+The Go story-search example can search comments or polls through `itemType`.
+
+`GetArticleThread` reads one story or poll through the Search API with its
+nested indexed comments. The response is bounded by the configured byte limit,
+5000 comments, and 64 levels. The story-search example sets `readFirstThread`
+to include the first matching story's comments in its result.
 
 `ListStoryIDs` reads `top`, `best`, `new`, `ask`, or `show`. Empty `Feed` selects
 `top`. `Limit` accepts 1 through 500; zero selects 50. Both fields are optional
@@ -89,7 +101,7 @@ application networking.
 
 ## Agent tools
 
-All three Queries are exposed to agent hosts through the `agent` block in
+All six Go Queries are declared for agent hosts through the `agent` block in
 `connector.yaml`; each language package carries its own operations in
 `dex-connector.json`. They are public reads, so none asks for approval. Every optional branch except
 `invalidResponse` is classified `rejected` because a read changes nothing;
@@ -98,7 +110,8 @@ unlisted and agent hosts record it as a failure.
 
 From Go v0.24.0, `Connection.AgentTools()` binds the Queries to a connection as
 `sdkgo.AgentTool` values, and `ExposedAgentTools()` lists their metadata. From
-Go v0.26.0 the list includes `hacker-news-daily_search_stories`. A
+Go v0.26.0 the list includes `hacker-news-daily_search_stories`; Go v0.27.0
+adds public user, mixed-item search, and article-thread tools. A
 `hackernewsmock` connection returns the same tools for host tests.
 
 ## Mocks
@@ -123,13 +136,14 @@ snapshot; the example test scripts a current publication timestamp.
 
 ## Execution contract
 
-All three operations are read-only queries. Each Execute attempt makes one HTTP
+All six operations are read-only Queries. Each Execute attempt makes one HTTP
 request. They use async durability and a 30-second Execute timeout. HTTP 408,
-429, 5xx, transport failures, and interrupted response bodies retry. The default
-policy allows unlimited attempts within 65 minutes, with exponential backoff from
-1 second to 30 seconds. `Retry-After` can extend the delay up to one hour, within
-the remaining retry budget. Other non-200 responses select `providerRejected`; for `searchStories`, HTTP
-404 does too. Redirects are not followed.
+429, 5xx, transport failures, and interrupted response bodies retry. The three
+original Queries allow unlimited attempts within 65 minutes; the three new
+Queries use the one-hour default retry policy. `Retry-After` can extend the
+delay up to one hour within the remaining retry budget. Other non-200 answers
+select `providerRejected`, except 404 selects `notFound` for `getItem`,
+`getUser`, and `getArticleThread`. Redirects are not followed.
 
 Malformed JSON, mismatched item IDs, unknown item types, invalid child IDs, and
 oversized bodies select `invalidResponse`, as do search pages that are missing

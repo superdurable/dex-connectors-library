@@ -298,7 +298,7 @@ func getJSON[T any](client *Client, call sdkgo.Call, operation, requestURL strin
 			kind = sdkgo.FailureRateLimit
 		}
 		return sdkgo.NewQueryRetry[T](failure(operation, kind, "Hacker News is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), client.clock()))
-	case response.StatusCode == http.StatusNotFound && (operation == "getItem" || operation == "getUser"):
+	case response.StatusCode == http.StatusNotFound && (operation == "getItem" || operation == "getUser" || operation == "getArticleThread"):
 		return failedBranch[T](operation, sdkgo.BranchID("notFound"), sdkgo.FailureNotFound, "Hacker News resource was not found")
 	case response.StatusCode != http.StatusOK:
 		return failedBranch[T](operation, GetItemBranchProviderRejected, sdkgo.FailureProviderRejection, "Hacker News rejected the request")

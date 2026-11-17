@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getArticleThread/compilerThread/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[hackernews.ArticleThread](`{"id":42003,"title":"Show HN: A compiler explorer for small languages","author":"langtools","discussionUrl":"https://news.ycombinator.com/item?id=42003","comments":[{"id":42004,"author":"reviewer","textHtml":"Useful explorer.","discussionUrl":"https://news.ycombinator.com/item?id=42004"}]}`)
+			return err
+		}},
+		{name: "searchItems/publicItems/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[hackernews.ItemSearchPage](`{"items":[{"id":42001,"type":"story","title":"A compiler release","author":"compilerdev","createdAt":"2026-10-26T11:00:00Z","discussionUrl":"https://news.ycombinator.com/item?id=42001"}],"page":0,"pages":3,"totalHits":3,"hitsPerPage":1,"nextPage":1}`)
+			return err
+		}},
+		{name: "searchItems/publicItems/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[hackernews.ItemSearchPage](`{"items":[{"id":42002,"type":"comment","text":"A useful compiler note","author":"reviewer","createdAt":"2026-10-26T11:01:00Z","discussionUrl":"https://news.ycombinator.com/item?id=42002"}],"page":1,"pages":3,"totalHits":3,"hitsPerPage":1,"nextPage":2}`)
+			return err
+		}},
+		{name: "searchItems/publicItems/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[hackernews.ItemSearchPage](`{"items":[{"id":42003,"type":"poll","title":"Compiler poll","author":"compilerdev","createdAt":"2026-10-26T11:02:00Z","discussionUrl":"https://news.ycombinator.com/item?id=42003"}],"page":2,"pages":3,"totalHits":3,"hitsPerPage":1,"nextPage":0}`)
+			return err
+		}},
 		{name: "getUser/publicUser/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[hackernews.User](`{"id":"langtools","created":1700000000,"karma":100,"submitted":[42003],"profileUrl":"https://news.ycombinator.com/user?id=langtools"}`)
 			return err
@@ -50,6 +66,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetArticleThread().Definition().Operation.OperationID != "getArticleThread" {
+		t.Errorf("getArticleThread mock has another definition")
+	}
+	if mock.SearchItems().Definition().Operation.OperationID != "searchItems" {
+		t.Errorf("searchItems mock has another definition")
+	}
 	if mock.GetUser().Definition().Operation.OperationID != "getUser" {
 		t.Errorf("getUser mock has another definition")
 	}

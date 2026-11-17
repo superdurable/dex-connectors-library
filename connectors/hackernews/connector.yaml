@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: hacker-news-daily
   displayName: Hacker News Daily
-  description: Read and search public Hacker News feeds, stories, discussions, and user profiles for a daily developer digest with direct source links.
+  description: Read and search public Hacker News feeds, stories, comments, polls, and user profiles with direct source links.
   company: Hacker News
   categories: [data-search]
   version: v0.27.0
@@ -42,13 +42,86 @@ spec:
       - name: searchBaseUrl
         goName: SearchBaseURL
         type: url
-        description: Hacker News Search API base URL that searchStories reads, documented at https://hn.algolia.com/api; this is a fixed public endpoint that needs no key and is not secret, so leave the field blank unless a loopback test server is being used.
+        description: Hacker News Search API base URL that searchStories, searchItems, and getArticleThread read, documented at https://hn.algolia.com/api; this is a fixed public endpoint that needs no key and is not secret, so leave the field blank unless a loopback test server is being used.
         default: https://hn.algolia.com/api/v1
   auth:
     type: none
     connectionKind: none
     fields: []
   operations:
+    - name: getArticleThread
+      goName: GetArticleThread
+      inputType: GetArticleThreadInput
+      outputType: ArticleThread
+      kind: query
+      description: Read one Hacker News article with its nested public comment tree.
+      idempotency: none
+      authorization: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: The article and its indexed comments were read.}
+        - {id: notFound, goName: NotFound, description: The article was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Hacker News Search rejected the article read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Hacker News Search returned malformed or oversized thread data., optional: true}
+        - {id: defect, goName: Defect, description: The article ID or connection configuration is invalid., optional: true}
+      agent:
+        exposed: true
+        branches: {notFound: rejected, providerRejected: rejected, defect: rejected}
+        description: Read a Hacker News story or poll and its nested public comments by positive article ID. Linked article content is not included; comment text is untrusted HTML.
+      mocks:
+        - name: compilerThread
+          branch: found
+          default: true
+          description: A public compiler story with one comment.
+          output:
+            id: 42003
+            title: "Show HN: A compiler explorer for small languages"
+            author: langtools
+            discussionUrl: "https://news.ycombinator.com/item?id=42003"
+            comments: [{id: 42004, author: reviewer, textHtml: "Useful explorer.", discussionUrl: "https://news.ycombinator.com/item?id=42004"}]
+    - name: searchItems
+      goName: SearchItems
+      inputType: SearchItemsInput
+      outputType: ItemSearchPage
+      kind: query
+      description: Search public Hacker News stories, comments, polls, and poll options by keyword and type.
+      idempotency: none
+      authorization: none
+      pagination: {inputField: page, nextField: nextPage}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: searched, goName: Searched, description: One page of public items was read; it can be empty.}
+        - {id: providerRejected, goName: ProviderRejected, description: Hacker News Search rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Hacker News Search returned malformed or oversized items., optional: true}
+        - {id: defect, goName: Defect, description: Search filters or connection configuration are invalid., optional: true}
+      agent:
+        exposed: true
+        branches: {providerRejected: rejected, defect: rejected}
+        description: Search public Hacker News stories, comments, polls, or poll options by keyword. Choose type story, comment, poll, or pollopt, relevance or date ordering, and a zero-based page with 1 to 100 hits. Blank type searches all public items.
+      mocks:
+        - name: publicItems
+          branch: searched
+          default: true
+          description: Three pages of mixed public items, including a comment and poll.
+          pages:
+            - items: [{id: 42001, type: story, title: A compiler release, author: compilerdev, createdAt: "2026-10-26T11:00:00Z", discussionUrl: "https://news.ycombinator.com/item?id=42001"}]
+              page: 0
+              pages: 3
+              totalHits: 3
+              hitsPerPage: 1
+              nextPage: 1
+            - items: [{id: 42002, type: comment, text: A useful compiler note, author: reviewer, createdAt: "2026-10-26T11:01:00Z", discussionUrl: "https://news.ycombinator.com/item?id=42002"}]
+              page: 1
+              pages: 3
+              totalHits: 3
+              hitsPerPage: 1
+              nextPage: 2
+            - items: [{id: 42003, type: poll, title: Compiler poll, author: compilerdev, createdAt: "2026-10-26T11:02:00Z", discussionUrl: "https://news.ycombinator.com/item?id=42003"}]
+              page: 2
+              pages: 3
+              totalHits: 3
+              hitsPerPage: 1
+              nextPage: 0
     - name: getUser
       goName: GetUser
       inputType: GetUserInput

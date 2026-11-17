@@ -6,6 +6,17 @@ turn, keeps each story once, and completes with the matching stories, their
 original links, and their HN discussion links. It needs no API key and no
 model.
 
+Set `itemType` to `comment`, `poll`, `pollopt`, or `story` to use
+`NewSearchItemsStep` and collect those public items in `Report.items`. The
+start request's keyword, time window, sort, and page budget still apply. The
+mock-backed Dex test exercises a comment search. Leave `itemType` blank for
+the original story search and optional first-author lookup.
+
+Set `readFirstThread` to `true` on a story search to run
+`NewGetArticleThreadStep` for the first result and include its nested comments
+in `Report.firstThread`. The mock-backed Dex test exercises this path alongside
+the first-author profile lookup.
+
 ## Run locally
 
 Run these commands from the repository root. Install Dex CLI first, then render
