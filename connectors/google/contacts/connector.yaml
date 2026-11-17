@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: google-contacts
   displayName: Google Contacts
-  description: Read and create contacts through the Google People API.
+  description: List, read, create, update, and delete contacts through the Google People API.
   company: Google
   categories: [productivity]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: google-contacts
   languages:
@@ -69,7 +69,7 @@ spec:
         - Select a Google Cloud project and enable People API in APIs & Services > Library. Use an account with access to the target contacts.
         - In Google Auth Platform > Branding and Audience, configure consent and add test users if an External app remains in Testing. Under Data Access, add the displayed contacts scope.
         - Under Clients > Create client > Web application, register the exact redirect URI displayed by Dex Web. Copy the Client ID and one-time Client Secret into Dex Web, then authorize with offline access.
-        - Run listContacts to find a contact resource name such as people/c123 before calling getContact.
+        - Run listContacts to find a contact resource name such as people/c123; getContactRevision returns the source etag required by updateContact.
         - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Keep access and refresh tokens inside Dex.
     oauth2:
       authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
@@ -89,6 +89,27 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: getContactRevision
+      goName: GetContactRevision
+      inputType: GetContactInput
+      outputType: ContactRevision
+      kind: query
+      description: Read a contact and its source etag before a guarded update.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Google returned the contact and source etag.}
+        - {id: notFound, goName: NotFound, description: The contact does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed contact metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local resource name or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: The example contact has a revision etag.
+          output: {resourceName: people/c123, displayName: Example Contact, emailAddress: example@example.com, etag: abc123}
     - name: listContacts
       goName: ListContacts
       inputType: ListContactsInput
@@ -151,3 +172,43 @@ spec:
           default: true
           description: An example contact was created.
           output: {resourceName: people/c123, displayName: Example Contact, emailAddress: example@example.com}
+    - name: updateContact
+      goName: UpdateContact
+      inputType: UpdateContactInput
+      outputType: Contact
+      kind: mutation
+      description: Replace a contact's name and email at a known source etag.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Google updated the contact.}
+        - {id: notFound, goName: NotFound, description: The contact no longer exists., optional: true}
+        - {id: staleRevision, goName: StaleRevision, description: The contact changed after its etag was read., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: Local contact input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: The example contact was updated.
+          output: {resourceName: people/c123, displayName: Example Contact, emailAddress: example@example.com}
+    - name: deleteContact
+      goName: DeleteContact
+      inputType: DeleteContactInput
+      outputType: DeletedContact
+      kind: mutation
+      description: Delete a contact, treating an already absent contact as deleted.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The contact is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: Local resource name or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: The example contact is absent.
+          output: {resourceName: people/c123}

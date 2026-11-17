@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: google-cloud-storage
   displayName: Google Cloud Storage
-  description: List, download, and upload objects in Google Cloud Storage buckets.
+  description: Manage buckets and list, download, upload, update, and delete objects in Google Cloud Storage.
   company: Google
   categories: [databases-storage, files-documents]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: google-cloud-storage
   languages:
@@ -94,6 +94,107 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: listBuckets
+      goName: ListBuckets
+      inputType: ListBucketsInput
+      outputType: BucketsPage
+      kind: query
+      description: List one page of buckets in a Google Cloud project.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Google returned a bucket page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed bucket JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local bucket input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example bucket is visible.
+          output: {buckets: [{name: example-bucket, location: US}], nextPageToken: ''}
+    - name: getBucket
+      goName: GetBucket
+      inputType: GetBucketInput
+      outputType: Bucket
+      kind: query
+      description: Read one bucket's identity and location.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Google returned the bucket.}
+        - {id: notFound, goName: NotFound, description: The bucket does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed bucket JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local bucket input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: The example bucket is available.
+          output: {name: example-bucket, location: US}
+    - name: createBucket
+      goName: CreateBucket
+      inputType: CreateBucketInput
+      outputType: Bucket
+      kind: mutation
+      description: Create a bucket with a globally unique name in a project.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: The requested bucket exists.}
+        - {id: nameTaken, goName: NameTaken, description: Another bucket owns the requested name., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Google may have created the bucket but its ownership could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local bucket input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: The example bucket was created.
+          output: {name: example-bucket, location: US, projectNumber: '123456789'}
+    - name: updateBucketLabels
+      goName: UpdateBucketLabels
+      inputType: UpdateBucketLabelsInput
+      outputType: Bucket
+      kind: mutation
+      description: Set the selected bucket labels to absolute values.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Google updated the requested labels.}
+        - {id: notFound, goName: NotFound, description: The bucket does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: Local bucket input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: The example bucket labels were updated.
+          output: {name: example-bucket, location: US}
+    - name: deleteBucket
+      goName: DeleteBucket
+      inputType: DeleteBucketInput
+      outputType: DeletedBucket
+      kind: mutation
+      description: Delete an empty bucket, treating an already absent bucket as deleted.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The bucket is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: Local bucket input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: The example bucket is absent.
+          output: {name: example-bucket}
     - name: listObjects
       goName: ListObjects
       inputType: ListObjectsInput
@@ -155,3 +256,42 @@ spec:
           default: true
           description: An example text object is present.
           output: {name: example.txt, generation: '123'}
+    - name: updateObjectMetadata
+      goName: UpdateObjectMetadata
+      inputType: UpdateObjectMetadataInput
+      outputType: Object
+      kind: mutation
+      description: Set explicit content type and custom metadata on an object.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Google updated the object metadata.}
+        - {id: notFound, goName: NotFound, description: The object does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: Local object input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: The example object metadata was updated.
+          output: {name: example.txt, generation: '123'}
+    - name: deleteObject
+      goName: DeleteObject
+      inputType: DeleteObjectInput
+      outputType: DeletedObject
+      kind: mutation
+      description: Delete an object, treating an already absent object as deleted.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The object is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: Local object input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: The example object is absent.
+          output: {bucket: example-bucket, name: example.txt}

@@ -6,8 +6,10 @@ package cloudstorage
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -78,6 +80,14 @@ type providerResponse struct {
 }
 
 func (client *Client) request(call sdkgo.Call, path string, media bool) providerResponse {
+	return client.requestMethod(call, http.MethodGet, path, media)
+}
+
+func (client *Client) requestMethod(call sdkgo.Call, method, path string, media bool) providerResponse {
+	return client.requestWithBody(call, call.Context, method, path, nil, media)
+}
+
+func (client *Client) requestWithBody(call sdkgo.Call, requestContext context.Context, method, path string, body []byte, media bool) providerResponse {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	if sdkgo.IsReauthorizationRequired(err) {
 		return providerResponse{err: errCredential}
@@ -92,12 +102,19 @@ func (client *Client) request(call sdkgo.Call, path string, media bool) provider
 	if !providerhttp.IsHeaderSafeCredential(accessToken) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	var bodyReader io.Reader
+	if body != nil {
+		bodyReader = bytes.NewReader(body)
+	}
+	request, err := http.NewRequestWithContext(requestContext, method, client.baseURL+path, bodyReader)
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	request.Header.Set("Authorization", "Bearer "+accessToken)
 	request.Header.Set("User-Agent", "Dex Connector (https://superdurable.io)")
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	if media {
 		request.Header.Set("Accept", "*/*")
 	} else {
@@ -125,9 +142,9 @@ func (client *Client) request(call sdkgo.Call, path string, media bool) provider
 	}
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
-	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	if bytes.Contains(body, []byte(accessToken)) {
+	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	if bytes.Contains(responseBody, []byte(accessToken)) {
 		return providerResponse{status: response.StatusCode, retryAfter: retryAfter, err: errCredential}
 	}
-	return providerResponse{body: body, contentType: response.Header.Get("Content-Type"), status: response.StatusCode, retryAfter: retryAfter, err: err}
+	return providerResponse{body: responseBody, contentType: response.Header.Get("Content-Type"), status: response.StatusCode, retryAfter: retryAfter, err: err}
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 const conformanceEndpointPath = ""
@@ -23,7 +24,19 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listDocuments": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListDocuments(), reference),
+	context := singledispatchtest.NewContext("firestore-conformance", "provider-step")
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			context.AdvanceAttempt()
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"listDocuments":       newConformanceQueryInvocation(t, scenario.Input, context, client.ListDocuments(), reference),
+		"getDocument":         newConformanceQueryInvocation(t, scenario.Input, context, client.GetDocument(), reference),
+		"listDocumentDetails": newConformanceQueryInvocation(t, scenario.Input, context, client.ListDocumentDetails(), reference),
+		"createDocument":      newConformanceMutationInvocation(t, scenario.Input, context, client.CreateDocument(), reference, scenario.CallID),
+		"putDocument":         newConformanceMutationInvocation(t, scenario.Input, context, client.PutDocument(), reference, scenario.CallID),
+		"deleteDocument":      newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteDocument(), reference, scenario.CallID),
+		"runDocumentQuery":    newConformanceQueryInvocation(t, scenario.Input, context, client.RunDocumentQuery(), reference),
+		"listRootCollections": newConformanceQueryInvocation(t, scenario.Input, context, client.ListRootCollections(), reference),
 	}}
 }
