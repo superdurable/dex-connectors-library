@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: rippling
   displayName: Rippling
-  description: Read selected worker status and title from Rippling.
+  description: Read visible worker status and title from Rippling, individually or by page.
   company: Rippling
   categories: [hr-recruiting]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: rippling
   languages:
@@ -76,3 +76,23 @@ spec:
           default: true
           description: One sample worker is returned.
           output: {id: "65699281fb7bc7c3510f44a6", status: ACTIVE, title: Engineer}
+    - name: listWorkers
+      goName: ListWorkers
+      inputType: ListWorkersInput
+      outputType: WorkerPage
+      kind: query
+      description: List one page of visible workers without personal or compensation details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Rippling returned the worker page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Rippling conclusively rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Rippling returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample worker page is returned.
+          output: {workers: [{id: "65699281fb7bc7c3510f44a6", status: ACTIVE, title: Engineer}], nextCursor: ""}

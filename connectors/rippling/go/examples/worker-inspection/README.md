@@ -1,6 +1,6 @@
 # Rippling worker inspection Flow
 
-This runnable Flow calls `getWorker` through the static `rippling` connection. It persists the selected worker status in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+This example includes `RipplingWorkerInspection`, which calls `getWorker`, and `RosterFlow`, which calls `listWorkers` through the static `rippling` connection. The inspection Flow persists the selected worker status in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected. The integration test starts both Flows against mock operations and a real Dex server.
 
 ## Strict FDG 2.0 generation
 

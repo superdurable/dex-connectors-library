@@ -1,12 +1,14 @@
 # Rippling connector
 
-The Go, Python, and TypeScript `getWorker` Query reads a Rippling worker ID, visible status, and visible title. Status and title may be empty when the token owner lacks field access. Personal data and compensation details stay out of Dex Results.
+The Go, Python, and TypeScript `getWorker` Query reads a Rippling worker ID, visible status, and visible title. Go also provides `listWorkers`, which reads one page of the same safe summary fields and returns a `nextCursor` for the following page. Status and title may be empty when the token owner lacks field access. Personal data and compensation details stay out of Dex Results.
 
 ## Connect
 
 Follow [Rippling's API token guide](https://developer.rippling.com/documentation/rest-api/essentials/api-tokens): in the Developer app, open **API credentials**, create a token with `workers.read`, and save the opaque secret as `api_token` in Dex Web Connections. Its owner must have permission to view the intended workers.
 
 Leave `baseUrl`, `timeout`, and `maxResponseBytes` blank for their displayed defaults. Find the non-secret worker ID through [List workers](https://developer.rippling.com/documentation/rest-api/reference/list-workers) and pass it as `workerId`; URL-safe IDs of 1–64 characters are accepted. See [Retrieve a specific worker](https://developer.rippling.com/documentation/rest-api/reference/get-workers).
+
+For `listWorkers`, set `limit` to 1–100 workers per page, or zero for Rippling's default page size. Pass the previous `nextCursor` as `cursor`; leave it blank for the first page. The opaque cursor is non-secret and must not exceed 2,048 characters.
 
 ## Examples and verification
 

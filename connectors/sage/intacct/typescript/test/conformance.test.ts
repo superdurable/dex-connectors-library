@@ -8,7 +8,8 @@ import { SageIntacctClient } from '../src/client.js';
 import { GetInvoiceInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/sage/intacct/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/sage/intacct/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'getInvoice');
 const connection = { provider: 'sage-intacct', name: 'sage-intacct' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeSageIntacct, ''));
 
