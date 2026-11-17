@@ -1,6 +1,6 @@
 {
   "connectorId": "elasticsearch",
-  "releaseTag": "connectors/elastic/elasticsearch/go/v0.1.0",
+  "releaseTag": "connectors/elastic/elasticsearch/go/v0.2.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-elasticsearch",

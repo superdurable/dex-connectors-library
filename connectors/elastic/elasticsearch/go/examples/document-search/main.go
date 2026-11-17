@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{documentsearch.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{documentsearch.NewFlow(connection), documentsearch.NewGetFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Elasticsearch document search Flow: %w", err)
 	}

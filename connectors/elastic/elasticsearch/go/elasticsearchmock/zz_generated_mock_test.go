@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getDocument/retrievedProduct/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[elasticsearch.RetrievedDocument](`{"index":"products","id":"sku-42","source":{"title":"Meridian","category":"release"}}`)
+			return err
+		}},
 		{name: "indexDocument/indexedProduct/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[elasticsearch.IndexedDocument](`{"index":"products","id":"sku-42"}`)
 			return err
@@ -38,6 +42,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetDocument().Definition().Operation.OperationID != "getDocument" {
+		t.Errorf("getDocument mock has another definition")
+	}
 	if mock.IndexDocument().Definition().Operation.OperationID != "indexDocument" {
 		t.Errorf("indexDocument mock has another definition")
 	}

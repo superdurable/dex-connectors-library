@@ -2,6 +2,8 @@
 
 This runnable Flow calls `searchDocuments` with the static `elasticsearch` connection and completes with the search page. Optional branches are unwired, so a missing index or provider rejection fails the Flow.
 
+The same Worker registers `ElasticsearchDocumentGet`. Start it with `{"index":"products","documentId":"sku-42"}` to retrieve one complete source by ID. `TestDocumentGetUsesDefaultMockWithRealDex` exercises this Flow against a real local Dex with the connector mock.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/elastic/elasticsearch/go`, run:
@@ -9,6 +11,7 @@ From `connectors/elastic/elasticsearch/go`, run:
 ```bash
 mkdir -p build
 dexcli visualize ./examples/document-search/flow/workflow.go --schema-version 2.0 --json --out ./build/document-search
+dexcli visualize ./examples/document-search/flow/get_flow.go --schema-version 2.0 --json --out ./build/document-get
 ```
 
 The command must report `valid: true`. An unpublished connector can report `connector_release_required` until its release artifact exists.

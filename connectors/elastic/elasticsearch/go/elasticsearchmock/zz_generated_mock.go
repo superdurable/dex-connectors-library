@@ -18,6 +18,7 @@ import (
 // Mock is a scripted elasticsearch connection. Script each operation through its accessor.
 type Mock struct {
 	connection      elasticsearch.Connection
+	getDocument     *connectormock.Query[elasticsearch.GetDocumentInput, elasticsearch.RetrievedDocument]
 	indexDocument   *connectormock.Mutation[elasticsearch.IndexDocumentInput, elasticsearch.IndexedDocument]
 	deleteDocument  *connectormock.Mutation[elasticsearch.DeleteDocumentInput, elasticsearch.DeletedDocument]
 	searchDocuments *connectormock.Query[elasticsearch.SearchDocumentsInput, elasticsearch.SearchPage]
@@ -28,10 +29,12 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		getDocument:     connectormock.NewQuery[elasticsearch.GetDocumentInput, elasticsearch.RetrievedDocument](t, elasticsearch.GetDocumentDefinition),
 		indexDocument:   connectormock.NewMutation[elasticsearch.IndexDocumentInput, elasticsearch.IndexedDocument](t, elasticsearch.IndexDocumentDefinition),
 		deleteDocument:  connectormock.NewMutation[elasticsearch.DeleteDocumentInput, elasticsearch.DeletedDocument](t, elasticsearch.DeleteDocumentDefinition),
 		searchDocuments: connectormock.NewQuery[elasticsearch.SearchDocumentsInput, elasticsearch.SearchPage](t, elasticsearch.SearchDocumentsDefinition),
 	}
+	mock.getDocument.Default(GetDocumentDefault())
 	mock.indexDocument.Default(IndexDocumentDefault())
 	mock.deleteDocument.Default(DeleteDocumentDefault())
 	mock.searchDocuments.Default(SearchDocumentsDefault())
@@ -45,6 +48,11 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() elasticsearch.Connection { return mock.connection }
+
+// GetDocument returns the getDocument script.
+func (mock *Mock) GetDocument() *connectormock.Query[elasticsearch.GetDocumentInput, elasticsearch.RetrievedDocument] {
+	return mock.getDocument
+}
 
 // IndexDocument returns the indexDocument script.
 func (mock *Mock) IndexDocument() *connectormock.Mutation[elasticsearch.IndexDocumentInput, elasticsearch.IndexedDocument] {
@@ -63,6 +71,9 @@ func (mock *Mock) SearchDocuments() *connectormock.Query[elasticsearch.SearchDoc
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetDocument() sdkgo.Query[elasticsearch.GetDocumentInput, elasticsearch.RetrievedDocument] {
+	return operations.mock.getDocument
+}
 func (operations mockOperations) IndexDocument() sdkgo.Mutation[elasticsearch.IndexDocumentInput, elasticsearch.IndexedDocument] {
 	return operations.mock.indexDocument
 }
@@ -71,6 +82,47 @@ func (operations mockOperations) DeleteDocument() sdkgo.Mutation[elasticsearch.D
 }
 func (operations mockOperations) SearchDocuments() sdkgo.Query[elasticsearch.SearchDocumentsInput, elasticsearch.SearchPage] {
 	return operations.mock.searchDocuments
+}
+
+// GetDocumentFound selects the found branch: Elasticsearch returned the document source.
+func GetDocumentFound(value elasticsearch.RetrievedDocument, failure *sdkgo.Failure) connectormock.Case[elasticsearch.RetrievedDocument] {
+	return connectormock.Branch(elasticsearch.GetDocumentBranchFound, value, failure)
+}
+
+// GetDocumentNotFound selects the notFound branch: The document or index does not exist.
+func GetDocumentNotFound(value elasticsearch.RetrievedDocument, failure *sdkgo.Failure) connectormock.Case[elasticsearch.RetrievedDocument] {
+	return connectormock.Branch(elasticsearch.GetDocumentBranchNotFound, value, failure)
+}
+
+// GetDocumentProviderRejected selects the providerRejected branch: Elasticsearch conclusively rejected the read.
+func GetDocumentProviderRejected(value elasticsearch.RetrievedDocument, failure *sdkgo.Failure) connectormock.Case[elasticsearch.RetrievedDocument] {
+	return connectormock.Branch(elasticsearch.GetDocumentBranchProviderRejected, value, failure)
+}
+
+// GetDocumentInvalidResponse selects the invalidResponse branch: Elasticsearch returned malformed or oversized document data.
+func GetDocumentInvalidResponse(value elasticsearch.RetrievedDocument, failure *sdkgo.Failure) connectormock.Case[elasticsearch.RetrievedDocument] {
+	return connectormock.Branch(elasticsearch.GetDocumentBranchInvalidResponse, value, failure)
+}
+
+// GetDocumentDefect selects the defect branch: Local input or credentials are invalid.
+func GetDocumentDefect(value elasticsearch.RetrievedDocument, failure *sdkgo.Failure) connectormock.Case[elasticsearch.RetrievedDocument] {
+	return connectormock.Branch(elasticsearch.GetDocumentBranchDefect, value, failure)
+}
+
+// GetDocumentRetry asks Dex to retry the getDocument Step, after the delay when it is positive.
+func GetDocumentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[elasticsearch.RetrievedDocument] {
+	return connectormock.Retry[elasticsearch.RetrievedDocument](failure, after)
+}
+
+// GetDocumentRetrievedProduct is the manifest mock retrievedProduct: A sample product document was returned by ID.
+func GetDocumentRetrievedProduct() connectormock.Case[elasticsearch.RetrievedDocument] {
+	value := connectormock.MustDecodeOutput[elasticsearch.RetrievedDocument](`{"index":"products","id":"sku-42","source":{"title":"Meridian","category":"release"}}`)
+	return connectormock.Branch(elasticsearch.GetDocumentBranchFound, value, nil)
+}
+
+// GetDocumentDefault is the manifest default, retrievedProduct, which New installs.
+func GetDocumentDefault() connectormock.Case[elasticsearch.RetrievedDocument] {
+	return GetDocumentRetrievedProduct()
 }
 
 // IndexDocumentIndexed selects the indexed branch: Elasticsearch stored the requested document at the stable ID.

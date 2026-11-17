@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: elasticsearch
   displayName: Elasticsearch
-  description: Search, replace, and delete documents in an Elasticsearch index.
+  description: Get, search, replace, and delete documents in an Elasticsearch index.
   company: Elastic
   categories: [databases-storage, data-search]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: elasticsearch
   languages:
@@ -67,6 +67,30 @@ spec:
         - Choose Stack Management > Security > Users > Create user, set a username and password, assign the new role, and save username plus secret password in Dex. Rotate the password on the same Users page.
         - In https://cloud.elastic.co/ choose deployment > Manage > Application endpoints > Elasticsearch > Direct endpoint, then save its HTTPS URL as clusterUrl without an index path. For self-managed clusters use the HTTPS HTTP endpoint. Leave timeout, maxResponseBytes, and maxDocumentBytes blank for their displayed defaults.
   operations:
+    - name: getDocument
+      goName: GetDocument
+      inputType: GetDocumentInput
+      outputType: RetrievedDocument
+      kind: query
+      description: Read one document by its stable ID and return its complete source.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Elasticsearch returned the document source.}
+        - {id: notFound, goName: NotFound, description: The document or index does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Elasticsearch conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Elasticsearch returned malformed or oversized document data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: retrievedProduct
+          branch: found
+          description: A sample product document was returned by ID.
+          default: true
+          output: {index: products, id: sku-42, source: {title: Meridian, category: release}}
     - name: indexDocument
       goName: IndexDocument
       inputType: IndexDocumentInput

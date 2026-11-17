@@ -42,6 +42,7 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetDocument() sdkgo.Query[GetDocumentInput, RetrievedDocument]
 	IndexDocument() sdkgo.Mutation[IndexDocumentInput, IndexedDocument]
 	DeleteDocument() sdkgo.Mutation[DeleteDocumentInput, DeletedDocument]
 	SearchDocuments() sdkgo.Query[SearchDocumentsInput, SearchPage]
@@ -49,6 +50,9 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetDocument() sdkgo.Query[GetDocumentInput, RetrievedDocument] {
+	return operations.client.GetDocument()
+}
 func (operations clientOperations) IndexDocument() sdkgo.Mutation[IndexDocumentInput, IndexedDocument] {
 	return operations.client.IndexDocument()
 }
@@ -205,6 +209,83 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential password is required")
 	}
 	return nil
+}
+
+const GetDocumentBranchFound sdkgo.BranchID = "found"
+const GetDocumentBranchNotFound sdkgo.BranchID = "notFound"
+const GetDocumentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetDocumentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetDocumentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetDocumentDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getDocument"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetDocumentBranchFound, Description: "Elasticsearch returned the document source."},
+		{ID: GetDocumentBranchNotFound, Description: "The document or index does not exist.", Optional: true},
+		{ID: GetDocumentBranchProviderRejected, Description: "Elasticsearch conclusively rejected the read.", Optional: true},
+		{ID: GetDocumentBranchInvalidResponse, Description: "Elasticsearch returned malformed or oversized document data.", Optional: true},
+		{ID: GetDocumentBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetDocumentResult = sdkgo.QueryResult[RetrievedDocument]
+
+type GetDocumentStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                             `connector:"connectorId=elasticsearch"`
+	operationID                    struct{}                                             `connector:"operationId=getDocument"`
+	StepType                       string                                               `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                     Connection                                           `connector:"connection"`
+	ConnectionName                 string                                               `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetDocumentInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetDocumentResult]                      `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetDocumentResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetDocumentResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetDocumentResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetDocumentResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[RetrievedDocument]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewGetDocumentStep[IN any](config GetDocumentStepConfig[IN]) sdkgo.QueryStep[IN, GetDocumentInput, RetrievedDocument] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("elasticsearch connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetDocumentInput, RetrievedDocument]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetDocument(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetDocumentResult] {
+			branches := make([]sdkgo.BranchTarget[GetDocumentResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetDocumentBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetDocumentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetDocumentBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetDocumentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetDocumentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const IndexDocumentBranchIndexed sdkgo.BranchID = "indexed"
