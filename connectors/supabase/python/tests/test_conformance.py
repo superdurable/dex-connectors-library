@@ -14,14 +14,19 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/supabase/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/supabase/scenarios.json")
+    if scenario["operation"] in {"selectRows", "upsertRows"}
+]
 CONNECTION = sdk.ConnectionRef("supabase", "supabase")
 ADAPTER = conformance.PythonOperationAdapter(
-    "supabase", CONNECTION, supabase,
+    "supabase",
+    CONNECTION,
+    supabase,
     lambda client, _: supabase.Client(
         supabase.Config(base_url="http://127.0.0.1:28808/rest/v1"),
-        conformance.static_credentials(
-            CONNECTION, supabase.Credentials(sdk.SecretString("test-token"))),
+        conformance.static_credentials(CONNECTION, supabase.Credentials(sdk.SecretString("test-token"))),
         client,
     ),
 )

@@ -42,6 +42,10 @@ type Connection struct {
 type Operations interface {
 	SelectRows() sdkgo.Query[SelectRowsInput, SelectRowsOutput]
 	UpsertRows() sdkgo.Mutation[UpsertRowsInput, UpsertRowsOutput]
+	GetRow() sdkgo.Query[GetRowInput, GetRowOutput]
+	UpdateRow() sdkgo.Mutation[UpdateRowInput, UpdateRowOutput]
+	DeleteRow() sdkgo.Mutation[DeleteRowInput, DeleteRowOutput]
+	CreateRow() sdkgo.Mutation[CreateRowInput, CreateRowOutput]
 }
 
 type clientOperations struct{ client *Client }
@@ -51,6 +55,18 @@ func (operations clientOperations) SelectRows() sdkgo.Query[SelectRowsInput, Sel
 }
 func (operations clientOperations) UpsertRows() sdkgo.Mutation[UpsertRowsInput, UpsertRowsOutput] {
 	return operations.client.UpsertRows()
+}
+func (operations clientOperations) GetRow() sdkgo.Query[GetRowInput, GetRowOutput] {
+	return operations.client.GetRow()
+}
+func (operations clientOperations) UpdateRow() sdkgo.Mutation[UpdateRowInput, UpdateRowOutput] {
+	return operations.client.UpdateRow()
+}
+func (operations clientOperations) DeleteRow() sdkgo.Mutation[DeleteRowInput, DeleteRowOutput] {
+	return operations.client.DeleteRow()
+}
+func (operations clientOperations) CreateRow() sdkgo.Mutation[CreateRowInput, CreateRowOutput] {
+	return operations.client.CreateRow()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -278,6 +294,7 @@ var UpsertRowsDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpsertRowsResult = sdkgo.MutationResult[UpsertRowsOutput]
@@ -328,5 +345,302 @@ func NewUpsertRowsStep[IN any](config UpsertRowsStepConfig[IN]) sdkgo.MutationSt
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetRowBranchFound sdkgo.BranchID = "found"
+const GetRowBranchNotFound sdkgo.BranchID = "notFound"
+const GetRowBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetRowBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetRowBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetRowDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getRow"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetRowBranchFound, Description: "The matching row was returned."},
+		{ID: GetRowBranchNotFound, Description: "No row matched the equality filter.", Optional: true},
+		{ID: GetRowBranchProviderRejected, Description: "The provider conclusively rejected the request.", Optional: true},
+		{ID: GetRowBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: GetRowBranchDefect, Description: "Local input, configuration, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetRowResult = sdkgo.QueryResult[GetRowOutput]
+
+type GetRowStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=supabase"`
+	operationID                    struct{}                                        `connector:"operationId=getRow"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetRowInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetRowResult]                      `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetRowResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetRowResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetRowResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetRowResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[GetRowOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetRowStep[IN any](config GetRowStepConfig[IN]) sdkgo.QueryStep[IN, GetRowInput, GetRowOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("supabase connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetRowInput, GetRowOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetRow(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetRowResult] {
+			branches := make([]sdkgo.BranchTarget[GetRowResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetRowBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetRowBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetRowBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetRowBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetRowBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateRowBranchUpdated sdkgo.BranchID = "updated"
+const UpdateRowBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateRowBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateRowBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateRowDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateRow"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateRowBranchUpdated, Description: "Matching rows were updated."},
+		{ID: UpdateRowBranchProviderRejected, Description: "The provider conclusively rejected the request.", Optional: true},
+		{ID: UpdateRowBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateRowBranchDefect, Description: "Local input, configuration, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateRowResult = sdkgo.MutationResult[UpdateRowOutput]
+
+type UpdateRowStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=supabase"`
+	operationID                       struct{}                                              `connector:"operationId=updateRow"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateRowInput                               `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateRowResult]                         `connector:"branch=updated"`
+	ProviderRejected                  sdkgo.Target[UpdateRowResult]                         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateRowResult]                         `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateRowResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateRowOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateRowStep[IN any](config UpdateRowStepConfig[IN]) sdkgo.MutationStep[IN, UpdateRowInput, UpdateRowOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("supabase connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateRowInput, UpdateRowOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateRow(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateRowResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateRowResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateRowBranchUpdated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateRowBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateRowBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateRowBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteRowBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteRowBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteRowBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteRowBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteRowDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteRow"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteRowBranchDeleted, Description: "Matching rows were deleted, or were already absent."},
+		{ID: DeleteRowBranchProviderRejected, Description: "The provider conclusively rejected the request.", Optional: true},
+		{ID: DeleteRowBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteRowBranchDefect, Description: "Local input, configuration, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteRowResult = sdkgo.MutationResult[DeleteRowOutput]
+
+type DeleteRowStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=supabase"`
+	operationID                       struct{}                                              `connector:"operationId=deleteRow"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteRowInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteRowResult]                         `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteRowResult]                         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteRowResult]                         `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteRowResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeleteRowOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteRowStep[IN any](config DeleteRowStepConfig[IN]) sdkgo.MutationStep[IN, DeleteRowInput, DeleteRowOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("supabase connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteRowInput, DeleteRowOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteRow(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteRowResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteRowResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteRowBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteRowBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteRowBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteRowBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateRowBranchCreated sdkgo.BranchID = "created"
+const CreateRowBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateRowBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateRowBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateRowDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createRow"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateRowBranchCreated, Description: "The row was inserted or confirmed by its unique key."},
+		{ID: CreateRowBranchProviderRejected, Description: "The provider conclusively rejected the insert.", Optional: true},
+		{ID: CreateRowBranchDefect, Description: "Local input, configuration, or credentials are invalid.", Optional: true},
+		{ID: CreateRowBranchUncertain, Description: "The insert may have succeeded but could not be confirmed.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateRowResult = sdkgo.MutationResult[CreateRowOutput]
+
+type CreateRowStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=supabase"`
+	operationID                       struct{}                                              `connector:"operationId=createRow"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateRowInput                               `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateRowResult]                         `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateRowResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateRowResult]                         `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateRowResult]                         `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateRowOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateRowStep[IN any](config CreateRowStepConfig[IN]) sdkgo.MutationStep[IN, CreateRowInput, CreateRowOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("supabase connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateRowInput, CreateRowOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateRow(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateRowResult] {
+			branches := make([]sdkgo.BranchTarget[CreateRowResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateRowBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateRowBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateRowBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateRowBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

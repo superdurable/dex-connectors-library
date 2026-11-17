@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: supabase
   displayName: Supabase
-  description: Supabase REST connector with two bounded operations.
+  description: Supabase REST connector for bounded row reads and writes.
   company: Supabase
   categories: [databases-storage]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: supabase
   languages:
@@ -91,6 +91,7 @@ spec:
     execution:
       executeMethodTimeout: 30s
       durability: async
+      repeatOnUnknown: safe
     mocks:
     - name: defaultSelectRows
       branch: selected
@@ -127,6 +128,7 @@ spec:
     execution:
       executeMethodTimeout: 30s
       durability: async
+      repeatOnUnknown: safe
     mocks:
     - name: defaultUpsertRows
       branch: upserted
@@ -136,3 +138,148 @@ spec:
         data:
         - id: 1
           name: Meridian
+  - name: getRow
+    goName: GetRow
+    inputType: GetRowInput
+    outputType: GetRowOutput
+    kind: query
+    description: Get one row by an equality filter on a table column.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: The matching row was returned.
+    - id: notFound
+      goName: NotFound
+      description: No row matched the equality filter.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider conclusively rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input, configuration, or credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+      repeatOnUnknown: safe
+    mocks:
+    - name: defaultGetRow
+      branch: found
+      description: A representative row.
+      default: true
+      output:
+        data: {id: 1, name: Meridian}
+  - name: updateRow
+    goName: UpdateRow
+    inputType: UpdateRowInput
+    outputType: UpdateRowOutput
+    kind: mutation
+    description: Set row columns by an equality filter, with replacement values.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: updated
+      goName: Updated
+      description: Matching rows were updated.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider conclusively rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input, configuration, or credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+      repeatOnUnknown: safe
+    mocks:
+    - name: defaultUpdateRow
+      branch: updated
+      description: A representative updated row.
+      default: true
+      output:
+        data: [{id: 1, name: Meridian}]
+  - name: deleteRow
+    goName: DeleteRow
+    inputType: DeleteRowInput
+    outputType: DeleteRowOutput
+    kind: mutation
+    description: Delete rows by a required equality filter.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: deleted
+      goName: Deleted
+      description: Matching rows were deleted, or were already absent.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider conclusively rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input, configuration, or credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+      repeatOnUnknown: safe
+    mocks:
+    - name: defaultDeleteRow
+      branch: deleted
+      description: A representative deleted row.
+      default: true
+      output:
+        data: [{id: 1, name: Meridian}]
+  - name: createRow
+    goName: CreateRow
+    inputType: CreateRowInput
+    outputType: CreateRowOutput
+    kind: mutation
+    description: Insert one row with a caller-declared unique key for retry reconciliation.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: created
+      goName: Created
+      description: The row was inserted or confirmed by its unique key.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider conclusively rejected the insert.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input, configuration, or credentials are invalid.
+      optional: true
+    - id: uncertain
+      goName: Uncertain
+      description: The insert may have succeeded but could not be confirmed.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: sync
+      repeatOnUnknown: limited
+      maxSends: 3
+    mocks:
+    - name: defaultCreateRow
+      branch: created
+      description: A representative inserted row.
+      default: true
+      output:
+        data: {id: 1, external_key: meridian, name: Meridian}

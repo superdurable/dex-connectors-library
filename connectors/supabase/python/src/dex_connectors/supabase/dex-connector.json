@@ -1,6 +1,6 @@
 {
   "connectorId": "supabase",
-  "releaseTag": "connectors/supabase/go/v0.2.0",
+  "releaseTag": "connectors/supabase/go/v0.3.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-supabase",
