@@ -23,7 +23,16 @@ from ._generated.definitions import (
     GET_DOCUMENT_TEXT_DEFINITION,
     REPLACE_DOCUMENT_TEXT_DEFINITION,
 )
-from .client import DRIVE_ID, Client, Exchange, failure, google_error_tokens, retryable, status_kind
+from .client import (
+    DEFINITE_REFUSAL_STATUSES,
+    DRIVE_ID,
+    Client,
+    Exchange,
+    failure,
+    google_error_tokens,
+    retryable,
+    status_kind,
+)
 from .document import (
     body_text,
     decode_document,
@@ -571,11 +580,20 @@ class _GuardedWrite:
                     "document was not found or is not visible to the connection",
                 ),
             )
-        return MutationAttempt.branch_result(
-            "providerRejected",
-            zero,
-            receipt,
-            failure(self.operation, status_kind(exchange.status, tokens), "provider rejected the update"),
+        if exchange.status in DEFINITE_REFUSAL_STATUSES:
+            return MutationAttempt.branch_result(
+                "providerRejected",
+                zero,
+                receipt,
+                failure(self.operation, status_kind(exchange.status, tokens), "provider rejected the update"),
+            )
+        # The revision guard makes a repeated batch harmless, so an unknown outcome repeats.
+        return MutationAttempt.retry(
+            failure(
+                self.operation,
+                status_kind(exchange.status, tokens),
+                "provider update outcome is unknown; the next attempt reads the revision",
+            )
         )
 
 

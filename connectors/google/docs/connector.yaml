@@ -11,12 +11,12 @@ spec:
   provider: google
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-google-docs
       operations: [getDocumentText, createDocument, replaceDocumentText, appendText]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: '@superdurable/connector-google-docs'
       operations: [getDocumentText, createDocument, replaceDocumentText, appendText]
       triggers: []
@@ -250,13 +250,13 @@ spec:
       inputType: CreateDocumentInput
       outputType: CreateDocumentOutput
       kind: mutation
-      description: Create one Google Doc from a title and optional plain-text or Markdown text in an optional Drive folder. Google offers no idempotency key, so the single-dispatch fence requires sync durability to persist its heartbeat across attempts; a private Drive app property supports read-back before any permitted resend.
+      description: Create one Google Doc from a title and optional plain-text or Markdown text in an optional Drive folder. Google offers no idempotency key, so the single-dispatch fence requires sync durability to persist its heartbeat across attempts; a private Drive app property supports read-back before every resend, and an unconfirmed create is resent only up to the send cap.
       idempotency: required
       branches:
         - {id: created, goName: Created, description: Google created the document or returned the one an earlier attempt of the same Step execution created.}
         - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the creation or the duplicate lookup, such as a missing parent folder; no document was created.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized duplicate-lookup response before the creation was sent., optional: true}
-        - {id: uncertain, goName: Uncertain, description: "A creation may have been sent but its outcome cannot be confirmed, so the document may exist; the connector sends nothing after selecting this branch.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "A creation may have been sent, and the duplicate lookup still could not confirm it when the send cap was reached, so the document may exist; the connector sends nothing after selecting this branch.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -295,6 +295,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Google applies the batch only at requiredRevisionId, so a repeated dispatch cannot write twice.
+        repeatOnUnknown: safe
       mocks:
         - name: filledPolicyDraft
           branch: replaced
@@ -338,6 +340,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Google applies the batch only at requiredRevisionId, so a repeated dispatch cannot append twice.
+        repeatOnUnknown: safe
       mocks:
         - name: stampedPolicyDraft
           branch: appended
