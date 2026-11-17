@@ -3,20 +3,20 @@ kind: Connector
 metadata:
   name: google-youtube
   displayName: YouTube
-  description: Search YouTube videos, read videos, channels, and playlist pages, and add a video to a playlist at most once through the YouTube Data API v3.
+  description: Search YouTube videos, read videos, channels, and playlist pages, and add a video to a playlist through the YouTube Data API v3.
   company: Google
   categories: [social-media]
-  version: v0.4.0
+  version: v0.4.1
 spec:
   provider: google
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       package: dex-connector-google-youtube
       operations: [searchVideos, getVideo, getChannel, listPlaylistItems, addPlaylistItem]
       triggers: []
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: "@superdurable/connector-google-youtube"
       operations: [searchVideos, getVideo, getChannel, listPlaylistItems, addPlaylistItem]
       triggers: []
@@ -328,7 +328,7 @@ spec:
       inputType: AddPlaylistItemInput
       outputType: AddedPlaylistItem
       kind: mutation
-      description: Add a video to a playlist the authorized account owns unless the playlist already holds it, and select uncertain instead of inserting again when an earlier insert may have taken effect.
+      description: Add a video to a playlist the authorized account owns unless the playlist already holds it. After an unknown insert outcome, list the playlist first and insert again only while possible inserts stay below the send cap; select uncertain at the cap when the listing does not show the video.
       idempotency: required
       authorization: required
       agent:
@@ -336,23 +336,23 @@ spec:
         approval: recommended
         # notFound, quotaExhausted, and providerRejected come from the pre-insert check or a definite refusal of the insert;
         # after a possible earlier insert the read-back selects only added or uncertain. defect precedes any send.
-        # invalidResponse can follow a 2xx insert, so the video may be in the playlist.
-        branches: {notFound: rejected, quotaExhausted: rejected, providerRejected: rejected, invalidResponse: unknown, uncertain: unknown, defect: rejected}
+        # invalidResponse comes only from the pre-insert check; an invalid insert response is resent or uncertain.
+        branches: {notFound: rejected, quotaExhausted: rejected, providerRejected: rejected, invalidResponse: rejected, uncertain: unknown, defect: rejected}
         description: Add one video to the end of a YouTube playlist that the authorized account owns. Give the playlist ID and the 11-character video ID. It skips the insert when the playlist listing already shows the video, but that listing can lag behind a recent insert, so do not call again for the same video to retry.
       branches:
         - {id: added, goName: Added, description: "The playlist holds the video, added now or found already present."}
         - {id: notFound, goName: NotFound, description: No playlist the account can manage or no visible video has the ID., optional: true}
         - {id: quotaExhausted, goName: QuotaExhausted, description: "The project's daily YouTube Data API quota is spent; it resets at midnight Pacific Time.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "YouTube conclusively rejected the insert, such as a playlist of another account, a full playlist, or a revoked grant.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "YouTube returned an invalid or oversized check response, or an invalid item after accepting the insert.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "An earlier insert may have added the video, but the playlist listing does not show it; check the playlist before adding it again.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "YouTube returned an invalid or oversized response to the check before any insert.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "An earlier insert may have added the video, and the playlist listing does not show it at the send cap; check the playlist before adding it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         # The single-dispatch fence needs sync durability so the next attempt sees its insert checkpoint.
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "playlistItems.insert has no idempotency key and its listing can lag, so only a retry that YouTube proved unprocessed may insert again; the bound keeps that window short."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "playlistItems.insert has no idempotency key and its listing can lag, so a resend after an unknown outcome can add the video twice; the bound keeps that window short."}}
       mocks:
         - name: compilerVideoAdded
           branch: added
