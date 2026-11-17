@@ -2,6 +2,452 @@
   "connector": "buffer",
   "scenarios": [
     {
+      "callId": "1942dc6e-e064-5572-a422-e1d14c18884c",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"createIdea\":{\"id\":\"idea-1\",\"content\":{\"title\":\"A title\",\"text\":\"An idea\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreateIdea($input: CreateIdeaInput!) { createIdea(input: $input) { ... on Idea { id content { title text } } } }",
+            "variables": {
+              "input": {
+                "content": {
+                  "text": "An idea",
+                  "title": "A title"
+                },
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1942dc6e-e064-5572-a422-e1d14c18884c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "idea-1",
+          "text": "An idea",
+          "title": "A title"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1942dc6e-e064-5572-a422-e1d14c18884c",
+      "input": {
+        "organizationId": "org-1",
+        "text": "An idea",
+        "title": "A title"
+      },
+      "name": "createIdea-success",
+      "operation": "createIdea"
+    },
+    {
+      "callId": "1942dc6e-e064-5572-a422-e1d14c18884c",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"denied\"}],\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreateIdea($input: CreateIdeaInput!) { createIdea(input: $input) { ... on Idea { id content { title text } } } }",
+            "variables": {
+              "input": {
+                "content": {
+                  "text": "An idea",
+                  "title": "A title"
+                },
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1942dc6e-e064-5572-a422-e1d14c18884c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "text": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1942dc6e-e064-5572-a422-e1d14c18884c",
+      "input": {
+        "organizationId": "org-1",
+        "text": "An idea",
+        "title": "A title"
+      },
+      "name": "createIdea-providerRejected",
+      "operation": "createIdea"
+    },
+    {
+      "callId": "1942dc6e-e064-5572-a422-e1d14c18884c",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreateIdea($input: CreateIdeaInput!) { createIdea(input: $input) { ... on Idea { id content { title text } } } }",
+            "variables": {
+              "input": {
+                "content": {
+                  "text": "An idea",
+                  "title": "A title"
+                },
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1942dc6e-e064-5572-a422-e1d14c18884c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1942dc6e-e064-5572-a422-e1d14c18884c",
+      "input": {
+        "organizationId": "org-1",
+        "text": "An idea",
+        "title": "A title"
+      },
+      "name": "createIdea-invalidResponse",
+      "operation": "createIdea"
+    },
+    {
+      "callId": "1942dc6e-e064-5572-a422-e1d14c18884c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreateIdea($input: CreateIdeaInput!) { createIdea(input: $input) { ... on Idea { id content { title text } } } }",
+            "variables": {
+              "input": {
+                "content": {
+                  "text": "An idea",
+                  "title": "A title"
+                },
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1942dc6e-e064-5572-a422-e1d14c18884c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1942dc6e-e064-5572-a422-e1d14c18884c",
+      "input": {
+        "organizationId": "org-1",
+        "text": "An idea",
+        "title": "A title"
+      },
+      "name": "createIdea-429",
+      "operation": "createIdea"
+    },
+    {
+      "callId": "1942dc6e-e064-5572-a422-e1d14c18884c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreateIdea($input: CreateIdeaInput!) { createIdea(input: $input) { ... on Idea { id content { title text } } } }",
+            "variables": {
+              "input": {
+                "content": {
+                  "text": "An idea",
+                  "title": "A title"
+                },
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1942dc6e-e064-5572-a422-e1d14c18884c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1942dc6e-e064-5572-a422-e1d14c18884c",
+      "input": {
+        "organizationId": "org-1",
+        "text": "An idea",
+        "title": "A title"
+      },
+      "name": "createIdea-503",
+      "operation": "createIdea"
+    },
+    {
+      "callId": "1942dc6e-e064-5572-a422-e1d14c18884c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreateIdea($input: CreateIdeaInput!) { createIdea(input: $input) { ... on Idea { id content { title text } } } }",
+            "variables": {
+              "input": {
+                "content": {
+                  "text": "An idea",
+                  "title": "A title"
+                },
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1942dc6e-e064-5572-a422-e1d14c18884c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1942dc6e-e064-5572-a422-e1d14c18884c",
+      "input": {
+        "organizationId": "org-1",
+        "text": "An idea",
+        "title": "A title"
+      },
+      "name": "createIdea-500",
+      "operation": "createIdea"
+    },
+    {
+      "callId": "1942dc6e-e064-5572-a422-e1d14c18884c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreateIdea($input: CreateIdeaInput!) { createIdea(input: $input) { ... on Idea { id content { title text } } } }",
+            "variables": {
+              "input": {
+                "content": {
+                  "text": "An idea",
+                  "title": "A title"
+                },
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1942dc6e-e064-5572-a422-e1d14c18884c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1942dc6e-e064-5572-a422-e1d14c18884c",
+      "input": {
+        "organizationId": "org-1",
+        "text": "An idea",
+        "title": "A title"
+      },
+      "name": "createIdea-transportFailure",
+      "operation": "createIdea"
+    },
+    {
+      "callId": "1942dc6e-e064-5572-a422-e1d14c18884c",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "text": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "1942dc6e-e064-5572-a422-e1d14c18884c",
+      "input": {
+        "organizationId": "org-1",
+        "text": "An idea",
+        "title": "A title"
+      },
+      "name": "createIdea-uncertainAfterSendCap",
+      "operation": "createIdea",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "1942dc6e-e064-5572-a422-e1d14c18884c",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
       "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
       "exchanges": [
         {

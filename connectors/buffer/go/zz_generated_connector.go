@@ -40,6 +40,7 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateIdea() sdkgo.Mutation[CreateIdeaInput, IdeaProfile]
 	ListOrganizations() sdkgo.Query[ListOrganizationsInput, OrganizationsList]
 	ListChannels() sdkgo.Query[ListChannelsInput, ChannelsList]
 	GetPost() sdkgo.Query[GetPostInput, PostProfile]
@@ -52,6 +53,9 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateIdea() sdkgo.Mutation[CreateIdeaInput, IdeaProfile] {
+	return operations.client.CreateIdea()
+}
 func (operations clientOperations) ListOrganizations() sdkgo.Query[ListOrganizationsInput, OrganizationsList] {
 	return operations.client.ListOrganizations()
 }
@@ -212,6 +216,82 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential apiKey is required")
 	}
 	return nil
+}
+
+const CreateIdeaBranchCreated sdkgo.BranchID = "created"
+const CreateIdeaBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateIdeaBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateIdeaBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateIdeaDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createIdea"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateIdeaBranchCreated, Description: "Buffer created the idea."},
+		{ID: CreateIdeaBranchProviderRejected, Description: "Buffer conclusively rejected the idea.", Optional: true},
+		{ID: CreateIdeaBranchUncertain, Description: "An idea may have been created but cannot be confirmed.", Optional: true},
+		{ID: CreateIdeaBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateIdeaResult = sdkgo.MutationResult[IdeaProfile]
+
+type CreateIdeaStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=buffer"`
+	operationID                       struct{}                                          `connector:"operationId=createIdea"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateIdeaInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateIdeaResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateIdeaResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateIdeaResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateIdeaResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[IdeaProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateIdeaStep[IN any](config CreateIdeaStepConfig[IN]) sdkgo.MutationStep[IN, CreateIdeaInput, IdeaProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("buffer connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateIdeaInput, IdeaProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateIdea(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateIdeaResult] {
+			branches := make([]sdkgo.BranchTarget[CreateIdeaResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateIdeaBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateIdeaBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateIdeaBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateIdeaBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
 }
 
 const ListOrganizationsBranchListed sdkgo.BranchID = "listed"

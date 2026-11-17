@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{channelread.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{channelread.NewFlow(connection), channelread.NewIdeaFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Buffer worker inspection Flow: %w", err)
 	}

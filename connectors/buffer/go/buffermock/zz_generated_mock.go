@@ -18,6 +18,7 @@ import (
 // Mock is a scripted buffer connection. Script each operation through its accessor.
 type Mock struct {
 	connection        buffer.Connection
+	createIdea        *connectormock.Mutation[buffer.CreateIdeaInput, buffer.IdeaProfile]
 	listOrganizations *connectormock.Query[buffer.ListOrganizationsInput, buffer.OrganizationsList]
 	listChannels      *connectormock.Query[buffer.ListChannelsInput, buffer.ChannelsList]
 	getPost           *connectormock.Query[buffer.GetPostInput, buffer.PostProfile]
@@ -33,6 +34,7 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		createIdea:        connectormock.NewMutation[buffer.CreateIdeaInput, buffer.IdeaProfile](t, buffer.CreateIdeaDefinition),
 		listOrganizations: connectormock.NewQuery[buffer.ListOrganizationsInput, buffer.OrganizationsList](t, buffer.ListOrganizationsDefinition),
 		listChannels:      connectormock.NewQuery[buffer.ListChannelsInput, buffer.ChannelsList](t, buffer.ListChannelsDefinition),
 		getPost:           connectormock.NewQuery[buffer.GetPostInput, buffer.PostProfile](t, buffer.GetPostDefinition),
@@ -42,6 +44,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		deletePost:        connectormock.NewMutation[buffer.DeletePostInput, buffer.PostDeleteResult](t, buffer.DeletePostDefinition),
 		getChannel:        connectormock.NewQuery[buffer.GetChannelInput, buffer.ChannelProfile](t, buffer.GetChannelDefinition),
 	}
+	mock.createIdea.Default(CreateIdeaDefault())
 	mock.listOrganizations.Default(ListOrganizationsDefault())
 	mock.listChannels.Default(ListChannelsDefault())
 	mock.getPost.Default(GetPostDefault())
@@ -60,6 +63,11 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() buffer.Connection { return mock.connection }
+
+// CreateIdea returns the createIdea script.
+func (mock *Mock) CreateIdea() *connectormock.Mutation[buffer.CreateIdeaInput, buffer.IdeaProfile] {
+	return mock.createIdea
+}
 
 // ListOrganizations returns the listOrganizations script.
 func (mock *Mock) ListOrganizations() *connectormock.Query[buffer.ListOrganizationsInput, buffer.OrganizationsList] {
@@ -103,6 +111,9 @@ func (mock *Mock) GetChannel() *connectormock.Query[buffer.GetChannelInput, buff
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateIdea() sdkgo.Mutation[buffer.CreateIdeaInput, buffer.IdeaProfile] {
+	return operations.mock.createIdea
+}
 func (operations mockOperations) ListOrganizations() sdkgo.Query[buffer.ListOrganizationsInput, buffer.OrganizationsList] {
 	return operations.mock.listOrganizations
 }
@@ -127,6 +138,40 @@ func (operations mockOperations) DeletePost() sdkgo.Mutation[buffer.DeletePostIn
 func (operations mockOperations) GetChannel() sdkgo.Query[buffer.GetChannelInput, buffer.ChannelProfile] {
 	return operations.mock.getChannel
 }
+
+// CreateIdeaCreated selects the created branch: Buffer created the idea.
+func CreateIdeaCreated(value buffer.IdeaProfile, failure *sdkgo.Failure) connectormock.Case[buffer.IdeaProfile] {
+	return connectormock.Branch(buffer.CreateIdeaBranchCreated, value, failure)
+}
+
+// CreateIdeaProviderRejected selects the providerRejected branch: Buffer conclusively rejected the idea.
+func CreateIdeaProviderRejected(value buffer.IdeaProfile, failure *sdkgo.Failure) connectormock.Case[buffer.IdeaProfile] {
+	return connectormock.Branch(buffer.CreateIdeaBranchProviderRejected, value, failure)
+}
+
+// CreateIdeaUncertain returns an uncertain createIdea outcome.
+func CreateIdeaUncertain(value buffer.IdeaProfile, failure sdkgo.Failure) connectormock.Case[buffer.IdeaProfile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateIdeaDefect selects the defect branch: Local input or credentials are invalid.
+func CreateIdeaDefect(value buffer.IdeaProfile, failure *sdkgo.Failure) connectormock.Case[buffer.IdeaProfile] {
+	return connectormock.Branch(buffer.CreateIdeaBranchDefect, value, failure)
+}
+
+// CreateIdeaRetry asks Dex to retry the createIdea Step, after the delay when it is positive.
+func CreateIdeaRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[buffer.IdeaProfile] {
+	return connectormock.Retry[buffer.IdeaProfile](failure, after)
+}
+
+// CreateIdeaCreatedDefault is the manifest mock createdDefault: Sample Buffer idea.
+func CreateIdeaCreatedDefault() connectormock.Case[buffer.IdeaProfile] {
+	value := connectormock.MustDecodeOutput[buffer.IdeaProfile](`{"id":"idea-1","title":"Sample idea","text":"Sample text"}`)
+	return connectormock.Branch(buffer.CreateIdeaBranchCreated, value, nil)
+}
+
+// CreateIdeaDefault is the manifest default, createdDefault, which New installs.
+func CreateIdeaDefault() connectormock.Case[buffer.IdeaProfile] { return CreateIdeaCreatedDefault() }
 
 // ListOrganizationsListed selects the listed branch: Buffer completed the operation.
 func ListOrganizationsListed(value buffer.OrganizationsList, failure *sdkgo.Failure) connectormock.Case[buffer.OrganizationsList] {

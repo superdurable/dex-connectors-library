@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createIdea/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[buffer.IdeaProfile](`{"id":"idea-1","title":"Sample idea","text":"Sample text"}`)
+			return err
+		}},
 		{name: "listOrganizations/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[buffer.OrganizationsList](`{"organizations":[{"id":"org-1","name":"Example Organization"}]}`)
 			return err
@@ -58,6 +62,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateIdea().Definition().Operation.OperationID != "createIdea" {
+		t.Errorf("createIdea mock has another definition")
+	}
 	if mock.ListOrganizations().Definition().Operation.OperationID != "listOrganizations" {
 		t.Errorf("listOrganizations mock has another definition")
 	}

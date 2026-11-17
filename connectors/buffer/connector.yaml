@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: buffer
   displayName: Buffer
-  description: Discover Buffer organizations and channels and manage text posts.
+  description: Discover Buffer organizations and channels, create ideas, and manage text posts.
   company: Buffer
   categories: [social-media, marketing]
   version: v0.2.0
@@ -55,6 +55,26 @@ spec:
         - Sign in to Buffer, open Settings > API, create an API key, and copy the full secret into Dex Web apiKey. Blank prevents calls. The key can access all organizations and channels in the account; rotate it from the same page.
         - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. In Buffer Settings > API use the GraphQL API to query account organizations and channels, then pass a channel's opaque ID as channelId; blank is invalid.
   operations:
+    - name: createIdea
+      goName: CreateIdea
+      inputType: CreateIdeaInput
+      outputType: IdeaProfile
+      kind: mutation
+      description: Create a text idea in one organization.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Buffer created the idea.}
+        - {id: providerRejected, goName: ProviderRejected, description: Buffer conclusively rejected the idea., optional: true}
+        - {id: uncertain, goName: Uncertain, description: An idea may have been created but cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample Buffer idea.
+          output: {id: idea-1, title: Sample idea, text: Sample text}
     - name: listOrganizations
       goName: ListOrganizations
       inputType: ListOrganizationsInput
