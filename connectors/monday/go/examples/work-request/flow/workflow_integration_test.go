@@ -159,19 +159,20 @@ func TestHealthyUpdateCompletesWithOneDispatchWithRealDex(t *testing.T) {
 	require.Len(t, provider.distinctIdempotencyKeys("update"), 1)
 }
 
-func TestLostCreateResponseFailsClosedWithRealDex(t *testing.T) {
+func TestLostCreateResponseIsResentUnderTheSameKeyWithRealDex(t *testing.T) {
 	provider := newFakeMonday(t)
 	provider.losesFirstCreateResponse = true
 	harness := newWorkHarness(t, provider, defaultRequestTimeout)
 
-	result := harness.waitForFlow(t, harness.startWorkRequest(t, "lost-create", integrationInput()))
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Equal(t, 1, provider.count("create"))
+	outcome := harness.runWorkRequest(t, "lost-create", integrationInput())
+	require.Equal(t, WorkItemCreated, outcome.Action)
+	require.Equal(t, 2, provider.count("create"), "the unknown outcome is resent below the send cap")
+	require.Equal(t, 1, provider.count("replay"), "monday.com replays the cached create")
 	require.Equal(t, 1, provider.itemCount())
+	require.Len(t, provider.distinctIdempotencyKeys("create"), 1)
 }
 
-func TestLostWorkerDuringCreateFailsClosedWithRealDex(t *testing.T) {
+func TestLostWorkerDuringCreateIsResentUnderTheSameKeyWithRealDex(t *testing.T) {
 	provider := newFakeMonday(t)
 	provider.holdsFirstCreate = make(chan struct{})
 	harness := newWorkHarness(t, provider, heldRequestTimeout)
@@ -182,11 +183,12 @@ func TestLostWorkerDuringCreateFailsClosedWithRealDex(t *testing.T) {
 	close(provider.holdsFirstCreate)
 
 	result := harness.waitForFlow(t, flowID)
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
 	provider.waitForHeldRequests(t)
 	require.Equal(t, 1, provider.itemCount(), "the attempt on the new Worker did not create a second item")
-	require.Equal(t, 1, provider.count("create"), "the next attempt must not resend a dispatched write")
+	require.Equal(t, 2, provider.count("create"), "the next attempt resends the possibly sent write under the same key")
+	require.Equal(t, 1, provider.count("appliedCreate"))
+	require.Len(t, provider.distinctIdempotencyKeys("create"), 1)
 }
 
 func TestRateLimitedCreateWaitsForMondaysDelayWithRealDex(t *testing.T) {
@@ -215,7 +217,7 @@ func TestTemporarilyBlockedCreateRetriesWithRealDex(t *testing.T) {
 	require.Len(t, provider.distinctIdempotencyKeys("create"), 1)
 }
 
-func TestUnusableCreateAnswerFailsWithoutResendingWithRealDex(t *testing.T) {
+func TestUnusableCreateAnswerFailsAtTheSendCapWithRealDex(t *testing.T) {
 	provider := newFakeMonday(t)
 	provider.answersCreateUnusably = true
 	harness := newWorkHarness(t, provider, defaultRequestTimeout)
@@ -224,7 +226,8 @@ func TestUnusableCreateAnswerFailsWithoutResendingWithRealDex(t *testing.T) {
 	require.Equal(t, dex.FlowFailed, result.Status)
 	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.Contains(t, result.ErrorMessage, "no target")
-	require.Equal(t, 1, provider.count("create"), "an accepted create is never sent again")
+	require.Equal(t, 3, provider.count("create"), "an answer without an item ID is resent only up to the default cap of three")
+	require.Equal(t, 2, provider.count("replay"), "every resend replays the same cached answer")
 	require.Equal(t, 1, provider.itemCount(), "monday.com did create the item, which a person must now find")
 	require.Zero(t, provider.count("update"))
 }

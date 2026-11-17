@@ -44,8 +44,7 @@ func TestAddUpdateMapsOutcomes(t *testing.T) {
 	}{
 		{name: "missing item", status: 200, body: `{"data":{"create_update":null},"errors":[{"message":"SENTINEL","extensions":{"code":"InvalidItemIdException"}}]}`, branch: monday.AddUpdateBranchNotFound},
 		{name: "permission", status: 200, body: `{"errors":[{"message":"SENTINEL","extensions":{"code":"UserUnauthorizedException","status_code":403}}]}`, branch: monday.AddUpdateBranchProviderRejected},
-		{name: "malformed update", status: 200, body: `{"data":{"create_update":{"id":"x"}}}`, branch: monday.AddUpdateBranchUncertain},
-		{name: "update on another item", status: 200, body: `{"data":{"create_update":{"id":"3300001","item_id":"1111111111"}}}`, branch: monday.AddUpdateBranchUncertain},
+		{name: "identified update on another item", status: 200, body: `{"data":{"create_update":{"id":"3300001","item_id":"1111111111"}}}`, branch: monday.AddUpdateBranchUncertain},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingMonday(t, func(response http.ResponseWriter, _ recordedRequest, _ int) {

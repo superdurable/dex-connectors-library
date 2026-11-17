@@ -2,15 +2,15 @@
 # SPDX-License-Identifier: MIT
 """monday.com Query and Mutation invocations with Go-compatible routes."""
 
-import asyncio
 import html
-from dataclasses import dataclass, field, replace
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from dex_connectors.sdk import (
     Call,
     CallID,
+    Failure,
     FailureKind,
     IdempotencyKey,
     MutationAttempt,
@@ -18,6 +18,14 @@ from dex_connectors.sdk import (
     QueryAttempt,
     QueryDefinition,
     Receipt,
+)
+from dex_connectors.sdk.singledispatch import (
+    CheckpointError,
+    Decision,
+    DecisionKind,
+    DispatchNotAllowedError,
+    Fence,
+    InsufficientAttemptTimeError,
 )
 
 from ._generated.definitions import (
@@ -27,7 +35,7 @@ from ._generated.definitions import (
     LIST_ITEMS_DEFINITION,
     UPDATE_ITEM_COLUMN_VALUES_DEFINITION,
 )
-from .client import Client, Exchange, failure
+from .client import Client, Credentials, Exchange, classify_write, failure
 from .item import COLUMN_ID, NUMERIC_ID, column_ids, decode_item, encode_column_values, numeric_id
 from .models import (
     AddUpdateInput,
@@ -107,159 +115,233 @@ def _query_failure(exchange: Exchange, output: Any, receipt: Receipt) -> QueryAt
     return QueryAttempt.branch_result(branch, output, receipt, exchange.problem)
 
 
-def _mutation_failure(
-    exchange: Exchange,
-    output: Any,
-    receipt: Receipt,
-    *,
-    invalid_branch: bool = False,
-) -> MutationAttempt[Any] | None:
-    if exchange.outcome == "succeeded":
-        return None
-    assert exchange.problem is not None
-    if exchange.outcome == "retry":
-        return MutationAttempt.retry(exchange.problem, exchange.retry_after)
-    if exchange.outcome == "uncertain" or exchange.outcome == "invalid" and not invalid_branch:
-        return MutationAttempt.uncertain(output, exchange.problem, receipt)
-    branch = {"notFound": "notFound", "invalid": "invalidResponse", "defect": "defect"}.get(
-        exchange.outcome, "providerRejected"
-    )
-    return MutationAttempt.branch_result(branch, output, receipt, exchange.problem)
+_MINIMUM_DISPATCH_WINDOW = timedelta(seconds=6)
+"""The request deadline margin plus the least request window in which a write may start."""
+_REFUSAL_BRANCHES = {"notFound": "notFound", "defect": "defect"}
 
 
-@dataclass(frozen=True, slots=True)
-class _Checkpoint:
-    call_id: CallID = field(metadata={"dex_json_name": "callId"})
-    attempt: int
-    can_resend: bool = field(
-        default=False, metadata={"dex_json_name": "canResend", "dex_json_omit_default": True}
-    )
+def _accepted_reference_id(data: Any, mutation_field: str) -> str:
+    """Return the numeric ID in the mutation field, even when the rest is unusable."""
+    value = data.get(mutation_field) if isinstance(data, dict) else None
+    identifier = value.get("id") if isinstance(value, dict) else None
+    return identifier if isinstance(identifier, str) and NUMERIC_ID.fullmatch(identifier) else ""
 
 
-async def _checkpointed_exchange(
+class _FencedWrite:
+    """One attempt of a createItem or addUpdate behind the shared single-dispatch fence.
+
+    monday.com's idempotency cache can be bypassed, so an unknown outcome resends under
+    the same key only while the send cap allows, and selects `uncertain` at the cap.
+    """
+
+    def __init__(self, call: Call, operation: str, fence: Fence, decision: Decision) -> None:
+        self.call, self.operation, self.fence, self.decision = call, operation, fence, decision
+        self.can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
+        self.has_possible_earlier_send = decision.prior_send_upper_bound > 0
+
+    @classmethod
+    async def start(
+        cls, call: Call, operation: str, output: Any, receipt: Receipt
+    ) -> "_FencedWrite | MutationAttempt[Any]":
+        """Decide whether this attempt may send, or return the attempt that forbids it."""
+        try:
+            fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
+        except ValueError:
+            cause = failure(
+                operation, FailureKind.LOCAL_DEFECT, "monday.com dispatch fence could not be constructed"
+            )
+            if call.context is not None and call.context.attempt > 1:
+                return MutationAttempt.uncertain(output, cause, receipt)
+            return MutationAttempt.branch_result("defect", output, Receipt(), cause)
+        decision = await fence.decide()
+        if decision.kind == DecisionKind.FAIL_CLOSED:
+            return MutationAttempt.retry(
+                failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "monday.com dispatch checkpoint is unreadable, so nothing was sent in this attempt",
+                )
+            )
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+            return MutationAttempt.uncertain(
+                output,
+                failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    "earlier attempts of this Step may have sent the request and the send cap "
+                    "is reached, so it is not sent again",
+                ),
+                receipt,
+            )
+        if decision.marker is not None and decision.marker.provider_id:
+            return MutationAttempt.uncertain(
+                output,
+                failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    "an earlier attempt of this Step was accepted, so the request is not sent again",
+                ),
+                receipt,
+            )
+        return cls(call, operation, fence, decision)
+
+    async def pre_send_failure(self, resolution: Exchange, output: Any) -> MutationAttempt[Any]:
+        """Map a credential failure that ended the attempt before any send."""
+        assert resolution.problem is not None
+        # notSent after a possible earlier send would hide it, so only a first-send decision records it.
+        if self.decision.kind == DecisionKind.SEND_ALLOWED:
+            try:
+                await self.fence.record_not_sent()
+            except Exception:
+                return MutationAttempt.retry(
+                    failure(
+                        self.operation,
+                        FailureKind.AVAILABILITY,
+                        "monday.com not-sent checkpoint could not be recorded",
+                    )
+                )
+        if resolution.outcome == "retry":
+            return MutationAttempt.retry(resolution.problem, resolution.retry_after)
+        if self.has_possible_earlier_send:
+            return MutationAttempt.uncertain(output, resolution.problem, Receipt())
+        branch = "providerRejected" if resolution.outcome == "rejected" else "defect"
+        return MutationAttempt.branch_result(branch, output, Receipt(), resolution.problem)
+
+    async def dispatch(
+        self,
+        client: Client,
+        credentials: Credentials,
+        document: str,
+        variables: dict[str, Any],
+        output: Any,
+    ) -> Exchange | MutationAttempt[Any]:
+        """Send once behind the fence, or return the attempt that forbids sending."""
+        call, operation = self.call, self.operation
+        deadline = getattr(call.context, "deadline", None)
+        if deadline is not None and deadline - datetime.now(UTC) < _MINIMUM_DISPATCH_WINDOW:
+            # notSent after a possible earlier send would hide it, so only a first-send decision records it.
+            if self.decision.kind == DecisionKind.SEND_ALLOWED:
+                try:
+                    await self.fence.record_not_sent()
+                except Exception:
+                    return MutationAttempt.retry(
+                        failure(
+                            operation,
+                            FailureKind.AVAILABILITY,
+                            "monday.com not-sent checkpoint could not be recorded",
+                        )
+                    )
+            return MutationAttempt.retry(
+                failure(operation, FailureKind.AVAILABILITY, "not enough time remains to send the mutation")
+            )
+        try:
+            return await self.fence.dispatch(
+                lambda write_deadline: client.send_with_rejection_refresh(
+                    call, operation, document, variables, credentials, True, write_deadline
+                )
+            )
+        except (CheckpointError, InsufficientAttemptTimeError):
+            return MutationAttempt.retry(
+                failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "dispatch checkpoint could not be recorded, so nothing was sent",
+                )
+            )
+        except DispatchNotAllowedError:
+            cause = failure(operation, FailureKind.LOCAL_DEFECT, "monday.com dispatch was not allowed")
+            if self.has_possible_earlier_send:
+                return MutationAttempt.uncertain(output, cause, Receipt())
+            return MutationAttempt.branch_result("defect", output, Receipt(), cause)
+        except TimeoutError:
+            return Exchange(
+                "uncertain",
+                problem=failure(
+                    operation, FailureKind.TRANSPORT, "monday.com request failed before a response arrived"
+                ),
+            )
+
+    async def attempt_for_write(
+        self, exchange: Exchange, mutation_field: str, output: Any, receipt: Receipt
+    ) -> MutationAttempt[Any] | None:
+        """Map every sent outcome except an accepted one, as Go's attemptForWrite does."""
+        disposition = classify_write(exchange, mutation_field)
+        if disposition == "accepted":
+            return None
+        assert exchange.problem is not None
+        if disposition == "notProcessed":
+            try:
+                await self.fence.record_can_resend()
+            except Exception:
+                return MutationAttempt.retry(
+                    failure(
+                        self.operation,
+                        FailureKind.AVAILABILITY,
+                        "monday.com retry checkpoint could not be recorded",
+                    ),
+                    exchange.retry_after,
+                )
+            return MutationAttempt.retry(exchange.problem, exchange.retry_after)
+        if disposition == "refused":
+            branch = _REFUSAL_BRANCHES.get(exchange.outcome, "providerRejected")
+            return await self.reject_or_select_uncertain(branch, output, receipt, exchange.problem)
+        return self.resend_or_select_uncertain(output, exchange.problem, exchange.retry_after, receipt)
+
+    async def reject_or_select_uncertain(
+        self, branch: str, output: Any, receipt: Receipt, cause: Failure
+    ) -> MutationAttempt[Any]:
+        """Select a refusal branch only when no earlier send of this call may have written."""
+        if self.has_possible_earlier_send:
+            return MutationAttempt.uncertain(output, cause, receipt)
+        try:
+            await self.fence.record_can_resend()
+        except Exception:
+            return MutationAttempt.retry(
+                failure(
+                    self.operation,
+                    FailureKind.AVAILABILITY,
+                    "monday.com rejection checkpoint could not be recorded",
+                )
+            )
+        return MutationAttempt.branch_result(branch, output, receipt, cause)
+
+    def resend_or_select_uncertain(
+        self, output: Any, cause: Failure, retry_after: float, receipt: Receipt
+    ) -> MutationAttempt[Any]:
+        """Retry an unknown outcome while the send cap allows another send."""
+        if self.can_resend_unknown_outcome:
+            # The claim stays the last marker, so the next attempt counts this send.
+            return MutationAttempt.retry(cause, retry_after)
+        return MutationAttempt.uncertain(output, cause, receipt)
+
+    async def record_accepted(self, provider_id: str) -> None:
+        """Save the accepted identity so a replayed attempt never resends it."""
+        try:
+            await self.fence.record_provider_id(provider_id)
+        except Exception:
+            pass  # The accepted result stands; a lost identity checkpoint keeps the claim.
+
+
+async def _fenced_exchange(
     client: Client,
     call: Call,
     operation: str,
     document: str,
     variables: dict[str, Any],
-) -> Exchange:
-    context = call.context
-    if context is None:
-        return Exchange(
-            "defect", problem=failure(operation, FailureKind.LOCAL_DEFECT, "mutation checkpoint is invalid")
-        )
-    is_invalid_checkpoint = False
-    try:
-        previous = (
-            context.get_last_heartbeat_value(_Checkpoint) if context.has_last_heartbeat_value() else None
-        )
-    except (ValueError, TypeError):
-        previous = None
-        is_invalid_checkpoint = True
-    if is_invalid_checkpoint or previous is not None and previous.call_id != call.id:
-        kind = FailureKind.TRANSPORT if context.attempt > 1 else FailureKind.LOCAL_DEFECT
-        return Exchange(
-            "uncertain" if context.attempt > 1 else "defect",
-            problem=failure(operation, kind, "mutation checkpoint is invalid"),
-        )
-    if not (
-        previous is None
-        and context.attempt == 1
-        or isinstance(previous, _Checkpoint)
-        and previous.can_resend
-        and previous.attempt == context.attempt - 1
-    ):
-        return Exchange(
-            "uncertain",
-            problem=failure(
-                operation, FailureKind.TRANSPORT, "an earlier attempt may have applied the mutation"
-            ),
-        )
+    output: Any,
+) -> tuple[_FencedWrite, Exchange] | MutationAttempt[Any]:
+    """Start the fence, resolve credentials, and send once, or return the attempt that ends here."""
+    write = await _FencedWrite.start(call, operation, output, client.receipt(call, Exchange("")))
+    if isinstance(write, MutationAttempt):
+        return write
     credentials, resolution = await client.resolve(call, operation)
     if resolution is not None:
-        if resolution.outcome == "retry":
-            try:
-                await context.heartbeat(_Checkpoint(call.id, context.attempt, True))
-            except Exception:
-                pass  # The credential retry remains safe even if this best-effort checkpoint fails.
-        return resolution
+        return await write.pre_send_failure(resolution, output)
     assert credentials is not None
-    if context.deadline is not None and context.deadline - datetime.now(UTC) < timedelta(seconds=6):
-        try:
-            await context.heartbeat(_Checkpoint(call.id, context.attempt, True))
-        except Exception:
-            pass  # No provider dispatch occurred, so the retry remains safe.
-        return Exchange(
-            "retry",
-            problem=failure(
-                operation, FailureKind.AVAILABILITY, "not enough time remains to send the mutation"
-            ),
-        )
-    checkpoint = _Checkpoint(call.id, context.attempt)
-    try:
-        await context.heartbeat(checkpoint)
-    except Exception:
-        try:
-            await context.heartbeat(_Checkpoint(call.id, context.attempt, True))
-        except Exception:
-            pass  # The failed pre-send checkpoint still proves no provider request was sent.
-        return Exchange(
-            "retry",
-            problem=failure(operation, FailureKind.AVAILABILITY, "dispatch checkpoint could not be recorded"),
-        )
-    stop_repetition = asyncio.Event()
-
-    async def repeat_checkpoint() -> None:
-        while True:
-            try:
-                await asyncio.wait_for(stop_repetition.wait(), 5)
-                return
-            except TimeoutError:
-                try:
-                    await context.heartbeat(checkpoint)
-                except Exception:
-                    pass  # The first persisted claim still fences dispatch.
-
-    repetition = asyncio.create_task(repeat_checkpoint())
-    try:
-        result = await client._send(call, operation, document, variables, credentials, True)
-        if result.status == 401 and credentials.auth_method_id == "monday-oauth":
-            refresh = getattr(client.credentials, "resolve_after_rejection", None)
-            if refresh is not None:
-                try:
-                    replacement = await refresh(call)
-                    token = replacement.access_token
-                    if token is not None and token.reveal():
-                        if (
-                            context.deadline is not None
-                            and context.deadline - datetime.now(UTC) < timedelta(seconds=6)
-                        ):
-                            result = Exchange(
-                                "retry",
-                                problem=failure(
-                                    operation,
-                                    FailureKind.AVAILABILITY,
-                                    "not enough time remains to resend the mutation",
-                                ),
-                            )
-                        else:
-                            result = await client._send(
-                                call, operation, document, variables, replacement, True
-                            )
-                except (ValueError, LookupError, OSError):
-                    pass  # The original 401 remains the provider's terminal rejection.
-    finally:
-        stop_repetition.set()
-        await repetition
-    if result.outcome == "retry":
-        if 200 <= result.status < 300 and (not result.confirmed_not_processed or result.data is not None):
-            result = replace(result, outcome="uncertain")
-        elif result.data is None:
-            try:
-                await context.heartbeat(_Checkpoint(call.id, context.attempt, True))
-            except Exception:
-                pass  # A failed positive checkpoint cannot make the current retry unsafe.
-    return result
+    exchange = await write.dispatch(client, credentials, document, variables, output)
+    if isinstance(exchange, MutationAttempt):
+        return exchange
+    return write, exchange
 
 
 def _filter_query(filter_value: ItemFilter | None, order: ItemOrder | None) -> dict[str, Any] | None:
@@ -526,7 +608,7 @@ class CreateItemOperation:
         return IdempotencyKey(call_id)
 
     async def invoke(self, call: Call, input: CreateItemInput) -> MutationAttempt[CreateItemOutput]:
-        """Create once, resending only after confirmed nonprocessing."""
+        """Create one item, resending an unknown outcome under the same key only within the send cap."""
         output = CreateItemOutput(input.board_id.strip(), input.group_id.strip(), input.item_name)
         try:
             board_id = numeric_id(input.board_id, "boardId")
@@ -549,7 +631,10 @@ class CreateItemOperation:
             return MutationAttempt.branch_result(
                 "defect", output, Receipt(), failure("createItem", FailureKind.VALIDATION, str(error))
             )
-        exchange = await _checkpointed_exchange(self.client, call, "createItem", _CREATE_DOCUMENT, variables)
+        started = await _fenced_exchange(self.client, call, "createItem", _CREATE_DOCUMENT, variables, output)
+        if isinstance(started, MutationAttempt):
+            return started
+        write, exchange = started
         receipt = self.client.receipt(call, exchange)
         item_data = exchange.data.get("create_item") if isinstance(exchange.data, dict) else None
         try:
@@ -557,22 +642,24 @@ class CreateItemOperation:
         except ValueError:
             item = None
         if item is not None:
+            await write.record_accepted(item.id)
             output = replace(output, item_id=item.id, item=item, replayed=exchange.replayed)
             return MutationAttempt.branch_result(
                 "created", output, replace(receipt, provider_object_id=item.id)
             )
-        failed = _mutation_failure(exchange, output, receipt)
+        unusable = failure(
+            "createItem", FailureKind.PROTOCOL, "monday.com accepted the item but returned an unusable item"
+        )
+        reference_id = _accepted_reference_id(exchange.data, "create_item")
+        if reference_id:
+            await write.record_accepted(reference_id)
+            return MutationAttempt.uncertain(
+                output, unusable, replace(receipt, provider_object_id=reference_id)
+            )
+        failed = await write.attempt_for_write(exchange, "create_item", output, receipt)
         if failed is not None:
             return failed
-        return MutationAttempt.uncertain(
-            output,
-            failure(
-                "createItem",
-                FailureKind.PROTOCOL,
-                "monday.com accepted the item but returned an unusable item",
-            ),
-            receipt,
-        )
+        return write.resend_or_select_uncertain(output, unusable, 0, receipt)
 
 
 class UpdateItemColumnValuesOperation:
@@ -592,7 +679,7 @@ class UpdateItemColumnValuesOperation:
     async def invoke(
         self, call: Call, input: UpdateItemColumnValuesInput
     ) -> MutationAttempt[UpdateItemColumnValuesOutput]:
-        """Set absolute values, which remain safe to retry after an unknown response."""
+        """Set absolute values, retrying every unknown outcome because a repeat writes the same values."""
         output = UpdateItemColumnValuesOutput(input.board_id, input.item_id)
         try:
             board_id = numeric_id(input.board_id, "boardId")
@@ -630,19 +717,23 @@ class UpdateItemColumnValuesOperation:
             return MutationAttempt.branch_result(
                 "updated", replace(output, item=item, replayed=exchange.replayed), receipt
             )
-        failed = _mutation_failure(exchange, output, receipt, invalid_branch=True)
-        if failed is not None:
-            return failed
-        return MutationAttempt.branch_result(
-            "invalidResponse",
-            output,
-            receipt,
-            failure(
-                "updateItemColumnValues",
-                FailureKind.PROTOCOL,
-                "monday.com returned an unusable item, so the values may have been set",
-            ),
-        )
+        disposition = classify_write(exchange, "change_multiple_column_values")
+        if disposition == "accepted":
+            return MutationAttempt.retry(
+                failure(
+                    "updateItemColumnValues",
+                    FailureKind.PROTOCOL,
+                    "monday.com returned an unusable item, so the values are set again",
+                )
+            )
+        assert exchange.problem is not None
+        if disposition == "refused":
+            branch = _REFUSAL_BRANCHES.get(exchange.outcome, "providerRejected")
+            return MutationAttempt.branch_result(branch, output, receipt, exchange.problem)
+        # Resending would expose the credential to the same faulty endpoint again.
+        if exchange.credential_reflected:
+            return MutationAttempt.branch_result("invalidResponse", output, receipt, exchange.problem)
+        return MutationAttempt.retry(exchange.problem, exchange.retry_after)
 
 
 class AddUpdateOperation:
@@ -660,7 +751,7 @@ class AddUpdateOperation:
         return IdempotencyKey(call_id)
 
     async def invoke(self, call: Call, input: AddUpdateInput) -> MutationAttempt[AddUpdateOutput]:
-        """Add one update, treating an accepted but unusable answer as uncertain."""
+        """Add one update, resending an unknown outcome under the same key only within the send cap."""
         output = AddUpdateOutput(input.item_id.strip())
         try:
             item_id = numeric_id(input.item_id, "itemId")
@@ -679,9 +770,12 @@ class AddUpdateOperation:
             return MutationAttempt.branch_result(
                 "defect", output, Receipt(), failure("addUpdate", FailureKind.VALIDATION, str(error))
             )
-        exchange = await _checkpointed_exchange(
-            self.client, call, "addUpdate", _ADD_DOCUMENT, {"itemId": item_id, "body": escaped}
+        started = await _fenced_exchange(
+            self.client, call, "addUpdate", _ADD_DOCUMENT, {"itemId": item_id, "body": escaped}, output
         )
+        if isinstance(started, MutationAttempt):
+            return started
+        write, exchange = started
         receipt = self.client.receipt(call, exchange)
         resource = exchange.data.get("create_update") if isinstance(exchange.data, dict) else None
         if (
@@ -699,6 +793,7 @@ class AddUpdateOperation:
                 ).astimezone(UTC)
             except ValueError:
                 pass
+            await write.record_accepted(resource["id"])
             output = replace(
                 output,
                 update_id=resource["id"],
@@ -709,15 +804,18 @@ class AddUpdateOperation:
             return MutationAttempt.branch_result(
                 "added", output, replace(receipt, provider_object_id=resource["id"])
             )
-        failed = _mutation_failure(exchange, output, receipt)
+        unusable = failure(
+            "addUpdate",
+            FailureKind.PROTOCOL,
+            "monday.com accepted the update but returned an unusable update",
+        )
+        reference_id = _accepted_reference_id(exchange.data, "create_update")
+        if reference_id:
+            await write.record_accepted(reference_id)
+            return MutationAttempt.uncertain(
+                output, unusable, replace(receipt, provider_object_id=reference_id)
+            )
+        failed = await write.attempt_for_write(exchange, "create_update", output, receipt)
         if failed is not None:
             return failed
-        return MutationAttempt.uncertain(
-            output,
-            failure(
-                "addUpdate",
-                FailureKind.PROTOCOL,
-                "monday.com accepted the update but returned an unusable update",
-            ),
-            receipt,
-        )
+        return write.resend_or_select_uncertain(output, unusable, 0, receipt)
