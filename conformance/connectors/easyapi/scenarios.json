@@ -1,0 +1,658 @@
+{
+  "connector": "easyapi",
+  "scenarios": [
+    {
+      "callId": "58713db5-b409-5430-9f32-584904649aaf",
+      "exchanges": [
+        {
+          "body": "{\"code\":1,\"message\":\"secret and tax in provider response\",\"content\":{\"shopId\":1001,\"name\":\"Example Company\",\"apiState\":1,\"endTime\":\"2027-01-01 00:00:00\",\"identifyNumber\":\"private tax\",\"address\":\"private address\",\"phone\":\"private phone\",\"bankAccount\":\"private bank\",\"drawerName\":\"private staff\",\"certificate\":\"private certificate\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/shop/query",
+          "query": {
+            "appKey": [
+              "test-key"
+            ],
+            "appSecret": [
+              "private-secret"
+            ],
+            "taxNumber": [
+              "91320211MA1WML8X6T"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "apiState": 1,
+          "endTime": "2027-01-01 00:00:00",
+          "name": "Example Company",
+          "shopId": 1001
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taxNumber": "91320211MA1WML8X6T"
+      },
+      "name": "queryShop-success",
+      "operation": "queryShop"
+    },
+    {
+      "callId": "58713db5-b409-5430-9f32-584904649aaf",
+      "exchanges": [
+        {
+          "body": "{\"code\":1,\"content\":{\"shopId\":1001,\"name\":\"Example Company\",\"apiState\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/shop/query",
+          "query": {
+            "appKey": [
+              "test-key"
+            ],
+            "appSecret": [
+              "private-secret"
+            ],
+            "taxNumber": [
+              "91320211MA1WML8X6T"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "apiState": 0,
+          "endTime": "",
+          "name": "Example Company",
+          "shopId": 1001
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taxNumber": "91320211MA1WML8X6T"
+      },
+      "name": "queryShop-no-expiry",
+      "operation": "queryShop"
+    },
+    {
+      "callId": "58713db5-b409-5430-9f32-584904649aaf",
+      "exchanges": [
+        {
+          "body": "{\"code\":-7,\"message\":\"private-secret 91320211MA1WML8X6T\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/shop/query",
+          "query": {
+            "appKey": [
+              "test-key"
+            ],
+            "appSecret": [
+              "private-secret"
+            ],
+            "taxNumber": [
+              "91320211MA1WML8X6T"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "apiState": 0,
+          "endTime": "",
+          "name": "",
+          "shopId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taxNumber": "91320211MA1WML8X6T"
+      },
+      "name": "queryShop-provider-rejected",
+      "operation": "queryShop"
+    },
+    {
+      "callId": "58713db5-b409-5430-9f32-584904649aaf",
+      "exchanges": [
+        {
+          "body": "{\"code\":-7,\"message\":\"private-secret\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/shop/query",
+          "query": {
+            "appKey": [
+              "test-key"
+            ],
+            "appSecret": [
+              "private-secret"
+            ],
+            "taxNumber": [
+              "91320211MA1WML8X6T"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "apiState": 0,
+          "endTime": "",
+          "name": "",
+          "shopId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taxNumber": "91320211MA1WML8X6T"
+      },
+      "name": "queryShop-http-rejected",
+      "operation": "queryShop"
+    },
+    {
+      "callId": "58713db5-b409-5430-9f32-584904649aaf",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"private tax\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/shop/query",
+          "query": {
+            "appKey": [
+              "test-key"
+            ],
+            "appSecret": [
+              "private-secret"
+            ],
+            "taxNumber": [
+              "91320211MA1WML8X6T"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "apiState": 0,
+          "endTime": "",
+          "name": "",
+          "shopId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taxNumber": "91320211MA1WML8X6T"
+      },
+      "name": "queryShop-forbidden",
+      "operation": "queryShop"
+    },
+    {
+      "callId": "58713db5-b409-5430-9f32-584904649aaf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Location": "https://other.example/steal"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/shop/query",
+          "query": {
+            "appKey": [
+              "test-key"
+            ],
+            "appSecret": [
+              "private-secret"
+            ],
+            "taxNumber": [
+              "91320211MA1WML8X6T"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 302
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "apiState": 0,
+          "endTime": "",
+          "name": "",
+          "shopId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taxNumber": "91320211MA1WML8X6T"
+      },
+      "name": "queryShop-redirect",
+      "operation": "queryShop"
+    },
+    {
+      "callId": "58713db5-b409-5430-9f32-584904649aaf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/shop/query",
+          "query": {
+            "appKey": [
+              "test-key"
+            ],
+            "appSecret": [
+              "private-secret"
+            ],
+            "taxNumber": [
+              "91320211MA1WML8X6T"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taxNumber": "91320211MA1WML8X6T"
+      },
+      "name": "queryShop-rate-limit",
+      "operation": "queryShop"
+    },
+    {
+      "callId": "58713db5-b409-5430-9f32-584904649aaf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/shop/query",
+          "query": {
+            "appKey": [
+              "test-key"
+            ],
+            "appSecret": [
+              "private-secret"
+            ],
+            "taxNumber": [
+              "91320211MA1WML8X6T"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taxNumber": "91320211MA1WML8X6T"
+      },
+      "name": "queryShop-server-error",
+      "operation": "queryShop"
+    },
+    {
+      "callId": "58713db5-b409-5430-9f32-584904649aaf",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/shop/query",
+          "query": {
+            "appKey": [
+              "test-key"
+            ],
+            "appSecret": [
+              "private-secret"
+            ],
+            "taxNumber": [
+              "91320211MA1WML8X6T"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "apiState": 0,
+          "endTime": "",
+          "name": "",
+          "shopId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taxNumber": "91320211MA1WML8X6T"
+      },
+      "name": "queryShop-malformed",
+      "operation": "queryShop"
+    },
+    {
+      "callId": "58713db5-b409-5430-9f32-584904649aaf",
+      "exchanges": [
+        {
+          "body": "{\"code\":1,\"content\":{\"shopId\":1001,\"name\":\"Example Company\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/shop/query",
+          "query": {
+            "appKey": [
+              "test-key"
+            ],
+            "appSecret": [
+              "private-secret"
+            ],
+            "taxNumber": [
+              "91320211MA1WML8X6T"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "apiState": 0,
+          "endTime": "",
+          "name": "",
+          "shopId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taxNumber": "91320211MA1WML8X6T"
+      },
+      "name": "queryShop-missing-state",
+      "operation": "queryShop"
+    },
+    {
+      "callId": "58713db5-b409-5430-9f32-584904649aaf",
+      "exchanges": [
+        {
+          "body": "{\"code\":1,\"content\":{\"shopId\":1001,\"name\":\"Example Company\",\"apiState\":8}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/shop/query",
+          "query": {
+            "appKey": [
+              "test-key"
+            ],
+            "appSecret": [
+              "private-secret"
+            ],
+            "taxNumber": [
+              "91320211MA1WML8X6T"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "apiState": 0,
+          "endTime": "",
+          "name": "",
+          "shopId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taxNumber": "91320211MA1WML8X6T"
+      },
+      "name": "queryShop-unknown-state",
+      "operation": "queryShop"
+    },
+    {
+      "callId": "58713db5-b409-5430-9f32-584904649aaf",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/shop/query",
+          "query": {
+            "appKey": [
+              "test-key"
+            ],
+            "appSecret": [
+              "private-secret"
+            ],
+            "taxNumber": [
+              "91320211MA1WML8X6T"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "apiState": 0,
+          "endTime": "",
+          "name": "",
+          "shopId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taxNumber": "91320211MA1WML8X6T"
+      },
+      "name": "queryShop-oversize",
+      "operation": "queryShop"
+    },
+    {
+      "callId": "58713db5-b409-5430-9f32-584904649aaf",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/shop/query",
+          "query": {
+            "appKey": [
+              "test-key"
+            ],
+            "appSecret": [
+              "private-secret"
+            ],
+            "taxNumber": [
+              "91320211MA1WML8X6T"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taxNumber": "91320211MA1WML8X6T"
+      },
+      "name": "queryShop-transport-before-send",
+      "operation": "queryShop"
+    },
+    {
+      "callId": "58713db5-b409-5430-9f32-584904649aaf",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "apiState": 0,
+          "endTime": "",
+          "name": "",
+          "shopId": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taxNumber": "91320211MA1WML8X6T"
+      },
+      "name": "queryShop-missing-credentials",
+      "operation": "queryShop"
+    },
+    {
+      "callId": "58713db5-b409-5430-9f32-584904649aaf",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "apiState": 0,
+          "endTime": "",
+          "name": "",
+          "shopId": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taxNumber": "bad"
+      },
+      "name": "queryShop-invalid-tax",
+      "operation": "queryShop"
+    }
+  ],
+  "schemaVersion": 1
+}
