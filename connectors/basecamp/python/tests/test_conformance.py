@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/basecamp/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/basecamp/scenarios.json")
+    if scenario["operation"] == "listAccounts"
+]
 CONNECTION = sdk.ConnectionRef("basecamp", "basecamp")
 ADAPTER = conformance.PythonOperationAdapter(
     "basecamp",

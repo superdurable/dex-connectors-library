@@ -16,6 +16,98 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getDispute/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.DisputeProfile](`{"id":"dispute-1","status":"OPEN"}`)
+			return err
+		}},
+		{name: "searchDisputes/searchedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.DisputesPage](`{"disputes":[{"id":"dispute-1","status":"OPEN"}],"hasNextPage":false}`)
+			return err
+		}},
+		{name: "acceptDispute/acceptedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.DisputeProfile](`{"id":"dispute-1","status":"ACCEPTED"}`)
+			return err
+		}},
+		{name: "createDisputeTextEvidence/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.DisputeTextEvidenceProfile](`{"id":"evidence-1","category":"GENERAL","content":"Shipment proof"}`)
+			return err
+		}},
+		{name: "createDisputeFileEvidence/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.DisputeEvidenceProfile](`{"id":"evidence-file-1","category":"GENERAL"}`)
+			return err
+		}},
+		{name: "deleteDisputeEvidence/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.DisputeEvidenceDeleteResult](`{"disputeId":"dispute-1","evidenceId":"evidence-1","deleted":true}`)
+			return err
+		}},
+		{name: "finalizeDispute/finalizedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.DisputeProfile](`{"id":"dispute-1","status":"DISPUTED"}`)
+			return err
+		}},
+		{name: "searchTransactions/searchedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.TransactionsPage](`{"transactions":[{"id":"txn-1","status":"SETTLED"}],"hasNextPage":false}`)
+			return err
+		}},
+		{name: "chargePaymentMethod/chargedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.TransactionProfile](`{"id":"txn-1","status":"SUBMITTED_FOR_SETTLEMENT"}`)
+			return err
+		}},
+		{name: "captureTransaction/capturedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.TransactionProfile](`{"id":"txn-1","status":"SUBMITTED_FOR_SETTLEMENT"}`)
+			return err
+		}},
+		{name: "voidTransaction/voidedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.TransactionProfile](`{"id":"txn-1","status":"SUBMITTED_FOR_SETTLEMENT"}`)
+			return err
+		}},
+		{name: "refundTransaction/refundedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.RefundProfile](`{"id":"refund-1","status":"SETTLED"}`)
+			return err
+		}},
+		{name: "vaultPaymentMethod/vaultedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.PaymentMethodProfile](`{"id":"payment-method-1","usage":"MULTI_USE"}`)
+			return err
+		}},
+		{name: "updateCreditCardCardholderName/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.PaymentMethodProfile](`{"id":"payment-method-1","usage":"MULTI_USE"}`)
+			return err
+		}},
+		{name: "updateCreditCardExpirationDate/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.PaymentMethodProfile](`{"id":"payment-method-1","usage":"MULTI_USE"}`)
+			return err
+		}},
+		{name: "updateCreditCardBillingAddress/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.PaymentMethodProfile](`{"id":"payment-method-1","usage":"MULTI_USE"}`)
+			return err
+		}},
+		{name: "deletePaymentMethodFromVault/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.PaymentMethodDeleteResult](`{"paymentMethodId":"payment-method-1","deleted":true}`)
+			return err
+		}},
+		{name: "createCustomer/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.CustomerProfile](`{"id":"customer-1","firstName":"Ada","lastName":"Lovelace","email":"ada@example.com"}`)
+			return err
+		}},
+		{name: "updateCustomer/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.CustomerProfile](`{"id":"customer-1","firstName":"Ada","lastName":"Lovelace","email":"ada@example.com"}`)
+			return err
+		}},
+		{name: "deleteCustomer/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.CustomerDeleteResult](`{"customerId":"customer-1","deleted":true}`)
+			return err
+		}},
+		{name: "getCustomer/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.CustomerProfile](`{"id":"customer-1","firstName":"Ada","lastName":"Lovelace","email":"ada@example.com"}`)
+			return err
+		}},
+		{name: "getPaymentMethod/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.PaymentMethodProfile](`{"id":"payment-method-1","usage":"MULTI_USE"}`)
+			return err
+		}},
+		{name: "getRefund/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.RefundProfile](`{"id":"refund-1","status":"SETTLED"}`)
+			return err
+		}},
 		{name: "getTransaction/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[braintree.TransactionProfile](`{"id":"txn-1","status":"SETTLED"}`)
 			return err
@@ -30,6 +122,75 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetDispute().Definition().Operation.OperationID != "getDispute" {
+		t.Errorf("getDispute mock has another definition")
+	}
+	if mock.SearchDisputes().Definition().Operation.OperationID != "searchDisputes" {
+		t.Errorf("searchDisputes mock has another definition")
+	}
+	if mock.AcceptDispute().Definition().Operation.OperationID != "acceptDispute" {
+		t.Errorf("acceptDispute mock has another definition")
+	}
+	if mock.CreateDisputeTextEvidence().Definition().Operation.OperationID != "createDisputeTextEvidence" {
+		t.Errorf("createDisputeTextEvidence mock has another definition")
+	}
+	if mock.CreateDisputeFileEvidence().Definition().Operation.OperationID != "createDisputeFileEvidence" {
+		t.Errorf("createDisputeFileEvidence mock has another definition")
+	}
+	if mock.DeleteDisputeEvidence().Definition().Operation.OperationID != "deleteDisputeEvidence" {
+		t.Errorf("deleteDisputeEvidence mock has another definition")
+	}
+	if mock.FinalizeDispute().Definition().Operation.OperationID != "finalizeDispute" {
+		t.Errorf("finalizeDispute mock has another definition")
+	}
+	if mock.SearchTransactions().Definition().Operation.OperationID != "searchTransactions" {
+		t.Errorf("searchTransactions mock has another definition")
+	}
+	if mock.ChargePaymentMethod().Definition().Operation.OperationID != "chargePaymentMethod" {
+		t.Errorf("chargePaymentMethod mock has another definition")
+	}
+	if mock.CaptureTransaction().Definition().Operation.OperationID != "captureTransaction" {
+		t.Errorf("captureTransaction mock has another definition")
+	}
+	if mock.VoidTransaction().Definition().Operation.OperationID != "voidTransaction" {
+		t.Errorf("voidTransaction mock has another definition")
+	}
+	if mock.RefundTransaction().Definition().Operation.OperationID != "refundTransaction" {
+		t.Errorf("refundTransaction mock has another definition")
+	}
+	if mock.VaultPaymentMethod().Definition().Operation.OperationID != "vaultPaymentMethod" {
+		t.Errorf("vaultPaymentMethod mock has another definition")
+	}
+	if mock.UpdateCreditCardCardholderName().Definition().Operation.OperationID != "updateCreditCardCardholderName" {
+		t.Errorf("updateCreditCardCardholderName mock has another definition")
+	}
+	if mock.UpdateCreditCardExpirationDate().Definition().Operation.OperationID != "updateCreditCardExpirationDate" {
+		t.Errorf("updateCreditCardExpirationDate mock has another definition")
+	}
+	if mock.UpdateCreditCardBillingAddress().Definition().Operation.OperationID != "updateCreditCardBillingAddress" {
+		t.Errorf("updateCreditCardBillingAddress mock has another definition")
+	}
+	if mock.DeletePaymentMethodFromVault().Definition().Operation.OperationID != "deletePaymentMethodFromVault" {
+		t.Errorf("deletePaymentMethodFromVault mock has another definition")
+	}
+	if mock.CreateCustomer().Definition().Operation.OperationID != "createCustomer" {
+		t.Errorf("createCustomer mock has another definition")
+	}
+	if mock.UpdateCustomer().Definition().Operation.OperationID != "updateCustomer" {
+		t.Errorf("updateCustomer mock has another definition")
+	}
+	if mock.DeleteCustomer().Definition().Operation.OperationID != "deleteCustomer" {
+		t.Errorf("deleteCustomer mock has another definition")
+	}
+	if mock.GetCustomer().Definition().Operation.OperationID != "getCustomer" {
+		t.Errorf("getCustomer mock has another definition")
+	}
+	if mock.GetPaymentMethod().Definition().Operation.OperationID != "getPaymentMethod" {
+		t.Errorf("getPaymentMethod mock has another definition")
+	}
+	if mock.GetRefund().Definition().Operation.OperationID != "getRefund" {
+		t.Errorf("getRefund mock has another definition")
+	}
 	if mock.GetTransaction().Definition().Operation.OperationID != "getTransaction" {
 		t.Errorf("getTransaction mock has another definition")
 	}

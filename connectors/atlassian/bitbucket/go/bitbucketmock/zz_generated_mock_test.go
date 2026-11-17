@@ -16,6 +16,86 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listBranches/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.BranchPage](`{"values":[{"name":"feature/tests","target":{"hash":"0123456789abcdef0123456789abcdef01234567"}}],"page":1,"pagelen":10}`)
+			return err
+		}},
+		{name: "getBranch/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.Branch](`{"name":"feature/tests","target":{"hash":"0123456789abcdef0123456789abcdef01234567"}}`)
+			return err
+		}},
+		{name: "createBranch/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.Branch](`{"name":"feature/tests","target":{"hash":"0123456789abcdef0123456789abcdef01234567"}}`)
+			return err
+		}},
+		{name: "deleteBranch/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.DeletedBranch](`{"workspace":"meridian","repository":"api","name":"feature/tests"}`)
+			return err
+		}},
+		{name: "listPullRequestComments/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequestCommentPage](`{"values":[{"id":3,"content":{"raw":"Looks good"},"deleted":false}],"page":1,"pagelen":10}`)
+			return err
+		}},
+		{name: "getPullRequestComment/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequestComment](`{"id":3,"content":{"raw":"Looks good"},"deleted":false}`)
+			return err
+		}},
+		{name: "createPullRequestComment/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequestComment](`{"id":3,"content":{"raw":"Looks good"},"deleted":false}`)
+			return err
+		}},
+		{name: "updatePullRequestComment/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequestComment](`{"id":3,"content":{"raw":"Looks good"},"deleted":false}`)
+			return err
+		}},
+		{name: "deletePullRequestComment/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.DeletedPullRequestComment](`{"workspace":"meridian","repository":"api","pullRequestId":7,"commentId":3}`)
+			return err
+		}},
+		{name: "resolvePullRequestComment/resolvedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequestComment](`{"id":3,"content":{"raw":"Looks good"},"deleted":false,"resolution":{"created_on":"2026-01-01T00:00:00Z"}}`)
+			return err
+		}},
+		{name: "unresolvePullRequestComment/unresolvedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequestComment](`{"id":3,"content":{"raw":"Looks good"},"deleted":false}`)
+			return err
+		}},
+		{name: "createPullRequest/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequest](`{"id":8,"title":"Add client tests","state":"OPEN"}`)
+			return err
+		}},
+		{name: "mergePullRequest/mergedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequest](`{"id":7,"title":"Add client tests","state":"MERGED"}`)
+			return err
+		}},
+		{name: "declinePullRequest/declinedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequest](`{"id":7,"title":"Add client tests","state":"DECLINED"}`)
+			return err
+		}},
+		{name: "createRepository/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.Repository](`{"uuid":"{a1b2c3d4-1234-4567-89ab-1234567890ab}","name":"Meridian API","full_name":"meridian/api","is_private":true}`)
+			return err
+		}},
+		{name: "updateRepository/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.Repository](`{"uuid":"{a1b2c3d4-1234-4567-89ab-1234567890ab}","name":"Meridian API","full_name":"meridian/api","is_private":true}`)
+			return err
+		}},
+		{name: "deleteRepository/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.DeletedRepository](`{"workspace":"meridian","repository":"api"}`)
+			return err
+		}},
+		{name: "getRepository/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.Repository](`{"uuid":"{a1b2c3d4-1234-4567-89ab-1234567890ab}","name":"Meridian API","full_name":"meridian/api","is_private":true}`)
+			return err
+		}},
+		{name: "getPullRequest/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequest](`{"id":7,"title":"Add client tests","state":"OPEN"}`)
+			return err
+		}},
+		{name: "updatePullRequestTitle/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequest](`{"id":7,"title":"Add client and contract tests","state":"OPEN"}`)
+			return err
+		}},
 		{name: "listRepositories/defaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[bitbucket.RepositoryPage](`{"values":[{"uuid":"{a1b2c3d4-1234-4567-89ab-1234567890ab}","name":"Meridian API","full_name":"meridian/api","is_private":true}],"page":1,"pagelen":10}`)
 			return err
@@ -34,6 +114,66 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListBranches().Definition().Operation.OperationID != "listBranches" {
+		t.Errorf("listBranches mock has another definition")
+	}
+	if mock.GetBranch().Definition().Operation.OperationID != "getBranch" {
+		t.Errorf("getBranch mock has another definition")
+	}
+	if mock.CreateBranch().Definition().Operation.OperationID != "createBranch" {
+		t.Errorf("createBranch mock has another definition")
+	}
+	if mock.DeleteBranch().Definition().Operation.OperationID != "deleteBranch" {
+		t.Errorf("deleteBranch mock has another definition")
+	}
+	if mock.ListPullRequestComments().Definition().Operation.OperationID != "listPullRequestComments" {
+		t.Errorf("listPullRequestComments mock has another definition")
+	}
+	if mock.GetPullRequestComment().Definition().Operation.OperationID != "getPullRequestComment" {
+		t.Errorf("getPullRequestComment mock has another definition")
+	}
+	if mock.CreatePullRequestComment().Definition().Operation.OperationID != "createPullRequestComment" {
+		t.Errorf("createPullRequestComment mock has another definition")
+	}
+	if mock.UpdatePullRequestComment().Definition().Operation.OperationID != "updatePullRequestComment" {
+		t.Errorf("updatePullRequestComment mock has another definition")
+	}
+	if mock.DeletePullRequestComment().Definition().Operation.OperationID != "deletePullRequestComment" {
+		t.Errorf("deletePullRequestComment mock has another definition")
+	}
+	if mock.ResolvePullRequestComment().Definition().Operation.OperationID != "resolvePullRequestComment" {
+		t.Errorf("resolvePullRequestComment mock has another definition")
+	}
+	if mock.UnresolvePullRequestComment().Definition().Operation.OperationID != "unresolvePullRequestComment" {
+		t.Errorf("unresolvePullRequestComment mock has another definition")
+	}
+	if mock.CreatePullRequest().Definition().Operation.OperationID != "createPullRequest" {
+		t.Errorf("createPullRequest mock has another definition")
+	}
+	if mock.MergePullRequest().Definition().Operation.OperationID != "mergePullRequest" {
+		t.Errorf("mergePullRequest mock has another definition")
+	}
+	if mock.DeclinePullRequest().Definition().Operation.OperationID != "declinePullRequest" {
+		t.Errorf("declinePullRequest mock has another definition")
+	}
+	if mock.CreateRepository().Definition().Operation.OperationID != "createRepository" {
+		t.Errorf("createRepository mock has another definition")
+	}
+	if mock.UpdateRepository().Definition().Operation.OperationID != "updateRepository" {
+		t.Errorf("updateRepository mock has another definition")
+	}
+	if mock.DeleteRepository().Definition().Operation.OperationID != "deleteRepository" {
+		t.Errorf("deleteRepository mock has another definition")
+	}
+	if mock.GetRepository().Definition().Operation.OperationID != "getRepository" {
+		t.Errorf("getRepository mock has another definition")
+	}
+	if mock.GetPullRequest().Definition().Operation.OperationID != "getPullRequest" {
+		t.Errorf("getPullRequest mock has another definition")
+	}
+	if mock.UpdatePullRequestTitle().Definition().Operation.OperationID != "updatePullRequestTitle" {
+		t.Errorf("updatePullRequestTitle mock has another definition")
+	}
 	if mock.ListRepositories().Definition().Operation.OperationID != "listRepositories" {
 		t.Errorf("listRepositories mock has another definition")
 	}

@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: braintree
   displayName: Braintree
-  description: Read one Braintree transaction by GraphQL ID.
+  description: Read and manage Braintree customers, payment methods, transactions, and refunds.
   company: Braintree
   categories: [finance-payments]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: braintree
   languages:
@@ -45,6 +45,11 @@ spec:
         type: integer
         description: Maximum complete GraphQL JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for large responses.
         default: 1048576
+      - name: evidenceDirectory
+        goName: EvidenceDirectory
+        type: string
+        description: Absolute worker-mounted directory containing immutable PNG, JPEG, or PDF dispute evidence files. Blank disables file uploads; mount the same directory on every worker and pass each file basename plus SHA-256 digest to createDisputeFileEvidence. Never put file bytes or credentials in Flow input.
+        default: ''
   auth:
     type: apiKey
     connectionKind: braintree-api-key
@@ -63,8 +68,491 @@ spec:
       startURL: https://developer.paypal.com/braintree/articles/control-panel/important-gateway-credentials
       steps:
         - Choose the sandbox or production Control Panel, open the gear icon > API > API Keys, and generate an API key if needed. Copy its Public Key into publicKey and open View under Private Key to copy the secret into privateKey. Blank prevents calls; never mix sandbox and production keys.
-        - Leave baseUrl blank for sandbox, or enter https://payments.braintree-api.com for production. Leave apiVersion, timeout, and maxResponseBytes blank for their displayed defaults. Copy a transaction GraphQL ID from a Braintree API result and enter it as transactionId; blank is invalid. Legacy SDK IDs may differ from GraphQL IDs.
+        - Leave baseUrl blank for sandbox, or enter https://payments.braintree-api.com for production. Leave apiVersion, timeout, and maxResponseBytes blank for their displayed defaults. Copy a transaction, customer, payment method, or refund GraphQL ID from a Braintree API result into the matching operation field; blank is invalid. Legacy SDK IDs may differ from GraphQL IDs.
+        - For customers, open the matching Braintree Control Panel > Customers or use the GraphQL customer result. Supply optional first and last names as plain text and email in address format; blank on create omits contact data, and blank on update clears those fields. Customer IDs are GraphQL IDs from getCustomer or search, not legacy IDs. Delete requires removing vaulted payment methods first and breaks the customer's transaction association. These are personal data, not credentials; Dex Flow results retain customer details. A repeated create may create a second customer because clientMutationId is only a response correlation ID.
+        - For payment methods, start at https://developer.paypal.com/braintree/graphql/guides/payment_methods and obtain a single-use payment method ID from a client tokenization flow; never enter raw card numbers or CVV in Dex. Vault takes that single-use ID and optional GraphQL customer ID; blank customer ID leaves it unassociated. Update and delete require the resulting multi-use GraphQL ID from vaultPaymentMethod or getPaymentMethod. Cardholder name is non-blank plain text; expiration uses MM and YYYY; billing address uses street, city, state, postal code, and two-letter country code. Blank required update fields are invalid. Braintree verifies vault and card updates by default; a repeated request may repeat verification. Deleting a vaulted method is irreversible, and Venmo deletion can revoke its merchant connection.
+        - For transactions, start at https://developer.paypal.com/braintree/graphql/guides/transactions and select a client-tokenized payment method ID, not raw card data. Charge amount is a positive decimal in the merchant account currency, such as 10.00; merchantAccountId is a GraphQL ID from the matching Braintree Control Panel > gear icon > Business > Merchant Accounts, and blank uses the default account. Order ID is non-secret text, maximum 255 characters, and blank omits it. Search by exact GraphQL transaction ID or order ID; first is a page size of 1 through 100 and blank uses the displayed default; after is a cursor from the previous page, blank starts at the first page. Capture and refund take an existing transaction ID, with blank amount applying the full eligible amount; positive partial amounts use the transaction currency. Void only an unsettled transaction. Braintree apiRequestKey is derived from the stable Dex call ID, never supplied manually; repeated financial requests must retain exactly the same input within Braintree's 30-day deduplication window.
+        - For disputes, open the matching Braintree Control Panel > Disputes and select a case, then use its GraphQL dispute ID from getDispute or searchDisputes; the Control Panel case number can differ. Search by exact GraphQL ID or status such as OPEN, with first from 1 through 100 and after from the previous page cursor; blank first uses the default page size and blank after starts at the first page. Accept returns disputed funds to the customer; finalize submits attached evidence to the bank before the case reply-by date. Text evidence category is a Braintree DisputeTextEvidenceCategory enum such as GENERAL and content is a non-blank statement; never put credentials in evidence. Delete evidence requires both dispute and evidence GraphQL IDs. Braintree has no dispute apiRequestKey, so Dex reads back after an unknown send and limits resends. Dispute management requires the account's Control Panel permission.
+        - For file evidence, consult https://developer.paypal.com/braintree/graphql/integration_guides/uploading_files/ and mount one immutable evidenceDirectory on all Workers. Supply a basename only, its lowercase 64-character SHA-256 digest, and a DisputeFileEvidenceCategory such as GENERAL. PNG, JPEG, and PDF files must be no larger than 4 MiB; blank evidenceDirectory disables uploads. File bytes stay on the Worker and are never placed in Flow input. Use apiVersion 2021-06-01 or newer for file uploads when your Braintree schema requires it. No file digest is returned by Braintree, so an unknown outcome may resend up to maxSends and then be uncertain.
   operations:
+    - name: getDispute
+      goName: GetDispute
+      inputType: GetDisputeInput
+      outputType: DisputeProfile
+      kind: query
+      description: Read one dispute and its evidence.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Braintree returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The dispute or evidence was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braintree returned invalid dispute JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample dispute result is returned.
+          output: {id: dispute-1, status: OPEN}
+    - name: searchDisputes
+      goName: SearchDisputes
+      inputType: SearchDisputesInput
+      outputType: DisputesPage
+      kind: query
+      description: Search disputes by ID or status.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: searched, goName: Searched, description: Braintree returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The dispute or evidence was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braintree returned invalid dispute JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: searchedDefault
+          branch: searched
+          default: true
+          description: One sample dispute result is returned.
+          output: {disputes: [{id: dispute-1, status: OPEN}], hasNextPage: false}
+    - name: acceptDispute
+      goName: AcceptDispute
+      inputType: GetDisputeInput
+      outputType: DisputeProfile
+      kind: mutation
+      description: Accept an open dispute.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: accepted, goName: Accepted, description: Braintree returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The dispute or evidence was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The outcome cannot be confirmed after the send cap., optional: true}
+      mocks:
+        - name: acceptedDefault
+          branch: accepted
+          default: true
+          description: One sample dispute result is returned.
+          output: {id: dispute-1, status: ACCEPTED}
+    - name: createDisputeTextEvidence
+      goName: CreateDisputeTextEvidence
+      inputType: CreateDisputeTextEvidenceInput
+      outputType: DisputeTextEvidenceProfile
+      kind: mutation
+      description: Add text evidence to an open dispute.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Braintree returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The dispute or evidence was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The outcome cannot be confirmed after the send cap., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample dispute result is returned.
+          output: {id: evidence-1, category: GENERAL, content: Shipment proof}
+    - name: createDisputeFileEvidence
+      goName: CreateDisputeFileEvidence
+      inputType: CreateDisputeFileEvidenceInput
+      outputType: DisputeEvidenceProfile
+      kind: mutation
+      description: Upload a worker-mounted file as dispute evidence.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Braintree returned the created evidence.}
+        - {id: notFound, goName: NotFound, description: The dispute was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the file., optional: true}
+        - {id: defect, goName: Defect, description: Invalid file or input or credentials., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The outcome cannot be confirmed after the send cap., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample file evidence result is returned.
+          output: {id: evidence-file-1, category: GENERAL}
+    - name: deleteDisputeEvidence
+      goName: DeleteDisputeEvidence
+      inputType: DeleteDisputeEvidenceInput
+      outputType: DisputeEvidenceDeleteResult
+      kind: mutation
+      description: Remove evidence from an open dispute.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Braintree returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The dispute or evidence was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braintree returned invalid dispute JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One sample dispute result is returned.
+          output: {disputeId: dispute-1, evidenceId: evidence-1, deleted: true}
+    - name: finalizeDispute
+      goName: FinalizeDispute
+      inputType: GetDisputeInput
+      outputType: DisputeProfile
+      kind: mutation
+      description: Submit an open dispute and its evidence.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: finalized, goName: Finalized, description: Braintree returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The dispute or evidence was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The outcome cannot be confirmed after the send cap., optional: true}
+      mocks:
+        - name: finalizedDefault
+          branch: finalized
+          default: true
+          description: One sample dispute result is returned.
+          output: {id: dispute-1, status: DISPUTED}
+    - name: searchTransactions
+      goName: SearchTransactions
+      inputType: SearchTransactionsInput
+      outputType: TransactionsPage
+      kind: query
+      description: Search transactions by ID or order ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: searched, goName: Searched, description: Braintree returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The selected resource was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braintree returned invalid search JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: searchedDefault
+          branch: searched
+          default: true
+          description: One sample transaction page is returned.
+          output: {transactions: [{id: txn-1, status: SETTLED}], hasNextPage: false}
+    - name: chargePaymentMethod
+      goName: ChargePaymentMethod
+      inputType: ChargePaymentMethodInput
+      outputType: TransactionProfile
+      kind: mutation
+      description: Charge a payment method with provider deduplication.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: charged, goName: Charged, description: Braintree returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The selected resource was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: chargedDefault
+          branch: charged
+          default: true
+          description: One sample transaction is returned.
+          output: {id: txn-1, status: SUBMITTED_FOR_SETTLEMENT}
+    - name: captureTransaction
+      goName: CaptureTransaction
+      inputType: CaptureTransactionInput
+      outputType: TransactionProfile
+      kind: mutation
+      description: Capture an authorized transaction.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: captured, goName: Captured, description: Braintree returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The selected resource was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: capturedDefault
+          branch: captured
+          default: true
+          description: One sample transaction is returned.
+          output: {id: txn-1, status: SUBMITTED_FOR_SETTLEMENT}
+    - name: voidTransaction
+      goName: VoidTransaction
+      inputType: GetTransactionInput
+      outputType: TransactionProfile
+      kind: mutation
+      description: Void an unsettled transaction.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: voided, goName: Voided, description: Braintree returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The selected resource was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: voidedDefault
+          branch: voided
+          default: true
+          description: One sample transaction is returned.
+          output: {id: txn-1, status: SUBMITTED_FOR_SETTLEMENT}
+    - name: refundTransaction
+      goName: RefundTransaction
+      inputType: RefundTransactionInput
+      outputType: RefundProfile
+      kind: mutation
+      description: Refund a settled transaction.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: refunded, goName: Refunded, description: Braintree returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The selected resource was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: refundedDefault
+          branch: refunded
+          default: true
+          description: One sample refund is returned.
+          output: {id: refund-1, status: SETTLED}
+    - name: vaultPaymentMethod
+      goName: VaultPaymentMethod
+      inputType: VaultPaymentMethodInput
+      outputType: PaymentMethodProfile
+      kind: mutation
+      description: Vault a single-use payment method for repeat use.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: vaulted, goName: Vaulted, description: A vaulted payment method was returned.}
+        - {id: notFound, goName: NotFound, description: The selected payment method was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the mutation., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The outcome cannot be confirmed after the send cap., optional: true}
+      mocks:
+        - name: vaultedDefault
+          branch: vaulted
+          default: true
+          description: One sample payment method is returned.
+          output: {id: payment-method-1, usage: MULTI_USE}
+    - name: updateCreditCardCardholderName
+      goName: UpdateCreditCardCardholderName
+      inputType: UpdateCreditCardCardholderNameInput
+      outputType: PaymentMethodProfile
+      kind: mutation
+      description: Update a vaulted cardholder name with verification.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: updated, goName: Updated, description: The cardholder name was updated.}
+        - {id: notFound, goName: NotFound, description: The selected payment method was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the mutation., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The outcome cannot be confirmed after the send cap., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample payment method is returned.
+          output: {id: payment-method-1, usage: MULTI_USE}
+    - name: updateCreditCardExpirationDate
+      goName: UpdateCreditCardExpirationDate
+      inputType: UpdateCreditCardExpirationDateInput
+      outputType: PaymentMethodProfile
+      kind: mutation
+      description: Update a vaulted card expiration date with verification.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: updated, goName: Updated, description: The expiration date was updated.}
+        - {id: notFound, goName: NotFound, description: The selected payment method was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the mutation., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The outcome cannot be confirmed after the send cap., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample payment method is returned.
+          output: {id: payment-method-1, usage: MULTI_USE}
+    - name: updateCreditCardBillingAddress
+      goName: UpdateCreditCardBillingAddress
+      inputType: UpdateCreditCardBillingAddressInput
+      outputType: PaymentMethodProfile
+      kind: mutation
+      description: Update a vaulted card billing address with verification.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: updated, goName: Updated, description: The billing address was updated.}
+        - {id: notFound, goName: NotFound, description: The selected payment method was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the mutation., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The outcome cannot be confirmed after the send cap., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample payment method is returned.
+          output: {id: payment-method-1, usage: MULTI_USE}
+    - name: deletePaymentMethodFromVault
+      goName: DeletePaymentMethodFromVault
+      inputType: GetPaymentMethodInput
+      outputType: PaymentMethodDeleteResult
+      kind: mutation
+      description: Delete a multi-use payment method from the vault.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The vaulted payment method was deleted.}
+        - {id: notFound, goName: NotFound, description: The payment method was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braintree returned malformed deletion JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One sample payment method is deleted.
+          output: {paymentMethodId: payment-method-1, deleted: true}
+    - name: createCustomer
+      goName: CreateCustomer
+      inputType: CreateCustomerInput
+      outputType: CustomerProfile
+      kind: mutation
+      description: Create a customer with contact details.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Braintree created the customer.}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected creation., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The customer outcome cannot be confirmed after the send cap., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample customer is created.
+          output: {id: customer-1, firstName: Ada, lastName: Lovelace, email: ada@example.com}
+    - name: updateCustomer
+      goName: UpdateCustomer
+      inputType: UpdateCustomerInput
+      outputType: CustomerProfile
+      kind: mutation
+      description: Replace a customer's selected contact details.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Braintree updated the customer.}
+        - {id: notFound, goName: NotFound, description: The customer was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braintree returned malformed customer JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample customer is updated.
+          output: {id: customer-1, firstName: Ada, lastName: Lovelace, email: ada@example.com}
+    - name: deleteCustomer
+      goName: DeleteCustomer
+      inputType: GetCustomerInput
+      outputType: CustomerDeleteResult
+      kind: mutation
+      description: Delete a customer without vaulted payment methods.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Braintree deleted the customer.}
+        - {id: notFound, goName: NotFound, description: The customer was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree rejected deletion because payment methods may remain., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braintree returned malformed deletion JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One sample customer is deleted.
+          output: {customerId: customer-1, deleted: true}
+    - name: getCustomer
+      goName: GetCustomer
+      inputType: GetCustomerInput
+      outputType: CustomerProfile
+      kind: query
+      description: Read a Braintree customer ID, name, and email.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Braintree returned the customer.}
+        - {id: notFound, goName: NotFound, description: The node is absent or has another type., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braintree returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample customer is returned.
+          output: {id: customer-1, firstName: Ada, lastName: Lovelace, email: ada@example.com}
+    - name: getPaymentMethod
+      goName: GetPaymentMethod
+      inputType: GetPaymentMethodInput
+      outputType: PaymentMethodProfile
+      kind: query
+      description: Read a Braintree payment method ID and usage.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Braintree returned the payment method.}
+        - {id: notFound, goName: NotFound, description: The node is absent or has another type., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braintree returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample vaulted payment method is returned.
+          output: {id: payment-method-1, usage: MULTI_USE}
+    - name: getRefund
+      goName: GetRefund
+      inputType: GetRefundInput
+      outputType: RefundProfile
+      kind: query
+      description: Read a Braintree refund ID and status.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Braintree returned the refund.}
+        - {id: notFound, goName: NotFound, description: The node is absent or has another type., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braintree returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample refund is returned.
+          output: {id: refund-1, status: SETTLED}
     - name: getTransaction
       goName: GetTransaction
       inputType: GetTransactionInput
