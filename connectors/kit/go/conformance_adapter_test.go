@@ -27,5 +27,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"createTag":               newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateTag(), reference, scenario.CallID),
 		"tagSubscriber":           newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.TagSubscriber(), reference, scenario.CallID),
 		"removeTagFromSubscriber": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.RemoveTagFromSubscriber(), reference, scenario.CallID),
+		"listCustomFields":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCustomFields(), reference),
+		"createCustomField":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateCustomField(), reference, scenario.CallID),
+		"updateCustomField":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateCustomField(), reference, scenario.CallID),
+		"deleteCustomField":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteCustomField(), reference, scenario.CallID),
 	}}
 }

@@ -198,3 +198,85 @@ spec:
           default: true
           description: A sample tag association was removed.
           output: {tagId: 12, subscriberId: 204, removed: true}
+    - name: listCustomFields
+      goName: ListCustomFields
+      inputType: ListCustomFieldsInput
+      outputType: CustomFieldsPage
+      kind: query
+      description: List one cursor page of subscriber custom fields.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Kit returned a custom-field page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned invalid custom-field JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample custom-field page is returned.
+          output: {customFields: [{id: 8, name: ck_field_8_interests, key: interests, label: Interests}], nextCursor: ''}
+    - name: createCustomField
+      goName: CreateCustomField
+      inputType: CreateCustomFieldInput
+      outputType: CustomFieldMetadata
+      kind: mutation
+      description: Create or reuse a custom field by unique label.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Kit created or reused the field.}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the label., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned invalid custom-field JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample custom field is returned.
+          output: {id: 8, name: ck_field_8_interests, key: interests, label: Interests}
+    - name: updateCustomField
+      goName: UpdateCustomField
+      inputType: UpdateCustomFieldInput
+      outputType: CustomFieldMetadata
+      kind: mutation
+      description: Replace a custom field's label.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Kit updated the field label.}
+        - {id: notFound, goName: NotFound, description: Kit did not find the field., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the label., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned invalid custom-field JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample updated field is returned.
+          output: {id: 8, name: ck_field_8_interests, key: interests, label: Interests}
+    - name: deleteCustomField
+      goName: DeleteCustomField
+      inputType: CustomFieldIDInput
+      outputType: CustomFieldDeletion
+      kind: mutation
+      description: Delete a custom field and its subscriber values.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Kit deleted the field.}
+        - {id: notFound, goName: NotFound, description: Kit did not find the field., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit rejected deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned unexpected deletion data., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample field was deleted.
+          output: {customFieldId: 8, deleted: true}

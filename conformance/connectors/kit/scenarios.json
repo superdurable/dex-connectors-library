@@ -2075,7 +2075,1266 @@
       },
       "name": "removeTagFromSubscriber-notFound",
       "operation": "removeTagFromSubscriber"
-    }
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"custom_fields\":[{\"id\":8,\"name\":\"ck_field_8_interests\",\"key\":\"interests\",\"label\":\"Interests\"}],\"pagination\":{\"has_next_page\":false,\"end_cursor\":\"cursor-2\",\"per_page\":20}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/custom_fields",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "customFields": [
+            {
+              "id": 8,
+              "key": "interests",
+              "label": "Interests",
+              "name": "ck_field_8_interests"
+            }
+          ],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listCustomFields-success",
+      "operation": "listCustomFields"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/custom_fields",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "customFields": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listCustomFields-providerRejected",
+      "operation": "listCustomFields"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"custom_fields\":[{\"id\":8,\"name\":\"ck_field_8_interests\",\"key\":\"interests\",\"label\":\"Interests\"}],\"pagination\":{\"has_next_page\":false,\"end_cursor\":\"cursor-2\",\"per_page\":20}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/custom_fields",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "customFields": [
+            {
+              "id": 8,
+              "key": "interests",
+              "label": "Interests",
+              "name": "ck_field_8_interests"
+            }
+          ],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listCustomFields-invalidResponse",
+      "operation": "listCustomFields"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "customFields": [],
+          "nextCursor": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "",
+        "perPage": 1001
+      },
+      "name": "listCustomFields-defect",
+      "operation": "listCustomFields"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/custom_fields",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listCustomFields-rateLimit",
+      "operation": "listCustomFields"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/custom_fields",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listCustomFields-serverUnavailable",
+      "operation": "listCustomFields"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/custom_fields",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listCustomFields-transportFailure",
+      "operation": "listCustomFields"
+    },
+    {
+      "callId": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+      "exchanges": [
+        {
+          "body": "{\"custom_field\":{\"id\":8,\"name\":\"ck_field_8_interests\",\"key\":\"interests\",\"label\":\"Interests\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/custom_fields",
+          "requestBody": {
+            "label": "Interests"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": 8,
+          "key": "interests",
+          "label": "Interests",
+          "name": "ck_field_8_interests"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+      "input": {
+        "label": "Interests"
+      },
+      "name": "createCustomField-success",
+      "operation": "createCustomField"
+    },
+    {
+      "callId": "cdfb2263-f6f2-5b15-80bb-72c61a255ff6",
+      "exchanges": [
+        {
+          "body": "{\"custom_field\":{\"id\":8,\"name\":\"ck_field_8_interests\",\"key\":\"interests\",\"label\":\"Interests\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/custom_fields/8",
+          "requestBody": {
+            "label": "Interests"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 8,
+          "key": "interests",
+          "label": "Interests",
+          "name": "ck_field_8_interests"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cdfb2263-f6f2-5b15-80bb-72c61a255ff6",
+      "input": {
+        "customFieldId": 8,
+        "label": "Interests"
+      },
+      "name": "updateCustomField-success",
+      "operation": "updateCustomField"
+    },
+    {
+      "callId": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/custom_fields",
+          "requestBody": {
+            "label": "Interests"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "key": "",
+          "label": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+      "input": {
+        "label": "Interests"
+      },
+      "name": "createCustomField-providerRejected",
+      "operation": "createCustomField"
+    },
+    {
+      "callId": "cdfb2263-f6f2-5b15-80bb-72c61a255ff6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/custom_fields/8",
+          "requestBody": {
+            "label": "Interests"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "key": "",
+          "label": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cdfb2263-f6f2-5b15-80bb-72c61a255ff6",
+      "input": {
+        "customFieldId": 8,
+        "label": "Interests"
+      },
+      "name": "updateCustomField-providerRejected",
+      "operation": "updateCustomField"
+    },
+    {
+      "callId": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+      "exchanges": [
+        {
+          "body": "{\"custom_field\":{\"id\":8,\"name\":\"ck_field_8_interests\",\"key\":\"interests\",\"label\":\"Interests\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/custom_fields",
+          "requestBody": {
+            "label": "Interests"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": 8,
+          "key": "interests",
+          "label": "Interests",
+          "name": "ck_field_8_interests"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+      "input": {
+        "label": "Interests"
+      },
+      "name": "createCustomField-invalidResponse",
+      "operation": "createCustomField"
+    },
+    {
+      "callId": "cdfb2263-f6f2-5b15-80bb-72c61a255ff6",
+      "exchanges": [
+        {
+          "body": "{\"custom_field\":{\"id\":8,\"name\":\"ck_field_8_interests\",\"key\":\"interests\",\"label\":\"Interests\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/custom_fields/8",
+          "requestBody": {
+            "label": "Interests"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 8,
+          "key": "interests",
+          "label": "Interests",
+          "name": "ck_field_8_interests"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cdfb2263-f6f2-5b15-80bb-72c61a255ff6",
+      "input": {
+        "customFieldId": 8,
+        "label": "Interests"
+      },
+      "name": "updateCustomField-invalidResponse",
+      "operation": "updateCustomField"
+    },
+    {
+      "callId": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "key": "",
+          "label": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+      "input": {
+        "label": ""
+      },
+      "name": "createCustomField-defect",
+      "operation": "createCustomField"
+    },
+    {
+      "callId": "cdfb2263-f6f2-5b15-80bb-72c61a255ff6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "key": "",
+          "label": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cdfb2263-f6f2-5b15-80bb-72c61a255ff6",
+      "input": {
+        "customFieldId": 0,
+        "label": "Interests"
+      },
+      "name": "updateCustomField-defect",
+      "operation": "updateCustomField"
+    },
+    {
+      "callId": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/custom_fields",
+          "requestBody": {
+            "label": "Interests"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+      "input": {
+        "label": "Interests"
+      },
+      "name": "createCustomField-rateLimit",
+      "operation": "createCustomField"
+    },
+    {
+      "callId": "cdfb2263-f6f2-5b15-80bb-72c61a255ff6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/custom_fields/8",
+          "requestBody": {
+            "label": "Interests"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cdfb2263-f6f2-5b15-80bb-72c61a255ff6",
+      "input": {
+        "customFieldId": 8,
+        "label": "Interests"
+      },
+      "name": "updateCustomField-rateLimit",
+      "operation": "updateCustomField"
+    },
+    {
+      "callId": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/custom_fields",
+          "requestBody": {
+            "label": "Interests"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+      "input": {
+        "label": "Interests"
+      },
+      "name": "createCustomField-serverUnavailable",
+      "operation": "createCustomField"
+    },
+    {
+      "callId": "cdfb2263-f6f2-5b15-80bb-72c61a255ff6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/custom_fields/8",
+          "requestBody": {
+            "label": "Interests"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cdfb2263-f6f2-5b15-80bb-72c61a255ff6",
+      "input": {
+        "customFieldId": 8,
+        "label": "Interests"
+      },
+      "name": "updateCustomField-serverUnavailable",
+      "operation": "updateCustomField"
+    },
+    {
+      "callId": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/custom_fields",
+          "requestBody": {
+            "label": "Interests"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+      "input": {
+        "label": "Interests"
+      },
+      "name": "createCustomField-transportFailure",
+      "operation": "createCustomField"
+    },
+    {
+      "callId": "cdfb2263-f6f2-5b15-80bb-72c61a255ff6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/custom_fields/8",
+          "requestBody": {
+            "label": "Interests"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cdfb2263-f6f2-5b15-80bb-72c61a255ff6",
+      "input": {
+        "customFieldId": 8,
+        "label": "Interests"
+      },
+      "name": "updateCustomField-transportFailure",
+      "operation": "updateCustomField"
+    },
+    {
+      "callId": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/custom_fields/8",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "customFieldId": 8,
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "input": {
+        "customFieldId": 8
+      },
+      "name": "deleteCustomField-success",
+      "operation": "deleteCustomField"
+    },
+    {
+      "callId": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/custom_fields/8",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "customFieldId": 0,
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "input": {
+        "customFieldId": 8
+      },
+      "name": "deleteCustomField-providerRejected",
+      "operation": "deleteCustomField"
+    },
+    {
+      "callId": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/custom_fields/8",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "customFieldId": 0,
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "input": {
+        "customFieldId": 8
+      },
+      "name": "deleteCustomField-invalidResponse",
+      "operation": "deleteCustomField"
+    },
+    {
+      "callId": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "customFieldId": 0,
+          "deleted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "input": {
+        "customFieldId": 0
+      },
+      "name": "deleteCustomField-defect",
+      "operation": "deleteCustomField"
+    },
+    {
+      "callId": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/custom_fields/8",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "input": {
+        "customFieldId": 8
+      },
+      "name": "deleteCustomField-rateLimit",
+      "operation": "deleteCustomField"
+    },
+    {
+      "callId": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/custom_fields/8",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "input": {
+        "customFieldId": 8
+      },
+      "name": "deleteCustomField-serverUnavailable",
+      "operation": "deleteCustomField"
+    },
+    {
+      "callId": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/custom_fields/8",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "input": {
+        "customFieldId": 8
+      },
+      "name": "deleteCustomField-transportFailure",
+      "operation": "deleteCustomField"
+    },
+    {
+      "callId": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/custom_fields/8",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "customFieldId": 0,
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "input": {
+        "customFieldId": 8
+      },
+      "name": "deleteCustomField-notFound",
+      "operation": "deleteCustomField"
+    },
+    {
+      "callId": "cdfb2263-f6f2-5b15-80bb-72c61a255ff6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/custom_fields/8",
+          "requestBody": {
+            "label": "Interests"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "key": "",
+          "label": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cdfb2263-f6f2-5b15-80bb-72c61a255ff6",
+      "input": {
+        "customFieldId": 8,
+        "label": "Interests"
+      },
+      "name": "updateCustomField-notFound",
+      "operation": "updateCustomField"
+    },
+  {
+    "callId": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+    "exchanges": [
+      {
+        "body": "{\"custom_field\":{\"id\":6,\"name\":\"ck_field_6_interests\",\"key\":\"interests\",\"label\":\"Interests\"}}",
+        "headers": {},
+        "keyMode": "absent",
+        "method": "POST",
+        "path": "/custom_fields",
+        "requestBody": {
+          "label": "Interests"
+        },
+        "requestHeaders": {
+          "Accept": [
+            "application/json"
+          ],
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-Kit-Api-Key": [
+            "test-token"
+          ]
+        },
+        "status": 200
+      }
+    ],
+    "expected": {
+      "branch": "created",
+      "failureKind": "",
+      "output": {
+        "id": 6,
+        "name": "ck_field_6_interests",
+        "key": "interests",
+        "label": "Interests"
+      },
+      "requestCount": 1,
+      "retry": false,
+      "retryAfterMs": 0,
+      "uncertain": false
+    },
+    "idempotencyKey": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+    "input": {
+      "label": "Interests"
+    },
+    "name": "createCustomField-existing",
+    "operation": "createCustomField"
+  }
   ],
   "schemaVersion": 1
 }

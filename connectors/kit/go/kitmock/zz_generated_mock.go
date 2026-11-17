@@ -25,6 +25,10 @@ type Mock struct {
 	createTag               *connectormock.Mutation[kit.CreateTagInput, kit.TagMetadata]
 	tagSubscriber           *connectormock.Mutation[kit.TagSubscriberInput, kit.SubscriberMetadata]
 	removeTagFromSubscriber *connectormock.Mutation[kit.TagSubscriberInput, kit.TagRemoval]
+	listCustomFields        *connectormock.Query[kit.ListCustomFieldsInput, kit.CustomFieldsPage]
+	createCustomField       *connectormock.Mutation[kit.CreateCustomFieldInput, kit.CustomFieldMetadata]
+	updateCustomField       *connectormock.Mutation[kit.UpdateCustomFieldInput, kit.CustomFieldMetadata]
+	deleteCustomField       *connectormock.Mutation[kit.CustomFieldIDInput, kit.CustomFieldDeletion]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -39,6 +43,10 @@ func New(t testing.TB, connectionName string) *Mock {
 		createTag:               connectormock.NewMutation[kit.CreateTagInput, kit.TagMetadata](t, kit.CreateTagDefinition),
 		tagSubscriber:           connectormock.NewMutation[kit.TagSubscriberInput, kit.SubscriberMetadata](t, kit.TagSubscriberDefinition),
 		removeTagFromSubscriber: connectormock.NewMutation[kit.TagSubscriberInput, kit.TagRemoval](t, kit.RemoveTagFromSubscriberDefinition),
+		listCustomFields:        connectormock.NewQuery[kit.ListCustomFieldsInput, kit.CustomFieldsPage](t, kit.ListCustomFieldsDefinition),
+		createCustomField:       connectormock.NewMutation[kit.CreateCustomFieldInput, kit.CustomFieldMetadata](t, kit.CreateCustomFieldDefinition),
+		updateCustomField:       connectormock.NewMutation[kit.UpdateCustomFieldInput, kit.CustomFieldMetadata](t, kit.UpdateCustomFieldDefinition),
+		deleteCustomField:       connectormock.NewMutation[kit.CustomFieldIDInput, kit.CustomFieldDeletion](t, kit.DeleteCustomFieldDefinition),
 	}
 	mock.listSubscribers.Default(ListSubscribersDefault())
 	mock.getSubscriber.Default(GetSubscriberDefault())
@@ -47,6 +55,10 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createTag.Default(CreateTagDefault())
 	mock.tagSubscriber.Default(TagSubscriberDefault())
 	mock.removeTagFromSubscriber.Default(RemoveTagFromSubscriberDefault())
+	mock.listCustomFields.Default(ListCustomFieldsDefault())
+	mock.createCustomField.Default(CreateCustomFieldDefault())
+	mock.updateCustomField.Default(UpdateCustomFieldDefault())
+	mock.deleteCustomField.Default(DeleteCustomFieldDefault())
 	connection, err := kit.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "kit", Name: connectionName})
 	if err != nil {
 		t.Fatalf("kit mock connection: %v", err)
@@ -93,6 +105,26 @@ func (mock *Mock) RemoveTagFromSubscriber() *connectormock.Mutation[kit.TagSubsc
 	return mock.removeTagFromSubscriber
 }
 
+// ListCustomFields returns the listCustomFields script.
+func (mock *Mock) ListCustomFields() *connectormock.Query[kit.ListCustomFieldsInput, kit.CustomFieldsPage] {
+	return mock.listCustomFields
+}
+
+// CreateCustomField returns the createCustomField script.
+func (mock *Mock) CreateCustomField() *connectormock.Mutation[kit.CreateCustomFieldInput, kit.CustomFieldMetadata] {
+	return mock.createCustomField
+}
+
+// UpdateCustomField returns the updateCustomField script.
+func (mock *Mock) UpdateCustomField() *connectormock.Mutation[kit.UpdateCustomFieldInput, kit.CustomFieldMetadata] {
+	return mock.updateCustomField
+}
+
+// DeleteCustomField returns the deleteCustomField script.
+func (mock *Mock) DeleteCustomField() *connectormock.Mutation[kit.CustomFieldIDInput, kit.CustomFieldDeletion] {
+	return mock.deleteCustomField
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListSubscribers() sdkgo.Query[kit.ListSubscribersInput, kit.SubscribersPage] {
@@ -115,6 +147,18 @@ func (operations mockOperations) TagSubscriber() sdkgo.Mutation[kit.TagSubscribe
 }
 func (operations mockOperations) RemoveTagFromSubscriber() sdkgo.Mutation[kit.TagSubscriberInput, kit.TagRemoval] {
 	return operations.mock.removeTagFromSubscriber
+}
+func (operations mockOperations) ListCustomFields() sdkgo.Query[kit.ListCustomFieldsInput, kit.CustomFieldsPage] {
+	return operations.mock.listCustomFields
+}
+func (operations mockOperations) CreateCustomField() sdkgo.Mutation[kit.CreateCustomFieldInput, kit.CustomFieldMetadata] {
+	return operations.mock.createCustomField
+}
+func (operations mockOperations) UpdateCustomField() sdkgo.Mutation[kit.UpdateCustomFieldInput, kit.CustomFieldMetadata] {
+	return operations.mock.updateCustomField
+}
+func (operations mockOperations) DeleteCustomField() sdkgo.Mutation[kit.CustomFieldIDInput, kit.CustomFieldDeletion] {
+	return operations.mock.deleteCustomField
 }
 
 // ListSubscribersListed selects the listed branch: Kit returned the selected subscriber page.
@@ -378,4 +422,158 @@ func RemoveTagFromSubscriberRemovedDefault() connectormock.Case[kit.TagRemoval] 
 // RemoveTagFromSubscriberDefault is the manifest default, removedDefault, which New installs.
 func RemoveTagFromSubscriberDefault() connectormock.Case[kit.TagRemoval] {
 	return RemoveTagFromSubscriberRemovedDefault()
+}
+
+// ListCustomFieldsListed selects the listed branch: Kit returned a custom-field page.
+func ListCustomFieldsListed(value kit.CustomFieldsPage, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldsPage] {
+	return connectormock.Branch(kit.ListCustomFieldsBranchListed, value, failure)
+}
+
+// ListCustomFieldsProviderRejected selects the providerRejected branch: Kit rejected the list request.
+func ListCustomFieldsProviderRejected(value kit.CustomFieldsPage, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldsPage] {
+	return connectormock.Branch(kit.ListCustomFieldsBranchProviderRejected, value, failure)
+}
+
+// ListCustomFieldsInvalidResponse selects the invalidResponse branch: Kit returned invalid custom-field JSON.
+func ListCustomFieldsInvalidResponse(value kit.CustomFieldsPage, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldsPage] {
+	return connectormock.Branch(kit.ListCustomFieldsBranchInvalidResponse, value, failure)
+}
+
+// ListCustomFieldsDefect selects the defect branch: Input or credentials are invalid.
+func ListCustomFieldsDefect(value kit.CustomFieldsPage, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldsPage] {
+	return connectormock.Branch(kit.ListCustomFieldsBranchDefect, value, failure)
+}
+
+// ListCustomFieldsRetry asks Dex to retry the listCustomFields Step, after the delay when it is positive.
+func ListCustomFieldsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.CustomFieldsPage] {
+	return connectormock.Retry[kit.CustomFieldsPage](failure, after)
+}
+
+// ListCustomFieldsListedDefault is the manifest mock listedDefault: A sample custom-field page is returned.
+func ListCustomFieldsListedDefault() connectormock.Case[kit.CustomFieldsPage] {
+	value := connectormock.MustDecodeOutput[kit.CustomFieldsPage](`{"customFields":[{"id":8,"name":"ck_field_8_interests","key":"interests","label":"Interests"}],"nextCursor":""}`)
+	return connectormock.Branch(kit.ListCustomFieldsBranchListed, value, nil)
+}
+
+// ListCustomFieldsDefault is the manifest default, listedDefault, which New installs.
+func ListCustomFieldsDefault() connectormock.Case[kit.CustomFieldsPage] {
+	return ListCustomFieldsListedDefault()
+}
+
+// CreateCustomFieldCreated selects the created branch: Kit created or reused the field.
+func CreateCustomFieldCreated(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Branch(kit.CreateCustomFieldBranchCreated, value, failure)
+}
+
+// CreateCustomFieldProviderRejected selects the providerRejected branch: Kit rejected the label.
+func CreateCustomFieldProviderRejected(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Branch(kit.CreateCustomFieldBranchProviderRejected, value, failure)
+}
+
+// CreateCustomFieldInvalidResponse selects the invalidResponse branch: Kit returned invalid custom-field JSON.
+func CreateCustomFieldInvalidResponse(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Branch(kit.CreateCustomFieldBranchInvalidResponse, value, failure)
+}
+
+// CreateCustomFieldDefect selects the defect branch: Input or credentials are invalid.
+func CreateCustomFieldDefect(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Branch(kit.CreateCustomFieldBranchDefect, value, failure)
+}
+
+// CreateCustomFieldRetry asks Dex to retry the createCustomField Step, after the delay when it is positive.
+func CreateCustomFieldRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Retry[kit.CustomFieldMetadata](failure, after)
+}
+
+// CreateCustomFieldCreatedDefault is the manifest mock createdDefault: A sample custom field is returned.
+func CreateCustomFieldCreatedDefault() connectormock.Case[kit.CustomFieldMetadata] {
+	value := connectormock.MustDecodeOutput[kit.CustomFieldMetadata](`{"id":8,"name":"ck_field_8_interests","key":"interests","label":"Interests"}`)
+	return connectormock.Branch(kit.CreateCustomFieldBranchCreated, value, nil)
+}
+
+// CreateCustomFieldDefault is the manifest default, createdDefault, which New installs.
+func CreateCustomFieldDefault() connectormock.Case[kit.CustomFieldMetadata] {
+	return CreateCustomFieldCreatedDefault()
+}
+
+// UpdateCustomFieldUpdated selects the updated branch: Kit updated the field label.
+func UpdateCustomFieldUpdated(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Branch(kit.UpdateCustomFieldBranchUpdated, value, failure)
+}
+
+// UpdateCustomFieldNotFound selects the notFound branch: Kit did not find the field.
+func UpdateCustomFieldNotFound(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Branch(kit.UpdateCustomFieldBranchNotFound, value, failure)
+}
+
+// UpdateCustomFieldProviderRejected selects the providerRejected branch: Kit rejected the label.
+func UpdateCustomFieldProviderRejected(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Branch(kit.UpdateCustomFieldBranchProviderRejected, value, failure)
+}
+
+// UpdateCustomFieldInvalidResponse selects the invalidResponse branch: Kit returned invalid custom-field JSON.
+func UpdateCustomFieldInvalidResponse(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Branch(kit.UpdateCustomFieldBranchInvalidResponse, value, failure)
+}
+
+// UpdateCustomFieldDefect selects the defect branch: Input or credentials are invalid.
+func UpdateCustomFieldDefect(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Branch(kit.UpdateCustomFieldBranchDefect, value, failure)
+}
+
+// UpdateCustomFieldRetry asks Dex to retry the updateCustomField Step, after the delay when it is positive.
+func UpdateCustomFieldRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Retry[kit.CustomFieldMetadata](failure, after)
+}
+
+// UpdateCustomFieldUpdatedDefault is the manifest mock updatedDefault: A sample updated field is returned.
+func UpdateCustomFieldUpdatedDefault() connectormock.Case[kit.CustomFieldMetadata] {
+	value := connectormock.MustDecodeOutput[kit.CustomFieldMetadata](`{"id":8,"name":"ck_field_8_interests","key":"interests","label":"Interests"}`)
+	return connectormock.Branch(kit.UpdateCustomFieldBranchUpdated, value, nil)
+}
+
+// UpdateCustomFieldDefault is the manifest default, updatedDefault, which New installs.
+func UpdateCustomFieldDefault() connectormock.Case[kit.CustomFieldMetadata] {
+	return UpdateCustomFieldUpdatedDefault()
+}
+
+// DeleteCustomFieldDeleted selects the deleted branch: Kit deleted the field.
+func DeleteCustomFieldDeleted(value kit.CustomFieldDeletion, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldDeletion] {
+	return connectormock.Branch(kit.DeleteCustomFieldBranchDeleted, value, failure)
+}
+
+// DeleteCustomFieldNotFound selects the notFound branch: Kit did not find the field.
+func DeleteCustomFieldNotFound(value kit.CustomFieldDeletion, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldDeletion] {
+	return connectormock.Branch(kit.DeleteCustomFieldBranchNotFound, value, failure)
+}
+
+// DeleteCustomFieldProviderRejected selects the providerRejected branch: Kit rejected deletion.
+func DeleteCustomFieldProviderRejected(value kit.CustomFieldDeletion, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldDeletion] {
+	return connectormock.Branch(kit.DeleteCustomFieldBranchProviderRejected, value, failure)
+}
+
+// DeleteCustomFieldInvalidResponse selects the invalidResponse branch: Kit returned unexpected deletion data.
+func DeleteCustomFieldInvalidResponse(value kit.CustomFieldDeletion, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldDeletion] {
+	return connectormock.Branch(kit.DeleteCustomFieldBranchInvalidResponse, value, failure)
+}
+
+// DeleteCustomFieldDefect selects the defect branch: Input or credentials are invalid.
+func DeleteCustomFieldDefect(value kit.CustomFieldDeletion, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldDeletion] {
+	return connectormock.Branch(kit.DeleteCustomFieldBranchDefect, value, failure)
+}
+
+// DeleteCustomFieldRetry asks Dex to retry the deleteCustomField Step, after the delay when it is positive.
+func DeleteCustomFieldRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.CustomFieldDeletion] {
+	return connectormock.Retry[kit.CustomFieldDeletion](failure, after)
+}
+
+// DeleteCustomFieldDeletedDefault is the manifest mock deletedDefault: A sample field was deleted.
+func DeleteCustomFieldDeletedDefault() connectormock.Case[kit.CustomFieldDeletion] {
+	value := connectormock.MustDecodeOutput[kit.CustomFieldDeletion](`{"customFieldId":8,"deleted":true}`)
+	return connectormock.Branch(kit.DeleteCustomFieldBranchDeleted, value, nil)
+}
+
+// DeleteCustomFieldDefault is the manifest default, deletedDefault, which New installs.
+func DeleteCustomFieldDefault() connectormock.Case[kit.CustomFieldDeletion] {
+	return DeleteCustomFieldDeletedDefault()
 }

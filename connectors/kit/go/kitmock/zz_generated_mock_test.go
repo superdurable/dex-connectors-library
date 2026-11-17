@@ -44,6 +44,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[kit.TagRemoval](`{"tagId":12,"subscriberId":204,"removed":true}`)
 			return err
 		}},
+		{name: "listCustomFields/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.CustomFieldsPage](`{"customFields":[{"id":8,"name":"ck_field_8_interests","key":"interests","label":"Interests"}],"nextCursor":""}`)
+			return err
+		}},
+		{name: "createCustomField/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.CustomFieldMetadata](`{"id":8,"name":"ck_field_8_interests","key":"interests","label":"Interests"}`)
+			return err
+		}},
+		{name: "updateCustomField/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.CustomFieldMetadata](`{"id":8,"name":"ck_field_8_interests","key":"interests","label":"Interests"}`)
+			return err
+		}},
+		{name: "deleteCustomField/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.CustomFieldDeletion](`{"customFieldId":8,"deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -74,5 +90,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.RemoveTagFromSubscriber().Definition().Operation.OperationID != "removeTagFromSubscriber" {
 		t.Errorf("removeTagFromSubscriber mock has another definition")
+	}
+	if mock.ListCustomFields().Definition().Operation.OperationID != "listCustomFields" {
+		t.Errorf("listCustomFields mock has another definition")
+	}
+	if mock.CreateCustomField().Definition().Operation.OperationID != "createCustomField" {
+		t.Errorf("createCustomField mock has another definition")
+	}
+	if mock.UpdateCustomField().Definition().Operation.OperationID != "updateCustomField" {
+		t.Errorf("updateCustomField mock has another definition")
+	}
+	if mock.DeleteCustomField().Definition().Operation.OperationID != "deleteCustomField" {
+		t.Errorf("deleteCustomField mock has another definition")
 	}
 }

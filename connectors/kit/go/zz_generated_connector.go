@@ -47,6 +47,10 @@ type Operations interface {
 	CreateTag() sdkgo.Mutation[CreateTagInput, TagMetadata]
 	TagSubscriber() sdkgo.Mutation[TagSubscriberInput, SubscriberMetadata]
 	RemoveTagFromSubscriber() sdkgo.Mutation[TagSubscriberInput, TagRemoval]
+	ListCustomFields() sdkgo.Query[ListCustomFieldsInput, CustomFieldsPage]
+	CreateCustomField() sdkgo.Mutation[CreateCustomFieldInput, CustomFieldMetadata]
+	UpdateCustomField() sdkgo.Mutation[UpdateCustomFieldInput, CustomFieldMetadata]
+	DeleteCustomField() sdkgo.Mutation[CustomFieldIDInput, CustomFieldDeletion]
 }
 
 type clientOperations struct{ client *Client }
@@ -71,6 +75,18 @@ func (operations clientOperations) TagSubscriber() sdkgo.Mutation[TagSubscriberI
 }
 func (operations clientOperations) RemoveTagFromSubscriber() sdkgo.Mutation[TagSubscriberInput, TagRemoval] {
 	return operations.client.RemoveTagFromSubscriber()
+}
+func (operations clientOperations) ListCustomFields() sdkgo.Query[ListCustomFieldsInput, CustomFieldsPage] {
+	return operations.client.ListCustomFields()
+}
+func (operations clientOperations) CreateCustomField() sdkgo.Mutation[CreateCustomFieldInput, CustomFieldMetadata] {
+	return operations.client.CreateCustomField()
+}
+func (operations clientOperations) UpdateCustomField() sdkgo.Mutation[UpdateCustomFieldInput, CustomFieldMetadata] {
+	return operations.client.UpdateCustomField()
+}
+func (operations clientOperations) DeleteCustomField() sdkgo.Mutation[CustomFieldIDInput, CustomFieldDeletion] {
+	return operations.client.DeleteCustomField()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -717,6 +733,302 @@ func NewRemoveTagFromSubscriberStep[IN any](config RemoveTagFromSubscriberStepCo
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(RemoveTagFromSubscriberBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListCustomFieldsBranchListed sdkgo.BranchID = "listed"
+const ListCustomFieldsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCustomFieldsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCustomFieldsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCustomFieldsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCustomFields"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCustomFieldsBranchListed, Description: "Kit returned a custom-field page."},
+		{ID: ListCustomFieldsBranchProviderRejected, Description: "Kit rejected the list request.", Optional: true},
+		{ID: ListCustomFieldsBranchInvalidResponse, Description: "Kit returned invalid custom-field JSON.", Optional: true},
+		{ID: ListCustomFieldsBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCustomFieldsResult = sdkgo.QueryResult[CustomFieldsPage]
+
+type ListCustomFieldsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=kit"`
+	operationID                    struct{}                                            `connector:"operationId=listCustomFields"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCustomFieldsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCustomFieldsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListCustomFieldsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCustomFieldsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCustomFieldsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CustomFieldsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewListCustomFieldsStep[IN any](config ListCustomFieldsStepConfig[IN]) sdkgo.QueryStep[IN, ListCustomFieldsInput, CustomFieldsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("kit connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCustomFieldsInput, CustomFieldsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCustomFields(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCustomFieldsResult] {
+			branches := make([]sdkgo.BranchTarget[ListCustomFieldsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCustomFieldsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCustomFieldsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCustomFieldsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCustomFieldsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateCustomFieldBranchCreated sdkgo.BranchID = "created"
+const CreateCustomFieldBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateCustomFieldBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateCustomFieldBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateCustomFieldDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createCustomField"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateCustomFieldBranchCreated, Description: "Kit created or reused the field."},
+		{ID: CreateCustomFieldBranchProviderRejected, Description: "Kit rejected the label.", Optional: true},
+		{ID: CreateCustomFieldBranchInvalidResponse, Description: "Kit returned invalid custom-field JSON.", Optional: true},
+		{ID: CreateCustomFieldBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CreateCustomFieldResult = sdkgo.MutationResult[CustomFieldMetadata]
+
+type CreateCustomFieldStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=kit"`
+	operationID                       struct{}                                                  `connector:"operationId=createCustomField"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateCustomFieldInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateCustomFieldResult]                     `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateCustomFieldResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreateCustomFieldResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CreateCustomFieldResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CustomFieldMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewCreateCustomFieldStep[IN any](config CreateCustomFieldStepConfig[IN]) sdkgo.MutationStep[IN, CreateCustomFieldInput, CustomFieldMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("kit connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateCustomFieldInput, CustomFieldMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateCustomField(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateCustomFieldResult] {
+			branches := make([]sdkgo.BranchTarget[CreateCustomFieldResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateCustomFieldBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateCustomFieldBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateCustomFieldBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateCustomFieldBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateCustomFieldBranchUpdated sdkgo.BranchID = "updated"
+const UpdateCustomFieldBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateCustomFieldBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateCustomFieldBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateCustomFieldBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateCustomFieldDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateCustomField"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateCustomFieldBranchUpdated, Description: "Kit updated the field label."},
+		{ID: UpdateCustomFieldBranchNotFound, Description: "Kit did not find the field.", Optional: true},
+		{ID: UpdateCustomFieldBranchProviderRejected, Description: "Kit rejected the label.", Optional: true},
+		{ID: UpdateCustomFieldBranchInvalidResponse, Description: "Kit returned invalid custom-field JSON.", Optional: true},
+		{ID: UpdateCustomFieldBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpdateCustomFieldResult = sdkgo.MutationResult[CustomFieldMetadata]
+
+type UpdateCustomFieldStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=kit"`
+	operationID                       struct{}                                                  `connector:"operationId=updateCustomField"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateCustomFieldInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateCustomFieldResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateCustomFieldResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateCustomFieldResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateCustomFieldResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateCustomFieldResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CustomFieldMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateCustomFieldStep[IN any](config UpdateCustomFieldStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCustomFieldInput, CustomFieldMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("kit connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateCustomFieldInput, CustomFieldMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateCustomField(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateCustomFieldResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateCustomFieldResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateCustomFieldBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateCustomFieldBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateCustomFieldBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateCustomFieldBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateCustomFieldBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteCustomFieldBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteCustomFieldBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteCustomFieldBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteCustomFieldBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteCustomFieldBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteCustomFieldDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteCustomField"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteCustomFieldBranchDeleted, Description: "Kit deleted the field."},
+		{ID: DeleteCustomFieldBranchNotFound, Description: "Kit did not find the field.", Optional: true},
+		{ID: DeleteCustomFieldBranchProviderRejected, Description: "Kit rejected deletion.", Optional: true},
+		{ID: DeleteCustomFieldBranchInvalidResponse, Description: "Kit returned unexpected deletion data.", Optional: true},
+		{ID: DeleteCustomFieldBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteCustomFieldResult = sdkgo.MutationResult[CustomFieldDeletion]
+
+type DeleteCustomFieldStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=kit"`
+	operationID                       struct{}                                                  `connector:"operationId=deleteCustomField"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) CustomFieldIDInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteCustomFieldResult]                     `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteCustomFieldResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteCustomFieldResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteCustomFieldResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteCustomFieldResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CustomFieldDeletion]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteCustomFieldStep[IN any](config DeleteCustomFieldStepConfig[IN]) sdkgo.MutationStep[IN, CustomFieldIDInput, CustomFieldDeletion] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("kit connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CustomFieldIDInput, CustomFieldDeletion]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteCustomField(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteCustomFieldResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteCustomFieldResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteCustomFieldBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteCustomFieldBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteCustomFieldBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteCustomFieldBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteCustomFieldBranchDefect))
 			}
 			return branches
 		}(),

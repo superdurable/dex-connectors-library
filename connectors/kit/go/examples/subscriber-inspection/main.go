@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{subscriberinspection.NewFlow(connection), subscriberinspection.NewTagsFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{subscriberinspection.NewFlow(connection), subscriberinspection.NewTagsFlow(connection), subscriberinspection.NewCustomFieldsFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Kit subscriberinspection Flow: %w", err)
 	}

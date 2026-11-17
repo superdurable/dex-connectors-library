@@ -24,7 +24,7 @@ import (
 func TestSubscriberInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := kitmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, NewTagsFlow(mock.Connection())})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, NewTagsFlow(mock.Connection()), NewCustomFieldsFlow(mock.Connection())})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -67,4 +67,16 @@ func TestSubscriberInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, tagsResult.DecodeSingleOutput(&tags))
 	require.Len(t, tags.Tags, 1)
 	require.Len(t, mock.ListTags().Calls(), 1)
+	fieldsFlow := NewCustomFieldsFlow(mock.Connection())
+	fieldsID := "kit-fields-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, fieldsFlow, fieldsID, kit.ListCustomFieldsInput{PerPage: 20}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	fieldsResult, err := client.WaitForFlow(ctx, fieldsID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, fieldsResult.Status, fieldsResult.ErrorMessage)
+	var fields kit.CustomFieldsPage
+	require.NoError(t, fieldsResult.DecodeSingleOutput(&fields))
+	require.Len(t, fields.CustomFields, 1)
+	require.Equal(t, int64(8), fields.CustomFields[0].ID)
+	require.Len(t, mock.ListCustomFields().Calls(), 1)
 }
