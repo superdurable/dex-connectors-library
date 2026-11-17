@@ -81,7 +81,7 @@ export const UpsertObjectBranch = {
 } as const;
 /** HubSpot created the record or updated the record that owns the unique value. */
 export const UpsertObjectBranchUpserted = UpsertObjectBranch.Upserted;
-/** The properties conflict with another record, such as an email that another contact already owns. */
+/** HubSpot's batch answer reports that the properties conflict with another record, such as an email that another contact already owns; an HTTP 409 is retried instead. */
 export const UpsertObjectBranchConflict = UpsertObjectBranch.Conflict;
 /** HubSpot conclusively rejected the upsert, such as an invalid property value, a property that is not unique, a missing scope, a rejected token, or an exhausted daily limit. */
 export const UpsertObjectBranchProviderRejected = UpsertObjectBranch.ProviderRejected;
@@ -94,14 +94,13 @@ export const UpsertObjectDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "upsertObject" },
   branches: [
     { id: "upserted", description: "HubSpot created the record or updated the record that owns the unique value." },
-    { id: "conflict", description: "The properties conflict with another record, such as an email that another contact already owns.", optional: true },
+    { id: "conflict", description: "HubSpot's batch answer reports that the properties conflict with another record, such as an email that another contact already owns; an HTTP 409 is retried instead.", optional: true },
     { id: "providerRejected", description: "HubSpot conclusively rejected the upsert, such as an invalid property value, a property that is not unique, a missing scope, a rejected token, or an exhausted daily limit.", optional: true },
     { id: "invalidResponse", description: "HubSpot applied or rejected the upsert but returned an invalid or oversized response.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
-  repeatOnUnknown: "limited",
-  maxSends: 3,
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for upsertObject. */
 export const UpsertObjectMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -139,8 +138,7 @@ export const UpdateObjectDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
-  repeatOnUnknown: "limited",
-  maxSends: 3,
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updateObject. */
 export const UpdateObjectMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

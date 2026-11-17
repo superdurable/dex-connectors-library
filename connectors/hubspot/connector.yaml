@@ -6,17 +6,17 @@ metadata:
   description: Search, read, upsert, and update HubSpot CRM contacts, companies, and deals, and receive each created or changed record.
   company: HubSpot
   categories: [crm-sales, marketing]
-  version: v0.25.0
+  version: v0.25.1
 spec:
   provider: hubspot
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       package: dex-connector-hubspot
       operations: [searchObjects, getObject, upsertObject, updateObject]
       triggers: [crmObjectChanged]
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: "@superdurable/connector-hubspot"
       operations: [searchObjects, getObject, upsertObject, updateObject]
       triggers: [crmObjectChanged]
@@ -244,13 +244,15 @@ spec:
       idempotency: required
       branches:
         - {id: upserted, goName: Upserted, description: HubSpot created the record or updated the record that owns the unique value.}
-        - {id: conflict, goName: Conflict, description: "The properties conflict with another record, such as an email that another contact already owns.", optional: true}
+        - {id: conflict, goName: Conflict, description: "HubSpot's batch answer reports that the properties conflict with another record, such as an email that another contact already owns; an HTTP 409 is retried instead.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "HubSpot conclusively rejected the upsert, such as an invalid property value, a property that is not unique, a missing scope, a rejected token, or an exhausted daily limit.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: HubSpot applied or rejected the upsert but returned an invalid or oversized response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # A repeated upsert finds the record by its unique property and sets the same values.
+        repeatOnUnknown: safe
       mocks:
         - name: upsertedLead
           branch: upserted
@@ -284,6 +286,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # A repeated update sets the same absolute property values on the same record ID.
+        repeatOnUnknown: safe
       mocks:
         - name: advancedDeal
           branch: updated

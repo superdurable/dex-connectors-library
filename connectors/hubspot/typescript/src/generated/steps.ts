@@ -74,7 +74,7 @@ export interface UpsertObjectStepConfig<StepInput, OperationInput = UpsertObject
   connectionName: string;
   /** HubSpot created the record or updated the record that owns the unique value. */
   upserted: StepTarget<MutationResult<OperationOutput>>;
-  /** The properties conflict with another record, such as an email that another contact already owns. */
+  /** HubSpot's batch answer reports that the properties conflict with another record, such as an email that another contact already owns; an HTTP 409 is retried instead. */
   conflict?: StepTarget<MutationResult<OperationOutput>>;
   /** HubSpot conclusively rejected the upsert, such as an invalid property value, a property that is not unique, a missing scope, a rejected token, or an exhausted daily limit. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;

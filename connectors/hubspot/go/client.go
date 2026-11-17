@@ -144,6 +144,8 @@ type providerOutcome struct {
 	failure     sdkgo.Failure
 	retryAfter  time.Duration
 	receipt     sdkgo.Receipt
+	// statusCode is the HTTP status of the answer, or zero when no answer arrived.
+	statusCode int
 }
 
 // operationBranches names the branch each outcome selects for one operation.
@@ -249,7 +251,9 @@ func (client *Client) exchangeWithContext(ctx context.Context, call sdkgo.Call, 
 	case errors.Is(err, errRequestNotBuilt):
 		return response, client.outcome(outcomeDefect, operation, sdkgo.FailureLocalDefect, "HubSpot request could not be built", receipt)
 	case errors.Is(err, errResponseTooLarge):
-		return response, client.outcome(outcomeInvalidResponse, operation, sdkgo.FailureResponseTooLarge, errResponseTooLarge.Error(), receipt)
+		tooLarge := client.outcome(outcomeInvalidResponse, operation, sdkgo.FailureResponseTooLarge, errResponseTooLarge.Error(), receipt)
+		tooLarge.statusCode = response.statusCode
+		return response, tooLarge
 	case err != nil:
 		return response, client.outcome(outcomeRetry, operation, sdkgo.FailureTransport, "HubSpot did not return a complete response", receipt)
 	case response.statusCode >= 200 && response.statusCode < 300:
@@ -257,6 +261,7 @@ func (client *Client) exchangeWithContext(ctx context.Context, call sdkgo.Call, 
 	}
 	classified := classifyErrorResponse(operation, response, client.now())
 	classified.receipt = receipt
+	classified.statusCode = response.statusCode
 	return response, &classified
 }
 
@@ -436,7 +441,10 @@ func queryAttemptForOutcome[T any](outcome providerOutcome, branches operationBr
 // mutationAttemptForOutcome maps an unsuccessful exchange to Retry or a branch; idempotent writes never select uncertain.
 func mutationAttemptForOutcome[T any](outcome providerOutcome, branches operationBranches) sdkgo.MutationAttempt[T] {
 	var zero T
-	if outcome.disposition == outcomeRetry {
+	// Both writes are repeat-safe, so a status that does not prove a refusal, such as 409, is retried.
+	isUnknownStatus := outcome.statusCode != 0 && (outcome.statusCode < 200 || outcome.statusCode >= 300) &&
+		!isDefiniteRefusalStatus(outcome.statusCode) && outcome.failure.Kind != sdkgo.FailureQuotaExhausted
+	if outcome.disposition == outcomeRetry || isUnknownStatus {
 		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(branches.branchFor(outcome.disposition), zero, &outcome.failure, outcome.receipt)
@@ -455,6 +463,17 @@ func (branches operationBranches) branchFor(disposition outcomeDisposition) sdkg
 	default:
 		return branches.defect
 	}
+}
+
+// isDefiniteRefusalStatus reports a status that proves HubSpot refused a write.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 // preferredBranchOr returns preferred, or fallback when the operation declares no preferred branch.

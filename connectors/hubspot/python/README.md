@@ -1,6 +1,6 @@
 # HubSpot Python connector
 
-This package implements HubSpot CRM search, get, upsert, and update operations for Dex Python Flows and, from 0.2.0, the `crmObjectChanged` poll Trigger at parity with the Go connector. `connector.yaml` defines operation identities, typed Steps, and the private app and OAuth connection contracts. OAuth refresh and shared credential handling are generated from the manifest.
+This package implements HubSpot CRM search, get, upsert, and update operations for Dex Python Flows and, from 0.2.0, the `crmObjectChanged` poll Trigger at parity with the Go connector. From 0.2.1, `upsertObject` and `updateObject` declare `repeatOnUnknown: safe` and retry any HTTP status that does not prove a refusal, including a lasting `409` to an upsert; an update still selects `conflict` for `409`. `connector.yaml` defines operation identities, typed Steps, and the private app and OAuth connection contracts. OAuth refresh and shared credential handling are generated from the manifest.
 
 Use `new_project_connection(project, "hubspot-crm")` to bind the connection configured in Dex Web. The runnable Flow in [`examples/read_contact`](examples/read_contact/) demonstrates the connection and operation-specific Step factory.
 

@@ -38,6 +38,8 @@ export interface ExchangeFailure {
   retryAfterMs: number;
   /** Provider receipt. */
   receipt: ReceiptDraft;
+  /** HTTP status of the provider answer; undefined for a batch error or when no answer arrived. */
+  status?: number;
 }
 
 /** Successful response or classified failure. */
@@ -112,11 +114,11 @@ export class HubSpotClient {
       }
     } catch (error) {
       const receipt = this.receipt(call, error instanceof BodyTooLargeError && error.headers ? { status: error.status ?? 0, headers: error.headers, body: new Uint8Array() } : undefined, objectId);
-      if (error instanceof BodyTooLargeError) return { outcome: this.failure('invalidResponse', operation, 'RESPONSE_TOO_LARGE', 'HubSpot response exceeds the configured size limit', receipt) };
+      if (error instanceof BodyTooLargeError) return { outcome: { ...this.failure('invalidResponse', operation, 'RESPONSE_TOO_LARGE', 'HubSpot response exceeds the configured size limit', receipt), ...(error.status !== undefined ? { status: error.status } : {}) } };
       return { outcome: this.failure('retry', operation, 'TRANSPORT', 'HubSpot did not return a complete response', receipt) };
     }
     if (response.status >= 200 && response.status < 300) return { response };
-    return { outcome: this.classify(operation, response, this.receipt(call, response, objectId)) };
+    return { outcome: { ...this.classify(operation, response, this.receipt(call, response, objectId)), status: response.status } };
   }
 
   private validateCredentials(credentials: Credentials): void {

@@ -440,6 +440,10 @@ func (operation UpdateObjectOperation) Invoke(call sdkgo.Call, input UpdateObjec
 	}
 	request := providerRequest{method: http.MethodPatch, path: objectsPath(input.ObjectType, input.ObjectID), body: body}
 	response, outcome := operation.client.exchange(call, operationID, request, input.ObjectID)
+	if outcome != nil && outcome.disposition == outcomeConflict {
+		// HubSpot's 409 CONFLICT, such as for an email another contact owns, is the only path to conflict.
+		return sdkgo.NewMutationBranch(UpdateObjectBranchConflict, CRMObject{}, &outcome.failure, outcome.receipt)
+	}
 	if outcome != nil {
 		return mutationAttemptForOutcome[CRMObject](*outcome, updateBranches)
 	}

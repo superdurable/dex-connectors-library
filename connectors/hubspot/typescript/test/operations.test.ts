@@ -67,6 +67,24 @@ it('counts Go JSON HTML escaping against the 3000-byte search limit', async () =
   expect(requests).toBe(0);
 });
 
+it('retries a lasting HTTP 409 to an upsert after one resend, and keeps conflict for an update', async () => {
+  let requests = 0;
+  const hubspot = client(async () => { requests++; return { status: 409, headers: {}, body: Buffer.from('{"category":"CONFLICT"}') }; });
+  const upsert = await hubspot.upsertObject().invoke(callFor('upsertObject'), { objectType: 'contacts', idProperty: 'email', idValue: 'ada@example.com' });
+  expect(upsert.kind).toBe('retry');
+  expect(requests).toBe(2);
+  const update = await hubspot.updateObject().invoke(callFor('updateObject'), { objectType: 'contacts', objectId: '501', properties: { email: 'taken@example.com' } });
+  expect(update).toMatchObject({ kind: 'branch', branch: 'conflict' });
+});
+
+it.each([501, 302, 418])('retries a write answered with HTTP %i, which does not prove a refusal', async status => {
+  const hubspot = client(async () => ({ status, headers: {}, body: Buffer.from('{"category":"UNKNOWN"}') }));
+  const update = await hubspot.updateObject().invoke(callFor('updateObject'), { objectType: 'deals', objectId: '9001', properties: { dealstage: 'qualifiedtobuy' } });
+  expect(update.kind).toBe('retry');
+  const upsert = await hubspot.upsertObject().invoke(callFor('upsertObject'), { objectType: 'contacts', idProperty: 'email', idValue: 'ada@example.com' });
+  expect(upsert.kind).toBe('retry');
+});
+
 it('rejects fractional rate interval milliseconds', async () => {
   const hubspot = client(async () => ({ status: 429, headers: { 'x-hubspot-ratelimit-interval-milliseconds': '2000.5' }, body: Buffer.from('{}') }));
   const attempt = await hubspot.searchObjects().invoke(callFor('searchObjects'), { objectType: 'deals' });

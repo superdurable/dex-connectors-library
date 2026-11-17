@@ -509,7 +509,7 @@ var UpsertObjectDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "upsertObject"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpsertObjectBranchUpserted, Description: "HubSpot created the record or updated the record that owns the unique value."},
-		{ID: UpsertObjectBranchConflict, Description: "The properties conflict with another record, such as an email that another contact already owns.", Optional: true},
+		{ID: UpsertObjectBranchConflict, Description: "HubSpot's batch answer reports that the properties conflict with another record, such as an email that another contact already owns; an HTTP 409 is retried instead.", Optional: true},
 		{ID: UpsertObjectBranchProviderRejected, Description: "HubSpot conclusively rejected the upsert, such as an invalid property value, a property that is not unique, a missing scope, a rejected token, or an exhausted daily limit.", Optional: true},
 		{ID: UpsertObjectBranchInvalidResponse, Description: "HubSpot applied or rejected the upsert but returned an invalid or oversized response.", Optional: true},
 		{ID: UpsertObjectBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
@@ -519,8 +519,7 @@ var UpsertObjectDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
-	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
-	MaxSends:        3,
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpsertObjectResult = sdkgo.MutationResult[UpsertedObject]
@@ -542,8 +541,6 @@ type UpsertObjectStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpsertObjectResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpsertedObject]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
-	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
-	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpsertObjectStep[IN any](config UpsertObjectStepConfig[IN]) sdkgo.MutationStep[IN, UpsertObjectInput, UpsertedObject] {
@@ -579,7 +576,6 @@ func NewUpsertObjectStep[IN any](config UpsertObjectStepConfig[IN]) sdkgo.Mutati
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
-		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -605,8 +601,7 @@ var UpdateObjectDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
-	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
-	MaxSends:        3,
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateObjectResult = sdkgo.MutationResult[CRMObject]
@@ -629,8 +624,6 @@ type UpdateObjectStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateObjectResult]                `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CRMObject]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                `connector:"stepOptionsOverride"`
-	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
-	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateObjectStep[IN any](config UpdateObjectStepConfig[IN]) sdkgo.MutationStep[IN, UpdateObjectInput, CRMObject] {
@@ -669,6 +662,5 @@ func NewUpdateObjectStep[IN any](config UpdateObjectStepConfig[IN]) sdkgo.Mutati
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
-		MaxSends:            config.MaxSends,
 	})
 }
