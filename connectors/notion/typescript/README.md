@@ -1,6 +1,6 @@
 # Notion TypeScript connector
 
-`@superdurable/connector-notion@0.2.0` implements Notion's `search`, `queryDatabase`, and `getPage` Queries, `createPage` and `updatePageProperties` Mutations, and, from 0.2.0, the `databaseRowChanged` poll Trigger. It requires `@superdurable/connectors-sdk` 0.12.0 and `@superdurable/dex` 1.45.4 or newer. The manifest generates operation models, Step factories, connection bindings, mock cases, and `dex-connector.json`. Import scripted mocks from `@superdurable/connector-notion/mock`.
+`@superdurable/connector-notion@0.2.1` implements Notion's `search`, `queryDatabase`, and `getPage` Queries, `createPage` and `updatePageProperties` Mutations, and, from 0.2.0, the `databaseRowChanged` poll Trigger. It requires `@superdurable/connectors-sdk` 0.12.0 and `@superdurable/dex` 1.45.4 or newer. The manifest generates operation models, Step factories, connection bindings, mock cases, and `dex-connector.json`. Import scripted mocks from `@superdurable/connector-notion/mock`.
 
 ## Configure a connection
 
