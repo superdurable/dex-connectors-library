@@ -48,9 +48,9 @@ export interface SendTextMessageStepConfig<StepInput, OperationInput = SendTextM
   sent: StepTarget<MutationResult<OperationOutput>>;
   /** Meta definitively rejected the message. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send outcome cannot be confirmed; do not resend blindly. */
+  /** Meta may have accepted the message, but the send cap was reached or Meta returned an incomplete confirmation; do not resend blindly. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
-  /** Local input or credentials are invalid. */
+  /** Local input or credentials are invalid before any send. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
 }
 
@@ -76,9 +76,9 @@ export interface SendTemplateMessageStepConfig<StepInput, OperationInput = SendT
   sent: StepTarget<MutationResult<OperationOutput>>;
   /** Meta definitively rejected the template send. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send outcome cannot be confirmed; do not resend blindly. */
+  /** Meta may have accepted the message, but the send cap was reached or Meta returned an incomplete confirmation; do not resend blindly. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
-  /** Local input or credentials are invalid. */
+  /** Local input or credentials are invalid before any send. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
 }
 

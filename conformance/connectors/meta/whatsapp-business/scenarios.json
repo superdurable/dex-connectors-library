@@ -517,6 +517,7 @@
           "attempt": 1,
           "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
           "providerId": "wamid.example-message",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -575,7 +576,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "messageId": ""
@@ -592,6 +593,148 @@
         "text": "Hello from Dex"
       },
       "name": "sendTextMessage-providerRejected",
+      "operation": "sendTextMessage"
+    },
+    {
+      "attempts": 3,
+      "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"unknown\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "text": {
+              "body": "Hello from Dex",
+              "preview_url": false
+            },
+            "to": "16315551234",
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"error\":{\"message\":\"bad gateway\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "text": {
+              "body": "Hello from Dex",
+              "preview_url": false
+            },
+            "to": "16315551234",
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 502
+        },
+        {
+          "body": "{\"error\":{\"message\":\"unknown\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "text": {
+              "body": "Hello from Dex",
+              "preview_url": false
+            },
+            "to": "16315551234",
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "input": {
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "text": "Hello from Dex"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendTextMessage-uncertain",
       "operation": "sendTextMessage"
     },
     {
@@ -628,11 +771,327 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "input": {
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "text": "Hello from Dex"
+      },
+      "name": "sendTextMessage-unknownOutcomeRetry",
+      "operation": "sendTextMessage"
+    },
+    {
+      "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "text": {
+              "body": "Hello from Dex",
+              "preview_url": false
+            },
+            "to": "16315551234",
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "input": {
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "text": "Hello from Dex"
+      },
+      "name": "sendTextMessage-transportAfter",
+      "operation": "sendTextMessage"
+    },
+    {
+      "attempts": 2,
+      "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"conflict\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "text": {
+              "body": "Hello from Dex",
+              "preview_url": false
+            },
+            "to": "16315551234",
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"messaging_product\":\"whatsapp\",\"messages\":[{\"id\":\"wamid.example-resent\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "text": {
+              "body": "Hello from Dex",
+              "preview_url": false
+            },
+            "to": "16315551234",
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+          "providerId": "wamid.example-resent",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": "wamid.example-resent"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "input": {
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "text": "Hello from Dex"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendTextMessage-unknownOutcomeResendThenSent",
+      "operation": "sendTextMessage"
+    },
+    {
+      "attempts": 2,
+      "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"unknown\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "text": {
+              "body": "Hello from Dex",
+              "preview_url": false
+            },
+            "to": "16315551234",
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"error\":{\"message\":\"denied\",\"code\":100}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "text": {
+              "body": "Hello from Dex",
+              "preview_url": false
+            },
+            "to": "16315551234",
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "input": {
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "text": "Hello from Dex"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendTextMessage-refusedResendUncertain",
+      "operation": "sendTextMessage"
+    },
+    {
+      "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "exchanges": [
+        {
+          "body": "{\"messages\":[{\"id\":\"wamid.example-incomplete\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "text": {
+              "body": "Hello from Dex",
+              "preview_url": false
+            },
+            "to": "16315551234",
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -649,7 +1108,7 @@
         "recipient": "16315551234",
         "text": "Hello from Dex"
       },
-      "name": "sendTextMessage-uncertain",
+      "name": "sendTextMessage-acceptedIncompleteUncertain",
       "operation": "sendTextMessage"
     },
     {
@@ -686,20 +1145,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
           "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "messageId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "dafd56f7-07e7-5223-956d-91714d91663a",
       "input": {
@@ -1045,7 +1502,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "messageId": ""
@@ -1117,6 +1574,7 @@
           "attempt": 1,
           "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
           "providerId": "wamid.example-message",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -1192,7 +1650,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "messageId": ""
@@ -1213,6 +1671,191 @@
         "templateName": "order_update"
       },
       "name": "sendTemplateMessage-providerRejected",
+      "operation": "sendTemplateMessage"
+    },
+    {
+      "attempts": 3,
+      "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"unknown\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "template": {
+              "components": [
+                {
+                  "parameters": [
+                    {
+                      "text": "A123",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "body"
+                }
+              ],
+              "language": {
+                "code": "en_US"
+              },
+              "name": "order_update"
+            },
+            "to": "16315551234",
+            "type": "template"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"error\":{\"message\":\"bad gateway\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "template": {
+              "components": [
+                {
+                  "parameters": [
+                    {
+                      "text": "A123",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "body"
+                }
+              ],
+              "language": {
+                "code": "en_US"
+              },
+              "name": "order_update"
+            },
+            "to": "16315551234",
+            "type": "template"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 502
+        },
+        {
+          "body": "{\"error\":{\"message\":\"unknown\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "template": {
+              "components": [
+                {
+                  "parameters": [
+                    {
+                      "text": "A123",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "body"
+                }
+              ],
+              "language": {
+                "code": "en_US"
+              },
+              "name": "order_update"
+            },
+            "to": "16315551234",
+            "type": "template"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "input": {
+        "bodyParameters": [
+          "A123"
+        ],
+        "languageCode": "en_US",
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "templateName": "order_update"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendTemplateMessage-uncertain",
       "operation": "sendTemplateMessage"
     },
     {
@@ -1262,17 +1905,338 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "input": {
+        "bodyParameters": [
+          "A123"
+        ],
+        "languageCode": "en_US",
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "templateName": "order_update"
+      },
+      "name": "sendTemplateMessage-unknownOutcomeRetry",
+      "operation": "sendTemplateMessage"
+    },
+    {
+      "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "template": {
+              "components": [
+                {
+                  "parameters": [
+                    {
+                      "text": "A123",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "body"
+                }
+              ],
+              "language": {
+                "code": "en_US"
+              },
+              "name": "order_update"
+            },
+            "to": "16315551234",
+            "type": "template"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "input": {
+        "bodyParameters": [
+          "A123"
+        ],
+        "languageCode": "en_US",
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "templateName": "order_update"
+      },
+      "name": "sendTemplateMessage-transportAfter",
+      "operation": "sendTemplateMessage"
+    },
+    {
+      "attempts": 2,
+      "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"timeout\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "template": {
+              "components": [
+                {
+                  "parameters": [
+                    {
+                      "text": "A123",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "body"
+                }
+              ],
+              "language": {
+                "code": "en_US"
+              },
+              "name": "order_update"
+            },
+            "to": "16315551234",
+            "type": "template"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 408
+        },
+        {
+          "body": "{\"messaging_product\":\"whatsapp\",\"messages\":[{\"id\":\"wamid.example-resent\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "template": {
+              "components": [
+                {
+                  "parameters": [
+                    {
+                      "text": "A123",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "body"
+                }
+              ],
+              "language": {
+                "code": "en_US"
+              },
+              "name": "order_update"
+            },
+            "to": "16315551234",
+            "type": "template"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+          "providerId": "wamid.example-resent",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": "wamid.example-resent"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "input": {
+        "bodyParameters": [
+          "A123"
+        ],
+        "languageCode": "en_US",
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "templateName": "order_update"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendTemplateMessage-unknownOutcomeResendThenSent",
+      "operation": "sendTemplateMessage"
+    },
+    {
+      "attempts": 2,
+      "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"unknown\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "template": {
+              "components": [
+                {
+                  "parameters": [
+                    {
+                      "text": "A123",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "body"
+                }
+              ],
+              "language": {
+                "code": "en_US"
+              },
+              "name": "order_update"
+            },
+            "to": "16315551234",
+            "type": "template"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"error\":{\"message\":\"template missing\",\"code\":132001}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "template": {
+              "components": [
+                {
+                  "parameters": [
+                    {
+                      "text": "A123",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "body"
+                }
+              ],
+              "language": {
+                "code": "en_US"
+              },
+              "name": "order_update"
+            },
+            "to": "16315551234",
+            "type": "template"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+          "sendCount": 2,
           "state": "claimed"
         },
         "output": {
           "messageId": ""
         },
-        "requestCount": 1,
+        "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -1287,7 +2251,20 @@
         "recipient": "16315551234",
         "templateName": "order_update"
       },
-      "name": "sendTemplateMessage-uncertain",
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendTemplateMessage-refusedResendUncertain",
       "operation": "sendTemplateMessage"
     },
     {
@@ -1337,20 +2314,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
           "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "messageId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
       "input": {

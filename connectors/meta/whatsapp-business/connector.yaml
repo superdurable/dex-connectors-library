@@ -6,16 +6,16 @@ metadata:
   description: Inspect business phone numbers and send text or template messages through the WhatsApp Cloud API.
   company: Meta
   categories: [communication]
-  version: v0.1.0
+  version: v0.1.1
 spec:
   provider: whatsapp-business
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       operations: [listPhoneNumbers, sendTextMessage, sendTemplateMessage]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       operations: [listPhoneNumbers, sendTextMessage, sendTemplateMessage]
       triggers: []
   codegen:
@@ -85,9 +85,10 @@ spec:
       inputType: SendTextMessageInput
       outputType: SentMessage
       kind: mutation
-      description: Send a plain-text WhatsApp message within the customer service window.
+      description: Send a plain-text WhatsApp message within the customer service window. An unknown outcome resends up to the send cap, so the customer may receive a duplicate.
       idempotency: required
       authorization: required
+      # Sync preserves the single-dispatch heartbeat; the Cloud API has no send idempotency key or read-back.
       execution:
         executeMethodTimeout: 30s
         durability: sync
@@ -95,8 +96,8 @@ spec:
       branches:
         - {id: sent, goName: Sent, description: Meta returned a WhatsApp message ID.}
         - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the message., optional: true}
-        - {id: uncertain, goName: Uncertain, description: The send outcome cannot be confirmed; do not resend blindly., optional: true}
-        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Meta may have accepted the message, but the send cap was reached or Meta returned an incomplete confirmation; do not resend blindly.", optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid before any send., optional: true}
       mocks:
         - name: sentDefault
           branch: sent
@@ -108,9 +109,10 @@ spec:
       inputType: SendTemplateMessageInput
       outputType: SentMessage
       kind: mutation
-      description: Send an approved WhatsApp template, optionally with text body parameters.
+      description: Send an approved WhatsApp template, optionally with text body parameters. An unknown outcome resends up to the send cap, so the customer may receive a duplicate.
       idempotency: required
       authorization: required
+      # Sync preserves the single-dispatch heartbeat; the Cloud API has no send idempotency key or read-back.
       execution:
         executeMethodTimeout: 30s
         durability: sync
@@ -118,8 +120,8 @@ spec:
       branches:
         - {id: sent, goName: Sent, description: Meta returned a WhatsApp message ID.}
         - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the template send., optional: true}
-        - {id: uncertain, goName: Uncertain, description: The send outcome cannot be confirmed; do not resend blindly., optional: true}
-        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Meta may have accepted the message, but the send cap was reached or Meta returned an incomplete confirmation; do not resend blindly.", optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid before any send., optional: true}
       mocks:
         - name: sentDefault
           branch: sent

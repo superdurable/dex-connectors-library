@@ -129,7 +129,7 @@ func SendTextMessageUncertain(value whatsappbusiness.SentMessage, failure sdkgo.
 	return connectormock.Uncertain(value, failure)
 }
 
-// SendTextMessageDefect selects the defect branch: Local input or credentials are invalid.
+// SendTextMessageDefect selects the defect branch: Local input or credentials are invalid before any send.
 func SendTextMessageDefect(value whatsappbusiness.SentMessage, failure *sdkgo.Failure) connectormock.Case[whatsappbusiness.SentMessage] {
 	return connectormock.Branch(whatsappbusiness.SendTextMessageBranchDefect, value, failure)
 }
@@ -165,7 +165,7 @@ func SendTemplateMessageUncertain(value whatsappbusiness.SentMessage, failure sd
 	return connectormock.Uncertain(value, failure)
 }
 
-// SendTemplateMessageDefect selects the defect branch: Local input or credentials are invalid.
+// SendTemplateMessageDefect selects the defect branch: Local input or credentials are invalid before any send.
 func SendTemplateMessageDefect(value whatsappbusiness.SentMessage, failure *sdkgo.Failure) connectormock.Case[whatsappbusiness.SentMessage] {
 	return connectormock.Branch(whatsappbusiness.SendTemplateMessageBranchDefect, value, failure)
 }

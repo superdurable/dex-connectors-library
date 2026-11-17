@@ -1,10 +1,10 @@
 {
   "connectorId": "whatsapp-business",
-  "releaseTag": "connectors/meta/whatsapp-business/go/v0.1.0",
+  "releaseTag": "connectors/meta/whatsapp-business/go/v0.1.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-meta-whatsapp-business",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {
@@ -70,7 +70,7 @@
       "kind": "mutation",
       "operationId": "sendTextMessage",
       "inputType": "SendTextMessageInput",
-      "description": "Send a plain-text WhatsApp message within the customer service window.",
+      "description": "Send a plain-text WhatsApp message within the customer service window. An unknown outcome resends up to the send cap, so the customer may receive a duplicate.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -129,7 +129,7 @@
       "kind": "mutation",
       "operationId": "sendTemplateMessage",
       "inputType": "SendTemplateMessageInput",
-      "description": "Send an approved WhatsApp template, optionally with text body parameters.",
+      "description": "Send an approved WhatsApp template, optionally with text body parameters. An unknown outcome resends up to the send cap, so the customer may receive a duplicate.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

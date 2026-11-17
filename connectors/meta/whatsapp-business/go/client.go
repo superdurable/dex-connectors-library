@@ -126,12 +126,8 @@ func (graphErr graphError) isThrottled() bool {
 	return graphErr.code >= 80000 && graphErr.code <= 80014
 }
 
-// isGraphThrottleResponse reads a bounded error body; unreadable bodies keep status-based handling.
-func isGraphThrottleResponse(response *http.Response, maxResponseBytes int64) bool {
-	body, err := providerhttp.ReadBoundedBody(response.Body, maxResponseBytes)
-	if err != nil {
-		return false
-	}
+// isGraphThrottleBody reports whether an error body carries a Graph throttling code.
+func isGraphThrottleBody(body []byte) bool {
 	graphErr, ok := decodeGraphError(body)
 	return ok && graphErr.isThrottled()
 }
