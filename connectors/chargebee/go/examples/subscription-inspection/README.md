@@ -1,6 +1,6 @@
 # Chargebee subscription inspection Flow
 
-This runnable Flow calls `getSubscription` through the static `chargebee` connection. It persists the selected subscription status in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+This runnable Flow calls `getSubscription`, `listSubscriptions`, and `listEvents` through the static `chargebee` connection. It persists the selected subscription status in an Attribute and exposes it through read-only Dex Web RPCs. Event content is discarded by the connector. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 

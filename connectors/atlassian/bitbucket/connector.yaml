@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: bitbucket
   displayName: Bitbucket
-  description: "Read Bitbucket resources through typed Dex Query Steps."
+  description: "Manage repositories, pull requests, comments, and branches with typed Dex Steps and receive verified Bitbucket webhooks."
   company: Atlassian
   categories: [developer-tools]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: bitbucket
   languages:
@@ -46,14 +46,442 @@ spec:
       - name: access_token
         goName: AccessToken
         type: secretString
-        description: "Secret Bitbucket workspace access token from https://bitbucket.org > workspace Settings > Access tokens > Create access token. Grant Repositories > Read and Pull requests > Read; copy the opaque token once into this secret field. Blank prevents calls."
+        description: "Secret Bitbucket workspace access token from https://bitbucket.org > workspace Settings > Access tokens > Create access token. Grant Repositories Read/Write/Admin/Delete for repository actions and Pull requests Read/Write for PR actions; copy the opaque token once into this secret field. Blank prevents calls."
         required: true
     guide:
       startURL: https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/
       steps:
-        - "Workspace access tokens require Bitbucket Premium. In https://bitbucket.org open the workspace, choose Settings > Workspace settings > Security > Access tokens > Create access token, grant Repositories > Read and Pull requests > Read, then copy the one-time opaque token into access_token. The token is secret and Dex stores it only in this credential field."
+        - "Workspace access tokens require Bitbucket Premium. In https://bitbucket.org open the workspace, choose Settings > Workspace settings > Security > Access tokens > Create access token, grant Repositories Read/Write/Admin/Delete for repository actions and Pull requests Read/Write for PR actions, then copy the one-time opaque token into access_token. The token is secret and Dex stores it only in this credential field."
         - "Set baseUrl, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
+        - "Find the workspace slug in the Bitbucket workspace URL and repository slug in the repository URL. For creation, choose a unique non-secret slug, a display name, and an explicit private/public setting; blank slugs or names are invalid. Bitbucket uses git and assigns its oldest workspace project when none is selected. Repository delete needs the Repositories Delete token permission."
+        - "For pull requests, open https://bitbucket.org > workspace > repository > Branches to find source and destination branch names; supply both non-secret names and a non-blank title. Find the positive pull request ID at repository > Pull requests > selected pull request, in its URL. Blank branch names or IDs are invalid. Pull requests Write permits creation, merge, and decline."
+        - "For comments, open https://bitbucket.org > workspace > repository > Pull requests > selected request > Comments. Use Markdown text in raw; blank is invalid, and the text is not a credential. Find commentId in the selected comment's URL anchor or the Bitbucket comment API response. Pull requests Write permits comment create, update, delete, resolve, and reopen."
+        - "For branches, open https://bitbucket.org > workspace > repository > Branches to find a non-secret branch name without refs/heads/. Find the full 40-character hex target commit hash under repository > Commits > selected commit; blank or abbreviated hashes are invalid for create. Repositories Write permits branch create and delete."
+        - "For events, open https://bitbucket.org > workspace > repository > Repository settings > Webhooks > Add webhook, or workspace > Workspace settings > Webhooks. Enter the application's public HTTPS endpoint URL, choose the desired events, and generate a secret. Pass the same secret to the Go client through WithWebhookSecret; it stays outside Dex connection credentials and Flow input. The URL must accept POST and be publicly reachable; a blank secret leaves the Trigger unavailable."
+  triggers:
+    - name: repositoryEventReceived
+      goName: RepositoryEventReceived
+      eventType: RepositoryEvent
+      configurationType: RepositoryEventReceivedTriggerConfiguration
+      description: Receive HMAC-verified repository or workspace webhooks as identifier-only events.
   operations:
+    - name: listBranches
+      goName: ListBranches
+      inputType: ListBranchesInput
+      outputType: BranchPage
+      kind: query
+      description: List Branches in a Bitbucket repository.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Bitbucket returned the requested branch state.}
+        - {id: notFound, goName: NotFound, description: The repository or branch was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket rejected the branch request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample branch outcome is returned.
+          output: {values: [{name: feature/tests, target: {hash: '0123456789abcdef0123456789abcdef01234567'}}], page: 1, pagelen: 10}
+    - name: getBranch
+      goName: GetBranch
+      inputType: BranchRefInput
+      outputType: Branch
+      kind: query
+      description: Get Branch in a Bitbucket repository.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Bitbucket returned the requested branch state.}
+        - {id: notFound, goName: NotFound, description: The repository or branch was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket rejected the branch request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample branch outcome is returned.
+          output: {name: feature/tests, target: {hash: '0123456789abcdef0123456789abcdef01234567'}}
+    - name: createBranch
+      goName: CreateBranch
+      inputType: CreateBranchInput
+      outputType: Branch
+      kind: mutation
+      description: Create Branch in a Bitbucket repository.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Bitbucket returned the requested branch state.}
+        - {id: notFound, goName: NotFound, description: The repository or branch was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket rejected the branch request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample branch outcome is returned.
+          output: {name: feature/tests, target: {hash: '0123456789abcdef0123456789abcdef01234567'}}
+    - name: deleteBranch
+      goName: DeleteBranch
+      inputType: BranchRefInput
+      outputType: DeletedBranch
+      kind: mutation
+      description: Delete Branch in a Bitbucket repository.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Bitbucket returned the requested branch state.}
+        - {id: notFound, goName: NotFound, description: The repository or branch was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket rejected the branch request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample branch outcome is returned.
+          output: {workspace: meridian, repository: api, name: feature/tests}
+    - name: listPullRequestComments
+      goName: ListPullRequestComments
+      inputType: PullRequestActionInput
+      outputType: PullRequestCommentPage
+      kind: query
+      description: List comments on a pull request.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Bitbucket returned the requested comment state.}
+        - {id: notFound, goName: NotFound, description: The pull request or comment was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket rejected the comment request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample comment outcome is returned.
+          output: {values: [{id: 3, content: {raw: Looks good}, deleted: false}], page: 1, pagelen: 10}
+    - name: getPullRequestComment
+      goName: GetPullRequestComment
+      inputType: PullRequestCommentIDInput
+      outputType: PullRequestComment
+      kind: query
+      description: Read one pull request comment.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Bitbucket returned the requested comment state.}
+        - {id: notFound, goName: NotFound, description: The pull request or comment was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket rejected the comment request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample comment outcome is returned.
+          output: {id: 3, content: {raw: Looks good}, deleted: false}
+    - name: createPullRequestComment
+      goName: CreatePullRequestComment
+      inputType: CreatePullRequestCommentInput
+      outputType: PullRequestComment
+      kind: mutation
+      description: Create a pull request comment.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Bitbucket returned the requested comment state.}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket rejected the comment request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: An earlier comment create could not be confirmed., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample comment outcome is returned.
+          output: {id: 3, content: {raw: Looks good}, deleted: false}
+    - name: updatePullRequestComment
+      goName: UpdatePullRequestComment
+      inputType: UpdatePullRequestCommentInput
+      outputType: PullRequestComment
+      kind: mutation
+      description: Replace pull request comment text.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Bitbucket returned the requested comment state.}
+        - {id: notFound, goName: NotFound, description: The pull request or comment was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket rejected the comment request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample comment outcome is returned.
+          output: {id: 3, content: {raw: Looks good}, deleted: false}
+    - name: deletePullRequestComment
+      goName: DeletePullRequestComment
+      inputType: PullRequestCommentIDInput
+      outputType: DeletedPullRequestComment
+      kind: mutation
+      description: Delete a pull request comment.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Bitbucket returned the requested comment state.}
+        - {id: notFound, goName: NotFound, description: The pull request or comment was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket rejected the comment request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample comment outcome is returned.
+          output: {workspace: meridian, repository: api, pullRequestId: 7, commentId: 3}
+    - name: resolvePullRequestComment
+      goName: ResolvePullRequestComment
+      inputType: PullRequestCommentIDInput
+      outputType: PullRequestComment
+      kind: mutation
+      description: Resolve a pull request comment.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: resolved, goName: Resolved, description: Bitbucket returned the requested comment state.}
+        - {id: notFound, goName: NotFound, description: The pull request or comment was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket rejected the comment request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: resolvedDefault
+          branch: resolved
+          default: true
+          description: A sample comment outcome is returned.
+          output: {id: 3, content: {raw: Looks good}, deleted: false, resolution: {created_on: '2026-01-01T00:00:00Z'}}
+    - name: unresolvePullRequestComment
+      goName: UnresolvePullRequestComment
+      inputType: PullRequestCommentIDInput
+      outputType: PullRequestComment
+      kind: mutation
+      description: Reopen a resolved pull request comment.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: unresolved, goName: Unresolved, description: Bitbucket returned the requested comment state.}
+        - {id: notFound, goName: NotFound, description: The pull request or comment was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket rejected the comment request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: unresolvedDefault
+          branch: unresolved
+          default: true
+          description: A sample comment outcome is returned.
+          output: {id: 3, content: {raw: Looks good}, deleted: false}
+    - name: createPullRequest
+      goName: CreatePullRequest
+      inputType: CreatePullRequestInput
+      outputType: PullRequest
+      kind: mutation
+      description: Create a pull request between two branches of one repository.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Bitbucket created the pull request.}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: An earlier creation could not be confirmed., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A new open pull request is returned.
+          output: {id: 8, title: Add client tests, state: OPEN}
+    - name: mergePullRequest
+      goName: MergePullRequest
+      inputType: PullRequestActionInput
+      outputType: PullRequest
+      kind: mutation
+      description: Merge an open pull request into its destination branch.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: merged, goName: Merged, description: Bitbucket returned a merged pull request.}
+        - {id: notFound, goName: NotFound, description: The pull request does not exist or is not visible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket conclusively rejected merging., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: mergedDefault
+          branch: merged
+          default: true
+          description: The pull request is merged.
+          output: {id: 7, title: Add client tests, state: MERGED}
+    - name: declinePullRequest
+      goName: DeclinePullRequest
+      inputType: PullRequestActionInput
+      outputType: PullRequest
+      kind: mutation
+      description: Decline an open pull request.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: declined, goName: Declined, description: Bitbucket returned a declined pull request.}
+        - {id: notFound, goName: NotFound, description: The pull request does not exist or is not visible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket conclusively rejected declining., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: declinedDefault
+          branch: declined
+          default: true
+          description: The pull request is declined.
+          output: {id: 7, title: Add client tests, state: DECLINED}
+    - name: createRepository
+      goName: CreateRepository
+      inputType: CreateRepositoryInput
+      outputType: Repository
+      kind: mutation
+      description: Create a private Bitbucket repository under a workspace.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Bitbucket returned the requested repository state.}
+        - {id: notFound, goName: NotFound, description: The repository does not exist or is not visible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket conclusively rejected the repository request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local repository input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample repository state is returned.
+          output: {uuid: "{a1b2c3d4-1234-4567-89ab-1234567890ab}", name: Meridian API, full_name: meridian/api, is_private: true}
+    - name: updateRepository
+      goName: UpdateRepository
+      inputType: UpdateRepositoryInput
+      outputType: Repository
+      kind: mutation
+      description: Replace a repository's name and visibility.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Bitbucket returned the requested repository state.}
+        - {id: notFound, goName: NotFound, description: The repository does not exist or is not visible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket conclusively rejected the repository request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local repository input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample repository state is returned.
+          output: {uuid: "{a1b2c3d4-1234-4567-89ab-1234567890ab}", name: Meridian API, full_name: meridian/api, is_private: true}
+    - name: deleteRepository
+      goName: DeleteRepository
+      inputType: DeleteRepositoryInput
+      outputType: DeletedRepository
+      kind: mutation
+      description: Delete a repository by workspace and slug.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Bitbucket returned the requested repository state.}
+        - {id: notFound, goName: NotFound, description: The repository does not exist or is not visible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket conclusively rejected the repository request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local repository input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample repository state is returned.
+          output: {workspace: meridian, repository: api}
+
+    - name: getRepository
+      goName: GetRepository
+      inputType: GetRepositoryInput
+      outputType: Repository
+      kind: query
+      description: Read one repository by workspace and repository slug.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Bitbucket returned the repository.}
+        - {id: notFound, goName: NotFound, description: The repository does not exist or is not visible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample private repository is returned.
+          output: {uuid: '{a1b2c3d4-1234-4567-89ab-1234567890ab}', name: Meridian API, full_name: meridian/api, is_private: true}
+    - name: getPullRequest
+      goName: GetPullRequest
+      inputType: GetPullRequestInput
+      outputType: PullRequest
+      kind: query
+      description: Read one pull request by workspace, repository, and numeric ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Bitbucket returned the pull request.}
+        - {id: notFound, goName: NotFound, description: The pull request does not exist or is not visible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One open pull request is returned.
+          output: {id: 7, title: Add client tests, state: OPEN}
+    - name: updatePullRequestTitle
+      goName: UpdatePullRequestTitle
+      inputType: UpdatePullRequestTitleInput
+      outputType: PullRequest
+      kind: mutation
+      description: Replace one pull request title with an absolute value.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Bitbucket returned the pull request with the new title.}
+        - {id: notFound, goName: NotFound, description: The pull request does not exist or is not visible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One pull request has its title replaced.
+          output: {id: 7, title: Add client and contract tests, state: OPEN}
     - name: listRepositories
       goName: ListRepositories
       inputType: ListRepositoriesInput

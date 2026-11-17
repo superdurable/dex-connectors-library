@@ -40,12 +40,16 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	Chat() sdkgo.Query[ChatInput, ChatOutput]
 	Embed() sdkgo.Query[EmbedInput, EmbedOutput]
 	Rerank() sdkgo.Query[RerankInput, RerankOutput]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) Chat() sdkgo.Query[ChatInput, ChatOutput] {
+	return operations.client.Chat()
+}
 func (operations clientOperations) Embed() sdkgo.Query[EmbedInput, EmbedOutput] {
 	return operations.client.Embed()
 }
@@ -188,6 +192,77 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ChatBranchAnswered sdkgo.BranchID = "answered"
+const ChatBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ChatBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ChatBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ChatDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "chat"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ChatBranchAnswered, Description: "Cohere returned a complete text reply."},
+		{ID: ChatBranchProviderRejected, Description: "Cohere conclusively rejected the chat request.", Optional: true},
+		{ID: ChatBranchInvalidResponse, Description: "Cohere returned malformed or oversized chat data.", Optional: true},
+		{ID: ChatBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 3, TotalDuration: time.Duration(300000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+}
+
+type ChatResult = sdkgo.QueryResult[ChatOutput]
+
+type ChatStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=cohere"`
+	operationID                    struct{}                                      `connector:"operationId=chat"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ChatInput                            `connector:"mapToOperationInput"`
+	Answered                       sdkgo.Target[ChatResult]                      `connector:"branch=answered"`
+	ProviderRejected               sdkgo.Target[ChatResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ChatResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ChatResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ChatOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewChatStep[IN any](config ChatStepConfig[IN]) sdkgo.QueryStep[IN, ChatInput, ChatOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("cohere connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ChatInput, ChatOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.Chat(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ChatResult] {
+			branches := make([]sdkgo.BranchTarget[ChatResult], 0, 4)
+			if config.Answered.HasStep() {
+				branches = append(branches, config.Answered.BranchTarget(ChatBranchAnswered))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ChatBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ChatBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ChatBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const EmbedBranchEmbedded sdkgo.BranchID = "embedded"

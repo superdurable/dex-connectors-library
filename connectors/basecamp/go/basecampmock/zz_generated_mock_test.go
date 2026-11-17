@@ -16,6 +16,166 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createProject/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Project](`{"id":"123","name":"Example Project"}`)
+			return err
+		}},
+		{name: "updateProject/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Project](`{"id":"123","name":"Example Project"}`)
+			return err
+		}},
+		{name: "archiveProject/archivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ProjectActionResult](`{"projectId":"123","status":"archived"}`)
+			return err
+		}},
+		{name: "unarchiveProject/activeDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ProjectActionResult](`{"projectId":"123","status":"active"}`)
+			return err
+		}},
+		{name: "trashProject/trashedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ProjectActionResult](`{"projectId":"123","status":"trashed"}`)
+			return err
+		}},
+		{name: "listProjects/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ProjectsPage](`{"projects":[{"id":"123","name":"Example Project"}]}`)
+			return err
+		}},
+		{name: "getProject/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Project](`{"id":"123","name":"Example Project"}`)
+			return err
+		}},
+		{name: "listScheduleEntries/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ScheduleEntriesPage](`{"entries":[{"id":"789","summary":"Example Meeting","startsAt":"2026-11-20T10:00:00Z","endsAt":"2026-11-20T11:00:00Z"}]}`)
+			return err
+		}},
+		{name: "getScheduleEntry/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ScheduleEntry](`{"id":"789","summary":"Example Meeting","startsAt":"2026-11-20T10:00:00Z","endsAt":"2026-11-20T11:00:00Z"}`)
+			return err
+		}},
+		{name: "createScheduleEntry/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ScheduleEntry](`{"id":"789","summary":"Example Meeting","startsAt":"2026-11-20T10:00:00Z","endsAt":"2026-11-20T11:00:00Z"}`)
+			return err
+		}},
+		{name: "updateScheduleEntry/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ScheduleEntry](`{"id":"789","summary":"Example Meeting","startsAt":"2026-11-20T10:00:00Z","endsAt":"2026-11-20T11:00:00Z"}`)
+			return err
+		}},
+		{name: "trashScheduleEntry/trashedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ScheduleEntryActionResult](`{"entryId":"789","status":"trashed"}`)
+			return err
+		}},
+		{name: "listMessages/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.MessagesPage](`{"messages":[{"id":"789","subject":"Example Message","status":"active"}]}`)
+			return err
+		}},
+		{name: "getMessage/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Message](`{"id":"789","subject":"Example Message","status":"active"}`)
+			return err
+		}},
+		{name: "createMessage/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Message](`{"id":"789","subject":"Example Message","status":"drafted"}`)
+			return err
+		}},
+		{name: "updateMessage/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Message](`{"id":"789","subject":"Example Message","status":"active"}`)
+			return err
+		}},
+		{name: "publishMessage/publishedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Message](`{"id":"789","subject":"Example Message","status":"active"}`)
+			return err
+		}},
+		{name: "pinMessage/pinnedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.MessageActionResult](`{"messageId":"789","status":"pinned"}`)
+			return err
+		}},
+		{name: "unpinMessage/unpinnedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.MessageActionResult](`{"messageId":"789","status":"unpinned"}`)
+			return err
+		}},
+		{name: "trashMessage/trashedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.MessageActionResult](`{"messageId":"789","status":"trashed"}`)
+			return err
+		}},
+		{name: "listPeople/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.PeoplePage](`{"people":[{"id":"789","name":"Example Person"}]}`)
+			return err
+		}},
+		{name: "listProjectPeople/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.PeoplePage](`{"people":[{"id":"789","name":"Example Person"}]}`)
+			return err
+		}},
+		{name: "getPerson/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Person](`{"id":"789","name":"Example Person"}`)
+			return err
+		}},
+		{name: "grantProjectAccess/grantedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ProjectPersonAccessResult](`{"projectId":"456","personId":"789","access":"granted"}`)
+			return err
+		}},
+		{name: "revokeProjectAccess/revokedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ProjectPersonAccessResult](`{"projectId":"456","personId":"789","access":"revoked"}`)
+			return err
+		}},
+		{name: "enrollPerson/enrolledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.EnrollmentResult](`{"person":{"id":"789","name":"Example Person"},"status":"created"}`)
+			return err
+		}},
+		{name: "listTodoLists/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoListsPage](`{"todoLists":[{"id":"456","name":"Example List"}]}`)
+			return err
+		}},
+		{name: "getTodoList/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoList](`{"id":"456","name":"Example List"}`)
+			return err
+		}},
+		{name: "createTodoList/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoList](`{"id":"456","name":"Example List"}`)
+			return err
+		}},
+		{name: "updateTodoList/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoList](`{"id":"456","name":"Example List"}`)
+			return err
+		}},
+		{name: "repositionTodoList/repositionedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoListActionResult](`{"todoListId":"456","status":"repositioned"}`)
+			return err
+		}},
+		{name: "trashTodoList/trashedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoListActionResult](`{"todoListId":"456","status":"trashed"}`)
+			return err
+		}},
+		{name: "createTodo/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Todo](`{"id":"321","content":"Example task","completed":false}`)
+			return err
+		}},
+		{name: "updateTodo/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Todo](`{"id":"321","content":"Example task","completed":false}`)
+			return err
+		}},
+		{name: "completeTodo/completedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoActionResult](`{"todoId":"321","status":"completed"}`)
+			return err
+		}},
+		{name: "uncompleteTodo/activeDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoActionResult](`{"todoId":"321","status":"active"}`)
+			return err
+		}},
+		{name: "trashTodo/trashedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoActionResult](`{"todoId":"321","status":"trashed"}`)
+			return err
+		}},
+		{name: "repositionTodo/repositionedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoActionResult](`{"todoId":"321","status":"repositioned"}`)
+			return err
+		}},
+		{name: "listTodos/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodosPage](`{"todos":[{"id":"456","content":"Example task","completed":false}]}`)
+			return err
+		}},
+		{name: "getTodo/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Todo](`{"id":"456","content":"Example task","completed":false}`)
+			return err
+		}},
 		{name: "listAccounts/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[basecamp.AccountsPage](`{"accounts":[{"id":"99999999","company":"Example Company"}],"offset":0,"limit":100,"total":1}`)
 			return err
@@ -30,6 +190,126 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateProject().Definition().Operation.OperationID != "createProject" {
+		t.Errorf("createProject mock has another definition")
+	}
+	if mock.UpdateProject().Definition().Operation.OperationID != "updateProject" {
+		t.Errorf("updateProject mock has another definition")
+	}
+	if mock.ArchiveProject().Definition().Operation.OperationID != "archiveProject" {
+		t.Errorf("archiveProject mock has another definition")
+	}
+	if mock.UnarchiveProject().Definition().Operation.OperationID != "unarchiveProject" {
+		t.Errorf("unarchiveProject mock has another definition")
+	}
+	if mock.TrashProject().Definition().Operation.OperationID != "trashProject" {
+		t.Errorf("trashProject mock has another definition")
+	}
+	if mock.ListProjects().Definition().Operation.OperationID != "listProjects" {
+		t.Errorf("listProjects mock has another definition")
+	}
+	if mock.GetProject().Definition().Operation.OperationID != "getProject" {
+		t.Errorf("getProject mock has another definition")
+	}
+	if mock.ListScheduleEntries().Definition().Operation.OperationID != "listScheduleEntries" {
+		t.Errorf("listScheduleEntries mock has another definition")
+	}
+	if mock.GetScheduleEntry().Definition().Operation.OperationID != "getScheduleEntry" {
+		t.Errorf("getScheduleEntry mock has another definition")
+	}
+	if mock.CreateScheduleEntry().Definition().Operation.OperationID != "createScheduleEntry" {
+		t.Errorf("createScheduleEntry mock has another definition")
+	}
+	if mock.UpdateScheduleEntry().Definition().Operation.OperationID != "updateScheduleEntry" {
+		t.Errorf("updateScheduleEntry mock has another definition")
+	}
+	if mock.TrashScheduleEntry().Definition().Operation.OperationID != "trashScheduleEntry" {
+		t.Errorf("trashScheduleEntry mock has another definition")
+	}
+	if mock.ListMessages().Definition().Operation.OperationID != "listMessages" {
+		t.Errorf("listMessages mock has another definition")
+	}
+	if mock.GetMessage().Definition().Operation.OperationID != "getMessage" {
+		t.Errorf("getMessage mock has another definition")
+	}
+	if mock.CreateMessage().Definition().Operation.OperationID != "createMessage" {
+		t.Errorf("createMessage mock has another definition")
+	}
+	if mock.UpdateMessage().Definition().Operation.OperationID != "updateMessage" {
+		t.Errorf("updateMessage mock has another definition")
+	}
+	if mock.PublishMessage().Definition().Operation.OperationID != "publishMessage" {
+		t.Errorf("publishMessage mock has another definition")
+	}
+	if mock.PinMessage().Definition().Operation.OperationID != "pinMessage" {
+		t.Errorf("pinMessage mock has another definition")
+	}
+	if mock.UnpinMessage().Definition().Operation.OperationID != "unpinMessage" {
+		t.Errorf("unpinMessage mock has another definition")
+	}
+	if mock.TrashMessage().Definition().Operation.OperationID != "trashMessage" {
+		t.Errorf("trashMessage mock has another definition")
+	}
+	if mock.ListPeople().Definition().Operation.OperationID != "listPeople" {
+		t.Errorf("listPeople mock has another definition")
+	}
+	if mock.ListProjectPeople().Definition().Operation.OperationID != "listProjectPeople" {
+		t.Errorf("listProjectPeople mock has another definition")
+	}
+	if mock.GetPerson().Definition().Operation.OperationID != "getPerson" {
+		t.Errorf("getPerson mock has another definition")
+	}
+	if mock.GrantProjectAccess().Definition().Operation.OperationID != "grantProjectAccess" {
+		t.Errorf("grantProjectAccess mock has another definition")
+	}
+	if mock.RevokeProjectAccess().Definition().Operation.OperationID != "revokeProjectAccess" {
+		t.Errorf("revokeProjectAccess mock has another definition")
+	}
+	if mock.EnrollPerson().Definition().Operation.OperationID != "enrollPerson" {
+		t.Errorf("enrollPerson mock has another definition")
+	}
+	if mock.ListTodoLists().Definition().Operation.OperationID != "listTodoLists" {
+		t.Errorf("listTodoLists mock has another definition")
+	}
+	if mock.GetTodoList().Definition().Operation.OperationID != "getTodoList" {
+		t.Errorf("getTodoList mock has another definition")
+	}
+	if mock.CreateTodoList().Definition().Operation.OperationID != "createTodoList" {
+		t.Errorf("createTodoList mock has another definition")
+	}
+	if mock.UpdateTodoList().Definition().Operation.OperationID != "updateTodoList" {
+		t.Errorf("updateTodoList mock has another definition")
+	}
+	if mock.RepositionTodoList().Definition().Operation.OperationID != "repositionTodoList" {
+		t.Errorf("repositionTodoList mock has another definition")
+	}
+	if mock.TrashTodoList().Definition().Operation.OperationID != "trashTodoList" {
+		t.Errorf("trashTodoList mock has another definition")
+	}
+	if mock.CreateTodo().Definition().Operation.OperationID != "createTodo" {
+		t.Errorf("createTodo mock has another definition")
+	}
+	if mock.UpdateTodo().Definition().Operation.OperationID != "updateTodo" {
+		t.Errorf("updateTodo mock has another definition")
+	}
+	if mock.CompleteTodo().Definition().Operation.OperationID != "completeTodo" {
+		t.Errorf("completeTodo mock has another definition")
+	}
+	if mock.UncompleteTodo().Definition().Operation.OperationID != "uncompleteTodo" {
+		t.Errorf("uncompleteTodo mock has another definition")
+	}
+	if mock.TrashTodo().Definition().Operation.OperationID != "trashTodo" {
+		t.Errorf("trashTodo mock has another definition")
+	}
+	if mock.RepositionTodo().Definition().Operation.OperationID != "repositionTodo" {
+		t.Errorf("repositionTodo mock has another definition")
+	}
+	if mock.ListTodos().Definition().Operation.OperationID != "listTodos" {
+		t.Errorf("listTodos mock has another definition")
+	}
+	if mock.GetTodo().Definition().Operation.OperationID != "getTodo" {
+		t.Errorf("getTodo mock has another definition")
+	}
 	if mock.ListAccounts().Definition().Operation.OperationID != "listAccounts" {
 		t.Errorf("listAccounts mock has another definition")
 	}

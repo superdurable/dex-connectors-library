@@ -156,7 +156,7 @@ setattr(new_project_connection, '__module__', 'dex_connectors.basecamp.connectio
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"baseUrl", "timeout", "maxResponseBytes"}:
+    if set(value) - {"baseUrl", "apiBaseUrl", "timeout", "maxResponseBytes"}:
         raise ValueError("Basecamp configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
     if "baseUrl" in value:
@@ -164,6 +164,11 @@ def _decode_config(value: dict[str, Any]) -> Config:
         if not (isinstance(base_url, str)):
             raise ValueError("Basecamp configuration baseUrl has an invalid type")
         config_arguments['base_url'] = base_url
+    if "apiBaseUrl" in value:
+        api_base_url = value["apiBaseUrl"]
+        if not (isinstance(api_base_url, str)):
+            raise ValueError("Basecamp configuration apiBaseUrl has an invalid type")
+        config_arguments['api_base_url'] = api_base_url
     if "timeout" in value:
         timeout = value["timeout"]
         if not (type(timeout) is int):
