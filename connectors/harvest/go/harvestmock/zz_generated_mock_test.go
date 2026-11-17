@@ -58,6 +58,23 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "deleteContact/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[harvest.DeletedContact](`{"id":7001}`); return err }},
+		{name: "listTasks/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.TaskPage](`{"tasks":[{"id":8001,"name":"Planning","isActive":true}]}`)
+			return err
+		}},
+		{name: "getTask/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.TaskRecord](`{"id":8001,"name":"Planning","isActive":true}`)
+			return err
+		}},
+		{name: "createTask/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.TaskRecord](`{"id":8001,"name":"Planning","isActive":true}`)
+			return err
+		}},
+		{name: "updateTask/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.TaskRecord](`{"id":8001,"name":"Planning","isActive":true}`)
+			return err
+		}},
+		{name: "deleteTask/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[harvest.DeletedTask](`{"id":8001}`); return err }},
 		{name: "listUsers/defaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[harvest.UserPage](`{"users":[{"id":6001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com","isActive":true}]}`)
 			return err
@@ -173,6 +190,21 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
 		t.Errorf("deleteContact mock has another definition")
+	}
+	if mock.ListTasks().Definition().Operation.OperationID != "listTasks" {
+		t.Errorf("listTasks mock has another definition")
+	}
+	if mock.GetTask().Definition().Operation.OperationID != "getTask" {
+		t.Errorf("getTask mock has another definition")
+	}
+	if mock.CreateTask().Definition().Operation.OperationID != "createTask" {
+		t.Errorf("createTask mock has another definition")
+	}
+	if mock.UpdateTask().Definition().Operation.OperationID != "updateTask" {
+		t.Errorf("updateTask mock has another definition")
+	}
+	if mock.DeleteTask().Definition().Operation.OperationID != "deleteTask" {
+		t.Errorf("deleteTask mock has another definition")
 	}
 	if mock.ListUsers().Definition().Operation.OperationID != "listUsers" {
 		t.Errorf("listUsers mock has another definition")

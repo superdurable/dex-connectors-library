@@ -11073,6 +11073,1877 @@
       },
       "name": "updateCompany-not-found",
       "operation": "updateCompany"
+    },
+    {
+      "callId": "TASK-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{\"tasks\":[{\"id\":8001,\"name\":\"Planning\",\"billable_by_default\":true,\"default_hourly_rate\":100,\"is_default\":true,\"is_active\":true}],\"links\":{\"next\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "is_active": [
+              "true"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "tasks": [
+            {
+              "billableByDefault": true,
+              "defaultHourlyRate": 100,
+              "id": 8001,
+              "isActive": true,
+              "isDefault": true,
+              "name": "Planning"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "isActive": true,
+        "perPage": 10
+      },
+      "name": "listTasks-success",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "TASK-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "is_active": [
+              "true"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "tasks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "isActive": true,
+        "perPage": 10
+      },
+      "name": "listTasks-rejected",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "TASK-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "is_active": [
+              "true"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "isActive": true,
+        "perPage": 10
+      },
+      "name": "listTasks-rate-limit",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "TASK-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "is_active": [
+              "true"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "isActive": true,
+        "perPage": 10
+      },
+      "name": "listTasks-server-error",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "TASK-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "is_active": [
+              "true"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "isActive": true,
+        "perPage": 10
+      },
+      "name": "listTasks-unavailable",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "TASK-CALL-ID",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "is_active": [
+              "true"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "isActive": true,
+        "perPage": 10
+      },
+      "name": "listTasks-transport",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "TASK-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{\"tasks\":[{\"id\":8001,\"name\":\"Planning\",\"billable_by_default\":true,\"default_hourly_rate\":100,\"is_default\":true,\"is_active\":true}],\"links\":{\"next\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "is_active": [
+              "true"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "tasks": [
+            {
+              "billableByDefault": true,
+              "defaultHourlyRate": 100,
+              "id": 8001,
+              "isActive": true,
+              "isDefault": true,
+              "name": "Planning"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "isActive": true,
+        "perPage": 10
+      },
+      "name": "listTasks-invalid",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "TASK-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{\"id\":8001,\"name\":\"Planning\",\"billable_by_default\":true,\"default_hourly_rate\":100,\"is_default\":true,\"is_active\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/8001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "billableByDefault": true,
+          "defaultHourlyRate": 100,
+          "id": 8001,
+          "isActive": true,
+          "isDefault": true,
+          "name": "Planning"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 8001
+      },
+      "name": "getTask-success",
+      "operation": "getTask"
+    },
+    {
+      "callId": "TASK-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/8001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "billableByDefault": false,
+          "defaultHourlyRate": 0,
+          "id": 0,
+          "isActive": false,
+          "isDefault": false,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 8001
+      },
+      "name": "getTask-rejected",
+      "operation": "getTask"
+    },
+    {
+      "callId": "TASK-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/8001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 8001
+      },
+      "name": "getTask-rate-limit",
+      "operation": "getTask"
+    },
+    {
+      "callId": "TASK-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/8001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 8001
+      },
+      "name": "getTask-server-error",
+      "operation": "getTask"
+    },
+    {
+      "callId": "TASK-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/8001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 8001
+      },
+      "name": "getTask-unavailable",
+      "operation": "getTask"
+    },
+    {
+      "callId": "TASK-CALL-ID",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/8001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 8001
+      },
+      "name": "getTask-transport",
+      "operation": "getTask"
+    },
+    {
+      "callId": "TASK-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/8001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "billableByDefault": false,
+          "defaultHourlyRate": 0,
+          "id": 0,
+          "isActive": false,
+          "isDefault": false,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 8001
+      },
+      "name": "getTask-not-found",
+      "operation": "getTask"
+    },
+    {
+      "callId": "TASK-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{\"id\":8001,\"name\":\"Planning\",\"billable_by_default\":true,\"default_hourly_rate\":100,\"is_default\":true,\"is_active\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/8001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "billableByDefault": true,
+          "defaultHourlyRate": 100,
+          "id": 8001,
+          "isActive": true,
+          "isDefault": true,
+          "name": "Planning"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 8001
+      },
+      "name": "getTask-invalid",
+      "operation": "getTask"
+    },
+    {
+      "callId": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+      "exchanges": [
+        {
+          "body": "{\"id\":8001,\"name\":\"Planning\",\"billable_by_default\":true,\"default_hourly_rate\":100,\"is_default\":true,\"is_active\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks",
+          "requestBody": {
+            "billable_by_default": true,
+            "default_hourly_rate": 100,
+            "is_active": true,
+            "is_default": true,
+            "name": "Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+          "providerId": "8001",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "billableByDefault": true,
+          "defaultHourlyRate": 100,
+          "id": 8001,
+          "isActive": true,
+          "isDefault": true,
+          "name": "Planning"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+      "input": {
+        "billableByDefault": true,
+        "defaultHourlyRate": 100,
+        "isActive": true,
+        "isDefault": true,
+        "name": "Planning"
+      },
+      "name": "createTask-success",
+      "operation": "createTask"
+    },
+    {
+      "callId": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks",
+          "requestBody": {
+            "billable_by_default": true,
+            "default_hourly_rate": 100,
+            "is_active": true,
+            "is_default": true,
+            "name": "Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "billableByDefault": false,
+          "defaultHourlyRate": 0,
+          "id": 0,
+          "isActive": false,
+          "isDefault": false,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+      "input": {
+        "billableByDefault": true,
+        "defaultHourlyRate": 100,
+        "isActive": true,
+        "isDefault": true,
+        "name": "Planning"
+      },
+      "name": "createTask-rejected",
+      "operation": "createTask"
+    },
+    {
+      "callId": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks",
+          "requestBody": {
+            "billable_by_default": true,
+            "default_hourly_rate": 100,
+            "is_active": true,
+            "is_default": true,
+            "name": "Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+      "input": {
+        "billableByDefault": true,
+        "defaultHourlyRate": 100,
+        "isActive": true,
+        "isDefault": true,
+        "name": "Planning"
+      },
+      "name": "createTask-rate-limit",
+      "operation": "createTask"
+    },
+    {
+      "callId": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks",
+          "requestBody": {
+            "billable_by_default": true,
+            "default_hourly_rate": 100,
+            "is_active": true,
+            "is_default": true,
+            "name": "Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+      "input": {
+        "billableByDefault": true,
+        "defaultHourlyRate": 100,
+        "isActive": true,
+        "isDefault": true,
+        "name": "Planning"
+      },
+      "name": "createTask-server-error",
+      "operation": "createTask"
+    },
+    {
+      "callId": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks",
+          "requestBody": {
+            "billable_by_default": true,
+            "default_hourly_rate": 100,
+            "is_active": true,
+            "is_default": true,
+            "name": "Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+      "input": {
+        "billableByDefault": true,
+        "defaultHourlyRate": 100,
+        "isActive": true,
+        "isDefault": true,
+        "name": "Planning"
+      },
+      "name": "createTask-unavailable",
+      "operation": "createTask"
+    },
+    {
+      "callId": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks",
+          "requestBody": {
+            "billable_by_default": true,
+            "default_hourly_rate": 100,
+            "is_active": true,
+            "is_default": true,
+            "name": "Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+      "input": {
+        "billableByDefault": true,
+        "defaultHourlyRate": 100,
+        "isActive": true,
+        "isDefault": true,
+        "name": "Planning"
+      },
+      "name": "createTask-transport",
+      "operation": "createTask"
+    },
+    {
+      "callId": "b0ace265-6804-5fd6-ae33-e277d08c64dc",
+      "exchanges": [
+        {
+          "body": "{\"id\":8001,\"name\":\"Planning\",\"billable_by_default\":true,\"default_hourly_rate\":100,\"is_default\":true,\"is_active\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/tasks/8001",
+          "requestBody": {
+            "billable_by_default": true,
+            "default_hourly_rate": 100,
+            "is_active": true,
+            "is_default": true,
+            "name": "Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "billableByDefault": true,
+          "defaultHourlyRate": 100,
+          "id": 8001,
+          "isActive": true,
+          "isDefault": true,
+          "name": "Planning"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0ace265-6804-5fd6-ae33-e277d08c64dc",
+      "input": {
+        "billableByDefault": true,
+        "defaultHourlyRate": 100,
+        "id": 8001,
+        "isActive": true,
+        "isDefault": true,
+        "name": "Planning"
+      },
+      "name": "updateTask-success",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "b0ace265-6804-5fd6-ae33-e277d08c64dc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/tasks/8001",
+          "requestBody": {
+            "billable_by_default": true,
+            "default_hourly_rate": 100,
+            "is_active": true,
+            "is_default": true,
+            "name": "Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "billableByDefault": false,
+          "defaultHourlyRate": 0,
+          "id": 0,
+          "isActive": false,
+          "isDefault": false,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0ace265-6804-5fd6-ae33-e277d08c64dc",
+      "input": {
+        "billableByDefault": true,
+        "defaultHourlyRate": 100,
+        "id": 8001,
+        "isActive": true,
+        "isDefault": true,
+        "name": "Planning"
+      },
+      "name": "updateTask-rejected",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "b0ace265-6804-5fd6-ae33-e277d08c64dc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/tasks/8001",
+          "requestBody": {
+            "billable_by_default": true,
+            "default_hourly_rate": 100,
+            "is_active": true,
+            "is_default": true,
+            "name": "Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0ace265-6804-5fd6-ae33-e277d08c64dc",
+      "input": {
+        "billableByDefault": true,
+        "defaultHourlyRate": 100,
+        "id": 8001,
+        "isActive": true,
+        "isDefault": true,
+        "name": "Planning"
+      },
+      "name": "updateTask-rate-limit",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "b0ace265-6804-5fd6-ae33-e277d08c64dc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/tasks/8001",
+          "requestBody": {
+            "billable_by_default": true,
+            "default_hourly_rate": 100,
+            "is_active": true,
+            "is_default": true,
+            "name": "Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0ace265-6804-5fd6-ae33-e277d08c64dc",
+      "input": {
+        "billableByDefault": true,
+        "defaultHourlyRate": 100,
+        "id": 8001,
+        "isActive": true,
+        "isDefault": true,
+        "name": "Planning"
+      },
+      "name": "updateTask-server-error",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "b0ace265-6804-5fd6-ae33-e277d08c64dc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/tasks/8001",
+          "requestBody": {
+            "billable_by_default": true,
+            "default_hourly_rate": 100,
+            "is_active": true,
+            "is_default": true,
+            "name": "Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0ace265-6804-5fd6-ae33-e277d08c64dc",
+      "input": {
+        "billableByDefault": true,
+        "defaultHourlyRate": 100,
+        "id": 8001,
+        "isActive": true,
+        "isDefault": true,
+        "name": "Planning"
+      },
+      "name": "updateTask-unavailable",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "b0ace265-6804-5fd6-ae33-e277d08c64dc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/tasks/8001",
+          "requestBody": {
+            "billable_by_default": true,
+            "default_hourly_rate": 100,
+            "is_active": true,
+            "is_default": true,
+            "name": "Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0ace265-6804-5fd6-ae33-e277d08c64dc",
+      "input": {
+        "billableByDefault": true,
+        "defaultHourlyRate": 100,
+        "id": 8001,
+        "isActive": true,
+        "isDefault": true,
+        "name": "Planning"
+      },
+      "name": "updateTask-transport",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "b0ace265-6804-5fd6-ae33-e277d08c64dc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/tasks/8001",
+          "requestBody": {
+            "billable_by_default": true,
+            "default_hourly_rate": 100,
+            "is_active": true,
+            "is_default": true,
+            "name": "Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "billableByDefault": false,
+          "defaultHourlyRate": 0,
+          "id": 0,
+          "isActive": false,
+          "isDefault": false,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0ace265-6804-5fd6-ae33-e277d08c64dc",
+      "input": {
+        "billableByDefault": true,
+        "defaultHourlyRate": 100,
+        "id": 8001,
+        "isActive": true,
+        "isDefault": true,
+        "name": "Planning"
+      },
+      "name": "updateTask-not-found",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "f0e1c3c1-efe9-5a91-963c-30616e742270",
+      "exchanges": [
+        {
+          "body": "{\"id\":8001,\"name\":\"Planning\",\"billable_by_default\":true,\"default_hourly_rate\":100,\"is_default\":true,\"is_active\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tasks/8001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": 8001
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0e1c3c1-efe9-5a91-963c-30616e742270",
+      "input": {
+        "id": 8001
+      },
+      "name": "deleteTask-success",
+      "operation": "deleteTask"
+    },
+    {
+      "callId": "f0e1c3c1-efe9-5a91-963c-30616e742270",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tasks/8001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0e1c3c1-efe9-5a91-963c-30616e742270",
+      "input": {
+        "id": 8001
+      },
+      "name": "deleteTask-rejected",
+      "operation": "deleteTask"
+    },
+    {
+      "callId": "f0e1c3c1-efe9-5a91-963c-30616e742270",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tasks/8001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0e1c3c1-efe9-5a91-963c-30616e742270",
+      "input": {
+        "id": 8001
+      },
+      "name": "deleteTask-rate-limit",
+      "operation": "deleteTask"
+    },
+    {
+      "callId": "f0e1c3c1-efe9-5a91-963c-30616e742270",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tasks/8001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0e1c3c1-efe9-5a91-963c-30616e742270",
+      "input": {
+        "id": 8001
+      },
+      "name": "deleteTask-server-error",
+      "operation": "deleteTask"
+    },
+    {
+      "callId": "f0e1c3c1-efe9-5a91-963c-30616e742270",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tasks/8001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0e1c3c1-efe9-5a91-963c-30616e742270",
+      "input": {
+        "id": 8001
+      },
+      "name": "deleteTask-unavailable",
+      "operation": "deleteTask"
+    },
+    {
+      "callId": "f0e1c3c1-efe9-5a91-963c-30616e742270",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tasks/8001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0e1c3c1-efe9-5a91-963c-30616e742270",
+      "input": {
+        "id": 8001
+      },
+      "name": "deleteTask-transport",
+      "operation": "deleteTask"
+    },
+    {
+      "callId": "f0e1c3c1-efe9-5a91-963c-30616e742270",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tasks/8001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0e1c3c1-efe9-5a91-963c-30616e742270",
+      "input": {
+        "id": 8001
+      },
+      "name": "deleteTask-not-found",
+      "operation": "deleteTask"
+    },
+    {
+      "callId": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "billableByDefault": false,
+          "defaultHourlyRate": 0,
+          "id": 0,
+          "isActive": false,
+          "isDefault": false,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+      "input": {
+        "billableByDefault": true,
+        "defaultHourlyRate": 100,
+        "isActive": true,
+        "isDefault": true,
+        "name": "Planning"
+      },
+      "name": "createTask-send-cap-uncertain",
+      "operation": "createTask",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "da332b9a-9100-5ad0-b76c-82e94e96988d",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

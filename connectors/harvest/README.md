@@ -27,6 +27,7 @@ The TypeScript package is [`@superdurable/connector-harvest`](typescript/README.
 | `listClients`, `getClient`, `createClient`, `updateClient`, `deleteClient` | [Harvest Clients API](https://help.getharvest.com/api-v2/clients-api/clients/clients/) |
 | `listContacts`, `getContact`, `createContact`, `updateContact`, `deleteContact` | [Harvest Contacts API](https://help.getharvest.com/api-v2/clients-api/clients/contacts/) |
 | `getCompany`, `updateCompany` | [Harvest Company API](https://help.getharvest.com/api-v2/company-api/company/company/) |
+| `listTasks`, `getTask`, `createTask`, `updateTask`, `deleteTask` | [Harvest Tasks API](https://help.getharvest.com/api-v2/tasks-api/tasks/tasks/) |
 
 Each operation returns a bounded, typed response. A 404 on a single-resource read selects `notFound`; other definitive 4xx select `providerRejected`; 408, 409, 429, 5xx, and interrupted reads Retry under the default one-hour budget. Malformed and oversized JSON selects `invalidResponse`. Invalid local input or missing credentials selects `defect` before a request. Provider error bodies are not copied into failures.
 
@@ -42,13 +43,15 @@ Both completed time-entry create operations use the limited tier with at most th
 
 `getCompany` reads account settings, and `updateCompany` sets timer style or weekly capacity in seconds with a repeat-safe PATCH. Harvest requires Administrator permissions for these endpoints.
 
+`createTask` uses the limited tier with at most three sends because Harvest does not deduplicate task POSTs. If a possible create remains unconfirmed at the cap, inspect Harvest before creating again. Task updates set absolute fields; archival uses `isActive: false`, and deletion is repeat-safe but Harvest rejects deletion when time entries exist. Task endpoints require Administrator or Manager permissions to create and edit tasks.
+
 ## Mocks
 
 The generated `harvestmock` package includes one default Meridian answer per operation and an invalid-key rejection for each. The defaults describe a consistent set of project, lead, sheet, or file records.
 
 ## Example
 
-The runnable [example](go/examples/harvest-lookup/README.md) registers a Worker and a Flow using the static `harvest` connection. It lists projects, reads the first project's details, lists time entries, reads the first time-entry detail, reads the connected user, lists clients and contacts for the first client, and reads company settings. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
+The runnable [example](go/examples/harvest-lookup/README.md) registers a Worker and a Flow using the static `harvest` connection. It lists projects, reads the first project's details, lists time entries, reads the first time-entry detail, reads the connected user, lists clients and contacts for the first client, reads company settings, and lists tasks. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
 
 ## Live verification
 

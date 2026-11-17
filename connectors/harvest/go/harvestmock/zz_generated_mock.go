@@ -30,6 +30,11 @@ type Mock struct {
 	createContact                    *connectormock.Mutation[harvest.CreateContactInput, harvest.ContactRecord]
 	updateContact                    *connectormock.Mutation[harvest.UpdateContactInput, harvest.ContactRecord]
 	deleteContact                    *connectormock.Mutation[harvest.DeleteContactInput, harvest.DeletedContact]
+	listTasks                        *connectormock.Query[harvest.ListTasksInput, harvest.TaskPage]
+	getTask                          *connectormock.Query[harvest.GetTaskInput, harvest.TaskRecord]
+	createTask                       *connectormock.Mutation[harvest.CreateTaskInput, harvest.TaskRecord]
+	updateTask                       *connectormock.Mutation[harvest.UpdateTaskInput, harvest.TaskRecord]
+	deleteTask                       *connectormock.Mutation[harvest.DeleteTaskInput, harvest.DeletedTask]
 	listUsers                        *connectormock.Query[harvest.ListUsersInput, harvest.UserPage]
 	getUser                          *connectormock.Query[harvest.GetUserInput, harvest.UserRecord]
 	getCurrentUser                   *connectormock.Query[harvest.GetCurrentUserInput, harvest.UserRecord]
@@ -68,6 +73,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		createContact:                    connectormock.NewMutation[harvest.CreateContactInput, harvest.ContactRecord](t, harvest.CreateContactDefinition),
 		updateContact:                    connectormock.NewMutation[harvest.UpdateContactInput, harvest.ContactRecord](t, harvest.UpdateContactDefinition),
 		deleteContact:                    connectormock.NewMutation[harvest.DeleteContactInput, harvest.DeletedContact](t, harvest.DeleteContactDefinition),
+		listTasks:                        connectormock.NewQuery[harvest.ListTasksInput, harvest.TaskPage](t, harvest.ListTasksDefinition),
+		getTask:                          connectormock.NewQuery[harvest.GetTaskInput, harvest.TaskRecord](t, harvest.GetTaskDefinition),
+		createTask:                       connectormock.NewMutation[harvest.CreateTaskInput, harvest.TaskRecord](t, harvest.CreateTaskDefinition),
+		updateTask:                       connectormock.NewMutation[harvest.UpdateTaskInput, harvest.TaskRecord](t, harvest.UpdateTaskDefinition),
+		deleteTask:                       connectormock.NewMutation[harvest.DeleteTaskInput, harvest.DeletedTask](t, harvest.DeleteTaskDefinition),
 		listUsers:                        connectormock.NewQuery[harvest.ListUsersInput, harvest.UserPage](t, harvest.ListUsersDefinition),
 		getUser:                          connectormock.NewQuery[harvest.GetUserInput, harvest.UserRecord](t, harvest.GetUserDefinition),
 		getCurrentUser:                   connectormock.NewQuery[harvest.GetCurrentUserInput, harvest.UserRecord](t, harvest.GetCurrentUserDefinition),
@@ -100,6 +110,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createContact.Default(CreateContactDefault())
 	mock.updateContact.Default(UpdateContactDefault())
 	mock.deleteContact.Default(DeleteContactDefault())
+	mock.listTasks.Default(ListTasksDefault())
+	mock.getTask.Default(GetTaskDefault())
+	mock.createTask.Default(CreateTaskDefault())
+	mock.updateTask.Default(UpdateTaskDefault())
+	mock.deleteTask.Default(DeleteTaskDefault())
 	mock.listUsers.Default(ListUsersDefault())
 	mock.getUser.Default(GetUserDefault())
 	mock.getCurrentUser.Default(GetCurrentUserDefault())
@@ -188,6 +203,31 @@ func (mock *Mock) UpdateContact() *connectormock.Mutation[harvest.UpdateContactI
 // DeleteContact returns the deleteContact script.
 func (mock *Mock) DeleteContact() *connectormock.Mutation[harvest.DeleteContactInput, harvest.DeletedContact] {
 	return mock.deleteContact
+}
+
+// ListTasks returns the listTasks script.
+func (mock *Mock) ListTasks() *connectormock.Query[harvest.ListTasksInput, harvest.TaskPage] {
+	return mock.listTasks
+}
+
+// GetTask returns the getTask script.
+func (mock *Mock) GetTask() *connectormock.Query[harvest.GetTaskInput, harvest.TaskRecord] {
+	return mock.getTask
+}
+
+// CreateTask returns the createTask script.
+func (mock *Mock) CreateTask() *connectormock.Mutation[harvest.CreateTaskInput, harvest.TaskRecord] {
+	return mock.createTask
+}
+
+// UpdateTask returns the updateTask script.
+func (mock *Mock) UpdateTask() *connectormock.Mutation[harvest.UpdateTaskInput, harvest.TaskRecord] {
+	return mock.updateTask
+}
+
+// DeleteTask returns the deleteTask script.
+func (mock *Mock) DeleteTask() *connectormock.Mutation[harvest.DeleteTaskInput, harvest.DeletedTask] {
+	return mock.deleteTask
 }
 
 // ListUsers returns the listUsers script.
@@ -322,6 +362,21 @@ func (operations mockOperations) UpdateContact() sdkgo.Mutation[harvest.UpdateCo
 }
 func (operations mockOperations) DeleteContact() sdkgo.Mutation[harvest.DeleteContactInput, harvest.DeletedContact] {
 	return operations.mock.deleteContact
+}
+func (operations mockOperations) ListTasks() sdkgo.Query[harvest.ListTasksInput, harvest.TaskPage] {
+	return operations.mock.listTasks
+}
+func (operations mockOperations) GetTask() sdkgo.Query[harvest.GetTaskInput, harvest.TaskRecord] {
+	return operations.mock.getTask
+}
+func (operations mockOperations) CreateTask() sdkgo.Mutation[harvest.CreateTaskInput, harvest.TaskRecord] {
+	return operations.mock.createTask
+}
+func (operations mockOperations) UpdateTask() sdkgo.Mutation[harvest.UpdateTaskInput, harvest.TaskRecord] {
+	return operations.mock.updateTask
+}
+func (operations mockOperations) DeleteTask() sdkgo.Mutation[harvest.DeleteTaskInput, harvest.DeletedTask] {
+	return operations.mock.deleteTask
 }
 func (operations mockOperations) ListUsers() sdkgo.Query[harvest.ListUsersInput, harvest.UserPage] {
 	return operations.mock.listUsers
@@ -809,6 +864,181 @@ func DeleteContactDefaultAnswer() connectormock.Case[harvest.DeletedContact] {
 func DeleteContactDefault() connectormock.Case[harvest.DeletedContact] {
 	return DeleteContactDefaultAnswer()
 }
+
+// ListTasksListed selects the listed branch: Harvest confirmed the task result.
+func ListTasksListed(value harvest.TaskPage, failure *sdkgo.Failure) connectormock.Case[harvest.TaskPage] {
+	return connectormock.Branch(harvest.ListTasksBranchListed, value, failure)
+}
+
+// ListTasksProviderRejected selects the providerRejected branch: Harvest rejected the task operation.
+func ListTasksProviderRejected(value harvest.TaskPage, failure *sdkgo.Failure) connectormock.Case[harvest.TaskPage] {
+	return connectormock.Branch(harvest.ListTasksBranchProviderRejected, value, failure)
+}
+
+// ListTasksInvalidResponse selects the invalidResponse branch: Harvest returned unusable JSON.
+func ListTasksInvalidResponse(value harvest.TaskPage, failure *sdkgo.Failure) connectormock.Case[harvest.TaskPage] {
+	return connectormock.Branch(harvest.ListTasksBranchInvalidResponse, value, failure)
+}
+
+// ListTasksDefect selects the defect branch: Local input or credentials are invalid.
+func ListTasksDefect(value harvest.TaskPage, failure *sdkgo.Failure) connectormock.Case[harvest.TaskPage] {
+	return connectormock.Branch(harvest.ListTasksBranchDefect, value, failure)
+}
+
+// ListTasksRetry asks Dex to retry the listTasks Step, after the delay when it is positive.
+func ListTasksRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.TaskPage] {
+	return connectormock.Retry[harvest.TaskPage](failure, after)
+}
+
+// ListTasksDefaultAnswer is the manifest mock defaultAnswer: A Meridian task result.
+func ListTasksDefaultAnswer() connectormock.Case[harvest.TaskPage] {
+	value := connectormock.MustDecodeOutput[harvest.TaskPage](`{"tasks":[{"id":8001,"name":"Planning","isActive":true}]}`)
+	return connectormock.Branch(harvest.ListTasksBranchListed, value, nil)
+}
+
+// ListTasksDefault is the manifest default, defaultAnswer, which New installs.
+func ListTasksDefault() connectormock.Case[harvest.TaskPage] { return ListTasksDefaultAnswer() }
+
+// GetTaskFound selects the found branch: Harvest confirmed the task result.
+func GetTaskFound(value harvest.TaskRecord, failure *sdkgo.Failure) connectormock.Case[harvest.TaskRecord] {
+	return connectormock.Branch(harvest.GetTaskBranchFound, value, failure)
+}
+
+// GetTaskNotFound selects the notFound branch: The task ID does not exist.
+func GetTaskNotFound(value harvest.TaskRecord, failure *sdkgo.Failure) connectormock.Case[harvest.TaskRecord] {
+	return connectormock.Branch(harvest.GetTaskBranchNotFound, value, failure)
+}
+
+// GetTaskProviderRejected selects the providerRejected branch: Harvest rejected the task operation.
+func GetTaskProviderRejected(value harvest.TaskRecord, failure *sdkgo.Failure) connectormock.Case[harvest.TaskRecord] {
+	return connectormock.Branch(harvest.GetTaskBranchProviderRejected, value, failure)
+}
+
+// GetTaskInvalidResponse selects the invalidResponse branch: Harvest returned unusable JSON.
+func GetTaskInvalidResponse(value harvest.TaskRecord, failure *sdkgo.Failure) connectormock.Case[harvest.TaskRecord] {
+	return connectormock.Branch(harvest.GetTaskBranchInvalidResponse, value, failure)
+}
+
+// GetTaskDefect selects the defect branch: Local input or credentials are invalid.
+func GetTaskDefect(value harvest.TaskRecord, failure *sdkgo.Failure) connectormock.Case[harvest.TaskRecord] {
+	return connectormock.Branch(harvest.GetTaskBranchDefect, value, failure)
+}
+
+// GetTaskRetry asks Dex to retry the getTask Step, after the delay when it is positive.
+func GetTaskRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.TaskRecord] {
+	return connectormock.Retry[harvest.TaskRecord](failure, after)
+}
+
+// GetTaskDefaultAnswer is the manifest mock defaultAnswer: A Meridian task result.
+func GetTaskDefaultAnswer() connectormock.Case[harvest.TaskRecord] {
+	value := connectormock.MustDecodeOutput[harvest.TaskRecord](`{"id":8001,"name":"Planning","isActive":true}`)
+	return connectormock.Branch(harvest.GetTaskBranchFound, value, nil)
+}
+
+// GetTaskDefault is the manifest default, defaultAnswer, which New installs.
+func GetTaskDefault() connectormock.Case[harvest.TaskRecord] { return GetTaskDefaultAnswer() }
+
+// CreateTaskCreated selects the created branch: Harvest confirmed the task result.
+func CreateTaskCreated(value harvest.TaskRecord, failure *sdkgo.Failure) connectormock.Case[harvest.TaskRecord] {
+	return connectormock.Branch(harvest.CreateTaskBranchCreated, value, failure)
+}
+
+// CreateTaskProviderRejected selects the providerRejected branch: Harvest rejected the task operation.
+func CreateTaskProviderRejected(value harvest.TaskRecord, failure *sdkgo.Failure) connectormock.Case[harvest.TaskRecord] {
+	return connectormock.Branch(harvest.CreateTaskBranchProviderRejected, value, failure)
+}
+
+// CreateTaskUncertain returns an uncertain createTask outcome.
+func CreateTaskUncertain(value harvest.TaskRecord, failure sdkgo.Failure) connectormock.Case[harvest.TaskRecord] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateTaskDefect selects the defect branch: Local input or credentials are invalid.
+func CreateTaskDefect(value harvest.TaskRecord, failure *sdkgo.Failure) connectormock.Case[harvest.TaskRecord] {
+	return connectormock.Branch(harvest.CreateTaskBranchDefect, value, failure)
+}
+
+// CreateTaskRetry asks Dex to retry the createTask Step, after the delay when it is positive.
+func CreateTaskRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.TaskRecord] {
+	return connectormock.Retry[harvest.TaskRecord](failure, after)
+}
+
+// CreateTaskDefaultAnswer is the manifest mock defaultAnswer: A Meridian task result.
+func CreateTaskDefaultAnswer() connectormock.Case[harvest.TaskRecord] {
+	value := connectormock.MustDecodeOutput[harvest.TaskRecord](`{"id":8001,"name":"Planning","isActive":true}`)
+	return connectormock.Branch(harvest.CreateTaskBranchCreated, value, nil)
+}
+
+// CreateTaskDefault is the manifest default, defaultAnswer, which New installs.
+func CreateTaskDefault() connectormock.Case[harvest.TaskRecord] { return CreateTaskDefaultAnswer() }
+
+// UpdateTaskUpdated selects the updated branch: Harvest confirmed the task result.
+func UpdateTaskUpdated(value harvest.TaskRecord, failure *sdkgo.Failure) connectormock.Case[harvest.TaskRecord] {
+	return connectormock.Branch(harvest.UpdateTaskBranchUpdated, value, failure)
+}
+
+// UpdateTaskNotFound selects the notFound branch: The task ID does not exist.
+func UpdateTaskNotFound(value harvest.TaskRecord, failure *sdkgo.Failure) connectormock.Case[harvest.TaskRecord] {
+	return connectormock.Branch(harvest.UpdateTaskBranchNotFound, value, failure)
+}
+
+// UpdateTaskProviderRejected selects the providerRejected branch: Harvest rejected the task operation.
+func UpdateTaskProviderRejected(value harvest.TaskRecord, failure *sdkgo.Failure) connectormock.Case[harvest.TaskRecord] {
+	return connectormock.Branch(harvest.UpdateTaskBranchProviderRejected, value, failure)
+}
+
+// UpdateTaskDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateTaskDefect(value harvest.TaskRecord, failure *sdkgo.Failure) connectormock.Case[harvest.TaskRecord] {
+	return connectormock.Branch(harvest.UpdateTaskBranchDefect, value, failure)
+}
+
+// UpdateTaskRetry asks Dex to retry the updateTask Step, after the delay when it is positive.
+func UpdateTaskRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.TaskRecord] {
+	return connectormock.Retry[harvest.TaskRecord](failure, after)
+}
+
+// UpdateTaskDefaultAnswer is the manifest mock defaultAnswer: A Meridian task result.
+func UpdateTaskDefaultAnswer() connectormock.Case[harvest.TaskRecord] {
+	value := connectormock.MustDecodeOutput[harvest.TaskRecord](`{"id":8001,"name":"Planning","isActive":true}`)
+	return connectormock.Branch(harvest.UpdateTaskBranchUpdated, value, nil)
+}
+
+// UpdateTaskDefault is the manifest default, defaultAnswer, which New installs.
+func UpdateTaskDefault() connectormock.Case[harvest.TaskRecord] { return UpdateTaskDefaultAnswer() }
+
+// DeleteTaskDeleted selects the deleted branch: Harvest confirmed the task result.
+func DeleteTaskDeleted(value harvest.DeletedTask, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedTask] {
+	return connectormock.Branch(harvest.DeleteTaskBranchDeleted, value, failure)
+}
+
+// DeleteTaskNotFound selects the notFound branch: The task ID does not exist.
+func DeleteTaskNotFound(value harvest.DeletedTask, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedTask] {
+	return connectormock.Branch(harvest.DeleteTaskBranchNotFound, value, failure)
+}
+
+// DeleteTaskProviderRejected selects the providerRejected branch: Harvest rejected the task operation.
+func DeleteTaskProviderRejected(value harvest.DeletedTask, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedTask] {
+	return connectormock.Branch(harvest.DeleteTaskBranchProviderRejected, value, failure)
+}
+
+// DeleteTaskDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteTaskDefect(value harvest.DeletedTask, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedTask] {
+	return connectormock.Branch(harvest.DeleteTaskBranchDefect, value, failure)
+}
+
+// DeleteTaskRetry asks Dex to retry the deleteTask Step, after the delay when it is positive.
+func DeleteTaskRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.DeletedTask] {
+	return connectormock.Retry[harvest.DeletedTask](failure, after)
+}
+
+// DeleteTaskDefaultAnswer is the manifest mock defaultAnswer: A Meridian task result.
+func DeleteTaskDefaultAnswer() connectormock.Case[harvest.DeletedTask] {
+	value := connectormock.MustDecodeOutput[harvest.DeletedTask](`{"id":8001}`)
+	return connectormock.Branch(harvest.DeleteTaskBranchDeleted, value, nil)
+}
+
+// DeleteTaskDefault is the manifest default, defaultAnswer, which New installs.
+func DeleteTaskDefault() connectormock.Case[harvest.DeletedTask] { return DeleteTaskDefaultAnswer() }
 
 // ListUsersListed selects the listed branch: Harvest confirmed the user result.
 func ListUsersListed(value harvest.UserPage, failure *sdkgo.Failure) connectormock.Case[harvest.UserPage] {
