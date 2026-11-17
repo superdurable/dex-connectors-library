@@ -40,7 +40,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{reportarchive.NewFlow(connection), reportarchive.NewBucketInventoryFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{reportarchive.NewFlow(connection), reportarchive.NewBucketInventoryFlow(connection), reportarchive.NewObjectCopyFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Amazon S3 report-archive Flow: %w", err)
 	}

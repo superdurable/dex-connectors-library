@@ -261,7 +261,11 @@ func (server *Server) serveHTTP(response http.ResponseWriter, httpRequest *http.
 	case httpRequest.Method == http.MethodGet && hasKey:
 		server.writeObject(response, bucket, key, true)
 	case httpRequest.Method == http.MethodPut && hasKey:
-		server.putObject(response, httpRequest, bucket, key, body)
+		if httpRequest.Header.Get("X-Amz-Copy-Source") != "" {
+			server.copyObject(response, httpRequest, bucket, key)
+		} else {
+			server.putObject(response, httpRequest, bucket, key, body)
+		}
 	case httpRequest.Method == http.MethodDelete && hasKey:
 		server.mutex.Lock()
 		delete(server.objects, bucket+"/"+key)
@@ -557,6 +561,46 @@ func (server *Server) putObject(response http.ResponseWriter, request *http.Requ
 		response.Header().Set("X-Amz-Version-Id", stored.VersionID)
 	}
 	response.WriteHeader(http.StatusOK)
+}
+
+func (server *Server) copyObject(response http.ResponseWriter, request *http.Request, bucket string, key string) {
+	decodedSource, err := url.PathUnescape(request.Header.Get("X-Amz-Copy-Source"))
+	if err != nil || !strings.HasPrefix(decodedSource, "/") {
+		writeError(response, http.StatusBadRequest, "InvalidArgument")
+		return
+	}
+	sourceBucket, sourceKey, hasKey := strings.Cut(strings.TrimPrefix(decodedSource, "/"), "/")
+	if !hasKey || sourceKey == "" {
+		writeError(response, http.StatusBadRequest, "InvalidArgument")
+		return
+	}
+	server.mutex.Lock()
+	source, exists := server.objects[sourceBucket+"/"+sourceKey]
+	if !exists {
+		server.mutex.Unlock()
+		writeError(response, http.StatusNotFound, "NoSuchKey")
+		return
+	}
+	if sourceETag := request.Header.Get("X-Amz-Copy-Source-If-Match"); sourceETag != "" && sourceETag != source.ETag {
+		server.mutex.Unlock()
+		writeError(response, http.StatusPreconditionFailed, "PreconditionFailed")
+		return
+	}
+	copy := Object{Body: append([]byte(nil), source.Body...), ContentType: request.Header.Get("Content-Type"), Metadata: map[string]string{}}
+	for name, values := range request.Header {
+		if metadataName, isMetadata := strings.CutPrefix(name, "X-Amz-Meta-"); isMetadata {
+			copy.Metadata[strings.ToLower(metadataName)] = strings.Join(values, ",")
+		}
+	}
+	stored := server.completeObject(copy)
+	server.objects[bucket+"/"+key] = stored
+	server.mutex.Unlock()
+	response.Header().Set("X-Amz-Request-Id", "FAKEREQUESTCOPY")
+	response.Header().Set("Content-Type", "application/xml")
+	if stored.VersionID != "" {
+		response.Header().Set("X-Amz-Version-Id", stored.VersionID)
+	}
+	_, _ = fmt.Fprintf(response, `<CopyObjectResult><ETag>%s</ETag><LastModified>%s</LastModified></CopyObjectResult>`, escapeXML(stored.ETag), stored.LastModified.Format(time.RFC3339))
 }
 
 // completeObject fills the ETag, version, and time; the caller holds the mutex.

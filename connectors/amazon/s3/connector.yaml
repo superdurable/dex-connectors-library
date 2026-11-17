@@ -56,7 +56,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: "Maximum complete listObjects response in bytes, as a positive integer. A larger page selects invalidResponse; lower maxKeys before raising this, because a page is stored in Dex Flow state. Blank uses the displayed default."
+        description: "Maximum complete listObjects response or getObjectBytes payload in bytes, as a positive integer. A larger list page selects invalidResponse; a larger binary object selects tooLarge. Lower maxKeys or use smaller objects before raising this, because content is stored in Dex Flow state. Blank uses the displayed default."
         required: false
         default: 4194304
       - name: maxTextBytes
@@ -97,6 +97,7 @@ spec:
         - "Open the user > Security credentials > Access keys > Create access key, choose Other > Next, then Create access key. On the Retrieve access keys page choose Show, paste the Access key into access_key_id and the Secret access key into secret_access_key; AWS never shows the secret again. Leave session_token blank for these long-term keys."
         - "Set region to the bucket's AWS Region from https://console.aws.amazon.com/s3/buckets and leave endpoint blank. Optionally set defaultBucket so operations can leave bucket blank."
         - "For listBuckets, optionally grant s3:ListAllMyBuckets on arn:aws:s3:::*. For createBucket and deleteBucket, optionally grant s3:CreateBucket and s3:DeleteBucket on the intended bucket ARNs; deletion requires an empty bucket. These grants are additional to the report-archive example's object permissions. Review the globally unique bucket name before creation."
+        - "For copyObject, grant s3:GetObject on the source object ARN and s3:PutObject on the destination object ARN. Its contentType and metadata replace source metadata; sourceETag may pin the source version. getObjectBytes needs s3:GetObject and keeps at most maxResponseBytes in Flow state."
         - "Cloudflare R2: open https://dash.cloudflare.com > R2 object storage > Account Details > API Tokens > Manage, choose Create Account API token with Object Read & Write scoped to the bucket, and copy the Access Key ID and Secret Access Key shown once. Set endpoint to https://<ACCOUNT_ID>.r2.cloudflarestorage.com and region to auto."
         - "MinIO: create a user or service account with a policy limited to the bucket, then set endpoint to the server's API address, keep addressingStyle at auto so requests use path addressing, and set region to the server's Region, which a default server leaves at us-east-1."
         - "To rotate, create a second access key, save it here, run a Flow, then open Actions > Deactivate and Actions > Delete on the old key. This release does not use IAM roles, instance profiles, or SSO; temporary credentials pasted with session_token stop working when they expire."
@@ -285,6 +286,36 @@ spec:
           branch: providerRejected
           description: "Reading reports/ops-weekly.md without s3:GetObject permission is denied."
           failure: {kind: AUTHORIZATION, message: S3 denied the object read.}
+    - name: getObjectBytes
+      goName: GetObjectBytes
+      inputType: GetObjectBytesInput
+      outputType: ObjectBytes
+      kind: query
+      description: Read one complete bounded object as bytes, including non-text media types, storing base64-encoded bytes in Flow state.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: read, goName: Read, description: The complete object fits maxResponseBytes.}
+        - {id: notFound, goName: NotFound, description: The object does not exist., optional: true}
+        - {id: tooLarge, goName: TooLarge, description: The object exceeds maxResponseBytes., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: S3 returned incomplete or secret-bearing bytes., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: S3 conclusively refused the read., optional: true}
+        - {id: defect, goName: Defect, description: The object location or connection is invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: reportBytes
+          branch: read
+          default: true
+          description: A bounded Markdown report is returned as bytes.
+          output: {bucket: acme-reports, key: reports/ops-weekly.md, contentType: text/markdown, sizeBytes: 6, bytes: d2Vla2x5}
+        - name: bytesTooLarge
+          branch: tooLarge
+          description: An object beyond the response limit is refused.
+          output: {bucket: acme-reports, key: reports/large.bin, sizeBytes: 10485760}
+          failure: {kind: RESPONSE_TOO_LARGE, message: The object exceeds maxResponseBytes.}
     - name: putObject
       goName: PutObject
       inputType: PutObjectInput
@@ -316,6 +347,33 @@ spec:
           branch: providerRejected
           description: "Storing reports/ops-weekly.md without s3:PutObject permission is denied."
           failure: {kind: AUTHORIZATION, message: S3 denied the object write.}
+    - name: copyObject
+      goName: CopyObject
+      inputType: CopyObjectInput
+      outputType: CopiedObject
+      kind: mutation
+      description: Copy an object to a destination key with bounded sends, replacement metadata, and read-back by a Dex marker after an unknown result.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: copied, goName: Copied, description: S3 accepted the copy or read-back confirmed an earlier send.}
+        - {id: providerRejected, goName: ProviderRejected, description: S3 conclusively refused the source or destination., optional: true}
+        - {id: defect, goName: Defect, description: The object locations or copy metadata are invalid., optional: true}
+      execution:
+        repeatOnUnknown: limited
+        maxSends: 3
+        executeMethodTimeout: 30s
+        durability: sync
+      mocks:
+        - name: copiedReport
+          branch: copied
+          default: true
+          description: A report was copied into the archive prefix.
+          output: {sourceBucket: acme-reports, sourceKey: reports/ops-weekly.md, destinationBucket: acme-archive, destinationKey: reports/ops-weekly.md, eTag: '"copied-report"'}
+        - name: copyDenied
+          branch: providerRejected
+          description: Copying without source read or destination write permission was denied.
+          failure: {kind: AUTHORIZATION, message: S3 denied the object copy.}
     - name: deleteObject
       goName: DeleteObject
       inputType: DeleteObjectInput

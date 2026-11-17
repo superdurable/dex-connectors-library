@@ -3272,6 +3272,752 @@
       },
       "name": "bucket-delete-transport",
       "operation": "deleteBucket"
+    },
+    {
+      "callId": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
+      "exchanges": [
+        {
+          "body": "\u003cCopyObjectResult\u003e\u003cETag\u003e\"copied\"\u003c/ETag\u003e\u003c/CopyObjectResult\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/acme-archive/reports/weekly-copy.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-copy-source;x-amz-copy-source-if-match;x-amz-date;x-amz-meta-dex-idempotency-key;x-amz-meta-report-id;x-amz-metadata-directive, Signature=163a5eb37838faacfce49072f6ad547b81c0ef5e316a54d7b1bbf65e2a4f053f"
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Copy-Source": [
+              "/acme-reports/reports/weekly.md"
+            ],
+            "X-Amz-Copy-Source-If-Match": [
+              "\"source\""
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ],
+            "X-Amz-Meta-Dex-Idempotency-Key": [
+              "f48763d2-ce4f-56f9-8555-b5f504506ad0"
+            ],
+            "X-Amz-Meta-Report-Id": [
+              "weekly"
+            ],
+            "X-Amz-Metadata-Directive": [
+              "REPLACE"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "copied",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "destinationBucket": "acme-archive",
+          "destinationKey": "reports/weekly-copy.md",
+          "eTag": "\"copied\"",
+          "sourceBucket": "acme-reports",
+          "sourceKey": "reports/weekly.md"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
+      "input": {
+        "contentType": "text/plain",
+        "destinationBucket": "acme-archive",
+        "destinationKey": "reports/weekly-copy.md",
+        "metadata": {
+          "report-id": "weekly"
+        },
+        "sourceBucket": "acme-reports",
+        "sourceETag": "\"source\"",
+        "sourceKey": "reports/weekly.md"
+      },
+      "name": "copy-copied",
+      "operation": "copyObject"
+    },
+    {
+      "callId": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
+      "exchanges": [
+        {
+          "body": "\u003cError\u003e\u003cCode\u003eAccessDenied\u003c/Code\u003e\u003c/Error\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/acme-archive/reports/weekly-copy.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-copy-source;x-amz-date;x-amz-meta-dex-idempotency-key;x-amz-metadata-directive, Signature=b0f5ec5a7a82f6d3916fd59d0d424aa8b3aa95c16bf085455cd9a5bde6876b96"
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Copy-Source": [
+              "/acme-reports/reports/weekly.md"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ],
+            "X-Amz-Meta-Dex-Idempotency-Key": [
+              "f48763d2-ce4f-56f9-8555-b5f504506ad0"
+            ],
+            "X-Amz-Metadata-Directive": [
+              "REPLACE"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "destinationBucket": "acme-archive",
+          "destinationKey": "reports/weekly-copy.md",
+          "sourceBucket": "acme-reports",
+          "sourceKey": "reports/weekly.md"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
+      "input": {
+        "contentType": "text/plain",
+        "destinationBucket": "acme-archive",
+        "destinationKey": "reports/weekly-copy.md",
+        "sourceBucket": "acme-reports",
+        "sourceKey": "reports/weekly.md"
+      },
+      "name": "copy-rejected",
+      "operation": "copyObject"
+    },
+    {
+      "callId": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "destinationBucket": "",
+          "destinationKey": "",
+          "sourceBucket": "",
+          "sourceKey": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
+      "input": {
+        "contentType": "text/plain",
+        "destinationBucket": "acme-archive",
+        "destinationKey": "reports/weekly-copy.md",
+        "sourceBucket": "BAD",
+        "sourceKey": "reports/weekly.md"
+      },
+      "name": "copy-defect",
+      "operation": "copyObject"
+    },
+    {
+      "callId": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/acme-archive/reports/weekly-copy.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-copy-source;x-amz-date;x-amz-meta-dex-idempotency-key;x-amz-metadata-directive, Signature=b0f5ec5a7a82f6d3916fd59d0d424aa8b3aa95c16bf085455cd9a5bde6876b96"
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Copy-Source": [
+              "/acme-reports/reports/weekly.md"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ],
+            "X-Amz-Meta-Dex-Idempotency-Key": [
+              "f48763d2-ce4f-56f9-8555-b5f504506ad0"
+            ],
+            "X-Amz-Metadata-Directive": [
+              "REPLACE"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
+      "input": {
+        "contentType": "text/plain",
+        "destinationBucket": "acme-archive",
+        "destinationKey": "reports/weekly-copy.md",
+        "sourceBucket": "acme-reports",
+        "sourceKey": "reports/weekly.md"
+      },
+      "name": "copy-429",
+      "operation": "copyObject"
+    },
+    {
+      "callId": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/acme-archive/reports/weekly-copy.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-copy-source;x-amz-date;x-amz-meta-dex-idempotency-key;x-amz-metadata-directive, Signature=b0f5ec5a7a82f6d3916fd59d0d424aa8b3aa95c16bf085455cd9a5bde6876b96"
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Copy-Source": [
+              "/acme-reports/reports/weekly.md"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ],
+            "X-Amz-Meta-Dex-Idempotency-Key": [
+              "f48763d2-ce4f-56f9-8555-b5f504506ad0"
+            ],
+            "X-Amz-Metadata-Directive": [
+              "REPLACE"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
+      "input": {
+        "contentType": "text/plain",
+        "destinationBucket": "acme-archive",
+        "destinationKey": "reports/weekly-copy.md",
+        "sourceBucket": "acme-reports",
+        "sourceKey": "reports/weekly.md"
+      },
+      "name": "copy-500",
+      "operation": "copyObject"
+    },
+    {
+      "callId": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/acme-archive/reports/weekly-copy.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-copy-source;x-amz-date;x-amz-meta-dex-idempotency-key;x-amz-metadata-directive, Signature=b0f5ec5a7a82f6d3916fd59d0d424aa8b3aa95c16bf085455cd9a5bde6876b96"
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Copy-Source": [
+              "/acme-reports/reports/weekly.md"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ],
+            "X-Amz-Meta-Dex-Idempotency-Key": [
+              "f48763d2-ce4f-56f9-8555-b5f504506ad0"
+            ],
+            "X-Amz-Metadata-Directive": [
+              "REPLACE"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
+      "input": {
+        "contentType": "text/plain",
+        "destinationBucket": "acme-archive",
+        "destinationKey": "reports/weekly-copy.md",
+        "sourceBucket": "acme-reports",
+        "sourceKey": "reports/weekly.md"
+      },
+      "name": "copy-transport",
+      "operation": "copyObject"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "ABC",
+          "headers": {
+            "Content-Length": "3",
+            "Content-Type": "application/octet-stream"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports/images/icon.bin",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=38dc07f7f56fcda60f2f61b5d890a74c3714ae38c717b8d95b12c4c6cc3b3b73"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "bucket": "acme-reports",
+          "bytes": "QUJD",
+          "contentType": "application/octet-stream",
+          "key": "images/icon.bin",
+          "sizeBytes": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "images/icon.bin"
+      },
+      "name": "bytes-read",
+      "operation": "getObjectBytes"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "\u003cError\u003e\u003cCode\u003eNoSuchKey\u003c/Code\u003e\u003c/Error\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports/images/icon.bin",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=38dc07f7f56fcda60f2f61b5d890a74c3714ae38c717b8d95b12c4c6cc3b3b73"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "bucket": "acme-reports",
+          "key": "images/icon.bin",
+          "sizeBytes": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "images/icon.bin"
+      },
+      "name": "bytes-not-found",
+      "operation": "getObjectBytes"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Content-Length": "5242880"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports/images/icon.bin",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=38dc07f7f56fcda60f2f61b5d890a74c3714ae38c717b8d95b12c4c6cc3b3b73"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "tooLarge",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "bucket": "acme-reports",
+          "key": "images/icon.bin",
+          "sizeBytes": 5242880
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "images/icon.bin"
+      },
+      "name": "bytes-too-large",
+      "operation": "getObjectBytes"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "ABC",
+          "headers": {
+            "Content-Length": "10"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports/images/icon.bin",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=38dc07f7f56fcda60f2f61b5d890a74c3714ae38c717b8d95b12c4c6cc3b3b73"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "bucket": "acme-reports",
+          "key": "images/icon.bin",
+          "sizeBytes": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "images/icon.bin"
+      },
+      "name": "bytes-invalid",
+      "operation": "getObjectBytes"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "\u003cError\u003e\u003cCode\u003eAccessDenied\u003c/Code\u003e\u003c/Error\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports/images/icon.bin",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=38dc07f7f56fcda60f2f61b5d890a74c3714ae38c717b8d95b12c4c6cc3b3b73"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "bucket": "acme-reports",
+          "key": "images/icon.bin",
+          "sizeBytes": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "images/icon.bin"
+      },
+      "name": "bytes-rejected",
+      "operation": "getObjectBytes"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "bucket": "",
+          "key": "",
+          "sizeBytes": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "BAD",
+        "key": "images/icon.bin"
+      },
+      "name": "bytes-defect",
+      "operation": "getObjectBytes"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports/images/icon.bin",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=38dc07f7f56fcda60f2f61b5d890a74c3714ae38c717b8d95b12c4c6cc3b3b73"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "images/icon.bin"
+      },
+      "name": "bytes-429",
+      "operation": "getObjectBytes"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports/images/icon.bin",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=38dc07f7f56fcda60f2f61b5d890a74c3714ae38c717b8d95b12c4c6cc3b3b73"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "images/icon.bin"
+      },
+      "name": "bytes-500",
+      "operation": "getObjectBytes"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports/images/icon.bin",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=38dc07f7f56fcda60f2f61b5d890a74c3714ae38c717b8d95b12c4c6cc3b3b73"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "images/icon.bin"
+      },
+      "name": "bytes-transport",
+      "operation": "getObjectBytes"
     }
   ],
   "schemaVersion": 1

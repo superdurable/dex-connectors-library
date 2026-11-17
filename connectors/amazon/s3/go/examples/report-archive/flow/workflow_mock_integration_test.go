@@ -77,3 +77,22 @@ func TestBucketInventoryUsesMockWithRealDex(t *testing.T) {
 	require.Equal(t, "acme-reports", page.Buckets[0].Name)
 	require.Len(t, mock.ListBuckets().Calls(), 1)
 }
+
+func TestObjectCopyReadsBytesWithMockAndRealDex(t *testing.T) {
+	mock := s3mock.New(t, ConnectionName)
+	_, harness := newReportArchiveHarnessWithConnection(t, mock.Connection())
+	flow := NewObjectCopyFlow(mock.Connection())
+	flowID := "mock-copy-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	ctx := integrationContext(t)
+	input := ObjectCopyInput{SourceBucket: "acme-reports", SourceKey: "reports/ops-weekly.md", DestinationBucket: "acme-archive", DestinationKey: "reports/ops-weekly.md", ContentType: "text/markdown"}
+	_, err := harness.client.StartFlow(ctx, flow, flowID, input, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status)
+	var object s3.ObjectBytes
+	require.NoError(t, result.DecodeSingleOutput(&object))
+	require.Equal(t, []byte("weekly"), object.Bytes)
+	require.Len(t, mock.CopyObject().Calls(), 1)
+	require.Len(t, mock.GetObjectBytes().Calls(), 1)
+}

@@ -26,12 +26,14 @@ specific to the Go package described above.
 | `listObjects` | Query | `GET /?list-type=2` (ListObjectsV2) | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `headObject` | Query | `HEAD /{key}` | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `getObjectText` | Query | `GET /{key}` | async | `read` | `notFound`, `unsupportedContent`, `tooLarge`, `providerRejected`, `invalidResponse`, `defect` |
+| `getObjectBytes` | Query | `GET /{key}` | async | `read` | `notFound`, `tooLarge`, `providerRejected`, `invalidResponse`, `defect` |
 | `putObject` | Mutation | `PUT /{key}`, and `HEAD /{key}` after a refused create-only write | async | `stored` | `alreadyExists`, `providerRejected`, `defect` |
+| `copyObject` | Mutation | `PUT /{key}` with `x-amz-copy-source` | sync | `copied` | `providerRejected`, `defect` |
 | `deleteObject` | Mutation | `DELETE /{key}` | async | `deleted` | `providerRejected`, `defect` |
 
 Most Flows use object storage to find an artifact by name or archive one, so
 `listObjects` is the resolver: it pages a bucket by prefix and delimiter and
-never reports an empty listing as success. The connector does not copy or tag
+never reports an empty listing as success. The connector does not tag
 objects, and this release has no Triggers and no Studio pickers; see
 [Not in this release](#not-in-this-release).
 
@@ -178,6 +180,15 @@ bucket as already deleted. These operations need optional IAM permissions
 `s3:ListAllMyBuckets`, `s3:CreateBucket`, and `s3:DeleteBucket` respectively;
 the existing report archive Flow needs only its object permissions.
 
+`getObjectBytes` reads any media type up to `maxResponseBytes`; bytes are
+base64-encoded in the Flow Result. It rejects incomplete content and content
+that contains connection secrets. `copyObject` copies one source object up to
+S3's single-copy limit into a destination, replacing metadata with the supplied
+content type, optional metadata, and a Dex idempotency marker. It limits
+possible sends to three and checks the destination marker after an ambiguous
+response. `sourceETag` can pin the source version. Copying needs `s3:GetObject`
+on the source and `s3:PutObject` on the destination.
+
 Every operation bounds its requests by 25 seconds in total and each exchange
 by 12 seconds, below the 30-second Execute timeout. Transport failures, 408,
 429, 503 `SlowDown`, other 5xx except 501, 400 `RequestTimeout`, 307
@@ -310,7 +321,7 @@ server errors retry within the Step policy.
   or EventBridge connector, or an SNS HTTPS subscription, which the endpoint
   must confirm through a handshake before SNS delivers to it; `webhooktrigger`
   has no handshake hook yet.
-- Copying, tagging, version-specific reads, multipart uploads,
+- Tagging, version-specific reads, multipart uploads,
   ranged reads, SSE-C, S3 Express directory buckets, access point ARNs, and
   requester-pays buckets.
 
@@ -324,6 +335,8 @@ verified report after listing; the output then sets `isDeleted`.
 The same Worker also registers `AmazonS3BucketInventory`, a separate Flow
 that lists one page of buckets with `listBuckets`; its mock-backed Dex test
 exercises the new operation without changing the report Flow's IAM needs.
+`AmazonS3ObjectCopy` copies a source to a destination and reads the copied
+bytes back with `getObjectBytes`; its mock-backed Dex test exercises both Steps.
 
 The [TypeScript package](typescript/) implements all four operations at its
 independent `v0.1.0` package version. Its [report archive

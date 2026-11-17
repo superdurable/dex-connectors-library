@@ -17,15 +17,17 @@ import (
 
 // Mock is a scripted amazon-s3 connection. Script each operation through its accessor.
 type Mock struct {
-	connection    s3.Connection
-	listBuckets   *connectormock.Query[s3.ListBucketsInput, s3.ListBucketsOutput]
-	createBucket  *connectormock.Mutation[s3.CreateBucketInput, s3.CreatedBucket]
-	deleteBucket  *connectormock.Mutation[s3.DeleteBucketInput, s3.DeletedBucket]
-	listObjects   *connectormock.Query[s3.ListObjectsInput, s3.ListObjectsOutput]
-	headObject    *connectormock.Query[s3.HeadObjectInput, s3.ObjectMetadata]
-	getObjectText *connectormock.Query[s3.GetObjectTextInput, s3.ObjectText]
-	putObject     *connectormock.Mutation[s3.PutObjectInput, s3.StoredObject]
-	deleteObject  *connectormock.Mutation[s3.DeleteObjectInput, s3.DeletedObject]
+	connection     s3.Connection
+	listBuckets    *connectormock.Query[s3.ListBucketsInput, s3.ListBucketsOutput]
+	createBucket   *connectormock.Mutation[s3.CreateBucketInput, s3.CreatedBucket]
+	deleteBucket   *connectormock.Mutation[s3.DeleteBucketInput, s3.DeletedBucket]
+	listObjects    *connectormock.Query[s3.ListObjectsInput, s3.ListObjectsOutput]
+	headObject     *connectormock.Query[s3.HeadObjectInput, s3.ObjectMetadata]
+	getObjectText  *connectormock.Query[s3.GetObjectTextInput, s3.ObjectText]
+	getObjectBytes *connectormock.Query[s3.GetObjectBytesInput, s3.ObjectBytes]
+	putObject      *connectormock.Mutation[s3.PutObjectInput, s3.StoredObject]
+	copyObject     *connectormock.Mutation[s3.CopyObjectInput, s3.CopiedObject]
+	deleteObject   *connectormock.Mutation[s3.DeleteObjectInput, s3.DeletedObject]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -33,14 +35,16 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listBuckets:   connectormock.NewQuery[s3.ListBucketsInput, s3.ListBucketsOutput](t, s3.ListBucketsDefinition),
-		createBucket:  connectormock.NewMutation[s3.CreateBucketInput, s3.CreatedBucket](t, s3.CreateBucketDefinition),
-		deleteBucket:  connectormock.NewMutation[s3.DeleteBucketInput, s3.DeletedBucket](t, s3.DeleteBucketDefinition),
-		listObjects:   connectormock.NewQuery[s3.ListObjectsInput, s3.ListObjectsOutput](t, s3.ListObjectsDefinition),
-		headObject:    connectormock.NewQuery[s3.HeadObjectInput, s3.ObjectMetadata](t, s3.HeadObjectDefinition),
-		getObjectText: connectormock.NewQuery[s3.GetObjectTextInput, s3.ObjectText](t, s3.GetObjectTextDefinition),
-		putObject:     connectormock.NewMutation[s3.PutObjectInput, s3.StoredObject](t, s3.PutObjectDefinition),
-		deleteObject:  connectormock.NewMutation[s3.DeleteObjectInput, s3.DeletedObject](t, s3.DeleteObjectDefinition),
+		listBuckets:    connectormock.NewQuery[s3.ListBucketsInput, s3.ListBucketsOutput](t, s3.ListBucketsDefinition),
+		createBucket:   connectormock.NewMutation[s3.CreateBucketInput, s3.CreatedBucket](t, s3.CreateBucketDefinition),
+		deleteBucket:   connectormock.NewMutation[s3.DeleteBucketInput, s3.DeletedBucket](t, s3.DeleteBucketDefinition),
+		listObjects:    connectormock.NewQuery[s3.ListObjectsInput, s3.ListObjectsOutput](t, s3.ListObjectsDefinition),
+		headObject:     connectormock.NewQuery[s3.HeadObjectInput, s3.ObjectMetadata](t, s3.HeadObjectDefinition),
+		getObjectText:  connectormock.NewQuery[s3.GetObjectTextInput, s3.ObjectText](t, s3.GetObjectTextDefinition),
+		getObjectBytes: connectormock.NewQuery[s3.GetObjectBytesInput, s3.ObjectBytes](t, s3.GetObjectBytesDefinition),
+		putObject:      connectormock.NewMutation[s3.PutObjectInput, s3.StoredObject](t, s3.PutObjectDefinition),
+		copyObject:     connectormock.NewMutation[s3.CopyObjectInput, s3.CopiedObject](t, s3.CopyObjectDefinition),
+		deleteObject:   connectormock.NewMutation[s3.DeleteObjectInput, s3.DeletedObject](t, s3.DeleteObjectDefinition),
 	}
 	mock.listBuckets.Default(ListBucketsDefault())
 	mock.createBucket.Default(CreateBucketDefault())
@@ -48,7 +52,9 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listObjects.Default(ListObjectsDefault())
 	mock.headObject.Default(HeadObjectDefault())
 	mock.getObjectText.Default(GetObjectTextDefault())
+	mock.getObjectBytes.Default(GetObjectBytesDefault())
 	mock.putObject.Default(PutObjectDefault())
+	mock.copyObject.Default(CopyObjectDefault())
 	mock.deleteObject.Default(DeleteObjectDefault())
 	connection, err := s3.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "amazon-s3", Name: connectionName})
 	if err != nil {
@@ -91,9 +97,19 @@ func (mock *Mock) GetObjectText() *connectormock.Query[s3.GetObjectTextInput, s3
 	return mock.getObjectText
 }
 
+// GetObjectBytes returns the getObjectBytes script.
+func (mock *Mock) GetObjectBytes() *connectormock.Query[s3.GetObjectBytesInput, s3.ObjectBytes] {
+	return mock.getObjectBytes
+}
+
 // PutObject returns the putObject script.
 func (mock *Mock) PutObject() *connectormock.Mutation[s3.PutObjectInput, s3.StoredObject] {
 	return mock.putObject
+}
+
+// CopyObject returns the copyObject script.
+func (mock *Mock) CopyObject() *connectormock.Mutation[s3.CopyObjectInput, s3.CopiedObject] {
+	return mock.copyObject
 }
 
 // DeleteObject returns the deleteObject script.
@@ -121,8 +137,14 @@ func (operations mockOperations) HeadObject() sdkgo.Query[s3.HeadObjectInput, s3
 func (operations mockOperations) GetObjectText() sdkgo.Query[s3.GetObjectTextInput, s3.ObjectText] {
 	return operations.mock.getObjectText
 }
+func (operations mockOperations) GetObjectBytes() sdkgo.Query[s3.GetObjectBytesInput, s3.ObjectBytes] {
+	return operations.mock.getObjectBytes
+}
 func (operations mockOperations) PutObject() sdkgo.Mutation[s3.PutObjectInput, s3.StoredObject] {
 	return operations.mock.putObject
+}
+func (operations mockOperations) CopyObject() sdkgo.Mutation[s3.CopyObjectInput, s3.CopiedObject] {
+	return operations.mock.copyObject
 }
 func (operations mockOperations) DeleteObject() sdkgo.Mutation[s3.DeleteObjectInput, s3.DeletedObject] {
 	return operations.mock.deleteObject
@@ -411,6 +433,56 @@ func GetObjectTextDefault() connectormock.Case[s3.ObjectText] {
 	return GetObjectTextArchivedReportText()
 }
 
+// GetObjectBytesRead selects the read branch: The complete object fits maxResponseBytes.
+func GetObjectBytesRead(value s3.ObjectBytes, failure *sdkgo.Failure) connectormock.Case[s3.ObjectBytes] {
+	return connectormock.Branch(s3.GetObjectBytesBranchRead, value, failure)
+}
+
+// GetObjectBytesNotFound selects the notFound branch: The object does not exist.
+func GetObjectBytesNotFound(value s3.ObjectBytes, failure *sdkgo.Failure) connectormock.Case[s3.ObjectBytes] {
+	return connectormock.Branch(s3.GetObjectBytesBranchNotFound, value, failure)
+}
+
+// GetObjectBytesTooLarge selects the tooLarge branch: The object exceeds maxResponseBytes.
+func GetObjectBytesTooLarge(value s3.ObjectBytes, failure *sdkgo.Failure) connectormock.Case[s3.ObjectBytes] {
+	return connectormock.Branch(s3.GetObjectBytesBranchTooLarge, value, failure)
+}
+
+// GetObjectBytesInvalidResponse selects the invalidResponse branch: S3 returned incomplete or secret-bearing bytes.
+func GetObjectBytesInvalidResponse(value s3.ObjectBytes, failure *sdkgo.Failure) connectormock.Case[s3.ObjectBytes] {
+	return connectormock.Branch(s3.GetObjectBytesBranchInvalidResponse, value, failure)
+}
+
+// GetObjectBytesProviderRejected selects the providerRejected branch: S3 conclusively refused the read.
+func GetObjectBytesProviderRejected(value s3.ObjectBytes, failure *sdkgo.Failure) connectormock.Case[s3.ObjectBytes] {
+	return connectormock.Branch(s3.GetObjectBytesBranchProviderRejected, value, failure)
+}
+
+// GetObjectBytesDefect selects the defect branch: The object location or connection is invalid.
+func GetObjectBytesDefect(value s3.ObjectBytes, failure *sdkgo.Failure) connectormock.Case[s3.ObjectBytes] {
+	return connectormock.Branch(s3.GetObjectBytesBranchDefect, value, failure)
+}
+
+// GetObjectBytesRetry asks Dex to retry the getObjectBytes Step, after the delay when it is positive.
+func GetObjectBytesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[s3.ObjectBytes] {
+	return connectormock.Retry[s3.ObjectBytes](failure, after)
+}
+
+// GetObjectBytesReportBytes is the manifest mock reportBytes: A bounded Markdown report is returned as bytes.
+func GetObjectBytesReportBytes() connectormock.Case[s3.ObjectBytes] {
+	value := connectormock.MustDecodeOutput[s3.ObjectBytes](`{"bucket":"acme-reports","key":"reports/ops-weekly.md","contentType":"text/markdown","sizeBytes":6,"bytes":"d2Vla2x5"}`)
+	return connectormock.Branch(s3.GetObjectBytesBranchRead, value, nil)
+}
+
+// GetObjectBytesBytesTooLarge is the manifest mock bytesTooLarge: An object beyond the response limit is refused.
+func GetObjectBytesBytesTooLarge() connectormock.Case[s3.ObjectBytes] {
+	value := connectormock.MustDecodeOutput[s3.ObjectBytes](`{"bucket":"acme-reports","key":"reports/large.bin","sizeBytes":10485760}`)
+	return connectormock.Branch(s3.GetObjectBytesBranchTooLarge, value, &sdkgo.Failure{Kind: sdkgo.FailureResponseTooLarge, Message: "The object exceeds maxResponseBytes."})
+}
+
+// GetObjectBytesDefault is the manifest default, reportBytes, which New installs.
+func GetObjectBytesDefault() connectormock.Case[s3.ObjectBytes] { return GetObjectBytesReportBytes() }
+
 // PutObjectStored selects the stored branch: The store holds the object this Step execution wrote.
 func PutObjectStored(value s3.StoredObject, failure *sdkgo.Failure) connectormock.Case[s3.StoredObject] {
 	return connectormock.Branch(s3.PutObjectBranchStored, value, failure)
@@ -456,6 +528,41 @@ func PutObjectStoreDenied() connectormock.Case[s3.StoredObject] {
 
 // PutObjectDefault is the manifest default, storedOpsReport, which New installs.
 func PutObjectDefault() connectormock.Case[s3.StoredObject] { return PutObjectStoredOpsReport() }
+
+// CopyObjectCopied selects the copied branch: S3 accepted the copy or read-back confirmed an earlier send.
+func CopyObjectCopied(value s3.CopiedObject, failure *sdkgo.Failure) connectormock.Case[s3.CopiedObject] {
+	return connectormock.Branch(s3.CopyObjectBranchCopied, value, failure)
+}
+
+// CopyObjectProviderRejected selects the providerRejected branch: S3 conclusively refused the source or destination.
+func CopyObjectProviderRejected(value s3.CopiedObject, failure *sdkgo.Failure) connectormock.Case[s3.CopiedObject] {
+	return connectormock.Branch(s3.CopyObjectBranchProviderRejected, value, failure)
+}
+
+// CopyObjectDefect selects the defect branch: The object locations or copy metadata are invalid.
+func CopyObjectDefect(value s3.CopiedObject, failure *sdkgo.Failure) connectormock.Case[s3.CopiedObject] {
+	return connectormock.Branch(s3.CopyObjectBranchDefect, value, failure)
+}
+
+// CopyObjectRetry asks Dex to retry the copyObject Step, after the delay when it is positive.
+func CopyObjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[s3.CopiedObject] {
+	return connectormock.Retry[s3.CopiedObject](failure, after)
+}
+
+// CopyObjectCopiedReport is the manifest mock copiedReport: A report was copied into the archive prefix.
+func CopyObjectCopiedReport() connectormock.Case[s3.CopiedObject] {
+	value := connectormock.MustDecodeOutput[s3.CopiedObject](`{"sourceBucket":"acme-reports","sourceKey":"reports/ops-weekly.md","destinationBucket":"acme-archive","destinationKey":"reports/ops-weekly.md","eTag":"\"copied-report\""}`)
+	return connectormock.Branch(s3.CopyObjectBranchCopied, value, nil)
+}
+
+// CopyObjectCopyDenied is the manifest mock copyDenied: Copying without source read or destination write permission was denied.
+func CopyObjectCopyDenied() connectormock.Case[s3.CopiedObject] {
+	var value s3.CopiedObject
+	return connectormock.Branch(s3.CopyObjectBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "S3 denied the object copy."})
+}
+
+// CopyObjectDefault is the manifest default, copiedReport, which New installs.
+func CopyObjectDefault() connectormock.Case[s3.CopiedObject] { return CopyObjectCopiedReport() }
 
 // DeleteObjectDeleted selects the deleted branch: S3 accepted the deletion.
 func DeleteObjectDeleted(value s3.DeletedObject, failure *sdkgo.Failure) connectormock.Case[s3.DeletedObject] {

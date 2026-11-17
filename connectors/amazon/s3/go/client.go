@@ -262,8 +262,14 @@ func (client *Client) GetObjectText() GetObjectTextOperation {
 	return GetObjectTextOperation{client: client}
 }
 
+// GetObjectBytes returns the getObjectBytes Query bound to this client.
+func (client *Client) GetObjectBytes() GetObjectBytesOperation { return GetObjectBytesOperation{client: client} }
+
 // PutObject returns the putObject Mutation bound to this client.
 func (client *Client) PutObject() PutObjectOperation { return PutObjectOperation{client: client} }
+
+// CopyObject returns the copyObject Mutation bound to this client.
+func (client *Client) CopyObject() CopyObjectOperation { return CopyObjectOperation{client: client} }
 
 // DeleteObject returns the deleteObject Mutation bound to this client.
 func (client *Client) DeleteObject() DeleteObjectOperation {
