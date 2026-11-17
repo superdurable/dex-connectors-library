@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: constantcontact
   displayName: Constant Contact
-  description: Search and delete contacts, and manage contact lists through the Constant Contact V3 API.
+  description: Create, search, and delete contacts, and manage contact lists through the Constant Contact V3 API.
   company: Constant Contact
   categories: [marketing]
   version: v0.2.0
@@ -92,6 +92,26 @@ spec:
         requiredScopes: [contact_data]
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: createContact
+      goName: CreateContact
+      inputType: CreateContactInput
+      outputType: ContactMetadata
+      kind: mutation
+      description: Create an email contact with its documented permission and source.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Constant Contact created the contact.}
+        - {id: alreadyExists, goName: AlreadyExists, description: A contact with this email exists., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected the creation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample email contact was created.
+          output: {contactId: "1898ae62-4752-11e9-9c8a-fa163e6b01c1", emailAddress: "reader@example.com", firstName: "Avery", lastName: "Reader", emailPermission: "implicit"}
     - name: listContacts
       goName: ListContacts
       inputType: ListContactsInput
@@ -206,7 +226,7 @@ spec:
       description: Create one named contact list.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
       branches:
         - {id: created, goName: Created, description: Constant Contact created the list.}
         - {id: alreadyExists, goName: AlreadyExists, description: A list with this name exists., optional: true}

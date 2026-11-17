@@ -18,6 +18,7 @@ import (
 // Mock is a scripted constantcontact connection. Script each operation through its accessor.
 type Mock struct {
 	connection        constantcontact.Connection
+	createContact     *connectormock.Mutation[constantcontact.CreateContactInput, constantcontact.ContactMetadata]
 	listContacts      *connectormock.Query[constantcontact.ListContactsInput, constantcontact.ContactsPage]
 	deleteContact     *connectormock.Mutation[constantcontact.DeleteContactInput, constantcontact.DeleteContactOutput]
 	getContact        *connectormock.Query[constantcontact.GetContactInput, constantcontact.ContactMetadata]
@@ -33,6 +34,7 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		createContact:     connectormock.NewMutation[constantcontact.CreateContactInput, constantcontact.ContactMetadata](t, constantcontact.CreateContactDefinition),
 		listContacts:      connectormock.NewQuery[constantcontact.ListContactsInput, constantcontact.ContactsPage](t, constantcontact.ListContactsDefinition),
 		deleteContact:     connectormock.NewMutation[constantcontact.DeleteContactInput, constantcontact.DeleteContactOutput](t, constantcontact.DeleteContactDefinition),
 		getContact:        connectormock.NewQuery[constantcontact.GetContactInput, constantcontact.ContactMetadata](t, constantcontact.GetContactDefinition),
@@ -42,6 +44,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		updateContactList: connectormock.NewMutation[constantcontact.UpdateContactListInput, constantcontact.ContactListMetadata](t, constantcontact.UpdateContactListDefinition),
 		deleteContactList: connectormock.NewMutation[constantcontact.DeleteContactListInput, constantcontact.DeleteContactListOutput](t, constantcontact.DeleteContactListDefinition),
 	}
+	mock.createContact.Default(CreateContactDefault())
 	mock.listContacts.Default(ListContactsDefault())
 	mock.deleteContact.Default(DeleteContactDefault())
 	mock.getContact.Default(GetContactDefault())
@@ -60,6 +63,11 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() constantcontact.Connection { return mock.connection }
+
+// CreateContact returns the createContact script.
+func (mock *Mock) CreateContact() *connectormock.Mutation[constantcontact.CreateContactInput, constantcontact.ContactMetadata] {
+	return mock.createContact
+}
 
 // ListContacts returns the listContacts script.
 func (mock *Mock) ListContacts() *connectormock.Query[constantcontact.ListContactsInput, constantcontact.ContactsPage] {
@@ -103,6 +111,9 @@ func (mock *Mock) DeleteContactList() *connectormock.Mutation[constantcontact.De
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateContact() sdkgo.Mutation[constantcontact.CreateContactInput, constantcontact.ContactMetadata] {
+	return operations.mock.createContact
+}
 func (operations mockOperations) ListContacts() sdkgo.Query[constantcontact.ListContactsInput, constantcontact.ContactsPage] {
 	return operations.mock.listContacts
 }
@@ -126,6 +137,42 @@ func (operations mockOperations) UpdateContactList() sdkgo.Mutation[constantcont
 }
 func (operations mockOperations) DeleteContactList() sdkgo.Mutation[constantcontact.DeleteContactListInput, constantcontact.DeleteContactListOutput] {
 	return operations.mock.deleteContactList
+}
+
+// CreateContactCreated selects the created branch: Constant Contact created the contact.
+func CreateContactCreated(value constantcontact.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.ContactMetadata] {
+	return connectormock.Branch(constantcontact.CreateContactBranchCreated, value, failure)
+}
+
+// CreateContactAlreadyExists selects the alreadyExists branch: A contact with this email exists.
+func CreateContactAlreadyExists(value constantcontact.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.ContactMetadata] {
+	return connectormock.Branch(constantcontact.CreateContactBranchAlreadyExists, value, failure)
+}
+
+// CreateContactProviderRejected selects the providerRejected branch: Constant Contact rejected the creation.
+func CreateContactProviderRejected(value constantcontact.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.ContactMetadata] {
+	return connectormock.Branch(constantcontact.CreateContactBranchProviderRejected, value, failure)
+}
+
+// CreateContactDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateContactDefect(value constantcontact.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.ContactMetadata] {
+	return connectormock.Branch(constantcontact.CreateContactBranchDefect, value, failure)
+}
+
+// CreateContactRetry asks Dex to retry the createContact Step, after the delay when it is positive.
+func CreateContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[constantcontact.ContactMetadata] {
+	return connectormock.Retry[constantcontact.ContactMetadata](failure, after)
+}
+
+// CreateContactCreatedDefault is the manifest mock createdDefault: A sample email contact was created.
+func CreateContactCreatedDefault() connectormock.Case[constantcontact.ContactMetadata] {
+	value := connectormock.MustDecodeOutput[constantcontact.ContactMetadata](`{"contactId":"1898ae62-4752-11e9-9c8a-fa163e6b01c1","emailAddress":"reader@example.com","firstName":"Avery","lastName":"Reader","emailPermission":"implicit"}`)
+	return connectormock.Branch(constantcontact.CreateContactBranchCreated, value, nil)
+}
+
+// CreateContactDefault is the manifest default, createdDefault, which New installs.
+func CreateContactDefault() connectormock.Case[constantcontact.ContactMetadata] {
+	return CreateContactCreatedDefault()
 }
 
 // ListContactsListed selects the listed branch: Constant Contact returned a page of contacts.

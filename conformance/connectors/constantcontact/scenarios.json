@@ -2,6 +2,828 @@
   "connector": "constantcontact",
   "scenarios": [
     {
+      "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+      "exchanges": [
+        {
+          "body": "{\"lists\":[{\"list_id\":\"1898ae62-4752-11e9-9c8a-fa163e6b01c1\",\"name\":\"Customers\",\"description\":\"Current customers\",\"favorite\":true}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contact_lists",
+          "query": {
+            "name": [
+              "Customers"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "description": "Current customers",
+          "favorite": true,
+          "listId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "name": "Customers"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+      "input": {
+        "description": "Current customers",
+        "favorite": true,
+        "name": "Customers"
+      },
+      "name": "createContactList-readBackCreated",
+      "operation": "createContactList",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+      "exchanges": [
+        {
+          "body": "{\"lists\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contact_lists",
+          "query": {
+            "name": [
+              "Customers"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"list_id\":\"1898ae62-4752-11e9-9c8a-fa163e6b01c1\",\"name\":\"Customers\",\"description\":\"Current customers\",\"favorite\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact_lists",
+          "requestBody": {
+            "description": "Current customers",
+            "favorite": true,
+            "name": "Customers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+          "providerId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "description": "Current customers",
+          "favorite": true,
+          "listId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "name": "Customers"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+      "input": {
+        "description": "Current customers",
+        "favorite": true,
+        "name": "Customers"
+      },
+      "name": "createContactList-readBackThenResend",
+      "operation": "createContactList",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+      "exchanges": [
+        {
+          "body": "{\"lists\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contact_lists",
+          "query": {
+            "name": [
+              "Customers"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "LOCAL_DEFECT",
+        "output": {
+          "favorite": false,
+          "listId": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+      "input": {
+        "description": "Current customers",
+        "favorite": true,
+        "name": "Customers"
+      },
+      "name": "createContactList-sendCapUncertain",
+      "operation": "createContactList",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "exchanges": [
+        {
+          "body": "{\"contacts\":[{\"contact_id\":\"1898ae62-4752-11e9-9c8a-fa163e6b01c1\",\"email_address\":{\"address\":\"new-reader@example.com\",\"permission_to_send\":\"implicit\"},\"first_name\":\"Avery\",\"last_name\":\"Reader\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "email": [
+              "new-reader@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "contactId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "emailAddress": "new-reader@example.com",
+          "emailPermission": "implicit",
+          "firstName": "Avery",
+          "lastName": "Reader"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "input": {
+        "createSource": "Account",
+        "emailAddress": "new-reader@example.com",
+        "emailPermission": "implicit",
+        "firstName": "Avery",
+        "lastName": "Reader"
+      },
+      "name": "createContact-readBackCreated",
+      "operation": "createContact",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "exchanges": [
+        {
+          "body": "{\"contacts\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "email": [
+              "new-reader@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"contact_id\":\"1898ae62-4752-11e9-9c8a-fa163e6b01c1\",\"email_address\":{\"address\":\"new-reader@example.com\",\"permission_to_send\":\"implicit\"},\"first_name\":\"Avery\",\"last_name\":\"Reader\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "create_source": "Account",
+            "email_address": {
+              "address": "new-reader@example.com",
+              "permission_to_send": "implicit"
+            },
+            "first_name": "Avery",
+            "last_name": "Reader"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+          "providerId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "emailAddress": "new-reader@example.com",
+          "emailPermission": "implicit",
+          "firstName": "Avery",
+          "lastName": "Reader"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "input": {
+        "createSource": "Account",
+        "emailAddress": "new-reader@example.com",
+        "emailPermission": "implicit",
+        "firstName": "Avery",
+        "lastName": "Reader"
+      },
+      "name": "createContact-readBackThenResend",
+      "operation": "createContact",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "exchanges": [
+        {
+          "body": "{\"contacts\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "email": [
+              "new-reader@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "LOCAL_DEFECT",
+        "output": {
+          "contactId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "input": {
+        "createSource": "Account",
+        "emailAddress": "new-reader@example.com",
+        "emailPermission": "implicit",
+        "firstName": "Avery",
+        "lastName": "Reader"
+      },
+      "name": "createContact-sendCapUncertain",
+      "operation": "createContact",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "exchanges": [
+        {
+          "body": "{\"contact_id\":\"1898ae62-4752-11e9-9c8a-fa163e6b01c1\",\"email_address\":{\"address\":\"new-reader@example.com\",\"permission_to_send\":\"implicit\"},\"first_name\":\"Avery\",\"last_name\":\"Reader\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "create_source": "Account",
+            "email_address": {
+              "address": "new-reader@example.com",
+              "permission_to_send": "implicit"
+            },
+            "first_name": "Avery",
+            "last_name": "Reader"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+          "providerId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "emailAddress": "new-reader@example.com",
+          "emailPermission": "implicit",
+          "firstName": "Avery",
+          "lastName": "Reader"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "input": {
+        "createSource": "Account",
+        "emailAddress": "new-reader@example.com",
+        "emailPermission": "implicit",
+        "firstName": "Avery",
+        "lastName": "Reader"
+      },
+      "name": "createContact-success",
+      "operation": "createContact"
+    },
+    {
+      "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"conflict\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "create_source": "Account",
+            "email_address": {
+              "address": "new-reader@example.com",
+              "permission_to_send": "implicit"
+            },
+            "first_name": "Avery",
+            "last_name": "Reader"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "alreadyExists",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "input": {
+        "createSource": "Account",
+        "emailAddress": "new-reader@example.com",
+        "emailPermission": "implicit",
+        "firstName": "Avery",
+        "lastName": "Reader"
+      },
+      "name": "createContact-alreadyExists",
+      "operation": "createContact"
+    },
+    {
+      "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "create_source": "Account",
+            "email_address": {
+              "address": "new-reader@example.com",
+              "permission_to_send": "implicit"
+            },
+            "first_name": "Avery",
+            "last_name": "Reader"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "input": {
+        "createSource": "Account",
+        "emailAddress": "new-reader@example.com",
+        "emailPermission": "implicit",
+        "firstName": "Avery",
+        "lastName": "Reader"
+      },
+      "name": "createContact-providerRejected",
+      "operation": "createContact"
+    },
+    {
+      "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "input": {
+        "createSource": "Account",
+        "emailAddress": "invalid",
+        "emailPermission": "implicit",
+        "firstName": "Avery",
+        "lastName": "Reader"
+      },
+      "name": "createContact-defect",
+      "operation": "createContact"
+    },
+    {
+      "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "create_source": "Account",
+            "email_address": {
+              "address": "new-reader@example.com",
+              "permission_to_send": "implicit"
+            },
+            "first_name": "Avery",
+            "last_name": "Reader"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "input": {
+        "createSource": "Account",
+        "emailAddress": "new-reader@example.com",
+        "emailPermission": "implicit",
+        "firstName": "Avery",
+        "lastName": "Reader"
+      },
+      "name": "createContact-rateLimited",
+      "operation": "createContact"
+    },
+    {
+      "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "create_source": "Account",
+            "email_address": {
+              "address": "new-reader@example.com",
+              "permission_to_send": "implicit"
+            },
+            "first_name": "Avery",
+            "last_name": "Reader"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "input": {
+        "createSource": "Account",
+        "emailAddress": "new-reader@example.com",
+        "emailPermission": "implicit",
+        "firstName": "Avery",
+        "lastName": "Reader"
+      },
+      "name": "createContact-serviceUnavailable",
+      "operation": "createContact"
+    },
+    {
+      "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unknown\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "create_source": "Account",
+            "email_address": {
+              "address": "new-reader@example.com",
+              "permission_to_send": "implicit"
+            },
+            "first_name": "Avery",
+            "last_name": "Reader"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "input": {
+        "createSource": "Account",
+        "emailAddress": "new-reader@example.com",
+        "emailPermission": "implicit",
+        "firstName": "Avery",
+        "lastName": "Reader"
+      },
+      "name": "createContact-serverFailure",
+      "operation": "createContact"
+    },
+    {
+      "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "create_source": "Account",
+            "email_address": {
+              "address": "new-reader@example.com",
+              "permission_to_send": "implicit"
+            },
+            "first_name": "Avery",
+            "last_name": "Reader"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8969ab12-0960-5998-aeae-3b8d560095b7",
+      "input": {
+        "createSource": "Account",
+        "emailAddress": "new-reader@example.com",
+        "emailPermission": "implicit",
+        "firstName": "Avery",
+        "lastName": "Reader"
+      },
+      "name": "createContact-transportFailure",
+      "operation": "createContact"
+    },
+    {
       "callId": "9fad5e54-41dd-516f-bca4-bffb32364d06",
       "exchanges": [
         {
@@ -1466,6 +2288,13 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+          "providerId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "output": {
           "description": "Current customers",
           "favorite": true,
@@ -1517,6 +2346,12 @@
       "expected": {
         "branch": "alreadyExists",
         "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "output": {
           "favorite": false,
           "listId": "",
@@ -1567,6 +2402,12 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "output": {
           "favorite": false,
           "listId": "",
@@ -1617,6 +2458,12 @@
       "expected": {
         "branch": "",
         "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1685,6 +2532,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1730,6 +2582,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1773,6 +2630,12 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -2521,7 +3384,13 @@
       ],
       "expected": {
         "branch": "",
-        "failureKind": "AVAILABILITY",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2565,6 +3434,12 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,

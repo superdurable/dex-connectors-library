@@ -4,6 +4,7 @@
 package constantcontact
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 // ContactListMetadata contains the public settings of one contact list.
@@ -146,7 +148,7 @@ func (DeleteContactListOperation) Definition() sdkgo.MutationDefinition {
 	return DeleteContactListDefinition
 }
 
-// IdempotencyKey correlates attempts; a repeated name cannot create a second list.
+// IdempotencyKey correlates bounded attempts; Constant Contact does not accept it on list creation.
 func (CreateContactListOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateContactListInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
@@ -252,10 +254,63 @@ func (operation CreateContactListOperation) Invoke(call sdkgo.Call, input Create
 	if err != nil {
 		return listMutationBranch[ContactListMetadata]("createContactList", CreateContactListBranchDefect, sdkgo.FailureLocalDefect, "list request could not be encoded")
 	}
-	response := operation.client.send(call, http.MethodPost, "/contact_lists", payload)
+	fence, err := singledispatch.NewFence(call, CreateContactListDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
+	if err != nil {
+		return listMutationBranch[ContactListMetadata]("createContactList", CreateContactListBranchDefect, sdkgo.FailureLocalDefect, "dispatch fence unavailable")
+	}
+	decision := fence.Decide()
+	if decision.Kind == singledispatch.FailClosed {
+		return createContactListUncertain("previous list creation cannot be confirmed")
+	}
+	if decision.Kind != singledispatch.SendAllowed {
+		list, isKnown, shouldRetry := operation.client.findContactListByName(call, input)
+		if shouldRetry {
+			return sdkgo.NewMutationRetry[ContactListMetadata](listFailure("createContactList", sdkgo.FailureAvailability, "list read-back unavailable"), 0)
+		}
+		if list != nil {
+			return sdkgo.NewMutationBranch(CreateContactListBranchCreated, *list, nil, sdkgo.Receipt{})
+		}
+		if decision.Kind == singledispatch.ReadBackRequired || !isKnown {
+			return createContactListUncertain("previous list creation cannot be confirmed")
+		}
+	}
+	credentials, credentialResponse := operation.client.resolveCredentials(call)
+	if credentialResponse.err != nil {
+		if decision.Kind == singledispatch.SendAllowed {
+			_ = fence.RecordNotSent()
+		}
+		if errors.Is(credentialResponse.err, errCredential) {
+			return listMutationBranch[ContactListMetadata]("createContactList", CreateContactListBranchDefect, sdkgo.FailureAuthentication, "Constant Contact credentials are unavailable or invalid")
+		}
+		return sdkgo.NewMutationRetry[ContactListMetadata](listFailure("createContactList", sdkgo.FailureAvailability, "Constant Contact credentials could not be refreshed"), 0)
+	}
+	var response providerResponse
+	err = fence.Dispatch(func(requestContext context.Context) error {
+		response = operation.client.sendAuthorized(requestContext, credentials, http.MethodPost, "/contact_lists", payload)
+		return response.err
+	})
+	if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
+		return sdkgo.NewMutationRetry[ContactListMetadata](listFailure("createContactList", sdkgo.FailureAvailability, "dispatch did not start"), 0)
+	}
+	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[ContactListMetadata](listFailure("createContactList", sdkgo.FailureAvailability, "retry checkpoint unavailable"), 0)
+		}
+		kind := sdkgo.FailureAvailability
+		if response.status == http.StatusTooManyRequests {
+			kind = sdkgo.FailureRateLimit
+		}
+		return sdkgo.NewMutationRetry[ContactListMetadata](listFailure("createContactList", kind, "Constant Contact did not create the list"), response.retryAfter)
+	}
+	if response.err != nil || response.status == http.StatusRequestTimeout || response.status >= 500 {
+		return sdkgo.NewMutationRetry[ContactListMetadata](listFailure("createContactList", sdkgo.FailureTransport, "list creation outcome is unknown"), 0)
+	}
 	if kind, failure := classifyListResponse("createContactList", response); kind != listResponseSuccess {
 		if kind == listResponseRetry || kind == listResponseInvalid {
 			return sdkgo.NewMutationRetry[ContactListMetadata](failure, response.retryAfter)
+		}
+		if decision.MaximumPriorSends > 0 {
+			return createContactListUncertain("an earlier list creation may have succeeded")
 		}
 		branch := CreateContactListBranchProviderRejected
 		if response.status == http.StatusConflict {
@@ -273,7 +328,42 @@ func (operation CreateContactListOperation) Invoke(call sdkgo.Call, input Create
 	if err != nil {
 		return sdkgo.NewMutationRetry[ContactListMetadata](sdkgo.Failure{Kind: sdkgo.FailureProtocol, Provider: "constantcontact", Operation: "createContactList", Message: "Constant Contact returned an invalid list"}, 0)
 	}
+	_ = fence.RecordProviderID(list.ListID)
 	return sdkgo.NewMutationBranch(CreateContactListBranchCreated, list, nil, sdkgo.Receipt{})
+}
+
+func (client *Client) findContactListByName(call sdkgo.Call, input CreateContactListInput) (*ContactListMetadata, bool, bool) {
+	response := client.get(call, "/contact_lists?name="+url.QueryEscape(input.Name))
+	if response.err != nil || response.status == http.StatusTooManyRequests || response.status >= 500 {
+		return nil, false, true
+	}
+	if response.status != http.StatusOK {
+		return nil, false, false
+	}
+	var envelope struct {
+		Lists []json.RawMessage `json:"lists"`
+	}
+	if json.Unmarshal(response.body, &envelope) != nil || envelope.Lists == nil {
+		return nil, false, true
+	}
+	for _, item := range envelope.Lists {
+		list, err := decodeContactList(item)
+		if err != nil {
+			return nil, false, true
+		}
+		if list.Name == input.Name && list.Description == input.Description && list.Favorite == input.Favorite {
+			return &list, true, false
+		}
+	}
+	return nil, true, false
+}
+
+func createContactListUncertain(message string) sdkgo.MutationAttempt[ContactListMetadata] {
+	return sdkgo.NewMutationUncertain(ContactListMetadata{}, listFailure("createContactList", sdkgo.FailureTransport, message), sdkgo.Receipt{})
+}
+
+func listFailure(operation string, kind sdkgo.FailureKind, message string) sdkgo.Failure {
+	return sdkgo.Failure{Kind: kind, Provider: "constantcontact", Operation: operation, Message: message}
 }
 
 // Invoke replaces one list's name, description, and favorite state.

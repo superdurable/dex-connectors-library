@@ -6,6 +6,7 @@ package constantcontact
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -77,18 +78,34 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 }
 
 func (client *Client) send(call sdkgo.Call, method string, path string, body []byte) providerResponse {
+	return client.sendWithContext(call.Context, call, method, path, body)
+}
+
+func (client *Client) sendWithContext(requestContext context.Context, call sdkgo.Call, method string, path string, body []byte) providerResponse {
+	credentials, response := client.resolveCredentials(call)
+	if response.err != nil {
+		return response
+	}
+	return client.sendAuthorized(requestContext, credentials, method, path, body)
+}
+
+func (client *Client) resolveCredentials(call sdkgo.Call) (Credentials, providerResponse) {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	if sdkgo.IsReauthorizationRequired(err) {
-		return providerResponse{err: errCredential}
+		return Credentials{}, providerResponse{err: errCredential}
 	}
 	if err != nil {
-		return providerResponse{err: errRefresh}
+		return Credentials{}, providerResponse{err: errRefresh}
 	}
 	if credentials.Validate() != nil || validateResolvedCredentials(credentials) != nil {
-		return providerResponse{err: errCredential}
+		return Credentials{}, providerResponse{err: errCredential}
 	}
+	return credentials, providerResponse{}
+}
+
+func (client *Client) sendAuthorized(requestContext context.Context, credentials Credentials, method string, path string, body []byte) providerResponse {
 	accessToken := credentials.AccessToken.Reveal()
-	request, err := http.NewRequestWithContext(call.Context, method, client.baseURL+path, bytes.NewReader(body))
+	request, err := http.NewRequestWithContext(requestContext, method, client.baseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
