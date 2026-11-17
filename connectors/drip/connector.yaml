@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: drip
   displayName: Drip
-  description: Discover Drip accounts and subscribers, and inspect or manage email series campaigns.
+  description: Discover Drip accounts and subscribers, manage email series campaigns, and maintain campaign subscriptions.
   company: Drip
   categories: [marketing]
   version: v0.2.0
@@ -118,6 +118,86 @@ spec:
         - {id: defect, goName: Defect, description: Invalid account or campaign ID or credentials., optional: true}
       mocks:
         - {name: pausedCampaign, branch: paused, description: The email series campaign is paused., default: true, output: {id: '123456', status: paused}}
+    - name: listCampaignSubscribers
+      goName: ListCampaignSubscribers
+      inputType: ListCampaignSubscribersInput
+      outputType: SubscribersPage
+      kind: query
+      description: List one bounded page of subscribers in an email series campaign.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Drip returned campaign subscribers.}
+        - {id: providerRejected, goName: ProviderRejected, description: Drip rejected the campaign subscriber listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Drip returned invalid campaign subscriber data., optional: true}
+        - {id: defect, goName: Defect, description: Campaign ID or list options are invalid or credentials are unavailable., optional: true}
+      mocks:
+        - {name: campaignSubscriberPage, branch: listed, description: One campaign subscriber is listed., default: true, output: {subscribers: [{id: sample-subscriber-id, email: 'ada@example.com', status: active}], page: 1, totalPages: 1, totalCount: 1}}
+    - name: listSubscriberCampaignSubscriptions
+      goName: ListSubscriberCampaignSubscriptions
+      inputType: SubscriberIdentityInput
+      outputType: CampaignSubscriptionsPage
+      kind: query
+      description: Read one subscriber's email series campaign subscriptions and states.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Drip returned campaign subscriptions.}
+        - {id: providerRejected, goName: ProviderRejected, description: Drip rejected subscription listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Drip returned invalid subscription data., optional: true}
+        - {id: defect, goName: Defect, description: Subscriber ID is invalid or credentials are unavailable., optional: true}
+      mocks:
+        - {name: subscriberSubscriptions, branch: listed, description: One active campaign subscription is listed., default: true, output: {subscriptions: [{id: '123456', campaignId: '123456', status: active}], page: 1, totalPages: 1, totalCount: 1}}
+    - name: subscribeToCampaign
+      goName: SubscribeToCampaign
+      inputType: SubscribeToCampaignInput
+      outputType: SubscriberMetadata
+      kind: mutation
+      description: Subscribe one email address to an email series campaign with a bounded send count.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: subscribed, goName: Subscribed, description: Drip confirmed the subscription.}
+        - {id: providerRejected, goName: ProviderRejected, description: Drip conclusively rejected the subscription., optional: true}
+        - {id: defect, goName: Defect, description: Subscription input is invalid or credentials are unavailable., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirmation., optional: true}
+      mocks:
+        - {name: campaignSubscribed, branch: subscribed, description: One subscriber was subscribed., default: true, output: {id: sample-subscriber-id, email: 'ada@example.com', status: active}}
+    - name: removeSubscriberFromCampaign
+      goName: RemoveSubscriberFromCampaign
+      inputType: SubscriberCampaignIdentityInput
+      outputType: SubscriberMetadata
+      kind: mutation
+      description: Remove one subscriber from one email series campaign.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: removed, goName: Removed, description: Drip confirmed removal.}
+        - {id: providerRejected, goName: ProviderRejected, description: Drip rejected removal., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Drip returned invalid subscriber data., optional: true}
+        - {id: defect, goName: Defect, description: Subscriber or campaign ID is invalid or credentials are unavailable., optional: true}
+      mocks:
+        - {name: campaignRemoved, branch: removed, description: One subscriber was removed from a campaign., default: true, output: {id: sample-subscriber-id, email: 'ada@example.com', status: active}}
+    - name: unsubscribeSubscriberFromAll
+      goName: UnsubscribeSubscriberFromAll
+      inputType: SubscriberIdentityInput
+      outputType: SubscriberMetadata
+      kind: mutation
+      description: Ensure a subscriber is unsubscribed from all Drip mailings.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: unsubscribed, goName: Unsubscribed, description: Drip confirmed global unsubscribe.}
+        - {id: providerRejected, goName: ProviderRejected, description: Drip rejected global unsubscribe., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Drip returned invalid subscriber data., optional: true}
+        - {id: defect, goName: Defect, description: Subscriber identity is invalid or credentials are unavailable., optional: true}
+      mocks:
+        - {name: allMailingsStopped, branch: unsubscribed, description: One subscriber was unsubscribed from all mailings., default: true, output: {id: sample-subscriber-id, email: 'ada@example.com', status: unsubscribed}}
     - name: listAccounts
       goName: ListAccounts
       inputType: ListAccountsInput

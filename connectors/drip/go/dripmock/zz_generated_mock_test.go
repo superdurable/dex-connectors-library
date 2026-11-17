@@ -32,6 +32,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[drip.CampaignState](`{"id":"123456","status":"paused"}`)
 			return err
 		}},
+		{name: "listCampaignSubscribers/campaignSubscriberPage/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[drip.SubscribersPage](`{"subscribers":[{"id":"sample-subscriber-id","email":"ada@example.com","status":"active"}],"page":1,"totalPages":1,"totalCount":1}`)
+			return err
+		}},
+		{name: "listSubscriberCampaignSubscriptions/subscriberSubscriptions/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[drip.CampaignSubscriptionsPage](`{"subscriptions":[{"id":"123456","campaignId":"123456","status":"active"}],"page":1,"totalPages":1,"totalCount":1}`)
+			return err
+		}},
+		{name: "subscribeToCampaign/campaignSubscribed/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[drip.SubscriberMetadata](`{"id":"sample-subscriber-id","email":"ada@example.com","status":"active"}`)
+			return err
+		}},
+		{name: "removeSubscriberFromCampaign/campaignRemoved/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[drip.SubscriberMetadata](`{"id":"sample-subscriber-id","email":"ada@example.com","status":"active"}`)
+			return err
+		}},
+		{name: "unsubscribeSubscriberFromAll/allMailingsStopped/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[drip.SubscriberMetadata](`{"id":"sample-subscriber-id","email":"ada@example.com","status":"unsubscribed"}`)
+			return err
+		}},
 		{name: "listAccounts/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[drip.AccountsList](`{"accounts":[{"id":"9999999","name":"Sample Account"}]}`)
 			return err
@@ -73,6 +93,21 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.PauseCampaign().Definition().Operation.OperationID != "pauseCampaign" {
 		t.Errorf("pauseCampaign mock has another definition")
+	}
+	if mock.ListCampaignSubscribers().Definition().Operation.OperationID != "listCampaignSubscribers" {
+		t.Errorf("listCampaignSubscribers mock has another definition")
+	}
+	if mock.ListSubscriberCampaignSubscriptions().Definition().Operation.OperationID != "listSubscriberCampaignSubscriptions" {
+		t.Errorf("listSubscriberCampaignSubscriptions mock has another definition")
+	}
+	if mock.SubscribeToCampaign().Definition().Operation.OperationID != "subscribeToCampaign" {
+		t.Errorf("subscribeToCampaign mock has another definition")
+	}
+	if mock.RemoveSubscriberFromCampaign().Definition().Operation.OperationID != "removeSubscriberFromCampaign" {
+		t.Errorf("removeSubscriberFromCampaign mock has another definition")
+	}
+	if mock.UnsubscribeSubscriberFromAll().Definition().Operation.OperationID != "unsubscribeSubscriberFromAll" {
+		t.Errorf("unsubscribeSubscriberFromAll mock has another definition")
 	}
 	if mock.ListAccounts().Definition().Operation.OperationID != "listAccounts" {
 		t.Errorf("listAccounts mock has another definition")

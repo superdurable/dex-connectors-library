@@ -17,16 +17,21 @@ import (
 
 // Mock is a scripted drip connection. Script each operation through its accessor.
 type Mock struct {
-	connection       drip.Connection
-	listCampaigns    *connectormock.Query[drip.ListCampaignsInput, drip.CampaignsPage]
-	getCampaign      *connectormock.Query[drip.CampaignIdentityInput, drip.CampaignMetadata]
-	activateCampaign *connectormock.Mutation[drip.CampaignIdentityInput, drip.CampaignState]
-	pauseCampaign    *connectormock.Mutation[drip.CampaignIdentityInput, drip.CampaignState]
-	listAccounts     *connectormock.Query[drip.ListAccountsInput, drip.AccountsList]
-	getSubscriber    *connectormock.Query[drip.GetSubscriberInput, drip.SubscriberMetadata]
-	listSubscribers  *connectormock.Query[drip.ListSubscribersInput, drip.SubscribersPage]
-	upsertSubscriber *connectormock.Mutation[drip.UpsertSubscriberInput, drip.SubscriberMetadata]
-	deleteSubscriber *connectormock.Mutation[drip.DeleteSubscriberInput, drip.DeletedSubscriber]
+	connection                          drip.Connection
+	listCampaigns                       *connectormock.Query[drip.ListCampaignsInput, drip.CampaignsPage]
+	getCampaign                         *connectormock.Query[drip.CampaignIdentityInput, drip.CampaignMetadata]
+	activateCampaign                    *connectormock.Mutation[drip.CampaignIdentityInput, drip.CampaignState]
+	pauseCampaign                       *connectormock.Mutation[drip.CampaignIdentityInput, drip.CampaignState]
+	listCampaignSubscribers             *connectormock.Query[drip.ListCampaignSubscribersInput, drip.SubscribersPage]
+	listSubscriberCampaignSubscriptions *connectormock.Query[drip.SubscriberIdentityInput, drip.CampaignSubscriptionsPage]
+	subscribeToCampaign                 *connectormock.Mutation[drip.SubscribeToCampaignInput, drip.SubscriberMetadata]
+	removeSubscriberFromCampaign        *connectormock.Mutation[drip.SubscriberCampaignIdentityInput, drip.SubscriberMetadata]
+	unsubscribeSubscriberFromAll        *connectormock.Mutation[drip.SubscriberIdentityInput, drip.SubscriberMetadata]
+	listAccounts                        *connectormock.Query[drip.ListAccountsInput, drip.AccountsList]
+	getSubscriber                       *connectormock.Query[drip.GetSubscriberInput, drip.SubscriberMetadata]
+	listSubscribers                     *connectormock.Query[drip.ListSubscribersInput, drip.SubscribersPage]
+	upsertSubscriber                    *connectormock.Mutation[drip.UpsertSubscriberInput, drip.SubscriberMetadata]
+	deleteSubscriber                    *connectormock.Mutation[drip.DeleteSubscriberInput, drip.DeletedSubscriber]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -34,20 +39,30 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listCampaigns:    connectormock.NewQuery[drip.ListCampaignsInput, drip.CampaignsPage](t, drip.ListCampaignsDefinition),
-		getCampaign:      connectormock.NewQuery[drip.CampaignIdentityInput, drip.CampaignMetadata](t, drip.GetCampaignDefinition),
-		activateCampaign: connectormock.NewMutation[drip.CampaignIdentityInput, drip.CampaignState](t, drip.ActivateCampaignDefinition),
-		pauseCampaign:    connectormock.NewMutation[drip.CampaignIdentityInput, drip.CampaignState](t, drip.PauseCampaignDefinition),
-		listAccounts:     connectormock.NewQuery[drip.ListAccountsInput, drip.AccountsList](t, drip.ListAccountsDefinition),
-		getSubscriber:    connectormock.NewQuery[drip.GetSubscriberInput, drip.SubscriberMetadata](t, drip.GetSubscriberDefinition),
-		listSubscribers:  connectormock.NewQuery[drip.ListSubscribersInput, drip.SubscribersPage](t, drip.ListSubscribersDefinition),
-		upsertSubscriber: connectormock.NewMutation[drip.UpsertSubscriberInput, drip.SubscriberMetadata](t, drip.UpsertSubscriberDefinition),
-		deleteSubscriber: connectormock.NewMutation[drip.DeleteSubscriberInput, drip.DeletedSubscriber](t, drip.DeleteSubscriberDefinition),
+		listCampaigns:                       connectormock.NewQuery[drip.ListCampaignsInput, drip.CampaignsPage](t, drip.ListCampaignsDefinition),
+		getCampaign:                         connectormock.NewQuery[drip.CampaignIdentityInput, drip.CampaignMetadata](t, drip.GetCampaignDefinition),
+		activateCampaign:                    connectormock.NewMutation[drip.CampaignIdentityInput, drip.CampaignState](t, drip.ActivateCampaignDefinition),
+		pauseCampaign:                       connectormock.NewMutation[drip.CampaignIdentityInput, drip.CampaignState](t, drip.PauseCampaignDefinition),
+		listCampaignSubscribers:             connectormock.NewQuery[drip.ListCampaignSubscribersInput, drip.SubscribersPage](t, drip.ListCampaignSubscribersDefinition),
+		listSubscriberCampaignSubscriptions: connectormock.NewQuery[drip.SubscriberIdentityInput, drip.CampaignSubscriptionsPage](t, drip.ListSubscriberCampaignSubscriptionsDefinition),
+		subscribeToCampaign:                 connectormock.NewMutation[drip.SubscribeToCampaignInput, drip.SubscriberMetadata](t, drip.SubscribeToCampaignDefinition),
+		removeSubscriberFromCampaign:        connectormock.NewMutation[drip.SubscriberCampaignIdentityInput, drip.SubscriberMetadata](t, drip.RemoveSubscriberFromCampaignDefinition),
+		unsubscribeSubscriberFromAll:        connectormock.NewMutation[drip.SubscriberIdentityInput, drip.SubscriberMetadata](t, drip.UnsubscribeSubscriberFromAllDefinition),
+		listAccounts:                        connectormock.NewQuery[drip.ListAccountsInput, drip.AccountsList](t, drip.ListAccountsDefinition),
+		getSubscriber:                       connectormock.NewQuery[drip.GetSubscriberInput, drip.SubscriberMetadata](t, drip.GetSubscriberDefinition),
+		listSubscribers:                     connectormock.NewQuery[drip.ListSubscribersInput, drip.SubscribersPage](t, drip.ListSubscribersDefinition),
+		upsertSubscriber:                    connectormock.NewMutation[drip.UpsertSubscriberInput, drip.SubscriberMetadata](t, drip.UpsertSubscriberDefinition),
+		deleteSubscriber:                    connectormock.NewMutation[drip.DeleteSubscriberInput, drip.DeletedSubscriber](t, drip.DeleteSubscriberDefinition),
 	}
 	mock.listCampaigns.Default(ListCampaignsDefault())
 	mock.getCampaign.Default(GetCampaignDefault())
 	mock.activateCampaign.Default(ActivateCampaignDefault())
 	mock.pauseCampaign.Default(PauseCampaignDefault())
+	mock.listCampaignSubscribers.Default(ListCampaignSubscribersDefault())
+	mock.listSubscriberCampaignSubscriptions.Default(ListSubscriberCampaignSubscriptionsDefault())
+	mock.subscribeToCampaign.Default(SubscribeToCampaignDefault())
+	mock.removeSubscriberFromCampaign.Default(RemoveSubscriberFromCampaignDefault())
+	mock.unsubscribeSubscriberFromAll.Default(UnsubscribeSubscriberFromAllDefault())
 	mock.listAccounts.Default(ListAccountsDefault())
 	mock.getSubscriber.Default(GetSubscriberDefault())
 	mock.listSubscribers.Default(ListSubscribersDefault())
@@ -82,6 +97,31 @@ func (mock *Mock) ActivateCampaign() *connectormock.Mutation[drip.CampaignIdenti
 // PauseCampaign returns the pauseCampaign script.
 func (mock *Mock) PauseCampaign() *connectormock.Mutation[drip.CampaignIdentityInput, drip.CampaignState] {
 	return mock.pauseCampaign
+}
+
+// ListCampaignSubscribers returns the listCampaignSubscribers script.
+func (mock *Mock) ListCampaignSubscribers() *connectormock.Query[drip.ListCampaignSubscribersInput, drip.SubscribersPage] {
+	return mock.listCampaignSubscribers
+}
+
+// ListSubscriberCampaignSubscriptions returns the listSubscriberCampaignSubscriptions script.
+func (mock *Mock) ListSubscriberCampaignSubscriptions() *connectormock.Query[drip.SubscriberIdentityInput, drip.CampaignSubscriptionsPage] {
+	return mock.listSubscriberCampaignSubscriptions
+}
+
+// SubscribeToCampaign returns the subscribeToCampaign script.
+func (mock *Mock) SubscribeToCampaign() *connectormock.Mutation[drip.SubscribeToCampaignInput, drip.SubscriberMetadata] {
+	return mock.subscribeToCampaign
+}
+
+// RemoveSubscriberFromCampaign returns the removeSubscriberFromCampaign script.
+func (mock *Mock) RemoveSubscriberFromCampaign() *connectormock.Mutation[drip.SubscriberCampaignIdentityInput, drip.SubscriberMetadata] {
+	return mock.removeSubscriberFromCampaign
+}
+
+// UnsubscribeSubscriberFromAll returns the unsubscribeSubscriberFromAll script.
+func (mock *Mock) UnsubscribeSubscriberFromAll() *connectormock.Mutation[drip.SubscriberIdentityInput, drip.SubscriberMetadata] {
+	return mock.unsubscribeSubscriberFromAll
 }
 
 // ListAccounts returns the listAccounts script.
@@ -122,6 +162,21 @@ func (operations mockOperations) ActivateCampaign() sdkgo.Mutation[drip.Campaign
 }
 func (operations mockOperations) PauseCampaign() sdkgo.Mutation[drip.CampaignIdentityInput, drip.CampaignState] {
 	return operations.mock.pauseCampaign
+}
+func (operations mockOperations) ListCampaignSubscribers() sdkgo.Query[drip.ListCampaignSubscribersInput, drip.SubscribersPage] {
+	return operations.mock.listCampaignSubscribers
+}
+func (operations mockOperations) ListSubscriberCampaignSubscriptions() sdkgo.Query[drip.SubscriberIdentityInput, drip.CampaignSubscriptionsPage] {
+	return operations.mock.listSubscriberCampaignSubscriptions
+}
+func (operations mockOperations) SubscribeToCampaign() sdkgo.Mutation[drip.SubscribeToCampaignInput, drip.SubscriberMetadata] {
+	return operations.mock.subscribeToCampaign
+}
+func (operations mockOperations) RemoveSubscriberFromCampaign() sdkgo.Mutation[drip.SubscriberCampaignIdentityInput, drip.SubscriberMetadata] {
+	return operations.mock.removeSubscriberFromCampaign
+}
+func (operations mockOperations) UnsubscribeSubscriberFromAll() sdkgo.Mutation[drip.SubscriberIdentityInput, drip.SubscriberMetadata] {
+	return operations.mock.unsubscribeSubscriberFromAll
 }
 func (operations mockOperations) ListAccounts() sdkgo.Query[drip.ListAccountsInput, drip.AccountsList] {
 	return operations.mock.listAccounts
@@ -276,6 +331,186 @@ func PauseCampaignPausedCampaign() connectormock.Case[drip.CampaignState] {
 // PauseCampaignDefault is the manifest default, pausedCampaign, which New installs.
 func PauseCampaignDefault() connectormock.Case[drip.CampaignState] {
 	return PauseCampaignPausedCampaign()
+}
+
+// ListCampaignSubscribersListed selects the listed branch: Drip returned campaign subscribers.
+func ListCampaignSubscribersListed(value drip.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[drip.SubscribersPage] {
+	return connectormock.Branch(drip.ListCampaignSubscribersBranchListed, value, failure)
+}
+
+// ListCampaignSubscribersProviderRejected selects the providerRejected branch: Drip rejected the campaign subscriber listing.
+func ListCampaignSubscribersProviderRejected(value drip.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[drip.SubscribersPage] {
+	return connectormock.Branch(drip.ListCampaignSubscribersBranchProviderRejected, value, failure)
+}
+
+// ListCampaignSubscribersInvalidResponse selects the invalidResponse branch: Drip returned invalid campaign subscriber data.
+func ListCampaignSubscribersInvalidResponse(value drip.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[drip.SubscribersPage] {
+	return connectormock.Branch(drip.ListCampaignSubscribersBranchInvalidResponse, value, failure)
+}
+
+// ListCampaignSubscribersDefect selects the defect branch: Campaign ID or list options are invalid or credentials are unavailable.
+func ListCampaignSubscribersDefect(value drip.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[drip.SubscribersPage] {
+	return connectormock.Branch(drip.ListCampaignSubscribersBranchDefect, value, failure)
+}
+
+// ListCampaignSubscribersRetry asks Dex to retry the listCampaignSubscribers Step, after the delay when it is positive.
+func ListCampaignSubscribersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[drip.SubscribersPage] {
+	return connectormock.Retry[drip.SubscribersPage](failure, after)
+}
+
+// ListCampaignSubscribersCampaignSubscriberPage is the manifest mock campaignSubscriberPage: One campaign subscriber is listed.
+func ListCampaignSubscribersCampaignSubscriberPage() connectormock.Case[drip.SubscribersPage] {
+	value := connectormock.MustDecodeOutput[drip.SubscribersPage](`{"subscribers":[{"id":"sample-subscriber-id","email":"ada@example.com","status":"active"}],"page":1,"totalPages":1,"totalCount":1}`)
+	return connectormock.Branch(drip.ListCampaignSubscribersBranchListed, value, nil)
+}
+
+// ListCampaignSubscribersDefault is the manifest default, campaignSubscriberPage, which New installs.
+func ListCampaignSubscribersDefault() connectormock.Case[drip.SubscribersPage] {
+	return ListCampaignSubscribersCampaignSubscriberPage()
+}
+
+// ListSubscriberCampaignSubscriptionsListed selects the listed branch: Drip returned campaign subscriptions.
+func ListSubscriberCampaignSubscriptionsListed(value drip.CampaignSubscriptionsPage, failure *sdkgo.Failure) connectormock.Case[drip.CampaignSubscriptionsPage] {
+	return connectormock.Branch(drip.ListSubscriberCampaignSubscriptionsBranchListed, value, failure)
+}
+
+// ListSubscriberCampaignSubscriptionsProviderRejected selects the providerRejected branch: Drip rejected subscription listing.
+func ListSubscriberCampaignSubscriptionsProviderRejected(value drip.CampaignSubscriptionsPage, failure *sdkgo.Failure) connectormock.Case[drip.CampaignSubscriptionsPage] {
+	return connectormock.Branch(drip.ListSubscriberCampaignSubscriptionsBranchProviderRejected, value, failure)
+}
+
+// ListSubscriberCampaignSubscriptionsInvalidResponse selects the invalidResponse branch: Drip returned invalid subscription data.
+func ListSubscriberCampaignSubscriptionsInvalidResponse(value drip.CampaignSubscriptionsPage, failure *sdkgo.Failure) connectormock.Case[drip.CampaignSubscriptionsPage] {
+	return connectormock.Branch(drip.ListSubscriberCampaignSubscriptionsBranchInvalidResponse, value, failure)
+}
+
+// ListSubscriberCampaignSubscriptionsDefect selects the defect branch: Subscriber ID is invalid or credentials are unavailable.
+func ListSubscriberCampaignSubscriptionsDefect(value drip.CampaignSubscriptionsPage, failure *sdkgo.Failure) connectormock.Case[drip.CampaignSubscriptionsPage] {
+	return connectormock.Branch(drip.ListSubscriberCampaignSubscriptionsBranchDefect, value, failure)
+}
+
+// ListSubscriberCampaignSubscriptionsRetry asks Dex to retry the listSubscriberCampaignSubscriptions Step, after the delay when it is positive.
+func ListSubscriberCampaignSubscriptionsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[drip.CampaignSubscriptionsPage] {
+	return connectormock.Retry[drip.CampaignSubscriptionsPage](failure, after)
+}
+
+// ListSubscriberCampaignSubscriptionsSubscriberSubscriptions is the manifest mock subscriberSubscriptions: One active campaign subscription is listed.
+func ListSubscriberCampaignSubscriptionsSubscriberSubscriptions() connectormock.Case[drip.CampaignSubscriptionsPage] {
+	value := connectormock.MustDecodeOutput[drip.CampaignSubscriptionsPage](`{"subscriptions":[{"id":"123456","campaignId":"123456","status":"active"}],"page":1,"totalPages":1,"totalCount":1}`)
+	return connectormock.Branch(drip.ListSubscriberCampaignSubscriptionsBranchListed, value, nil)
+}
+
+// ListSubscriberCampaignSubscriptionsDefault is the manifest default, subscriberSubscriptions, which New installs.
+func ListSubscriberCampaignSubscriptionsDefault() connectormock.Case[drip.CampaignSubscriptionsPage] {
+	return ListSubscriberCampaignSubscriptionsSubscriberSubscriptions()
+}
+
+// SubscribeToCampaignSubscribed selects the subscribed branch: Drip confirmed the subscription.
+func SubscribeToCampaignSubscribed(value drip.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Branch(drip.SubscribeToCampaignBranchSubscribed, value, failure)
+}
+
+// SubscribeToCampaignProviderRejected selects the providerRejected branch: Drip conclusively rejected the subscription.
+func SubscribeToCampaignProviderRejected(value drip.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Branch(drip.SubscribeToCampaignBranchProviderRejected, value, failure)
+}
+
+// SubscribeToCampaignDefect selects the defect branch: Subscription input is invalid or credentials are unavailable.
+func SubscribeToCampaignDefect(value drip.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Branch(drip.SubscribeToCampaignBranchDefect, value, failure)
+}
+
+// SubscribeToCampaignUncertain returns an uncertain subscribeToCampaign outcome.
+func SubscribeToCampaignUncertain(value drip.SubscriberMetadata, failure sdkgo.Failure) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SubscribeToCampaignRetry asks Dex to retry the subscribeToCampaign Step, after the delay when it is positive.
+func SubscribeToCampaignRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Retry[drip.SubscriberMetadata](failure, after)
+}
+
+// SubscribeToCampaignCampaignSubscribed is the manifest mock campaignSubscribed: One subscriber was subscribed.
+func SubscribeToCampaignCampaignSubscribed() connectormock.Case[drip.SubscriberMetadata] {
+	value := connectormock.MustDecodeOutput[drip.SubscriberMetadata](`{"id":"sample-subscriber-id","email":"ada@example.com","status":"active"}`)
+	return connectormock.Branch(drip.SubscribeToCampaignBranchSubscribed, value, nil)
+}
+
+// SubscribeToCampaignDefault is the manifest default, campaignSubscribed, which New installs.
+func SubscribeToCampaignDefault() connectormock.Case[drip.SubscriberMetadata] {
+	return SubscribeToCampaignCampaignSubscribed()
+}
+
+// RemoveSubscriberFromCampaignRemoved selects the removed branch: Drip confirmed removal.
+func RemoveSubscriberFromCampaignRemoved(value drip.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Branch(drip.RemoveSubscriberFromCampaignBranchRemoved, value, failure)
+}
+
+// RemoveSubscriberFromCampaignProviderRejected selects the providerRejected branch: Drip rejected removal.
+func RemoveSubscriberFromCampaignProviderRejected(value drip.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Branch(drip.RemoveSubscriberFromCampaignBranchProviderRejected, value, failure)
+}
+
+// RemoveSubscriberFromCampaignInvalidResponse selects the invalidResponse branch: Drip returned invalid subscriber data.
+func RemoveSubscriberFromCampaignInvalidResponse(value drip.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Branch(drip.RemoveSubscriberFromCampaignBranchInvalidResponse, value, failure)
+}
+
+// RemoveSubscriberFromCampaignDefect selects the defect branch: Subscriber or campaign ID is invalid or credentials are unavailable.
+func RemoveSubscriberFromCampaignDefect(value drip.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Branch(drip.RemoveSubscriberFromCampaignBranchDefect, value, failure)
+}
+
+// RemoveSubscriberFromCampaignRetry asks Dex to retry the removeSubscriberFromCampaign Step, after the delay when it is positive.
+func RemoveSubscriberFromCampaignRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Retry[drip.SubscriberMetadata](failure, after)
+}
+
+// RemoveSubscriberFromCampaignCampaignRemoved is the manifest mock campaignRemoved: One subscriber was removed from a campaign.
+func RemoveSubscriberFromCampaignCampaignRemoved() connectormock.Case[drip.SubscriberMetadata] {
+	value := connectormock.MustDecodeOutput[drip.SubscriberMetadata](`{"id":"sample-subscriber-id","email":"ada@example.com","status":"active"}`)
+	return connectormock.Branch(drip.RemoveSubscriberFromCampaignBranchRemoved, value, nil)
+}
+
+// RemoveSubscriberFromCampaignDefault is the manifest default, campaignRemoved, which New installs.
+func RemoveSubscriberFromCampaignDefault() connectormock.Case[drip.SubscriberMetadata] {
+	return RemoveSubscriberFromCampaignCampaignRemoved()
+}
+
+// UnsubscribeSubscriberFromAllUnsubscribed selects the unsubscribed branch: Drip confirmed global unsubscribe.
+func UnsubscribeSubscriberFromAllUnsubscribed(value drip.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Branch(drip.UnsubscribeSubscriberFromAllBranchUnsubscribed, value, failure)
+}
+
+// UnsubscribeSubscriberFromAllProviderRejected selects the providerRejected branch: Drip rejected global unsubscribe.
+func UnsubscribeSubscriberFromAllProviderRejected(value drip.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Branch(drip.UnsubscribeSubscriberFromAllBranchProviderRejected, value, failure)
+}
+
+// UnsubscribeSubscriberFromAllInvalidResponse selects the invalidResponse branch: Drip returned invalid subscriber data.
+func UnsubscribeSubscriberFromAllInvalidResponse(value drip.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Branch(drip.UnsubscribeSubscriberFromAllBranchInvalidResponse, value, failure)
+}
+
+// UnsubscribeSubscriberFromAllDefect selects the defect branch: Subscriber identity is invalid or credentials are unavailable.
+func UnsubscribeSubscriberFromAllDefect(value drip.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Branch(drip.UnsubscribeSubscriberFromAllBranchDefect, value, failure)
+}
+
+// UnsubscribeSubscriberFromAllRetry asks Dex to retry the unsubscribeSubscriberFromAll Step, after the delay when it is positive.
+func UnsubscribeSubscriberFromAllRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Retry[drip.SubscriberMetadata](failure, after)
+}
+
+// UnsubscribeSubscriberFromAllAllMailingsStopped is the manifest mock allMailingsStopped: One subscriber was unsubscribed from all mailings.
+func UnsubscribeSubscriberFromAllAllMailingsStopped() connectormock.Case[drip.SubscriberMetadata] {
+	value := connectormock.MustDecodeOutput[drip.SubscriberMetadata](`{"id":"sample-subscriber-id","email":"ada@example.com","status":"unsubscribed"}`)
+	return connectormock.Branch(drip.UnsubscribeSubscriberFromAllBranchUnsubscribed, value, nil)
+}
+
+// UnsubscribeSubscriberFromAllDefault is the manifest default, allMailingsStopped, which New installs.
+func UnsubscribeSubscriberFromAllDefault() connectormock.Case[drip.SubscriberMetadata] {
+	return UnsubscribeSubscriberFromAllAllMailingsStopped()
 }
 
 // ListAccountsListed selects the listed branch: Drip returned accessible accounts.

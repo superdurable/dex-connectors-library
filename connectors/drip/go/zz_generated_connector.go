@@ -44,6 +44,11 @@ type Operations interface {
 	GetCampaign() sdkgo.Query[CampaignIdentityInput, CampaignMetadata]
 	ActivateCampaign() sdkgo.Mutation[CampaignIdentityInput, CampaignState]
 	PauseCampaign() sdkgo.Mutation[CampaignIdentityInput, CampaignState]
+	ListCampaignSubscribers() sdkgo.Query[ListCampaignSubscribersInput, SubscribersPage]
+	ListSubscriberCampaignSubscriptions() sdkgo.Query[SubscriberIdentityInput, CampaignSubscriptionsPage]
+	SubscribeToCampaign() sdkgo.Mutation[SubscribeToCampaignInput, SubscriberMetadata]
+	RemoveSubscriberFromCampaign() sdkgo.Mutation[SubscriberCampaignIdentityInput, SubscriberMetadata]
+	UnsubscribeSubscriberFromAll() sdkgo.Mutation[SubscriberIdentityInput, SubscriberMetadata]
 	ListAccounts() sdkgo.Query[ListAccountsInput, AccountsList]
 	GetSubscriber() sdkgo.Query[GetSubscriberInput, SubscriberMetadata]
 	ListSubscribers() sdkgo.Query[ListSubscribersInput, SubscribersPage]
@@ -64,6 +69,21 @@ func (operations clientOperations) ActivateCampaign() sdkgo.Mutation[CampaignIde
 }
 func (operations clientOperations) PauseCampaign() sdkgo.Mutation[CampaignIdentityInput, CampaignState] {
 	return operations.client.PauseCampaign()
+}
+func (operations clientOperations) ListCampaignSubscribers() sdkgo.Query[ListCampaignSubscribersInput, SubscribersPage] {
+	return operations.client.ListCampaignSubscribers()
+}
+func (operations clientOperations) ListSubscriberCampaignSubscriptions() sdkgo.Query[SubscriberIdentityInput, CampaignSubscriptionsPage] {
+	return operations.client.ListSubscriberCampaignSubscriptions()
+}
+func (operations clientOperations) SubscribeToCampaign() sdkgo.Mutation[SubscribeToCampaignInput, SubscriberMetadata] {
+	return operations.client.SubscribeToCampaign()
+}
+func (operations clientOperations) RemoveSubscriberFromCampaign() sdkgo.Mutation[SubscriberCampaignIdentityInput, SubscriberMetadata] {
+	return operations.client.RemoveSubscriberFromCampaign()
+}
+func (operations clientOperations) UnsubscribeSubscriberFromAll() sdkgo.Mutation[SubscriberIdentityInput, SubscriberMetadata] {
+	return operations.client.UnsubscribeSubscriberFromAll()
 }
 func (operations clientOperations) ListAccounts() sdkgo.Query[ListAccountsInput, AccountsList] {
 	return operations.client.ListAccounts()
@@ -382,6 +402,7 @@ var ActivateCampaignDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type ActivateCampaignResult = sdkgo.MutationResult[CampaignState]
@@ -447,6 +468,7 @@ var PauseCampaignDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type PauseCampaignResult = sdkgo.MutationResult[CampaignState]
@@ -488,6 +510,368 @@ func NewPauseCampaignStep[IN any](config PauseCampaignStepConfig[IN]) sdkgo.Muta
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(PauseCampaignBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListCampaignSubscribersBranchListed sdkgo.BranchID = "listed"
+const ListCampaignSubscribersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCampaignSubscribersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCampaignSubscribersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCampaignSubscribersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCampaignSubscribers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCampaignSubscribersBranchListed, Description: "Drip returned campaign subscribers."},
+		{ID: ListCampaignSubscribersBranchProviderRejected, Description: "Drip rejected the campaign subscriber listing.", Optional: true},
+		{ID: ListCampaignSubscribersBranchInvalidResponse, Description: "Drip returned invalid campaign subscriber data.", Optional: true},
+		{ID: ListCampaignSubscribersBranchDefect, Description: "Campaign ID or list options are invalid or credentials are unavailable.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCampaignSubscribersResult = sdkgo.QueryResult[SubscribersPage]
+
+type ListCampaignSubscribersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=drip"`
+	operationID                    struct{}                                           `connector:"operationId=listCampaignSubscribers"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCampaignSubscribersInput              `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCampaignSubscribersResult]        `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListCampaignSubscribersResult]        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCampaignSubscribersResult]        `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCampaignSubscribersResult]        `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SubscribersPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewListCampaignSubscribersStep[IN any](config ListCampaignSubscribersStepConfig[IN]) sdkgo.QueryStep[IN, ListCampaignSubscribersInput, SubscribersPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("drip connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCampaignSubscribersInput, SubscribersPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCampaignSubscribers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCampaignSubscribersResult] {
+			branches := make([]sdkgo.BranchTarget[ListCampaignSubscribersResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCampaignSubscribersBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCampaignSubscribersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCampaignSubscribersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCampaignSubscribersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListSubscriberCampaignSubscriptionsBranchListed sdkgo.BranchID = "listed"
+const ListSubscriberCampaignSubscriptionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSubscriberCampaignSubscriptionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSubscriberCampaignSubscriptionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSubscriberCampaignSubscriptionsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSubscriberCampaignSubscriptions"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSubscriberCampaignSubscriptionsBranchListed, Description: "Drip returned campaign subscriptions."},
+		{ID: ListSubscriberCampaignSubscriptionsBranchProviderRejected, Description: "Drip rejected subscription listing.", Optional: true},
+		{ID: ListSubscriberCampaignSubscriptionsBranchInvalidResponse, Description: "Drip returned invalid subscription data.", Optional: true},
+		{ID: ListSubscriberCampaignSubscriptionsBranchDefect, Description: "Subscriber ID is invalid or credentials are unavailable.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSubscriberCampaignSubscriptionsResult = sdkgo.QueryResult[CampaignSubscriptionsPage]
+
+type ListSubscriberCampaignSubscriptionsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                     `connector:"connectorId=drip"`
+	operationID                    struct{}                                                     `connector:"operationId=listSubscriberCampaignSubscriptions"`
+	StepType                       string                                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                        `connector:"annotations"`
+	Connection                     Connection                                                   `connector:"connection"`
+	ConnectionName                 string                                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) SubscriberIdentityInput                             `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSubscriberCampaignSubscriptionsResult]      `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListSubscriberCampaignSubscriptionsResult]      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSubscriberCampaignSubscriptionsResult]      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSubscriberCampaignSubscriptionsResult]      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CampaignSubscriptionsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+}
+
+func NewListSubscriberCampaignSubscriptionsStep[IN any](config ListSubscriberCampaignSubscriptionsStepConfig[IN]) sdkgo.QueryStep[IN, SubscriberIdentityInput, CampaignSubscriptionsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("drip connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SubscriberIdentityInput, CampaignSubscriptionsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSubscriberCampaignSubscriptions(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSubscriberCampaignSubscriptionsResult] {
+			branches := make([]sdkgo.BranchTarget[ListSubscriberCampaignSubscriptionsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSubscriberCampaignSubscriptionsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSubscriberCampaignSubscriptionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSubscriberCampaignSubscriptionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSubscriberCampaignSubscriptionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SubscribeToCampaignBranchSubscribed sdkgo.BranchID = "subscribed"
+const SubscribeToCampaignBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SubscribeToCampaignBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const SubscribeToCampaignBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var SubscribeToCampaignDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "subscribeToCampaign"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SubscribeToCampaignBranchSubscribed, Description: "Drip confirmed the subscription."},
+		{ID: SubscribeToCampaignBranchProviderRejected, Description: "Drip conclusively rejected the subscription.", Optional: true},
+		{ID: SubscribeToCampaignBranchDefect, Description: "Subscription input is invalid or credentials are unavailable.", Optional: true},
+		{ID: SubscribeToCampaignBranchUncertain, Description: "The send cap was reached without confirmation.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SubscribeToCampaignResult = sdkgo.MutationResult[SubscriberMetadata]
+
+type SubscribeToCampaignStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=drip"`
+	operationID                       struct{}                                                 `connector:"operationId=subscribeToCampaign"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) SubscribeToCampaignInput                        `connector:"mapToOperationInput"`
+	Subscribed                        sdkgo.Target[SubscribeToCampaignResult]                  `connector:"branch=subscribed"`
+	ProviderRejected                  sdkgo.Target[SubscribeToCampaignResult]                  `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[SubscribeToCampaignResult]                  `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[SubscribeToCampaignResult]                  `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SubscriberMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSubscribeToCampaignStep[IN any](config SubscribeToCampaignStepConfig[IN]) sdkgo.MutationStep[IN, SubscribeToCampaignInput, SubscriberMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("drip connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SubscribeToCampaignInput, SubscriberMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SubscribeToCampaign(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SubscribeToCampaignResult] {
+			branches := make([]sdkgo.BranchTarget[SubscribeToCampaignResult], 0, 4)
+			if config.Subscribed.HasStep() {
+				branches = append(branches, config.Subscribed.BranchTarget(SubscribeToCampaignBranchSubscribed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SubscribeToCampaignBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SubscribeToCampaignBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SubscribeToCampaignBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const RemoveSubscriberFromCampaignBranchRemoved sdkgo.BranchID = "removed"
+const RemoveSubscriberFromCampaignBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RemoveSubscriberFromCampaignBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const RemoveSubscriberFromCampaignBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RemoveSubscriberFromCampaignDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "removeSubscriberFromCampaign"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RemoveSubscriberFromCampaignBranchRemoved, Description: "Drip confirmed removal."},
+		{ID: RemoveSubscriberFromCampaignBranchProviderRejected, Description: "Drip rejected removal.", Optional: true},
+		{ID: RemoveSubscriberFromCampaignBranchInvalidResponse, Description: "Drip returned invalid subscriber data.", Optional: true},
+		{ID: RemoveSubscriberFromCampaignBranchDefect, Description: "Subscriber or campaign ID is invalid or credentials are unavailable.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type RemoveSubscriberFromCampaignResult = sdkgo.MutationResult[SubscriberMetadata]
+
+type RemoveSubscriberFromCampaignStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=drip"`
+	operationID                       struct{}                                                 `connector:"operationId=removeSubscriberFromCampaign"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) SubscriberCampaignIdentityInput                 `connector:"mapToOperationInput"`
+	Removed                           sdkgo.Target[RemoveSubscriberFromCampaignResult]         `connector:"branch=removed"`
+	ProviderRejected                  sdkgo.Target[RemoveSubscriberFromCampaignResult]         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[RemoveSubscriberFromCampaignResult]         `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[RemoveSubscriberFromCampaignResult]         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SubscriberMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewRemoveSubscriberFromCampaignStep[IN any](config RemoveSubscriberFromCampaignStepConfig[IN]) sdkgo.MutationStep[IN, SubscriberCampaignIdentityInput, SubscriberMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("drip connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SubscriberCampaignIdentityInput, SubscriberMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RemoveSubscriberFromCampaign(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RemoveSubscriberFromCampaignResult] {
+			branches := make([]sdkgo.BranchTarget[RemoveSubscriberFromCampaignResult], 0, 4)
+			if config.Removed.HasStep() {
+				branches = append(branches, config.Removed.BranchTarget(RemoveSubscriberFromCampaignBranchRemoved))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RemoveSubscriberFromCampaignBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(RemoveSubscriberFromCampaignBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RemoveSubscriberFromCampaignBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UnsubscribeSubscriberFromAllBranchUnsubscribed sdkgo.BranchID = "unsubscribed"
+const UnsubscribeSubscriberFromAllBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UnsubscribeSubscriberFromAllBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UnsubscribeSubscriberFromAllBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UnsubscribeSubscriberFromAllDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "unsubscribeSubscriberFromAll"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UnsubscribeSubscriberFromAllBranchUnsubscribed, Description: "Drip confirmed global unsubscribe."},
+		{ID: UnsubscribeSubscriberFromAllBranchProviderRejected, Description: "Drip rejected global unsubscribe.", Optional: true},
+		{ID: UnsubscribeSubscriberFromAllBranchInvalidResponse, Description: "Drip returned invalid subscriber data.", Optional: true},
+		{ID: UnsubscribeSubscriberFromAllBranchDefect, Description: "Subscriber identity is invalid or credentials are unavailable.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UnsubscribeSubscriberFromAllResult = sdkgo.MutationResult[SubscriberMetadata]
+
+type UnsubscribeSubscriberFromAllStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=drip"`
+	operationID                       struct{}                                                 `connector:"operationId=unsubscribeSubscriberFromAll"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) SubscriberIdentityInput                         `connector:"mapToOperationInput"`
+	Unsubscribed                      sdkgo.Target[UnsubscribeSubscriberFromAllResult]         `connector:"branch=unsubscribed"`
+	ProviderRejected                  sdkgo.Target[UnsubscribeSubscriberFromAllResult]         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UnsubscribeSubscriberFromAllResult]         `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UnsubscribeSubscriberFromAllResult]         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SubscriberMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewUnsubscribeSubscriberFromAllStep[IN any](config UnsubscribeSubscriberFromAllStepConfig[IN]) sdkgo.MutationStep[IN, SubscriberIdentityInput, SubscriberMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("drip connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SubscriberIdentityInput, SubscriberMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UnsubscribeSubscriberFromAll(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UnsubscribeSubscriberFromAllResult] {
+			branches := make([]sdkgo.BranchTarget[UnsubscribeSubscriberFromAllResult], 0, 4)
+			if config.Unsubscribed.HasStep() {
+				branches = append(branches, config.Unsubscribed.BranchTarget(UnsubscribeSubscriberFromAllBranchUnsubscribed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UnsubscribeSubscriberFromAllBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UnsubscribeSubscriberFromAllBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UnsubscribeSubscriberFromAllBranchDefect))
 			}
 			return branches
 		}(),
@@ -733,6 +1117,7 @@ var UpsertSubscriberDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpsertSubscriberResult = sdkgo.MutationResult[SubscriberMetadata]
@@ -804,6 +1189,7 @@ var DeleteSubscriberDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type DeleteSubscriberResult = sdkgo.MutationResult[DeletedSubscriber]
