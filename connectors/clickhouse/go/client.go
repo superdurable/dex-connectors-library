@@ -70,6 +70,10 @@ type providerResponse struct {
 const listTablesSQL = "SELECT name FROM system.tables WHERE database = {database:String} ORDER BY name LIMIT 101 FORMAT JSON"
 
 func (client *Client) get(call sdkgo.Call, database string) providerResponse {
+	return client.getMetadata(call, listTablesSQL, url.Values{"param_database": {database}})
+}
+
+func (client *Client) getMetadata(call sdkgo.Call, query string, parameters url.Values) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -79,7 +83,7 @@ func (client *Client) get(call sdkgo.Call, database string) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(username) || !providerhttp.IsHeaderSafeCredential(password) {
 		return providerResponse{err: errCredential}
 	}
-	parameters := url.Values{"query": {listTablesSQL}, "param_database": {database}}
+	parameters.Set("query", query)
 	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+"/?"+parameters.Encode(), nil)
 	if err != nil {
 		return providerResponse{err: errRequest}

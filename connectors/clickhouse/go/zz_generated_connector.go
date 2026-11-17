@@ -41,13 +41,21 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListDatabases() sdkgo.Query[ListDatabasesInput, DatabasesPage]
 	ListTables() sdkgo.Query[ListTablesInput, TablesPage]
+	ListColumns() sdkgo.Query[ListColumnsInput, ColumnsPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListDatabases() sdkgo.Query[ListDatabasesInput, DatabasesPage] {
+	return operations.client.ListDatabases()
+}
 func (operations clientOperations) ListTables() sdkgo.Query[ListTablesInput, TablesPage] {
 	return operations.client.ListTables()
+}
+func (operations clientOperations) ListColumns() sdkgo.Query[ListColumnsInput, ColumnsPage] {
+	return operations.client.ListColumns()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -191,6 +199,77 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
+const ListDatabasesBranchListed sdkgo.BranchID = "listed"
+const ListDatabasesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListDatabasesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListDatabasesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListDatabasesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listDatabases"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListDatabasesBranchListed, Description: "ClickHouse returned the database names."},
+		{ID: ListDatabasesBranchProviderRejected, Description: "ClickHouse conclusively rejected the metadata query.", Optional: true},
+		{ID: ListDatabasesBranchInvalidResponse, Description: "ClickHouse returned malformed or oversized JSON.", Optional: true},
+		{ID: ListDatabasesBranchDefect, Description: "Local connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListDatabasesResult = sdkgo.QueryResult[DatabasesPage]
+
+type ListDatabasesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=clickhouse"`
+	operationID                    struct{}                                         `connector:"operationId=listDatabases"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListDatabasesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListDatabasesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListDatabasesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListDatabasesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListDatabasesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DatabasesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListDatabasesStep[IN any](config ListDatabasesStepConfig[IN]) sdkgo.QueryStep[IN, ListDatabasesInput, DatabasesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("clickhouse connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListDatabasesInput, DatabasesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListDatabases(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListDatabasesResult] {
+			branches := make([]sdkgo.BranchTarget[ListDatabasesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListDatabasesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListDatabasesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListDatabasesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListDatabasesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
 const ListTablesBranchListed sdkgo.BranchID = "listed"
 const ListTablesBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const ListTablesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
@@ -254,6 +333,77 @@ func NewListTablesStep[IN any](config ListTablesStepConfig[IN]) sdkgo.QueryStep[
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ListTablesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListColumnsBranchListed sdkgo.BranchID = "listed"
+const ListColumnsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListColumnsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListColumnsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListColumnsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listColumns"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListColumnsBranchListed, Description: "ClickHouse returned the table columns."},
+		{ID: ListColumnsBranchProviderRejected, Description: "ClickHouse conclusively rejected the metadata query.", Optional: true},
+		{ID: ListColumnsBranchInvalidResponse, Description: "ClickHouse returned malformed or oversized JSON.", Optional: true},
+		{ID: ListColumnsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListColumnsResult = sdkgo.QueryResult[ColumnsPage]
+
+type ListColumnsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=clickhouse"`
+	operationID                    struct{}                                       `connector:"operationId=listColumns"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListColumnsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListColumnsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListColumnsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListColumnsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListColumnsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ColumnsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListColumnsStep[IN any](config ListColumnsStepConfig[IN]) sdkgo.QueryStep[IN, ListColumnsInput, ColumnsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("clickhouse connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListColumnsInput, ColumnsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListColumns(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListColumnsResult] {
+			branches := make([]sdkgo.BranchTarget[ListColumnsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListColumnsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListColumnsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListColumnsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListColumnsBranchDefect))
 			}
 			return branches
 		}(),

@@ -57,5 +57,6 @@ func TestTableInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "analytics", output.Database)
 	require.Equal(t, []string{"events", "users"}, output.Names)
 	require.False(t, output.HasMore)
+	require.Len(t, mock.ListDatabases().Calls(), 1)
 	require.Len(t, mock.ListTables().Calls(), 1)
 }

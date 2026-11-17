@@ -8,7 +8,7 @@ import { ClickHouseClient } from '../src/client.js';
 import { ListTablesInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/clickhouse/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/clickhouse/scenarios.json', import.meta.url)).filter(scenario => scenario.operation === 'listTables');
 const connection = { provider: 'clickhouse', name: 'clickhouse' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeClickHouse, ''));
 
