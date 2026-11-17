@@ -17,18 +17,24 @@ import (
 
 // Mock is a scripted amazon-ses connection. Script each operation through its accessor.
 type Mock struct {
-	connection          ses.Connection
-	createEmailIdentity *connectormock.Mutation[ses.CreateEmailIdentityInput, ses.CreatedEmailIdentity]
-	getEmailIdentity    *connectormock.Query[ses.GetEmailIdentityInput, ses.EmailIdentityDetails]
-	listEmailIdentities *connectormock.Query[ses.ListEmailIdentitiesInput, ses.EmailIdentityPage]
-	deleteEmailIdentity *connectormock.Mutation[ses.DeleteEmailIdentityInput, ses.DeletedEmailIdentity]
-	sendEmail           *connectormock.Mutation[ses.SendEmailInput, ses.SentEmail]
-	createEmailTemplate *connectormock.Mutation[ses.CreateEmailTemplateInput, ses.EmailTemplate]
-	getEmailTemplate    *connectormock.Query[ses.GetEmailTemplateInput, ses.EmailTemplate]
-	listEmailTemplates  *connectormock.Query[ses.ListEmailTemplatesInput, ses.EmailTemplatePage]
-	updateEmailTemplate *connectormock.Mutation[ses.UpdateEmailTemplateInput, ses.EmailTemplate]
-	deleteEmailTemplate *connectormock.Mutation[ses.DeleteEmailTemplateInput, ses.DeletedEmailTemplate]
-	sendTemplatedEmail  *connectormock.Mutation[ses.SendTemplatedEmailInput, ses.SentEmail]
+	connection                            ses.Connection
+	createEmailIdentity                   *connectormock.Mutation[ses.CreateEmailIdentityInput, ses.CreatedEmailIdentity]
+	getEmailIdentity                      *connectormock.Query[ses.GetEmailIdentityInput, ses.EmailIdentityDetails]
+	listEmailIdentities                   *connectormock.Query[ses.ListEmailIdentitiesInput, ses.EmailIdentityPage]
+	deleteEmailIdentity                   *connectormock.Mutation[ses.DeleteEmailIdentityInput, ses.DeletedEmailIdentity]
+	sendEmail                             *connectormock.Mutation[ses.SendEmailInput, ses.SentEmail]
+	createEmailTemplate                   *connectormock.Mutation[ses.CreateEmailTemplateInput, ses.EmailTemplate]
+	getEmailTemplate                      *connectormock.Query[ses.GetEmailTemplateInput, ses.EmailTemplate]
+	listEmailTemplates                    *connectormock.Query[ses.ListEmailTemplatesInput, ses.EmailTemplatePage]
+	updateEmailTemplate                   *connectormock.Mutation[ses.UpdateEmailTemplateInput, ses.EmailTemplate]
+	deleteEmailTemplate                   *connectormock.Mutation[ses.DeleteEmailTemplateInput, ses.DeletedEmailTemplate]
+	sendTemplatedEmail                    *connectormock.Mutation[ses.SendTemplatedEmailInput, ses.SentEmail]
+	createCustomVerificationEmailTemplate *connectormock.Mutation[ses.CreateCustomVerificationEmailTemplateInput, ses.CustomVerificationEmailTemplate]
+	getCustomVerificationEmailTemplate    *connectormock.Query[ses.GetCustomVerificationEmailTemplateInput, ses.CustomVerificationEmailTemplate]
+	listCustomVerificationEmailTemplates  *connectormock.Query[ses.ListCustomVerificationEmailTemplatesInput, ses.CustomVerificationEmailTemplatePage]
+	updateCustomVerificationEmailTemplate *connectormock.Mutation[ses.UpdateCustomVerificationEmailTemplateInput, ses.CustomVerificationEmailTemplate]
+	deleteCustomVerificationEmailTemplate *connectormock.Mutation[ses.DeleteCustomVerificationEmailTemplateInput, ses.DeletedEmailTemplate]
+	sendCustomVerificationEmail           *connectormock.Mutation[ses.SendCustomVerificationEmailInput, ses.SentEmail]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -36,17 +42,23 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		createEmailIdentity: connectormock.NewMutation[ses.CreateEmailIdentityInput, ses.CreatedEmailIdentity](t, ses.CreateEmailIdentityDefinition),
-		getEmailIdentity:    connectormock.NewQuery[ses.GetEmailIdentityInput, ses.EmailIdentityDetails](t, ses.GetEmailIdentityDefinition),
-		listEmailIdentities: connectormock.NewQuery[ses.ListEmailIdentitiesInput, ses.EmailIdentityPage](t, ses.ListEmailIdentitiesDefinition),
-		deleteEmailIdentity: connectormock.NewMutation[ses.DeleteEmailIdentityInput, ses.DeletedEmailIdentity](t, ses.DeleteEmailIdentityDefinition),
-		sendEmail:           connectormock.NewMutation[ses.SendEmailInput, ses.SentEmail](t, ses.SendEmailDefinition),
-		createEmailTemplate: connectormock.NewMutation[ses.CreateEmailTemplateInput, ses.EmailTemplate](t, ses.CreateEmailTemplateDefinition),
-		getEmailTemplate:    connectormock.NewQuery[ses.GetEmailTemplateInput, ses.EmailTemplate](t, ses.GetEmailTemplateDefinition),
-		listEmailTemplates:  connectormock.NewQuery[ses.ListEmailTemplatesInput, ses.EmailTemplatePage](t, ses.ListEmailTemplatesDefinition),
-		updateEmailTemplate: connectormock.NewMutation[ses.UpdateEmailTemplateInput, ses.EmailTemplate](t, ses.UpdateEmailTemplateDefinition),
-		deleteEmailTemplate: connectormock.NewMutation[ses.DeleteEmailTemplateInput, ses.DeletedEmailTemplate](t, ses.DeleteEmailTemplateDefinition),
-		sendTemplatedEmail:  connectormock.NewMutation[ses.SendTemplatedEmailInput, ses.SentEmail](t, ses.SendTemplatedEmailDefinition),
+		createEmailIdentity:                   connectormock.NewMutation[ses.CreateEmailIdentityInput, ses.CreatedEmailIdentity](t, ses.CreateEmailIdentityDefinition),
+		getEmailIdentity:                      connectormock.NewQuery[ses.GetEmailIdentityInput, ses.EmailIdentityDetails](t, ses.GetEmailIdentityDefinition),
+		listEmailIdentities:                   connectormock.NewQuery[ses.ListEmailIdentitiesInput, ses.EmailIdentityPage](t, ses.ListEmailIdentitiesDefinition),
+		deleteEmailIdentity:                   connectormock.NewMutation[ses.DeleteEmailIdentityInput, ses.DeletedEmailIdentity](t, ses.DeleteEmailIdentityDefinition),
+		sendEmail:                             connectormock.NewMutation[ses.SendEmailInput, ses.SentEmail](t, ses.SendEmailDefinition),
+		createEmailTemplate:                   connectormock.NewMutation[ses.CreateEmailTemplateInput, ses.EmailTemplate](t, ses.CreateEmailTemplateDefinition),
+		getEmailTemplate:                      connectormock.NewQuery[ses.GetEmailTemplateInput, ses.EmailTemplate](t, ses.GetEmailTemplateDefinition),
+		listEmailTemplates:                    connectormock.NewQuery[ses.ListEmailTemplatesInput, ses.EmailTemplatePage](t, ses.ListEmailTemplatesDefinition),
+		updateEmailTemplate:                   connectormock.NewMutation[ses.UpdateEmailTemplateInput, ses.EmailTemplate](t, ses.UpdateEmailTemplateDefinition),
+		deleteEmailTemplate:                   connectormock.NewMutation[ses.DeleteEmailTemplateInput, ses.DeletedEmailTemplate](t, ses.DeleteEmailTemplateDefinition),
+		sendTemplatedEmail:                    connectormock.NewMutation[ses.SendTemplatedEmailInput, ses.SentEmail](t, ses.SendTemplatedEmailDefinition),
+		createCustomVerificationEmailTemplate: connectormock.NewMutation[ses.CreateCustomVerificationEmailTemplateInput, ses.CustomVerificationEmailTemplate](t, ses.CreateCustomVerificationEmailTemplateDefinition),
+		getCustomVerificationEmailTemplate:    connectormock.NewQuery[ses.GetCustomVerificationEmailTemplateInput, ses.CustomVerificationEmailTemplate](t, ses.GetCustomVerificationEmailTemplateDefinition),
+		listCustomVerificationEmailTemplates:  connectormock.NewQuery[ses.ListCustomVerificationEmailTemplatesInput, ses.CustomVerificationEmailTemplatePage](t, ses.ListCustomVerificationEmailTemplatesDefinition),
+		updateCustomVerificationEmailTemplate: connectormock.NewMutation[ses.UpdateCustomVerificationEmailTemplateInput, ses.CustomVerificationEmailTemplate](t, ses.UpdateCustomVerificationEmailTemplateDefinition),
+		deleteCustomVerificationEmailTemplate: connectormock.NewMutation[ses.DeleteCustomVerificationEmailTemplateInput, ses.DeletedEmailTemplate](t, ses.DeleteCustomVerificationEmailTemplateDefinition),
+		sendCustomVerificationEmail:           connectormock.NewMutation[ses.SendCustomVerificationEmailInput, ses.SentEmail](t, ses.SendCustomVerificationEmailDefinition),
 	}
 	mock.createEmailIdentity.Default(CreateEmailIdentityDefault())
 	mock.getEmailIdentity.Default(GetEmailIdentityDefault())
@@ -59,6 +71,12 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.updateEmailTemplate.Default(UpdateEmailTemplateDefault())
 	mock.deleteEmailTemplate.Default(DeleteEmailTemplateDefault())
 	mock.sendTemplatedEmail.Default(SendTemplatedEmailDefault())
+	mock.createCustomVerificationEmailTemplate.Default(CreateCustomVerificationEmailTemplateDefault())
+	mock.getCustomVerificationEmailTemplate.Default(GetCustomVerificationEmailTemplateDefault())
+	mock.listCustomVerificationEmailTemplates.Default(ListCustomVerificationEmailTemplatesDefault())
+	mock.updateCustomVerificationEmailTemplate.Default(UpdateCustomVerificationEmailTemplateDefault())
+	mock.deleteCustomVerificationEmailTemplate.Default(DeleteCustomVerificationEmailTemplateDefault())
+	mock.sendCustomVerificationEmail.Default(SendCustomVerificationEmailDefault())
 	connection, err := ses.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "amazon-ses", Name: connectionName})
 	if err != nil {
 		t.Fatalf("amazon-ses mock connection: %v", err)
@@ -125,6 +143,36 @@ func (mock *Mock) SendTemplatedEmail() *connectormock.Mutation[ses.SendTemplated
 	return mock.sendTemplatedEmail
 }
 
+// CreateCustomVerificationEmailTemplate returns the createCustomVerificationEmailTemplate script.
+func (mock *Mock) CreateCustomVerificationEmailTemplate() *connectormock.Mutation[ses.CreateCustomVerificationEmailTemplateInput, ses.CustomVerificationEmailTemplate] {
+	return mock.createCustomVerificationEmailTemplate
+}
+
+// GetCustomVerificationEmailTemplate returns the getCustomVerificationEmailTemplate script.
+func (mock *Mock) GetCustomVerificationEmailTemplate() *connectormock.Query[ses.GetCustomVerificationEmailTemplateInput, ses.CustomVerificationEmailTemplate] {
+	return mock.getCustomVerificationEmailTemplate
+}
+
+// ListCustomVerificationEmailTemplates returns the listCustomVerificationEmailTemplates script.
+func (mock *Mock) ListCustomVerificationEmailTemplates() *connectormock.Query[ses.ListCustomVerificationEmailTemplatesInput, ses.CustomVerificationEmailTemplatePage] {
+	return mock.listCustomVerificationEmailTemplates
+}
+
+// UpdateCustomVerificationEmailTemplate returns the updateCustomVerificationEmailTemplate script.
+func (mock *Mock) UpdateCustomVerificationEmailTemplate() *connectormock.Mutation[ses.UpdateCustomVerificationEmailTemplateInput, ses.CustomVerificationEmailTemplate] {
+	return mock.updateCustomVerificationEmailTemplate
+}
+
+// DeleteCustomVerificationEmailTemplate returns the deleteCustomVerificationEmailTemplate script.
+func (mock *Mock) DeleteCustomVerificationEmailTemplate() *connectormock.Mutation[ses.DeleteCustomVerificationEmailTemplateInput, ses.DeletedEmailTemplate] {
+	return mock.deleteCustomVerificationEmailTemplate
+}
+
+// SendCustomVerificationEmail returns the sendCustomVerificationEmail script.
+func (mock *Mock) SendCustomVerificationEmail() *connectormock.Mutation[ses.SendCustomVerificationEmailInput, ses.SentEmail] {
+	return mock.sendCustomVerificationEmail
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreateEmailIdentity() sdkgo.Mutation[ses.CreateEmailIdentityInput, ses.CreatedEmailIdentity] {
@@ -159,6 +207,24 @@ func (operations mockOperations) DeleteEmailTemplate() sdkgo.Mutation[ses.Delete
 }
 func (operations mockOperations) SendTemplatedEmail() sdkgo.Mutation[ses.SendTemplatedEmailInput, ses.SentEmail] {
 	return operations.mock.sendTemplatedEmail
+}
+func (operations mockOperations) CreateCustomVerificationEmailTemplate() sdkgo.Mutation[ses.CreateCustomVerificationEmailTemplateInput, ses.CustomVerificationEmailTemplate] {
+	return operations.mock.createCustomVerificationEmailTemplate
+}
+func (operations mockOperations) GetCustomVerificationEmailTemplate() sdkgo.Query[ses.GetCustomVerificationEmailTemplateInput, ses.CustomVerificationEmailTemplate] {
+	return operations.mock.getCustomVerificationEmailTemplate
+}
+func (operations mockOperations) ListCustomVerificationEmailTemplates() sdkgo.Query[ses.ListCustomVerificationEmailTemplatesInput, ses.CustomVerificationEmailTemplatePage] {
+	return operations.mock.listCustomVerificationEmailTemplates
+}
+func (operations mockOperations) UpdateCustomVerificationEmailTemplate() sdkgo.Mutation[ses.UpdateCustomVerificationEmailTemplateInput, ses.CustomVerificationEmailTemplate] {
+	return operations.mock.updateCustomVerificationEmailTemplate
+}
+func (operations mockOperations) DeleteCustomVerificationEmailTemplate() sdkgo.Mutation[ses.DeleteCustomVerificationEmailTemplateInput, ses.DeletedEmailTemplate] {
+	return operations.mock.deleteCustomVerificationEmailTemplate
+}
+func (operations mockOperations) SendCustomVerificationEmail() sdkgo.Mutation[ses.SendCustomVerificationEmailInput, ses.SentEmail] {
+	return operations.mock.sendCustomVerificationEmail
 }
 
 // CreateEmailIdentityCreated selects the created branch: SES accepted the identity for verification.
@@ -558,4 +624,220 @@ func SendTemplatedEmailSentTemplatedEmail() connectormock.Case[ses.SentEmail] {
 // SendTemplatedEmailDefault is the manifest default, sentTemplatedEmail, which New installs.
 func SendTemplatedEmailDefault() connectormock.Case[ses.SentEmail] {
 	return SendTemplatedEmailSentTemplatedEmail()
+}
+
+// CreateCustomVerificationEmailTemplateCreated selects the created branch: SES accepted or read-back confirmed the template.
+func CreateCustomVerificationEmailTemplateCreated(value ses.CustomVerificationEmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	return connectormock.Branch(ses.CreateCustomVerificationEmailTemplateBranchCreated, value, failure)
+}
+
+// CreateCustomVerificationEmailTemplateProviderRejected selects the providerRejected branch: SES conclusively rejected creation or the name has different content.
+func CreateCustomVerificationEmailTemplateProviderRejected(value ses.CustomVerificationEmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	return connectormock.Branch(ses.CreateCustomVerificationEmailTemplateBranchProviderRejected, value, failure)
+}
+
+// CreateCustomVerificationEmailTemplateUncertain returns an uncertain createCustomVerificationEmailTemplate outcome.
+func CreateCustomVerificationEmailTemplateUncertain(value ses.CustomVerificationEmailTemplate, failure sdkgo.Failure) connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateCustomVerificationEmailTemplateDefect selects the defect branch: The template content or connection is invalid.
+func CreateCustomVerificationEmailTemplateDefect(value ses.CustomVerificationEmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	return connectormock.Branch(ses.CreateCustomVerificationEmailTemplateBranchDefect, value, failure)
+}
+
+// CreateCustomVerificationEmailTemplateRetry asks Dex to retry the createCustomVerificationEmailTemplate Step, after the delay when it is positive.
+func CreateCustomVerificationEmailTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	return connectormock.Retry[ses.CustomVerificationEmailTemplate](failure, after)
+}
+
+// CreateCustomVerificationEmailTemplateCreatedCustomVerification is the manifest mock createdCustomVerification: SES accepted a verification template.
+func CreateCustomVerificationEmailTemplateCreatedCustomVerification() connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	value := connectormock.MustDecodeOutput[ses.CustomVerificationEmailTemplate](`{"name":"verify-customer","fromEmailAddress":"sender@example.com","subject":"Verify your address","content":"Open the link to verify.","successRedirectionURL":"https://example.com/success","failureRedirectionURL":"https://example.com/failure"}`)
+	return connectormock.Branch(ses.CreateCustomVerificationEmailTemplateBranchCreated, value, nil)
+}
+
+// CreateCustomVerificationEmailTemplateDefault is the manifest default, createdCustomVerification, which New installs.
+func CreateCustomVerificationEmailTemplateDefault() connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	return CreateCustomVerificationEmailTemplateCreatedCustomVerification()
+}
+
+// GetCustomVerificationEmailTemplateFound selects the found branch: SES returned the verification template.
+func GetCustomVerificationEmailTemplateFound(value ses.CustomVerificationEmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	return connectormock.Branch(ses.GetCustomVerificationEmailTemplateBranchFound, value, failure)
+}
+
+// GetCustomVerificationEmailTemplateMissing selects the missing branch: The verification template is absent.
+func GetCustomVerificationEmailTemplateMissing(value ses.CustomVerificationEmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	return connectormock.Branch(ses.GetCustomVerificationEmailTemplateBranchMissing, value, failure)
+}
+
+// GetCustomVerificationEmailTemplateProviderRejected selects the providerRejected branch: SES refused the read.
+func GetCustomVerificationEmailTemplateProviderRejected(value ses.CustomVerificationEmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	return connectormock.Branch(ses.GetCustomVerificationEmailTemplateBranchProviderRejected, value, failure)
+}
+
+// GetCustomVerificationEmailTemplateInvalidResponse selects the invalidResponse branch: SES returned invalid template content.
+func GetCustomVerificationEmailTemplateInvalidResponse(value ses.CustomVerificationEmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	return connectormock.Branch(ses.GetCustomVerificationEmailTemplateBranchInvalidResponse, value, failure)
+}
+
+// GetCustomVerificationEmailTemplateDefect selects the defect branch: The name or connection is invalid.
+func GetCustomVerificationEmailTemplateDefect(value ses.CustomVerificationEmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	return connectormock.Branch(ses.GetCustomVerificationEmailTemplateBranchDefect, value, failure)
+}
+
+// GetCustomVerificationEmailTemplateRetry asks Dex to retry the getCustomVerificationEmailTemplate Step, after the delay when it is positive.
+func GetCustomVerificationEmailTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	return connectormock.Retry[ses.CustomVerificationEmailTemplate](failure, after)
+}
+
+// GetCustomVerificationEmailTemplateFoundCustomVerification is the manifest mock foundCustomVerification: SES returned a verification template.
+func GetCustomVerificationEmailTemplateFoundCustomVerification() connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	value := connectormock.MustDecodeOutput[ses.CustomVerificationEmailTemplate](`{"name":"verify-customer","fromEmailAddress":"sender@example.com","subject":"Verify your address","content":"Open the link to verify.","successRedirectionURL":"https://example.com/success","failureRedirectionURL":"https://example.com/failure"}`)
+	return connectormock.Branch(ses.GetCustomVerificationEmailTemplateBranchFound, value, nil)
+}
+
+// GetCustomVerificationEmailTemplateDefault is the manifest default, foundCustomVerification, which New installs.
+func GetCustomVerificationEmailTemplateDefault() connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	return GetCustomVerificationEmailTemplateFoundCustomVerification()
+}
+
+// ListCustomVerificationEmailTemplatesPage selects the page branch: SES returned a page of verification templates.
+func ListCustomVerificationEmailTemplatesPage(value ses.CustomVerificationEmailTemplatePage, failure *sdkgo.Failure) connectormock.Case[ses.CustomVerificationEmailTemplatePage] {
+	return connectormock.Branch(ses.ListCustomVerificationEmailTemplatesBranchPage, value, failure)
+}
+
+// ListCustomVerificationEmailTemplatesProviderRejected selects the providerRejected branch: SES refused the listing.
+func ListCustomVerificationEmailTemplatesProviderRejected(value ses.CustomVerificationEmailTemplatePage, failure *sdkgo.Failure) connectormock.Case[ses.CustomVerificationEmailTemplatePage] {
+	return connectormock.Branch(ses.ListCustomVerificationEmailTemplatesBranchProviderRejected, value, failure)
+}
+
+// ListCustomVerificationEmailTemplatesInvalidResponse selects the invalidResponse branch: SES returned invalid template metadata.
+func ListCustomVerificationEmailTemplatesInvalidResponse(value ses.CustomVerificationEmailTemplatePage, failure *sdkgo.Failure) connectormock.Case[ses.CustomVerificationEmailTemplatePage] {
+	return connectormock.Branch(ses.ListCustomVerificationEmailTemplatesBranchInvalidResponse, value, failure)
+}
+
+// ListCustomVerificationEmailTemplatesDefect selects the defect branch: The page size or token is invalid.
+func ListCustomVerificationEmailTemplatesDefect(value ses.CustomVerificationEmailTemplatePage, failure *sdkgo.Failure) connectormock.Case[ses.CustomVerificationEmailTemplatePage] {
+	return connectormock.Branch(ses.ListCustomVerificationEmailTemplatesBranchDefect, value, failure)
+}
+
+// ListCustomVerificationEmailTemplatesRetry asks Dex to retry the listCustomVerificationEmailTemplates Step, after the delay when it is positive.
+func ListCustomVerificationEmailTemplatesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ses.CustomVerificationEmailTemplatePage] {
+	return connectormock.Retry[ses.CustomVerificationEmailTemplatePage](failure, after)
+}
+
+// ListCustomVerificationEmailTemplatesCustomVerificationPages is the manifest mock customVerificationPages: SES returned regional verification templates.
+func ListCustomVerificationEmailTemplatesCustomVerificationPages() connectormock.Case[ses.CustomVerificationEmailTemplatePage] {
+	pages := []ses.CustomVerificationEmailTemplatePage{
+		connectormock.MustDecodeOutput[ses.CustomVerificationEmailTemplatePage](`{"templates":[{"name":"verify-customer","fromEmailAddress":"sender@example.com","subject":"Verify your address","successRedirectionURL":"https://example.com/success","failureRedirectionURL":"https://example.com/failure"}],"nextToken":"custom-page-2"}`),
+		connectormock.MustDecodeOutput[ses.CustomVerificationEmailTemplatePage](`{"templates":[{"name":"verify-partner","fromEmailAddress":"sender@example.com","subject":"Verify your partner address","successRedirectionURL":"https://example.com/success","failureRedirectionURL":"https://example.com/failure"}],"nextToken":"custom-page-3"}`),
+		connectormock.MustDecodeOutput[ses.CustomVerificationEmailTemplatePage](`{"templates":[{"name":"verify-member","fromEmailAddress":"sender@example.com","subject":"Verify your member address","successRedirectionURL":"https://example.com/success","failureRedirectionURL":"https://example.com/failure"}]}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[ses.ListCustomVerificationEmailTemplatesInput]("nextToken", "nextToken", pages)
+	return connectormock.Paged(ses.ListCustomVerificationEmailTemplatesBranchPage, pageNumber, pages...)
+}
+
+// ListCustomVerificationEmailTemplatesDefault is the manifest default, customVerificationPages, which New installs.
+func ListCustomVerificationEmailTemplatesDefault() connectormock.Case[ses.CustomVerificationEmailTemplatePage] {
+	return ListCustomVerificationEmailTemplatesCustomVerificationPages()
+}
+
+// UpdateCustomVerificationEmailTemplateUpdated selects the updated branch: SES accepted the absolute replacement.
+func UpdateCustomVerificationEmailTemplateUpdated(value ses.CustomVerificationEmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	return connectormock.Branch(ses.UpdateCustomVerificationEmailTemplateBranchUpdated, value, failure)
+}
+
+// UpdateCustomVerificationEmailTemplateProviderRejected selects the providerRejected branch: SES refused the replacement.
+func UpdateCustomVerificationEmailTemplateProviderRejected(value ses.CustomVerificationEmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	return connectormock.Branch(ses.UpdateCustomVerificationEmailTemplateBranchProviderRejected, value, failure)
+}
+
+// UpdateCustomVerificationEmailTemplateDefect selects the defect branch: The template content or connection is invalid.
+func UpdateCustomVerificationEmailTemplateDefect(value ses.CustomVerificationEmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	return connectormock.Branch(ses.UpdateCustomVerificationEmailTemplateBranchDefect, value, failure)
+}
+
+// UpdateCustomVerificationEmailTemplateRetry asks Dex to retry the updateCustomVerificationEmailTemplate Step, after the delay when it is positive.
+func UpdateCustomVerificationEmailTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	return connectormock.Retry[ses.CustomVerificationEmailTemplate](failure, after)
+}
+
+// UpdateCustomVerificationEmailTemplateUpdatedCustomVerification is the manifest mock updatedCustomVerification: SES updated a verification template.
+func UpdateCustomVerificationEmailTemplateUpdatedCustomVerification() connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	value := connectormock.MustDecodeOutput[ses.CustomVerificationEmailTemplate](`{"name":"verify-customer","fromEmailAddress":"sender@example.com","subject":"Confirm your address","content":"Open the link to confirm.","successRedirectionURL":"https://example.com/success","failureRedirectionURL":"https://example.com/failure"}`)
+	return connectormock.Branch(ses.UpdateCustomVerificationEmailTemplateBranchUpdated, value, nil)
+}
+
+// UpdateCustomVerificationEmailTemplateDefault is the manifest default, updatedCustomVerification, which New installs.
+func UpdateCustomVerificationEmailTemplateDefault() connectormock.Case[ses.CustomVerificationEmailTemplate] {
+	return UpdateCustomVerificationEmailTemplateUpdatedCustomVerification()
+}
+
+// DeleteCustomVerificationEmailTemplateDeleted selects the deleted branch: The template is absent.
+func DeleteCustomVerificationEmailTemplateDeleted(value ses.DeletedEmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.DeletedEmailTemplate] {
+	return connectormock.Branch(ses.DeleteCustomVerificationEmailTemplateBranchDeleted, value, failure)
+}
+
+// DeleteCustomVerificationEmailTemplateProviderRejected selects the providerRejected branch: SES refused the deletion.
+func DeleteCustomVerificationEmailTemplateProviderRejected(value ses.DeletedEmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.DeletedEmailTemplate] {
+	return connectormock.Branch(ses.DeleteCustomVerificationEmailTemplateBranchProviderRejected, value, failure)
+}
+
+// DeleteCustomVerificationEmailTemplateDefect selects the defect branch: The template name or connection is invalid.
+func DeleteCustomVerificationEmailTemplateDefect(value ses.DeletedEmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.DeletedEmailTemplate] {
+	return connectormock.Branch(ses.DeleteCustomVerificationEmailTemplateBranchDefect, value, failure)
+}
+
+// DeleteCustomVerificationEmailTemplateRetry asks Dex to retry the deleteCustomVerificationEmailTemplate Step, after the delay when it is positive.
+func DeleteCustomVerificationEmailTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ses.DeletedEmailTemplate] {
+	return connectormock.Retry[ses.DeletedEmailTemplate](failure, after)
+}
+
+// DeleteCustomVerificationEmailTemplateDeletedCustomVerification is the manifest mock deletedCustomVerification: SES removed a verification template.
+func DeleteCustomVerificationEmailTemplateDeletedCustomVerification() connectormock.Case[ses.DeletedEmailTemplate] {
+	value := connectormock.MustDecodeOutput[ses.DeletedEmailTemplate](`{"name":"verify-customer"}`)
+	return connectormock.Branch(ses.DeleteCustomVerificationEmailTemplateBranchDeleted, value, nil)
+}
+
+// DeleteCustomVerificationEmailTemplateDefault is the manifest default, deletedCustomVerification, which New installs.
+func DeleteCustomVerificationEmailTemplateDefault() connectormock.Case[ses.DeletedEmailTemplate] {
+	return DeleteCustomVerificationEmailTemplateDeletedCustomVerification()
+}
+
+// SendCustomVerificationEmailSent selects the sent branch: SES accepted the verification email.
+func SendCustomVerificationEmailSent(value ses.SentEmail, failure *sdkgo.Failure) connectormock.Case[ses.SentEmail] {
+	return connectormock.Branch(ses.SendCustomVerificationEmailBranchSent, value, failure)
+}
+
+// SendCustomVerificationEmailProviderRejected selects the providerRejected branch: SES refused the template or recipient.
+func SendCustomVerificationEmailProviderRejected(value ses.SentEmail, failure *sdkgo.Failure) connectormock.Case[ses.SentEmail] {
+	return connectormock.Branch(ses.SendCustomVerificationEmailBranchProviderRejected, value, failure)
+}
+
+// SendCustomVerificationEmailUncertain returns an uncertain sendCustomVerificationEmail outcome.
+func SendCustomVerificationEmailUncertain(value ses.SentEmail, failure sdkgo.Failure) connectormock.Case[ses.SentEmail] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendCustomVerificationEmailDefect selects the defect branch: The template, recipient, or connection is invalid.
+func SendCustomVerificationEmailDefect(value ses.SentEmail, failure *sdkgo.Failure) connectormock.Case[ses.SentEmail] {
+	return connectormock.Branch(ses.SendCustomVerificationEmailBranchDefect, value, failure)
+}
+
+// SendCustomVerificationEmailRetry asks Dex to retry the sendCustomVerificationEmail Step, after the delay when it is positive.
+func SendCustomVerificationEmailRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ses.SentEmail] {
+	return connectormock.Retry[ses.SentEmail](failure, after)
+}
+
+// SendCustomVerificationEmailSentCustomVerification is the manifest mock sentCustomVerification: SES accepted a verification email.
+func SendCustomVerificationEmailSentCustomVerification() connectormock.Case[ses.SentEmail] {
+	value := connectormock.MustDecodeOutput[ses.SentEmail](`{"messageId":"custom-verification-message-id"}`)
+	return connectormock.Branch(ses.SendCustomVerificationEmailBranchSent, value, nil)
+}
+
+// SendCustomVerificationEmailDefault is the manifest default, sentCustomVerification, which New installs.
+func SendCustomVerificationEmailDefault() connectormock.Case[ses.SentEmail] {
+	return SendCustomVerificationEmailSentCustomVerification()
 }

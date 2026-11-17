@@ -76,6 +76,38 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[ses.SentEmail](`{"messageId":"templated-example-message-id"}`)
 			return err
 		}},
+		{name: "createCustomVerificationEmailTemplate/createdCustomVerification/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.CustomVerificationEmailTemplate](`{"name":"verify-customer","fromEmailAddress":"sender@example.com","subject":"Verify your address","content":"Open the link to verify.","successRedirectionURL":"https://example.com/success","failureRedirectionURL":"https://example.com/failure"}`)
+			return err
+		}},
+		{name: "getCustomVerificationEmailTemplate/foundCustomVerification/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.CustomVerificationEmailTemplate](`{"name":"verify-customer","fromEmailAddress":"sender@example.com","subject":"Verify your address","content":"Open the link to verify.","successRedirectionURL":"https://example.com/success","failureRedirectionURL":"https://example.com/failure"}`)
+			return err
+		}},
+		{name: "listCustomVerificationEmailTemplates/customVerificationPages/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.CustomVerificationEmailTemplatePage](`{"templates":[{"name":"verify-customer","fromEmailAddress":"sender@example.com","subject":"Verify your address","successRedirectionURL":"https://example.com/success","failureRedirectionURL":"https://example.com/failure"}],"nextToken":"custom-page-2"}`)
+			return err
+		}},
+		{name: "listCustomVerificationEmailTemplates/customVerificationPages/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.CustomVerificationEmailTemplatePage](`{"templates":[{"name":"verify-partner","fromEmailAddress":"sender@example.com","subject":"Verify your partner address","successRedirectionURL":"https://example.com/success","failureRedirectionURL":"https://example.com/failure"}],"nextToken":"custom-page-3"}`)
+			return err
+		}},
+		{name: "listCustomVerificationEmailTemplates/customVerificationPages/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.CustomVerificationEmailTemplatePage](`{"templates":[{"name":"verify-member","fromEmailAddress":"sender@example.com","subject":"Verify your member address","successRedirectionURL":"https://example.com/success","failureRedirectionURL":"https://example.com/failure"}]}`)
+			return err
+		}},
+		{name: "updateCustomVerificationEmailTemplate/updatedCustomVerification/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.CustomVerificationEmailTemplate](`{"name":"verify-customer","fromEmailAddress":"sender@example.com","subject":"Confirm your address","content":"Open the link to confirm.","successRedirectionURL":"https://example.com/success","failureRedirectionURL":"https://example.com/failure"}`)
+			return err
+		}},
+		{name: "deleteCustomVerificationEmailTemplate/deletedCustomVerification/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.DeletedEmailTemplate](`{"name":"verify-customer"}`)
+			return err
+		}},
+		{name: "sendCustomVerificationEmail/sentCustomVerification/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.SentEmail](`{"messageId":"custom-verification-message-id"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -118,5 +150,23 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.SendTemplatedEmail().Definition().Operation.OperationID != "sendTemplatedEmail" {
 		t.Errorf("sendTemplatedEmail mock has another definition")
+	}
+	if mock.CreateCustomVerificationEmailTemplate().Definition().Operation.OperationID != "createCustomVerificationEmailTemplate" {
+		t.Errorf("createCustomVerificationEmailTemplate mock has another definition")
+	}
+	if mock.GetCustomVerificationEmailTemplate().Definition().Operation.OperationID != "getCustomVerificationEmailTemplate" {
+		t.Errorf("getCustomVerificationEmailTemplate mock has another definition")
+	}
+	if mock.ListCustomVerificationEmailTemplates().Definition().Operation.OperationID != "listCustomVerificationEmailTemplates" {
+		t.Errorf("listCustomVerificationEmailTemplates mock has another definition")
+	}
+	if mock.UpdateCustomVerificationEmailTemplate().Definition().Operation.OperationID != "updateCustomVerificationEmailTemplate" {
+		t.Errorf("updateCustomVerificationEmailTemplate mock has another definition")
+	}
+	if mock.DeleteCustomVerificationEmailTemplate().Definition().Operation.OperationID != "deleteCustomVerificationEmailTemplate" {
+		t.Errorf("deleteCustomVerificationEmailTemplate mock has another definition")
+	}
+	if mock.SendCustomVerificationEmail().Definition().Operation.OperationID != "sendCustomVerificationEmail" {
+		t.Errorf("sendCustomVerificationEmail mock has another definition")
 	}
 }

@@ -23,17 +23,23 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	sendContext := &conformanceSendContext{attempt: 1}
 	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(checkpoint []byte) { sendContext.heartbeat = checkpoint })
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { sendContext.attempt = priorAttempt + int32(attempt) }, actions: map[string]conformanceOperationInvocation{
-		"createEmailIdentity": newConformanceMutationInvocation(t, scenario.Input, sendContext, client.CreateEmailIdentity(), reference, scenario.CallID),
-		"getEmailIdentity":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetEmailIdentity(), reference),
-		"listEmailIdentities": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListEmailIdentities(), reference),
-		"deleteEmailIdentity": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteEmailIdentity(), reference, scenario.CallID),
-		"sendEmail":           newConformanceMutationInvocation(t, scenario.Input, sendContext, client.SendEmail(), reference, scenario.CallID),
-		"createEmailTemplate": newConformanceMutationInvocation(t, scenario.Input, sendContext, client.CreateEmailTemplate(), reference, scenario.CallID),
-		"getEmailTemplate": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetEmailTemplate(), reference),
-		"listEmailTemplates": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListEmailTemplates(), reference),
-		"updateEmailTemplate": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateEmailTemplate(), reference, scenario.CallID),
-		"deleteEmailTemplate": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteEmailTemplate(), reference, scenario.CallID),
-		"sendTemplatedEmail": newConformanceMutationInvocation(t, scenario.Input, sendContext, client.SendTemplatedEmail(), reference, scenario.CallID),
+		"createEmailIdentity":                   newConformanceMutationInvocation(t, scenario.Input, sendContext, client.CreateEmailIdentity(), reference, scenario.CallID),
+		"getEmailIdentity":                      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetEmailIdentity(), reference),
+		"listEmailIdentities":                   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListEmailIdentities(), reference),
+		"deleteEmailIdentity":                   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteEmailIdentity(), reference, scenario.CallID),
+		"sendEmail":                             newConformanceMutationInvocation(t, scenario.Input, sendContext, client.SendEmail(), reference, scenario.CallID),
+		"createEmailTemplate":                   newConformanceMutationInvocation(t, scenario.Input, sendContext, client.CreateEmailTemplate(), reference, scenario.CallID),
+		"getEmailTemplate":                      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetEmailTemplate(), reference),
+		"listEmailTemplates":                    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListEmailTemplates(), reference),
+		"updateEmailTemplate":                   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateEmailTemplate(), reference, scenario.CallID),
+		"deleteEmailTemplate":                   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteEmailTemplate(), reference, scenario.CallID),
+		"sendTemplatedEmail":                    newConformanceMutationInvocation(t, scenario.Input, sendContext, client.SendTemplatedEmail(), reference, scenario.CallID),
+		"createCustomVerificationEmailTemplate": newConformanceMutationInvocation(t, scenario.Input, sendContext, client.CreateCustomVerificationEmailTemplate(), reference, scenario.CallID),
+		"getCustomVerificationEmailTemplate":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCustomVerificationEmailTemplate(), reference),
+		"listCustomVerificationEmailTemplates":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCustomVerificationEmailTemplates(), reference),
+		"updateCustomVerificationEmailTemplate": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateCustomVerificationEmailTemplate(), reference, scenario.CallID),
+		"deleteCustomVerificationEmailTemplate": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteCustomVerificationEmailTemplate(), reference, scenario.CallID),
+		"sendCustomVerificationEmail":           newConformanceMutationInvocation(t, scenario.Input, sendContext, client.SendCustomVerificationEmail(), reference, scenario.CallID),
 	}}
 }
 

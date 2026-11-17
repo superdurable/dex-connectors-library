@@ -27,7 +27,8 @@ func TestIdentityLookupUsesDefaultMockWithRealDex(t *testing.T) {
 	sendFlow := NewSendFlow(mock.Connection())
 	createFlow := NewCreateFlow(mock.Connection())
 	templatedSendFlow := NewTemplatedSendFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, sendFlow, createFlow, templatedSendFlow})
+	customVerificationFlow := NewCustomVerificationFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, sendFlow, createFlow, templatedSendFlow, customVerificationFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -90,4 +91,13 @@ func TestIdentityLookupUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, templatedResult.Status, templatedResult.ErrorMessage)
 	require.Len(t, mock.SendTemplatedEmail().Calls(), 1)
+	customSendID := "ses-custom-verification-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, customVerificationFlow, customSendID, ses.SendCustomVerificationEmailInput{
+		EmailAddress: "reader@example.net", TemplateName: "verify-customer",
+	}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	customResult, err := client.WaitForFlow(ctx, customSendID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, customResult.Status, customResult.ErrorMessage)
+	require.Len(t, mock.SendCustomVerificationEmail().Calls(), 1)
 }

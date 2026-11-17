@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: amazon-ses
   displayName: Amazon SES
-  description: Manage SES email identities and templates, and send simple or templated email with AWS Signature Version 4.
+  description: Manage SES email identities, stored templates, and custom verification templates; send simple, templated, and verification email with AWS Signature Version 4.
   company: Amazon
   categories: [communication, developer-tools]
   version: v0.2.0
@@ -65,7 +65,7 @@ spec:
     guide:
       startURL: https://console.aws.amazon.com/iam
       steps:
-        - Open IAM > Users > Create user for Dex. Grant ses:GetEmailIdentity, ses:CreateEmailIdentity, and ses:DeleteEmailIdentity for selected identity ARNs, ses:ListEmailIdentities for listing, ses:CreateEmailTemplate, ses:GetEmailTemplate, ses:ListEmailTemplates, ses:UpdateEmailTemplate, and ses:DeleteEmailTemplate for template operations, and ses:SendEmail for either send operation; do not use the root user. Identities and templates are visible at https://console.aws.amazon.com/ses in the selected Region.
+        - Open IAM > Users > Create user for Dex. Grant ses:GetEmailIdentity, ses:CreateEmailIdentity, and ses:DeleteEmailIdentity for identity operations; ses:ListEmailIdentities for listing; ses:CreateEmailTemplate, ses:GetEmailTemplate, ses:ListEmailTemplates, ses:UpdateEmailTemplate, and ses:DeleteEmailTemplate for stored templates; ses:CreateCustomVerificationEmailTemplate, ses:GetCustomVerificationEmailTemplate, ses:ListCustomVerificationEmailTemplates, ses:UpdateCustomVerificationEmailTemplate, and ses:DeleteCustomVerificationEmailTemplate for custom verification templates; and ses:SendEmail and ses:SendCustomVerificationEmail for sending. Use only the needed actions and resource ARNs; do not use the root user.
         - Open the IAM user > Security credentials > Access keys > Create access key > Other. Copy the Access key ID to secret access_key_id and the one-time Secret access key Value to secret_access_key. Leave session_token blank for long-term keys; include it for temporary ASIA keys.
         - Open https://console.aws.amazon.com/ses > Verified identities, choose the Region in the console selector, and set region to that Region code. Leave endpoint blank for AWS. Supply the selected domain or email address to getEmailIdentity; blank is invalid.
         - Rotate the key under IAM > Users > selected user > Security credentials > Access keys by creating a second key, updating this connection, verifying a Flow, then deactivating and deleting the old key.
@@ -302,3 +302,106 @@ spec:
           default: true
           description: SES accepted a weekly report template email.
           output: {messageId: templated-example-message-id}
+    - name: createCustomVerificationEmailTemplate
+      goName: CreateCustomVerificationEmailTemplate
+      inputType: CreateCustomVerificationEmailTemplateInput
+      outputType: CustomVerificationEmailTemplate
+      kind: mutation
+      description: Create a custom verification email template with read-back and bounded possible creates.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
+      branches:
+        - {id: created, goName: Created, description: SES accepted or read-back confirmed the template.}
+        - {id: providerRejected, goName: ProviderRejected, description: SES conclusively rejected creation or the name has different content., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Creation may have happened but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: The template content or connection is invalid., optional: true}
+      mocks:
+        - {name: createdCustomVerification, branch: created, default: true, description: SES accepted a verification template., output: {name: verify-customer, fromEmailAddress: sender@example.com, subject: Verify your address, content: "Open the link to verify.", successRedirectionURL: "https://example.com/success", failureRedirectionURL: "https://example.com/failure"}}
+    - name: getCustomVerificationEmailTemplate
+      goName: GetCustomVerificationEmailTemplate
+      inputType: GetCustomVerificationEmailTemplateInput
+      outputType: CustomVerificationEmailTemplate
+      kind: query
+      description: Read one custom verification email template.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: SES returned the verification template.}
+        - {id: missing, goName: Missing, description: The verification template is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: SES refused the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SES returned invalid template content., optional: true}
+        - {id: defect, goName: Defect, description: The name or connection is invalid., optional: true}
+      mocks:
+        - {name: foundCustomVerification, branch: found, default: true, description: SES returned a verification template., output: {name: verify-customer, fromEmailAddress: sender@example.com, subject: Verify your address, content: "Open the link to verify.", successRedirectionURL: "https://example.com/success", failureRedirectionURL: "https://example.com/failure"}}
+    - name: listCustomVerificationEmailTemplates
+      goName: ListCustomVerificationEmailTemplates
+      inputType: ListCustomVerificationEmailTemplatesInput
+      outputType: CustomVerificationEmailTemplatePage
+      kind: query
+      description: List one page of custom verification email template metadata.
+      idempotency: none
+      authorization: required
+      pagination: {inputField: nextToken, nextField: nextToken}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: page, goName: Page, description: SES returned a page of verification templates.}
+        - {id: providerRejected, goName: ProviderRejected, description: SES refused the listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SES returned invalid template metadata., optional: true}
+        - {id: defect, goName: Defect, description: The page size or token is invalid., optional: true}
+      mocks:
+        - name: customVerificationPages
+          branch: page
+          default: true
+          description: SES returned regional verification templates.
+          pages:
+            - {templates: [{name: verify-customer, fromEmailAddress: sender@example.com, subject: Verify your address, successRedirectionURL: "https://example.com/success", failureRedirectionURL: "https://example.com/failure"}], nextToken: custom-page-2}
+            - {templates: [{name: verify-partner, fromEmailAddress: sender@example.com, subject: Verify your partner address, successRedirectionURL: "https://example.com/success", failureRedirectionURL: "https://example.com/failure"}], nextToken: custom-page-3}
+            - {templates: [{name: verify-member, fromEmailAddress: sender@example.com, subject: Verify your member address, successRedirectionURL: "https://example.com/success", failureRedirectionURL: "https://example.com/failure"}]}
+    - name: updateCustomVerificationEmailTemplate
+      goName: UpdateCustomVerificationEmailTemplate
+      inputType: UpdateCustomVerificationEmailTemplateInput
+      outputType: CustomVerificationEmailTemplate
+      kind: mutation
+      description: Replace all content and redirect URLs of a custom verification email template.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: updated, goName: Updated, description: SES accepted the absolute replacement.}
+        - {id: providerRejected, goName: ProviderRejected, description: SES refused the replacement., optional: true}
+        - {id: defect, goName: Defect, description: The template content or connection is invalid., optional: true}
+      mocks:
+        - {name: updatedCustomVerification, branch: updated, default: true, description: SES updated a verification template., output: {name: verify-customer, fromEmailAddress: sender@example.com, subject: Confirm your address, content: "Open the link to confirm.", successRedirectionURL: "https://example.com/success", failureRedirectionURL: "https://example.com/failure"}}
+    - name: deleteCustomVerificationEmailTemplate
+      goName: DeleteCustomVerificationEmailTemplate
+      inputType: DeleteCustomVerificationEmailTemplateInput
+      outputType: DeletedEmailTemplate
+      kind: mutation
+      description: Delete a custom verification email template; absence is success.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: deleted, goName: Deleted, description: The template is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: SES refused the deletion., optional: true}
+        - {id: defect, goName: Defect, description: The template name or connection is invalid., optional: true}
+      mocks:
+        - {name: deletedCustomVerification, branch: deleted, default: true, description: SES removed a verification template., output: {name: verify-customer}}
+    - name: sendCustomVerificationEmail
+      goName: SendCustomVerificationEmail
+      inputType: SendCustomVerificationEmailInput
+      outputType: SentEmail
+      kind: mutation
+      description: Send a custom verification email with bounded possible sends.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
+      branches:
+        - {id: sent, goName: Sent, description: SES accepted the verification email.}
+        - {id: providerRejected, goName: ProviderRejected, description: SES refused the template or recipient., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirmation., optional: true}
+        - {id: defect, goName: Defect, description: "The template, recipient, or connection is invalid.", optional: true}
+      mocks:
+        - {name: sentCustomVerification, branch: sent, default: true, description: SES accepted a verification email., output: {messageId: custom-verification-message-id}}
