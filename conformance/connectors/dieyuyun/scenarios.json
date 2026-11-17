@@ -1,0 +1,507 @@
+{
+  "connector": "dieyuyun",
+  "scenarios": [
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"balance\",\"currency\":\"CNY\",\"balance\":138.50,\"api_key\":{\"id\":\"private\",\"name\":\"private\",\"daily_budget\":20}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "availableCNY": "138.50"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-exact-decimal",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"balance\",\"currency\":\"CNY\",\"balance\":0.123456789012345678901234567890}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "availableCNY": "0.123456789012345678901234567890"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-high-precision",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"balance\",\"currency\":\"CNY\",\"balance\":1.25e+3}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "availableCNY": "1.25e+3"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-scientific",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"private-test-key\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "availableCNY": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-unauthorized",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "availableCNY": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-forbidden",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "availableCNY": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-bad-request",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "availableCNY": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-malformed",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"balance\",\"currency\":\"USD\",\"balance\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "availableCNY": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-wrong-currency",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"balance\",\"currency\":\"CNY\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "availableCNY": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-missing-balance",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"balance\",\"currency\":\"CNY\",\"balance\":\"138.5\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "availableCNY": "138.5"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-balance-string",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"balance\",\"currency\":\"CNY\",\"balance\":1.00}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "availableCNY": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-oversize",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-rate-limit",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-server-error",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-transport-before-send",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "availableCNY": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-missing-key",
+      "operation": "getAccountBalance"
+    }
+  ],
+  "schemaVersion": 1
+}
