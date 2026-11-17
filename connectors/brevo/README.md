@@ -1,17 +1,24 @@
 # Brevo connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/brevo/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/brevo/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/brevo`.
 
-Brevo contact operations for Dex. The module uses Brevo's public v3 REST API and a secret API key. Its first release is `v0.1.0`.
+Brevo contact, attribute, and sender discovery operations for Dex. The module uses Brevo's public v3 REST API and a secret API key.
 
 | Operation | Method | Result |
 | --- | --- | --- |
 | `createOrUpdateContact` | `POST /v3/contacts` with `updateEnabled: true` | `saved` after HTTP 201 or 204 |
 | `getContact` | `GET /v3/contacts/{email}` | `found` after HTTP 200; `notFound` after HTTP 404 |
+| `listContacts` | `GET /v3/contacts` | `listed` with a bounded page of IDs and emails |
+| `updateContact` | `PUT /v3/contacts/{email}` | `updated` after HTTP 204 |
+| `deleteContact` | `DELETE /v3/contacts/{email}` | `deleted` after HTTP 204 |
+| `listAttributes` | `GET /v3/contacts/attributes` | `listed` with attribute names, categories, and types |
+| `listSenders` | `GET /v3/senders` | `listed` with sender IDs, addresses, names, and active status |
 
 `createOrUpdateContact` identifies a contact by email and sets the provided attributes to absolute values. Brevo's `updateEnabled` makes a retry update that same contact. A 201 response includes a new contact ID; a 204 update does not. It does not expose provider attributes in the result. `getContact` returns only the contact ID and email.
+
+The new `updateContact` sets absolute uppercase named attributes. `deleteContact` removes a contact by email. These writes are repeat-safe; a retry of an update sets the same values and a retry of a deletion targets the same address. `listContacts` accepts a `limit` from 1 to 1000 and a zero-based `offset`; a zero limit uses 50. Email can be empty for phone-only contacts. The discovery Queries expose no contact attributes, sender IPs, or credentials.
 
 The Python package is [`dex-connector-brevo`](python/README.md), imported as
 `dex_connectors.brevo`.
@@ -35,7 +42,7 @@ Sign in at [Brevo API keys](https://app.brevo.com/settings/keys/api), open **Set
 | Invalid local input or missing credentials | `defect` |
 | Transport failure, 408, 409, 429, or 5xx | Retry with Dex's default one-hour budget |
 
-Only the happy branch is wired in the [contact sync example](go/examples/contact-sync); selecting an optional branch fails its Flow. No `uncertain` branch is needed because contact creation or update is repeatable by email.
+Only the happy branches are wired in the [contact sync example](go/examples/contact-sync), which now lists attribute definitions after saving a contact. Selecting an optional branch fails its Flow. No `uncertain` branch is needed for the absolute contact writes.
 
 ## Mocks
 
@@ -46,6 +53,8 @@ The generated `brevomock` package has realistic defaults for both operations: `s
 - [Brevo create contact](https://developers.brevo.com/reference/create-contact) documents `POST /v3/contacts`, `api-key`, `updateEnabled`, and HTTP 201.
 - [Brevo contact sync guide](https://developers.brevo.com/docs/synchronise-contact-lists) documents HTTP 204 for an update.
 - [Brevo get contact](https://developers.brevo.com/reference/get-contact-info) documents the email path, HTTP 200, and 404.
+- [Brevo list contacts](https://developers.brevo.com/reference/get-contacts), [update contact](https://developers.brevo.com/reference/update-contact), and [delete contact](https://developers.brevo.com/reference/delete-contact) document pagination and contact writes.
+- [Brevo list attributes](https://developers.brevo.com/reference/get-attributes) and [list senders](https://developers.brevo.com/reference/get-senders) document discovery responses.
 - [Brevo API key authentication](https://developers.brevo.com/docs/api-key-authentication) documents key setup and the header.
 
 Live Brevo authorization and real-provider calls have not been verified. The mock-backed real-Dex example is left to CI.

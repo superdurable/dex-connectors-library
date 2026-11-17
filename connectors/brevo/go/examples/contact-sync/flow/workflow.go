@@ -17,8 +17,9 @@ const (
 	// FlowType is the stable Dex Flow identity.
 	FlowType = "BrevoContactSync"
 	// ConnectionName is the static Dex Web connection used by the Flow.
-	ConnectionName = "brevo"
-	upsertStepType = "UpsertBrevoContact"
+	ConnectionName         = "brevo"
+	upsertStepType         = "UpsertBrevoContact"
+	listAttributesStepType = "ListBrevoAttributes"
 )
 
 var outcomeAttribute = dex.DefineAttribute[brevo.ContactWriteResult]("brevo-contact-sync-outcome")
@@ -56,6 +57,13 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Saved:               sdkgo.GoTo(saved{}),
 		})),
 		dex.DefineStep(saved{}),
+		dex.DefineStep(brevo.NewListAttributesStep(brevo.ListAttributesStepConfig[brevo.ListAttributesInput]{
+			StepType: listAttributesStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "contact-sync", GroupLabel: "Contact sync", Explanation: "Discover contact attribute definitions in Brevo."},
+			MapToOperationInput: func(input brevo.ListAttributesInput) brevo.ListAttributesInput { return input },
+			Listed:              sdkgo.GoTo(completeAfterAttributes{}),
+		})),
+		dex.DefineStep(completeAfterAttributes{}),
 	}
 }
 
@@ -127,7 +135,21 @@ func (saved) Execute(ctx dex.Context, result brevo.CreateOrUpdateContactResult) 
 	if err := outcomeAttribute.Set(ctx, result.Value); err != nil {
 		return nil, err
 	}
-	return dex.GracefulComplete(result.Value), nil
+	return dex.GoTo(sdkgo.StepRef[brevo.ListAttributesInput](listAttributesStepType), brevo.ListAttributesInput{}), nil
+}
+
+// dex:group group-id:contact-sync group-label:"Contact sync"
+// dex:explanation text:"Complete after Brevo lists contact attributes."
+type completeAfterAttributes struct {
+	dex.StepDefaultsNoWaitFor[brevo.ListAttributesResult]
+}
+
+func (completeAfterAttributes) Execute(ctx dex.Context, _ brevo.ListAttributesResult) (*dex.StepDecision, error) {
+	outcome, err := outcomeAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)

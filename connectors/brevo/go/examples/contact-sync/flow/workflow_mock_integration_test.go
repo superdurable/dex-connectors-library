@@ -60,4 +60,5 @@ func TestContactSyncUsesMockWithRealDex(t *testing.T) {
 	require.Len(t, calls, 1)
 	require.Equal(t, flowID, calls[0].FlowID)
 	require.Equal(t, "member@meridian.example", calls[0].Input.Email)
+	require.Len(t, mock.ListAttributes().Calls(), 1)
 }

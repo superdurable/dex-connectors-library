@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listContacts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.ContactsList](`{"contacts":[{"id":21,"email":"member@meridian.example"}],"count":1}`)
+			return err
+		}},
+		{name: "updateContact/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.ContactChangeResult](`{"email":"member@meridian.example"}`)
+			return err
+		}},
+		{name: "deleteContact/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.ContactChangeResult](`{"email":"member@meridian.example"}`)
+			return err
+		}},
+		{name: "listAttributes/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.AttributesList](`{"attributes":[{"name":"FIRSTNAME","category":"normal","type":"text"}]}`)
+			return err
+		}},
+		{name: "listSenders/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.SendersList](`{"senders":[{"id":1,"name":"Support","email":"support@example.com","active":true}]}`)
+			return err
+		}},
 		{name: "createOrUpdateContact/savedDefaultContact/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[brevo.ContactWriteResult](`{"id":21,"email":"member@meridian.example","created":true}`)
 			return err
@@ -34,6 +54,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
+		t.Errorf("listContacts mock has another definition")
+	}
+	if mock.UpdateContact().Definition().Operation.OperationID != "updateContact" {
+		t.Errorf("updateContact mock has another definition")
+	}
+	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
+		t.Errorf("deleteContact mock has another definition")
+	}
+	if mock.ListAttributes().Definition().Operation.OperationID != "listAttributes" {
+		t.Errorf("listAttributes mock has another definition")
+	}
+	if mock.ListSenders().Definition().Operation.OperationID != "listSenders" {
+		t.Errorf("listSenders mock has another definition")
+	}
 	if mock.CreateOrUpdateContact().Definition().Operation.OperationID != "createOrUpdateContact" {
 		t.Errorf("createOrUpdateContact mock has another definition")
 	}
