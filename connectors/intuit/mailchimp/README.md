@@ -1,8 +1,8 @@
 # Mailchimp Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp/go@v0.24.0`. It requires Connector Go SDK `sdkgo` v0.38.0, the release of the durable poll Trigger kit.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp/go@v0.24.1`. It requires Connector Go SDK `sdkgo` v0.38.0, the release of the durable poll Trigger kit.
 
-The TypeScript package `@superdurable/connector-intuit-mailchimp@0.2.0` implements all five operations and the `memberChanged` Trigger with `@superdurable/connectors-sdk@0.12.0`. Its Trigger reads and writes the Go poll cursor document and keyed snapshot byte for byte and yields the same Trigger event IDs, so Go and TypeScript replicas can share one binding. See its [package README](typescript/README.md), the [runnable get-member Flow](typescript/examples/get-member/README.md), and the [runnable member-changed Flow](typescript/examples/member-changed/README.md). Its provider replay and Dex integration tests use local stand-ins; live Mailchimp behavior remains unverified.
+The TypeScript package `@superdurable/connector-intuit-mailchimp@0.2.1` implements all five operations and the `memberChanged` Trigger with `@superdurable/connectors-sdk@0.12.0`. Its Trigger reads and writes the Go poll cursor document and keyed snapshot byte for byte and yields the same Trigger event IDs, so Go and TypeScript replicas can share one binding. See its [package README](typescript/README.md), the [runnable get-member Flow](typescript/examples/get-member/README.md), and the [runnable member-changed Flow](typescript/examples/member-changed/README.md). Its provider replay and Dex integration tests use local stand-ins; live Mailchimp behavior remains unverified.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp`.
 
@@ -210,26 +210,41 @@ loss or a result lost before commit, so the operations take these positions:
   response, is retried. Because `status_if_new` applies only to a contact
   Mailchimp creates, a repeated upsert without `status` does not change the
   status the first one set.
-- **sendCampaign** is irreversible, so it runs with sync durability, and Dex
-  never sends a second attempt while the first is in flight. After the read
-  and just before the send, the operation records a Dex heartbeat checkpoint
-  naming the Step's Call ID. A later attempt of the same Step execution that
-  finds it, after a lost Worker or an Execute timeout, never sends: it reads
-  the campaign again and selects `alreadySent` when Mailchimp shows it
-  `sending` or `sent`, and `uncertain` otherwise.
-- After the send, only an outcome that shows Mailchimp did not process it is
-  retried: a 429, a 403 without an error document, which Mailchimp documents
-  as throttling at exceptionally high volume, and a connection that failed
-  before it opened. The checkpoint is cleared first. A 5xx, a 408, an HTML 502
-  from Mailchimp's CDN, a lost or unreadable response, and an oversized or
-  credential-reflecting 2xx select `uncertain`: the campaign may be sending,
-  and the connector never sends it again. A new Step execution reads the
-  campaign again first.
+- **sendCampaign** is `repeatOnUnknown: limited` with `maxSends: 3`. It runs
+  with sync durability under the SDK single-dispatch fence, which records a
+  Dex heartbeat claim with the possible send count of the Step's Call ID just
+  before the send. Dex never runs a second attempt while the first is in
+  flight.
+- Every attempt reads the campaign before it sends, and that read is also the
+  read-back of an earlier send: a campaign Mailchimp shows `sending` or `sent`
+  selects `alreadySent`, and only a draft is sent.
+- After the send, an outcome that shows Mailchimp did not process it is
+  retried, and the fence records that the send did not count: a 429, a 403
+  without an error document, which Mailchimp documents as throttling at
+  exceptionally high volume, a 503, and a connection that failed before it
+  opened.
+- Any other outcome is unknown: another 5xx, a 408, a 409, a 3xx, another
+  unlisted 4xx, an HTML 502 from Mailchimp's CDN, a lost or unreadable
+  response, and an oversized or credential-reflecting 2xx. It is retried while
+  the possible sends stay below `maxSends` (an application can lower or raise
+  the cap with the factory's `MaxSends`), and the retry reads the campaign
+  first. When no send remains, the unknown outcome selects `uncertain`; an
+  attempt that starts at the cap only reads the campaign and selects
+  `alreadySent` or `uncertain`.
+- After a possible earlier send, a definite refusal of the resend, a campaign
+  that is no longer a sendable draft (such as one canceled while sending), a
+  missing or undecodable campaign, or unavailable connection credentials
+  select `uncertain` instead of `providerRejected`, `notSendable`,
+  `notFound`, `invalidResponse`, or `defect`, because the earlier send may
+  have landed. A refused resend reads the campaign first and selects
+  `alreadySent` when it is sending or sent.
+- An unreadable heartbeat checkpoint is retried without a send. A Step
+  execution that recorded the checkpoint of releases before v0.24.1 never
+  sends again: it reads the campaign and selects `alreadySent` or `uncertain`.
 
-Keep `sendCampaign` sync so its result is committed promptly. A checkpoint lost before Dex
-stored it, or a crash between the checkpoint and the send, can make an attempt
-report `uncertain` for a send Mailchimp never received; that direction is
-safe.
+Keep `sendCampaign` sync so its result is committed promptly. A crash between
+the claim and the send counts a send Mailchimp never received; that direction
+only reaches the cap sooner.
 
 ## Errors
 
@@ -240,22 +255,27 @@ such as
 `Mailchimp rejected the request (HTTP 400) [Invalid Resource; fields: email_address, merge_fields.FNAME]`.
 A token that contains the API key is dropped.
 
-| Response | Reads, upsertMember, updateMemberTags | sendCampaign after its read |
-| --- | --- | --- |
-| 400 | `providerRejected`, `VALIDATION` | `providerRejected`, `VALIDATION` |
-| 401, 403 with an error document | `providerRejected`, `AUTHENTICATION` or `AUTHORIZATION` | same |
-| 404 | `notFound` where declared, otherwise `providerRejected` | `notFound` |
-| 405, other 4xx | `providerRejected` | `providerRejected` |
-| 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed | same |
-| 429, 403 without an error document | Retry after `Retry-After` when present | Retry, checkpoint cleared |
-| connection refused before sending | Retry | Retry, checkpoint cleared |
-| 408, 5xx, lost or unreadable response | Retry | `uncertain` |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | `uncertain` |
-| invalid input or connection credentials | `defect`, with no request | `defect`, with no request |
+| Response | Reads | upsertMember, updateMemberTags | sendCampaign send |
+| --- | --- | --- | --- |
+| 400, 411, 413, 414, 415, 422 | `providerRejected`, `VALIDATION` for 400 | same | `providerRejected` on a first send |
+| 401, 403 with an error document | `providerRejected`, `AUTHENTICATION` or `AUTHORIZATION` | same | `providerRejected` on a first send |
+| 404 | `notFound` where declared, otherwise `providerRejected` | same | `notFound` on a first send |
+| 409, 425, other unlisted 4xx, 3xx | `providerRejected`; redirects are never followed | Retry | unknown |
+| 429, 403 without an error document | Retry after `Retry-After` when present | same | Retry, send not counted |
+| 503 | Retry | Retry | Retry, send not counted |
+| connection refused before sending | Retry | Retry | Retry, send not counted |
+| 408, other 5xx, lost or unreadable response | Retry | Retry | unknown |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | `invalidResponse`; the write may have been applied | unknown |
+| invalid input or connection credentials | `defect`, with no request | same | `defect` when no earlier send is possible |
 
-The campaign read before a send maps like a read, because nothing has been
-sent yet. The Receipt carries the Call ID, the subscriber hash, audience ID, or
-campaign ID, and Mailchimp's `X-Request-Id` header when present.
+An unknown sendCampaign outcome is retried below the send cap and selects
+`uncertain` at it, as [Duplicate safety](#duplicate-safety) describes. The
+campaign read before a first send maps like a read, because nothing has been
+sent yet. upsertMember and updateMemberTags repeat harmlessly, so their
+unusable 2xx keeps selecting `invalidResponse`, which may follow an applied
+write. The Receipt
+carries the Call ID, the subscriber hash, audience ID, or campaign ID, and
+Mailchimp's `X-Request-Id` header when present.
 
 ## memberChanged Trigger
 
@@ -392,7 +412,7 @@ runnable Dex Web **Start Flow** example that uses all five operations: it reads
 each contact, leaves unsubscribed, cleaned, and archived contacts untouched,
 upserts and tags the rest, counts the subscribed audience, and waits for a
 person to approve the campaign send through a permissioned Action before it
-sends the campaign at most once.
+sends the campaign while it is still a draft.
 
 [`examples/member-change-intake`](go/examples/member-change-intake) starts
 one Flow per contact change through the `memberChanged` Trigger and reads the
@@ -400,7 +420,7 @@ contact back with `getMember`.
 
 ## Python package
 
-[`python/`](python/) contains the `dex-connector-intuit-mailchimp` v0.2.0 package,
+[`python/`](python/) contains the `dex-connector-intuit-mailchimp` v0.2.1 package,
 on `dex-connectors-sdk>=0.12.0`. It implements all five operations with
 manifest-generated models, Step factories, connection bindings, and mocks, plus
 a handwritten provider client. It also implements the `memberChanged` Trigger
@@ -440,7 +460,8 @@ The provider fakes cover the derived data-center host and Bearer header,
 invalid key suffixes, the subscriber hash path, `status_if_new` without
 `status`, the resubscribe guard, merge field shapes, tag declarations and
 `is_syncing`, list bounds, filters, order, and `nextOffset`, the campaign read
-and every status, the dispatch checkpoint and its clearing, replayed attempts,
+and every status, the dispatch fence claim and send count, resends below the
+cap, `uncertain` at the cap, pre-fence checkpoints, replayed attempts,
 Mailchimp problem titles and field names without detail text, `Retry-After`,
 throttling 403s, redirects, and oversized, malformed, and credential-reflecting
 responses. The audience fake behind the `memberChanged` tests models

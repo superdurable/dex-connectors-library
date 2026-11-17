@@ -651,8 +651,26 @@ func mutationAttemptForExchange[OUT any](result xeroExchange, requested OUT, rec
 		return sdkgo.NewMutationBranch(branches.dailyLimitReached, requested, &result.failure, receipt), true
 	case exchangeDefect:
 		return sdkgo.NewMutationBranch(branches.defect, requested, &result.failure, receipt), true
+	case exchangeRejected:
+		if status := result.response.statusCode; status >= 300 && !isDefiniteRefusalStatus(status) {
+			// A 409, 501, 3xx, or other unlisted status does not prove a refusal; the key makes the repeat safe.
+			return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
+		}
+		return sdkgo.NewMutationBranch(branches.providerRejected, requested, &result.failure, receipt), true
 	default:
 		return sdkgo.NewMutationBranch(branches.providerRejected, requested, &result.failure, receipt), true
+	}
+}
+
+// isDefiniteRefusalStatus lists the statuses that prove a write was refused; 409, 501, 3xx, and others are unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	default:
+		return false
 	}
 }
 

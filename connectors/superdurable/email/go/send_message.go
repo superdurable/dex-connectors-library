@@ -38,46 +38,59 @@ type SendMessageOperation struct {
 func (SendMessageOperation) Definition() sdkgo.MutationDefinition { return SendMessageDefinition }
 
 // IdempotencyKey uses the stable connector Call ID. SMTP has no idempotency key, so the key only forms the
-// Message-ID; single submission comes from a Dex heartbeat checkpoint instead.
+// Message-ID, which a resubmission repeats; a Dex heartbeat checkpoint counts the submissions instead.
 func (SendMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ SendMessageInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke submits the message at most once per Step execution. A temporary refusal or a connection that
-// fails before the final dot is retried; an answer lost after the final dot selects uncertain.
+// Invoke submits the message, at most call.MaxSends() times per Step execution. A temporary refusal or a
+// connection that fails before the final dot is retried and not counted. An answer lost after the final
+// dot is retried while the send cap allows another submission and selects uncertain at the cap.
 func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageInput) sdkgo.MutationAttempt[SentMessage] {
 	if err := validateSendMessageInput(input); err != nil {
 		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SentMessage{},
 			emailFailurePointer(sdkgo.FailureValidation, sendMessageOperation, err.Error()), sdkgo.Receipt{})
 	}
+	decision := decideSubmission(call)
 	credentials, failure := operation.client.resolveCredentials(call, sendMessageOperation)
 	if failure != nil {
-		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SentMessage{}, failure, sdkgo.Receipt{})
+		if attempt, isTerminal := submissionAttemptBeforeSend(decision, sendMessageOperation, SentMessage{}); isTerminal {
+			return attempt
+		}
+		return refuseBeforeSubmitting(decision, SendMessageBranchDefect, *failure, sendMessageOperation, SentMessage{})
 	}
 	sender, err := operation.client.messageSender(credentials)
 	if err != nil {
-		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SentMessage{},
-			emailFailurePointer(sdkgo.FailureValidation, sendMessageOperation, err.Error()), sdkgo.Receipt{})
+		return operation.refuseLocally(decision, sdkgo.FailureValidation, err.Error(), SentMessage{})
 	}
 	message, err := buildNewMessage(sender, call.IdempotencyKey, input)
 	if err != nil {
-		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SentMessage{},
-			emailFailurePointer(sdkgo.FailureValidation, sendMessageOperation, err.Error()), sdkgo.Receipt{})
+		return operation.refuseLocally(decision, sdkgo.FailureValidation, err.Error(), SentMessage{From: sender.address})
 	}
 	content, err := message.render()
 	if err != nil {
-		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SentMessage{},
-			emailFailurePointer(sdkgo.FailureLocalDefect, sendMessageOperation, "the message could not be rendered"), sdkgo.Receipt{})
+		return operation.refuseLocally(decision, sdkgo.FailureLocalDefect, "the message could not be rendered", message.sentMessage())
 	}
-	if attempt, isTerminal := submissionAttemptBeforeSend(claimSingleSubmission(call), sendMessageOperation, message.sentMessage()); isTerminal {
+	if attempt, isTerminal := submissionAttemptBeforeSend(decision, sendMessageOperation, message.sentMessage()); isTerminal {
 		return attempt
 	}
 	ctx, cancel := context.WithTimeout(call.Context, submissionOperationTimeout)
 	defer cancel()
-	result := operation.client.submitMessage(ctx, credentials, message.fromAddress, message.envelopeRecipients(), content, sendMessageOperation)
-	return submissionAttemptForResult(call, result, message.sentMessage(), singleSubmissionBranches{
+	return submitOnce(call, decision, sendMessageOperation, message.sentMessage(), singleSubmissionBranches{
 		sent: SendMessageBranchSent, providerRejected: SendMessageBranchProviderRejected,
+	}, func() submissionResult {
+		return operation.client.submitMessage(ctx, credentials, message.fromAddress, message.envelopeRecipients(), content, sendMessageOperation)
 	})
+}
+
+// refuseLocally selects defect for a local failure before submitting, unless the checkpoint decides first.
+func (SendMessageOperation) refuseLocally(
+	decision submissionDecision, kind sdkgo.FailureKind, message string, sent SentMessage,
+) sdkgo.MutationAttempt[SentMessage] {
+	if attempt, isTerminal := submissionAttemptBeforeSend(decision, sendMessageOperation, sent); isTerminal {
+		return attempt
+	}
+	return refuseBeforeSubmitting(decision, SendMessageBranchDefect, emailFailure(kind, sendMessageOperation, message), sendMessageOperation, sent)
 }
 
 // buildNewMessage combines input with the connection's sender and the Step's stable Message-ID.

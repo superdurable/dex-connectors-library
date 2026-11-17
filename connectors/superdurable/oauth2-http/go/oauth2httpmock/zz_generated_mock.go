@@ -17,8 +17,9 @@ import (
 
 // Mock is a scripted oauth2-http connection. Script each operation through its accessor.
 type Mock struct {
-	connection  oauth2http.Connection
-	sendRequest *connectormock.Mutation[oauth2http.SendRequestInput, oauth2http.SendRequestOutput]
+	connection        oauth2http.Connection
+	sendRequest       *connectormock.Mutation[oauth2http.SendRequestInput, oauth2http.SendRequestOutput]
+	postNonIdempotent *connectormock.Mutation[oauth2http.PostNonIdempotentInput, oauth2http.SendRequestOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +27,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		sendRequest: connectormock.NewMutation[oauth2http.SendRequestInput, oauth2http.SendRequestOutput](t, oauth2http.SendRequestDefinition),
+		sendRequest:       connectormock.NewMutation[oauth2http.SendRequestInput, oauth2http.SendRequestOutput](t, oauth2http.SendRequestDefinition),
+		postNonIdempotent: connectormock.NewMutation[oauth2http.PostNonIdempotentInput, oauth2http.SendRequestOutput](t, oauth2http.PostNonIdempotentDefinition),
 	}
 	mock.sendRequest.Default(SendRequestDefault())
+	mock.postNonIdempotent.Default(PostNonIdempotentDefault())
 	connection, err := oauth2http.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "oauth2-http", Name: connectionName})
 	if err != nil {
 		t.Fatalf("oauth2-http mock connection: %v", err)
@@ -45,10 +48,18 @@ func (mock *Mock) SendRequest() *connectormock.Mutation[oauth2http.SendRequestIn
 	return mock.sendRequest
 }
 
+// PostNonIdempotent returns the postNonIdempotent script.
+func (mock *Mock) PostNonIdempotent() *connectormock.Mutation[oauth2http.PostNonIdempotentInput, oauth2http.SendRequestOutput] {
+	return mock.postNonIdempotent
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) SendRequest() sdkgo.Mutation[oauth2http.SendRequestInput, oauth2http.SendRequestOutput] {
 	return operations.mock.sendRequest
+}
+func (operations mockOperations) PostNonIdempotent() sdkgo.Mutation[oauth2http.PostNonIdempotentInput, oauth2http.SendRequestOutput] {
+	return operations.mock.postNonIdempotent
 }
 
 // SendRequestCompleted selects the completed branch: The API answered 2xx; the Result carries the status code and body.
@@ -56,7 +67,7 @@ func SendRequestCompleted(value oauth2http.SendRequestOutput, failure *sdkgo.Fai
 	return connectormock.Branch(oauth2http.SendRequestBranchCompleted, value, failure)
 }
 
-// SendRequestRejected selects the rejected branch: The API answered a redirect or a 4xx other than 408 and 429, or the connection's authorization could not be renewed. The Result carries the status code, which is zero when no request was sent.
+// SendRequestRejected selects the rejected branch: The API answered a redirect or a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or the connection's authorization could not be renewed. The Result carries the status code, which is zero when no request was sent.
 func SendRequestRejected(value oauth2http.SendRequestOutput, failure *sdkgo.Failure) connectormock.Case[oauth2http.SendRequestOutput] {
 	return connectormock.Branch(oauth2http.SendRequestBranchRejected, value, failure)
 }
@@ -94,10 +105,9 @@ func SendRequestAuthorizationExpired() connectormock.Case[oauth2http.SendRequest
 	return connectormock.Branch(oauth2http.SendRequestBranchRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "The OAuth authorization must be renewed in Dex Web Connections."})
 }
 
-// SendRequestConnectionLost is the manifest mock connectionLost: The connection closed after a POST was sent, so the API may have processed it.
+// SendRequestConnectionLost is the manifest mock connectionLost: The connection closed before the API answered, so the request is sent again.
 func SendRequestConnectionLost() connectormock.Case[oauth2http.SendRequestOutput] {
-	var value oauth2http.SendRequestOutput
-	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "The connection closed before the API answered."})
+	return connectormock.Retry[oauth2http.SendRequestOutput](sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "The connection closed before the API answered."}, time.Duration(0))
 }
 
 // SendRequestInvalidPath is the manifest mock invalidPath: The request path is not an absolute path, so no request is sent.
@@ -114,4 +124,63 @@ func SendRequestThrottled() connectormock.Case[oauth2http.SendRequestOutput] {
 // SendRequestDefault is the manifest default, userProfile, which New installs.
 func SendRequestDefault() connectormock.Case[oauth2http.SendRequestOutput] {
 	return SendRequestUserProfile()
+}
+
+// PostNonIdempotentCompleted selects the completed branch: The API answered 2xx; the Result carries the status code and body.
+func PostNonIdempotentCompleted(value oauth2http.SendRequestOutput, failure *sdkgo.Failure) connectormock.Case[oauth2http.SendRequestOutput] {
+	return connectormock.Branch(oauth2http.PostNonIdempotentBranchCompleted, value, failure)
+}
+
+// PostNonIdempotentRejected selects the rejected branch: The API refused the only POST of this Step execution with a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or the connection's authorization could not be renewed before it was sent. The Result carries the status code, which is zero when no request was sent.
+func PostNonIdempotentRejected(value oauth2http.SendRequestOutput, failure *sdkgo.Failure) connectormock.Case[oauth2http.SendRequestOutput] {
+	return connectormock.Branch(oauth2http.PostNonIdempotentBranchRejected, value, failure)
+}
+
+// PostNonIdempotentUncertain returns an uncertain postNonIdempotent outcome.
+func PostNonIdempotentUncertain(value oauth2http.SendRequestOutput, failure sdkgo.Failure) connectormock.Case[oauth2http.SendRequestOutput] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// PostNonIdempotentDefect selects the defect branch: The input or the connection settings are invalid, so no request was sent.
+func PostNonIdempotentDefect(value oauth2http.SendRequestOutput, failure *sdkgo.Failure) connectormock.Case[oauth2http.SendRequestOutput] {
+	return connectormock.Branch(oauth2http.PostNonIdempotentBranchDefect, value, failure)
+}
+
+// PostNonIdempotentRetry asks Dex to retry the postNonIdempotent Step, after the delay when it is positive.
+func PostNonIdempotentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[oauth2http.SendRequestOutput] {
+	return connectormock.Retry[oauth2http.SendRequestOutput](failure, after)
+}
+
+// PostNonIdempotentCreatedOrder is the manifest mock createdOrder: The API answered 201 with the created order.
+func PostNonIdempotentCreatedOrder() connectormock.Case[oauth2http.SendRequestOutput] {
+	value := connectormock.MustDecodeOutput[oauth2http.SendRequestOutput](`{"statusCode":201,"contentType":"application/json","body":"{\"id\":\"order-1\",\"status\":\"created\"}"}`)
+	return connectormock.Branch(oauth2http.PostNonIdempotentBranchCompleted, value, nil)
+}
+
+// PostNonIdempotentInvalidOrder is the manifest mock invalidOrder: The API refused the order body with 422.
+func PostNonIdempotentInvalidOrder() connectormock.Case[oauth2http.SendRequestOutput] {
+	value := connectormock.MustDecodeOutput[oauth2http.SendRequestOutput](`{"statusCode":422,"contentType":"application/json","body":"{\"error\":\"invalid_order\"}"}`)
+	return connectormock.Branch(oauth2http.PostNonIdempotentBranchRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "The API answered HTTP 422."})
+}
+
+// PostNonIdempotentConnectionLost is the manifest mock connectionLost: The connection closed after the POST was sent, so the API may have processed it.
+func PostNonIdempotentConnectionLost() connectormock.Case[oauth2http.SendRequestOutput] {
+	var value oauth2http.SendRequestOutput
+	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "The connection closed before the API answered."})
+}
+
+// PostNonIdempotentInvalidPath is the manifest mock invalidPath: The request path is not an absolute path, so no request is sent.
+func PostNonIdempotentInvalidPath() connectormock.Case[oauth2http.SendRequestOutput] {
+	var value oauth2http.SendRequestOutput
+	return connectormock.Branch(oauth2http.PostNonIdempotentBranchDefect, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "The request path must start with a slash."})
+}
+
+// PostNonIdempotentThrottled is the manifest mock throttled: The API throttles the POST once before processing it.
+func PostNonIdempotentThrottled() connectormock.Case[oauth2http.SendRequestOutput] {
+	return connectormock.Retry[oauth2http.SendRequestOutput](sdkgo.Failure{Kind: sdkgo.FailureRateLimit, Message: "The API answered HTTP 429."}, time.Duration(2000000000))
+}
+
+// PostNonIdempotentDefault is the manifest default, createdOrder, which New installs.
+func PostNonIdempotentDefault() connectormock.Case[oauth2http.SendRequestOutput] {
+	return PostNonIdempotentCreatedOrder()
 }

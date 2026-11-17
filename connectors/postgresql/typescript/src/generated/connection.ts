@@ -13,6 +13,8 @@ export interface Operations {
   query(): Query<QueryRowsInput, RowSet>;
   /** Invoke execute through this connection. */
   execute(): Mutation<ExecuteStatementInput, StatementExecution>;
+  /** Invoke executeNonIdempotent through this connection. */
+  executeNonIdempotent(): Mutation<ExecuteStatementInput, StatementExecution>;
 }
 
 /** Named connector connection kept outside Flow state. */

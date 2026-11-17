@@ -3,22 +3,22 @@ kind: Connector
 metadata:
   name: postgresql
   displayName: PostgreSQL
-  description: Run one parameterized read-only query, or one transactional write statement, against a PostgreSQL database.
+  description: Run one parameterized read-only query, or one transactional repeat-safe or non-idempotent write statement, against a PostgreSQL database.
   company: PostgreSQL
   categories: [databases-storage]
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: postgresql
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-postgresql'
-      operations: [query, execute]
+      operations: [query, execute, executeNonIdempotent]
       triggers: []
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-postgresql
-      operations: [query, execute]
+      operations: [query, execute, executeNonIdempotent]
       triggers: []
   codegen:
     go:
@@ -131,18 +131,20 @@ spec:
       inputType: ExecuteStatementInput
       outputType: StatementExecution
       kind: mutation
-      description: Run one parameterized write statement in its own transaction and return its rows affected and bounded RETURNING rows.
+      description: Run one parameterized, repeat-safe write statement in its own transaction and return its rows affected and bounded RETURNING rows.
       idempotency: required
       branches:
         - {id: completed, goName: Completed, description: "PostgreSQL committed the statement's transaction; the Result holds the command, rows affected, and any RETURNING rows."}
         - {id: limitExceeded, goName: LimitExceeded, description: "The statement affected more rows than maxRowsAffected, or its RETURNING rows exceeded maxRows or maxResponseBytes, so the connector rolled back and nothing was written.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "PostgreSQL conclusively refused the connection, statement, or commit, such as a constraint violation, a syntax error, or a permission error; nothing was written.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The connection failed after COMMIT was sent, so whether PostgreSQL committed the write is unknown.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Retained for identity stability and never selected: a COMMIT with an unknown outcome is retried, because execute statements must be repeat-safe.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "PostgreSQL returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # The application supplies repeat-safe SQL; non-idempotent SQL uses executeNonIdempotent.
+        repeatOnUnknown: safe
       mocks:
         - name: recordedRefund
           branch: completed
@@ -163,3 +165,39 @@ spec:
           description: "An INSERT for an already refunded order receives SQLSTATE 23505 before commit."
           output: {columns: [], rows: []}
           failure: {kind: CONFLICT, message: "PostgreSQL rejected the duplicate order."}
+    - name: executeNonIdempotent
+      goName: ExecuteStatementNonIdempotent
+      inputType: ExecuteStatementInput
+      outputType: StatementExecution
+      kind: mutation
+      description: Run one parameterized write statement that must not run twice, such as a relative balance update, in its own transaction; an unconfirmed COMMIT selects uncertain instead of running it again.
+      idempotency: required
+      branches:
+        - {id: completed, goName: Completed, description: "PostgreSQL committed the statement's transaction; the Result holds the command, rows affected, and any RETURNING rows."}
+        - {id: limitExceeded, goName: LimitExceeded, description: "The statement affected more rows than maxRowsAffected, or its RETURNING rows exceeded maxRows or maxResponseBytes, so the connector rolled back and nothing was written.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "PostgreSQL conclusively refused the connection, statement, or commit, such as a constraint violation, a syntax error, or a permission error; nothing was written.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "COMMIT may have reached PostgreSQL, in this or an earlier attempt, and its outcome is unknown; the connector never runs the statement again, so inspect the database before writing again.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "PostgreSQL returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        # The single-dispatch fence needs sync heartbeats to see an earlier attempt's COMMIT.
+        durability: sync
+        dispatchFence: true
+        # A repeated relative write, such as adding to a balance, applies twice.
+        repeatOnUnknown: unsafe
+      mocks:
+        - name: addedToDailyTotal
+          branch: completed
+          description: "Adding the $250.00 order-88213 refund to the 2026-10-26 daily total commits once."
+          default: true
+          output:
+            command: INSERT
+            rowsAffected: 1
+            columns: [{name: refund_date, typeName: date, typeOid: 1082}, {name: total_usd, typeName: numeric, typeOid: 1700}]
+            rows: [{refund_date: "2026-10-26", total_usd: "250.00"}]
+        - name: missingDailyTotalTable
+          branch: providerRejected
+          description: "Adding to a missing refund_daily_totals table receives SQLSTATE 42P01 before commit."
+          output: {columns: [], rows: []}
+          failure: {kind: NOT_FOUND, message: "PostgreSQL could not find refund_daily_totals."}

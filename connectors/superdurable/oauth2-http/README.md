@@ -1,13 +1,14 @@
 # OAuth 2.0 HTTP Connector
 
 The TypeScript package `@superdurable/connector-superdurable-oauth2-http` implements
-`sendRequest` with generated OAuth refresh and shared credential decoding.
+`sendRequest` and `postNonIdempotent` with generated OAuth refresh and shared
+credential decoding.
 See its [runnable TypeScript example](typescript/examples/api-request/) and
 [package guide](typescript/README.md). TypeScript replay matches the Go
 provider scenarios, and the example runs through a real local Dex stack.
 Live TypeScript authorization with a hosted provider remains unverified.
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http`.
 
@@ -25,8 +26,10 @@ connector, such as a Keycloak realm or a company's internal identity provider:
 - the connection settings name the server's authorization and token endpoints,
   the scopes, and the API's base URL;
 - the credential holds the OAuth client ID, the client secret, and the tokens;
-- the `sendRequest` Mutation sends one HTTP request with the access token as a
-  Bearer credential and returns the status code and body.
+- the `sendRequest` Mutation sends one repeat-safe HTTP request with the access
+  token as a Bearer credential and returns the status code and body;
+- the `postNonIdempotent` Mutation sends one HTTP POST that must never be sent
+  twice, at most once per Step execution.
 
 ## Architecture
 
@@ -83,7 +86,9 @@ refresh certain by moving the clock past the stored expiry.
   `path` is joined to `apiBaseUrl`; anything else selects `defect` before a
   request is sent.
 - **No redirects.** The connector never follows a redirect, so a token is never
-  replayed to another host. The 3xx answer selects `rejected`.
+  replayed to another host. The 3xx answer selects `rejected` for
+  `sendRequest` and `uncertain` for `postNonIdempotent`, because a redirect
+  after a POST may follow a processed write.
 - **Connection-owned headers.** A request that sets `Authorization`, `Cookie`,
   `Host`, or another header that the transport owns selects `defect`.
 - **Redaction.** The access tokens a request used are replaced by `[REDACTED]`
@@ -186,17 +191,22 @@ Branches, in the order the operation decides them:
 | Branch | When |
 | --- | --- |
 | `completed` | The API answered 2xx. |
-| `rejected` (optional) | A redirect, a 4xx other than 408 and 429, or an authorization the server will no longer renew. `statusCode` is zero in the last case. A 401 is final only after one renewal and one resend. |
-| `uncertain` (optional) | `POST`, `PUT`, `PATCH`, or `DELETE` that was written but got no usable answer: the connection closed, timed out, was cut off, or the API answered 5xx. |
+| `rejected` (optional) | A redirect, a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or an authorization the server will no longer renew. `statusCode` is zero in the last case. A 401 is final only after one renewal and one resend. |
+| `uncertain` (optional) | A `POST` without `idempotencyKeyHeader` was sent, but its answer was lost or cut off. It is the only unknown outcome that is not repeated. |
 | `defect` (optional) | The input or the settings are invalid, so no request was sent. |
 
-Dex retries, after `Retry-After` when the API sends it, a 408 or 429, a request
-that never left the Worker, and, for `GET`, `HEAD`, and `OPTIONS`, any
-transport failure or 5xx answer. An unsafe method is never repeated after it
-may have reached the API; a Flow that selects `uncertain` reads the API's state
-before it writes again. The call's idempotency key is the same for every retry
-of one Step execution, so an API that deduplicates by key can make a retry
-safe: name the header with `idempotencyKeyHeader`.
+`sendRequest` is `repeatOnUnknown: safe`: every unknown outcome is sent again,
+for every method, with one narrow exception kept so the declared `uncertain`
+branch stays reachable: a `POST` without `idempotencyKeyHeader` whose answer
+was lost or cut off after it was sent selects `uncertain`. Dex retries, after `Retry-After` when the API sends it, a
+request that never left the Worker, a lost or cut-off answer, a timeout, any
+5xx, and any status that does not prove a refusal, such as 408, 409, 410, 425,
+or 429. The retry policy allows five attempts within two minutes, after which
+the Flow fails. Use `sendRequest` only for requests that are safe to repeat:
+reads, absolute updates, deletes, or writes the API deduplicates. The call's
+idempotency key is the same for every retry of one Step execution, so name the
+API's deduplication header with `idempotencyKeyHeader`. Send a POST that must
+never be repeated with `postNonIdempotent`.
 
 An unwired optional branch fails the Flow when it is selected. This step from
 [`examples/api-request`](go/examples/api-request/flow/workflow.go) wires only
@@ -214,40 +224,64 @@ An unwired optional branch fails the Flow when it is selected. This step from
 		})),
 ```
 
+## The postNonIdempotent Mutation
+
+`postNonIdempotent` sends one HTTP POST that must never be sent twice, such as a
+payment or an order the API does not deduplicate. Its input has the `path`,
+`url`, `query`, `headers`, and `body` fields of `sendRequest`, with the same
+rules; the method is always `POST` and no idempotency header is sent. The output
+is the same as `sendRequest`.
+
+The operation is `repeatOnUnknown: unsafe` and runs with sync durability under
+the Connector SDK's single-dispatch fence: the Step records a claim heartbeat
+before the POST and sends at most once per Step execution.
+
+| Branch | When |
+| --- | --- |
+| `completed` | The API answered 2xx. |
+| `rejected` (optional) | The API refused the only POST of this Step execution with a definite refusal (400, 401 after a failed renewal, 403, 404, 411, 413, 414, 415, or 422), or the authorization could not be renewed before the POST was sent. |
+| `uncertain` (optional) | The POST may have reached the API without a usable answer: a lost or cut-off answer, a timeout, a redirect, a 5xx other than 503, or another status that does not prove a refusal, such as 408 or 409. An attempt after an earlier possible send also selects it without sending. |
+| `defect` (optional) | The input or the settings are invalid, so no request was sent. |
+
+Dex retries a 429 or 503, after `Retry-After` when the API sends it, a POST that
+never left the Worker, and a 401 after which the token was renewed; those
+answers prove the API did not process the POST, so the next attempt sends it
+again. A checkpoint that cannot be read also returns Retry without sending. The
+connector cannot read a POST back, so a Flow that selects `uncertain` checks
+the API's state before it acts.
+
 ## Mocks
 
-`oauth2httpmock` scripts the operation in application tests. The default,
-`userProfile`, answers a call the test does not script with a 200 JSON profile.
+`oauth2httpmock` scripts the operations in application tests. The `sendRequest`
+default, `userProfile`, answers a call the test does not script with a 200 JSON
+profile, and the `postNonIdempotent` default, `createdOrder`, with a 201 order.
 The package also has a constructor for each branch and for the manifest mocks
-`notFound`, `authorizationExpired`, `connectionLost`, `invalidPath`, and
-`throttled`. See
+`notFound`, `authorizationExpired`, `connectionLost`, `invalidPath`, `throttled`,
+and `invalidOrder`. See
 [`workflow_mock_integration_test.go`](go/examples/api-request/flow/workflow_mock_integration_test.go).
 
 ## Example
 
 [`examples/api-request`](go/examples/api-request/README.md) is a Worker and a Flow
-that read one path of the protected API and record the answer.
+that read one path of the protected API, or send an order once with
+`postNonIdempotent` when the input sets `orderBody`, and record the answer.
 
-The [Python package](python/README.md) exposes the same `sendRequest` Mutation
-through a typed Step factory. Its [API request example](python/examples/api_request/README.md)
+The [Python package](python/README.md) exposes the same `sendRequest` and
+`postNonIdempotent` Mutations through typed Step factories. Its [API request example](python/examples/api_request/README.md)
 uses the static `oauth2-http-api` connection and has a real Dex Worker and Client
-integration test. The package uses Connector SDK 0.7.0 manifest-generated OAuth
-refresh and Go-recorded provider conformance scenarios.
+integration test. The package uses Connector SDK 0.12.0 manifest-generated OAuth
+refresh, the SDK's single-dispatch fence, and Go-recorded provider conformance
+scenarios.
 
 ## Verification
 
-The module requires `sdkgo v0.25.0`, which adds
-`oauthtoken.TokenEndpoint.AllowsPlainHTTP` for plain-http token endpoints. Until
-that release is published, run the checks in the repository workspace:
+The module requires `sdkgo v0.38.0`. Run the checks standalone, as CI does:
 
 ```bash
-make workspace
 cd connectors/superdurable/oauth2-http/go
-go test -race ./...
-go vet ./...
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
 ```
-
-After the release, run them standalone, as CI does, with `GOWORK=off`.
 
 The real Dex tests in the example need a running `dexcli dev`:
 

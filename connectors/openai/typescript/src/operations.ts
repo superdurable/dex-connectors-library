@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type FailureKind, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Failure, type FailureKind, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import type { CreateRequest, Response, RetrieveRequest } from './generated/models.js';
 import { CreateResponseDefinition, RetrieveResponseDefinition } from './generated/definitions.js';
@@ -10,7 +10,28 @@ import { CredentialFailure, EncodingFailure, isPrintableModelID, isSafeResponseI
 const emptyResponse: Response = { id: '', model: '', status: '', outputText: '', usage: { inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, reasoningOutputTokens: 0, totalTokens: 0 } };
 const invalidCreateInputMessage = 'input and a model of printable ASCII without spaces are required';
 
-interface Checkpoint { callId: string; attempt: number; responseId?: string; canResend?: boolean }
+/** Heartbeat checkpoint; `sendCount` bounds possibly effective creates and is absent in earlier releases. */
+interface Checkpoint { callId: string; attempt: number; responseId?: string; canResend?: boolean; sendCount?: number }
+
+/** Possibly effective creates of one call across attempts, bounded as the single-dispatch Fence does. */
+class SendBudget {
+  constructor(readonly priorSendUpperBound: number, private readonly maxSends: number) {}
+  /** Trust a valid send count, add one possible send per later attempt, and otherwise use attempt - 1. */
+  static derive(call: Call, previous: Checkpoint | undefined, isTrusted: boolean): SendBudget {
+    const attempt = call.context.attempt;
+    const operationMaxSends = definitionMaxSends(CreateResponseDefinition);
+    const maxSends = operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
+    const count = isTrusted ? previous?.sendCount : undefined;
+    const isValid = previous !== undefined && Number.isSafeInteger(count) && Number.isSafeInteger(previous.attempt) &&
+      previous.attempt >= 1 && previous.attempt < attempt && (count as number) >= 0 && (count as number) <= previous.attempt;
+    return new SendBudget(isValid ? (count as number) + attempt - 1 - previous.attempt : attempt - 1, maxSends);
+  }
+  get canSendNow(): boolean { return this.priorSendUpperBound < this.maxSends; }
+  get canResendLater(): boolean { return this.priorSendUpperBound + 1 < this.maxSends; }
+  get hasPossibleEarlierSend(): boolean { return this.priorSendUpperBound > 0; }
+}
+
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 
 class CheckpointHeartbeat {
   private checkpoint: Checkpoint | undefined;
@@ -29,8 +50,12 @@ class CheckpointHeartbeat {
     }
   }
   async record(checkpoint: Checkpoint): Promise<void> { this.checkpoint = checkpoint; await this.call.context.recordHeartbeat(checkpoint); }
-  async responseId(id: string): Promise<void> { await this.record({ callId: this.call.id, attempt: this.call.context.attempt, responseId: id }); }
-  async canResend(): Promise<void> { await this.record({ callId: this.call.id, attempt: this.call.context.attempt, canResend: true }); }
+  /** Record the response ID, keeping the claim's send count. */
+  async responseId(id: string): Promise<void> { await this.record({ callId: this.call.id, attempt: this.call.context.attempt, responseId: id, ...(this.sendCount === undefined ? {} : { sendCount: this.sendCount }) }); }
+  /** Record that the next attempt may resend, with sendCount possible creates through this attempt. */
+  async canResend(sendCount: number): Promise<void> { await this.record({ callId: this.call.id, attempt: this.call.context.attempt, canResend: true, sendCount }); }
+  /** The send count of the checkpoint this attempt last recorded. */
+  get sendCount(): number | undefined { return this.checkpoint?.sendCount; }
   async stop(): Promise<void> { if (this.timer) clearInterval(this.timer); await this.pending; }
 }
 
@@ -50,25 +75,29 @@ export class CreateResponseOperation implements Mutation<CreateRequest, Response
     const streaming = call.hasProgressStream() || call.hasTextStream();
     if (streaming) payload.stream = true;
     let previous: Checkpoint | undefined;
+    let isTrusted = true;
     try {
       const raw = call.context.hasLastHeartbeatValue() ? call.context.getLastHeartbeatValue() : undefined;
       previous = raw == null ? undefined : raw as Checkpoint;
-    } catch { return this.branch(call, 'defect', emptyResponse, 'LOCAL_DEFECT', "the Step's heartbeat value is not this call's checkpoint; createResponse must be the Step's only heartbeat writer", false); }
-    if (previous !== undefined && (typeof previous !== 'object' || Array.isArray(previous) || previous.callId !== call.id)) return this.branch(call, 'defect', emptyResponse, 'LOCAL_DEFECT', "the Step's heartbeat value is not this call's checkpoint; createResponse must be the Step's only heartbeat writer", false);
+    } catch { isTrusted = false; previous = undefined; }
+    if (previous !== undefined && (typeof previous !== 'object' || Array.isArray(previous) || previous.callId !== call.id)) { isTrusted = false; previous = undefined; }
+    if (!isTrusted && call.context.attempt === 1) return this.branch(call, 'defect', emptyResponse, 'LOCAL_DEFECT', "the Step's heartbeat value is not this call's checkpoint; createResponse must be the Step's only heartbeat writer", false);
+    // A later attempt treats an unreadable or foreign checkpoint, or an invalid saved ID, as none.
+    if (previous?.responseId && !isSafeResponseID(previous.responseId)) { isTrusted = false; previous = undefined; }
+    const sends = SendBudget.derive(call, previous, isTrusted);
     const heartbeat = new CheckpointHeartbeat(call);
     try {
       if (previous?.responseId) {
-        if (!isSafeResponseID(previous.responseId)) return this.branch(call, 'defect', emptyResponse, 'LOCAL_DEFECT', 'saved response ID is invalid', false);
-        try { await heartbeat.begin({ callId: call.id, attempt: call.context.attempt, responseId: previous.responseId }); }
-        catch { /* A lost checkpoint never permits another create request. */ }
+        try { await heartbeat.begin({ callId: call.id, attempt: call.context.attempt, responseId: previous.responseId, sendCount: sends.priorSendUpperBound }); }
+        catch { /* The earlier checkpoint already holds the ID, so a failed record changes nothing. */ }
         return await this.readBack(call, heartbeat, previous.responseId);
       }
-      if ((previous === undefined && call.context.attempt === 1) || (previous?.canResend && previous.attempt === call.context.attempt - 1)) return await this.sendCreate(call, heartbeat, payload, streaming);
-      return newMutationUncertain(emptyResponse, openAIFailure('TRANSPORT', 'createResponse', previous ? 'an earlier attempt may have created a response without recording its ID' : 'an earlier attempt left no checkpoint and may have created a response; createResponse requires sync Execute durability'), this.client.receipt(call, undefined));
+      if (sends.canSendNow) return await this.sendCreate(call, heartbeat, sends, payload, streaming);
+      return newMutationUncertain(emptyResponse, openAIFailure('TRANSPORT', 'createResponse', 'earlier attempts may have created responses without recording an ID, and the send cap is reached'), this.client.receipt(call, undefined));
     } finally { await heartbeat.stop(); }
   }
 
-  private async sendCreate(call: Call, heartbeat: CheckpointHeartbeat, payload: Record<string, unknown>, streaming: boolean): Promise<MutationAttempt<Response>> {
+  private async sendCreate(call: Call, heartbeat: CheckpointHeartbeat, sends: SendBudget, payload: Record<string, unknown>, streaming: boolean): Promise<MutationAttempt<Response>> {
     const stream = streaming ? new ResponseStream(call, heartbeat, this.client) : undefined;
     let prepared: ProviderRequest;
     try {
@@ -76,33 +105,38 @@ export class CreateResponseOperation implements Mutation<CreateRequest, Response
       if (stream) prepared = { ...prepared, onBodyLimit: 'drain' };
     }
     catch (error) {
-      if (error instanceof CredentialFailure) return this.branch(call, 'defect', emptyResponse, 'AUTHENTICATION', error.message, false);
-      if (error instanceof EncodingFailure) return this.branch(call, 'defect', emptyResponse, 'VALIDATION', error.message, false);
-      return this.branch(call, 'defect', emptyResponse, 'LOCAL_DEFECT', 'request could not be built', false);
+      const [kind, message]: [FailureKind, string] = error instanceof CredentialFailure ? ['AUTHENTICATION', error.message] : error instanceof EncodingFailure ? ['VALIDATION', error.message] : ['LOCAL_DEFECT', 'request could not be built'];
+      // An earlier create may exist, so a defect could prompt a second billed create.
+      if (sends.hasPossibleEarlierSend) return newMutationRetry(openAIFailure(kind, 'createResponse', message));
+      return this.branch(call, 'defect', emptyResponse, kind, message, false);
     }
-    try { await heartbeat.begin({ callId: call.id, attempt: call.context.attempt }); }
-    catch { return this.retry(heartbeat, 'AVAILABILITY', 'dispatch checkpoint could not be recorded'); }
+    try { await heartbeat.begin({ callId: call.id, attempt: call.context.attempt, sendCount: sends.priorSendUpperBound + 1 }); }
+    catch { return this.retry(heartbeat, sends.priorSendUpperBound, 'AVAILABILITY', 'dispatch checkpoint could not be recorded'); }
     let response: ProviderResponse;
     try { response = await this.client.sendPreparedRequest(prepared); }
     catch (error) {
-      if (error instanceof ProviderTransportError && error.isProvablyNotSent) return this.retry(heartbeat, 'TRANSPORT', 'request was not sent');
+      if (error instanceof ProviderTransportError && error.isProvablyNotSent) return this.retry(heartbeat, sends.priorSendUpperBound, 'TRANSPORT', 'request was not sent');
       if (stream?.responseId) { await stream.waitForCheckpoint(); return this.readBack(call, heartbeat, stream.responseId, stream.responseHeaders ? { status: stream.responseStatus, headers: stream.responseHeaders, body: new Uint8Array() } : undefined); }
-      if (error instanceof BodyTooLargeError) return newMutationUncertain(emptyResponse, openAIFailure('RESPONSE_TOO_LARGE', 'createResponse', 'provider response exceeds the configured size limit'), this.client.receipt(call, { status: error.status ?? 200, headers: error.headers ?? {}, body: new Uint8Array() }));
-      return newMutationUncertain(emptyResponse, openAIFailure('TRANSPORT', 'createResponse', 'provider outcome is unknown'), this.client.receipt(call, undefined));
+      if (error instanceof BodyTooLargeError) return resendOrSelectUncertain(sends, openAIFailure('RESPONSE_TOO_LARGE', 'createResponse', 'provider response exceeds the configured size limit'), this.client.receipt(call, { status: error.status ?? 200, headers: error.headers ?? {}, body: new Uint8Array() }));
+      return resendOrSelectUncertain(sends, openAIFailure('TRANSPORT', 'createResponse', 'provider outcome is unknown'), this.client.receipt(call, undefined));
     }
     if (response.status < 200 || response.status >= 300) {
       const classified = classifyStatus('createResponse', response, this.client);
-      if (classified.retry) return this.retry(heartbeat, classified.kind, classified.message, classified.retryAfter);
-      if (response.status >= 500) return newMutationUncertain(emptyResponse, openAIFailure(classified.kind, 'createResponse', classified.message), this.client.receipt(call, response));
-      if (response.status === 408 || response.status === 409) return newMutationUncertain(emptyResponse, openAIFailure(response.status === 408 ? 'TRANSPORT' : 'CONFLICT', 'createResponse', `provider returned HTTP ${response.status} without a response ID, so a response may exist`), this.client.receipt(call, response));
+      if (classified.retry) return this.retry(heartbeat, sends.priorSendUpperBound, classified.kind, classified.message, classified.retryAfter);
+      if (response.status === 408 || response.status === 409) return resendOrSelectUncertain(sends, openAIFailure(response.status === 408 ? 'TRANSPORT' : 'CONFLICT', 'createResponse', `provider returned HTTP ${response.status} without a response ID, so a response may exist`), this.client.receipt(call, response));
+      // A 5xx other than 503, a 3xx, or an unlisted 4xx can follow a stored response.
+      if (!definiteRefusalStatuses.has(response.status)) return resendOrSelectUncertain(sends, openAIFailure(classified.kind, 'createResponse', classified.message), this.client.receipt(call, response));
+      try { await heartbeat.canResend(sends.priorSendUpperBound); } catch { /* A lost record leaves the claim, which only overcounts. */ }
+      // A refused resend cannot prove that an earlier attempt created nothing.
+      if (sends.hasPossibleEarlierSend) return newMutationUncertain(emptyResponse, openAIFailure(classified.kind, 'createResponse', classified.message), this.client.receipt(call, response));
       return this.branch(call, 'providerRejected', emptyResponse, classified.kind, classified.message, true, response);
     }
-    if (stream) return stream.finish(response, this.readBack.bind(this), this.resolveKnown.bind(this));
+    if (stream) return stream.finish(response, sends, this.readBack.bind(this), this.resolveKnown.bind(this));
     let result: Response;
     try { result = this.client.decodeResponse(response.body); }
-    catch (error) { return newMutationUncertain(emptyResponse, openAIFailure(error instanceof BodyTooLargeError ? 'RESPONSE_TOO_LARGE' : 'PROTOCOL', 'createResponse', error instanceof BodyTooLargeError ? 'provider response exceeds the configured size limit' : 'provider response is invalid'), this.client.receipt(call, response)); }
-    if (!result.id || !isSafeResponseID(result.id)) return newMutationUncertain(emptyResponse, openAIFailure('PROTOCOL', 'createResponse', result.id ? 'provider response ID is invalid' : 'provider response has no ID'), this.client.receipt(call, response));
-    try { await heartbeat.responseId(result.id); } catch { /* A lost checkpoint cannot authorize a duplicate create. */ }
+    catch (error) { return resendOrSelectUncertain(sends, openAIFailure(error instanceof BodyTooLargeError ? 'RESPONSE_TOO_LARGE' : 'PROTOCOL', 'createResponse', error instanceof BodyTooLargeError ? 'provider response exceeds the configured size limit' : 'provider response is invalid'), this.client.receipt(call, response)); }
+    if (!result.id || !isSafeResponseID(result.id)) return resendOrSelectUncertain(sends, openAIFailure('PROTOCOL', 'createResponse', result.id ? 'provider response ID is invalid' : 'provider response has no ID'), this.client.receipt(call, response));
+    try { await heartbeat.responseId(result.id); } catch { /* A lost checkpoint leaves the claim, which a later attempt counts. */ }
     return this.resolveKnown(call, heartbeat, result, response);
   }
 
@@ -110,7 +144,8 @@ export class CreateResponseOperation implements Mutation<CreateRequest, Response
     const receipt = this.client.receipt(call, response, result.id);
     if (result.status === 'completed') return newMutationBranch('completed', result, receipt);
     if (result.status === 'failed' || result.status === 'incomplete') return newMutationBranch('failed', result, receipt, openAIFailure('PROVIDER_REJECTION', 'createResponse', `provider returned a ${result.status} response`));
-    if (result.status === 'cancelled') return this.retry(heartbeat, 'AVAILABILITY', `response ${result.id} was cancelled before it completed`);
+    // The cancelled response may be billed, so it still counts toward the send cap.
+    if (result.status === 'cancelled') return this.retry(heartbeat, heartbeat.sendCount ?? call.context.attempt, 'AVAILABILITY', `response ${result.id} was cancelled before it completed`);
     if (result.status === 'queued' || result.status === 'in_progress') return this.readBack(call, heartbeat, result.id, response);
     return newMutationUncertain(result, openAIFailure('PROTOCOL', 'createResponse', `response ${result.id} has no recognized status`), receipt);
   }
@@ -146,8 +181,9 @@ export class CreateResponseOperation implements Mutation<CreateRequest, Response
     }
   }
 
-  private async retry(heartbeat: CheckpointHeartbeat, kind: FailureKind, message: string, retryAfter = 0): Promise<MutationAttempt<Response>> {
-    try { await heartbeat.canResend(); } catch { /* Missing proof makes a later attempt uncertain. */ }
+  /** Let the next attempt send again; call it only when this send created nothing to repeat. */
+  private async retry(heartbeat: CheckpointHeartbeat, sendCount: number, kind: FailureKind, message: string, retryAfter = 0): Promise<MutationAttempt<Response>> {
+    try { await heartbeat.canResend(sendCount); } catch { /* A lost record leaves the claim, which only overcounts. */ }
     return newMutationRetry(openAIFailure(kind, 'createResponse', message), retryAfter);
   }
   private branch(call: Call, branch: string, value: Response, kind: FailureKind, message: string, withReceipt: boolean, response?: ProviderResponse): MutationAttempt<Response> {
@@ -179,6 +215,12 @@ export class RetrieveResponseOperation implements Query<RetrieveRequest, Respons
     catch { return newQueryBranch('invalidResponse', emptyResponse, this.client.receipt(call, response, input.ResponseID), openAIFailure('PROTOCOL', 'retrieveResponse', 'provider response is invalid')); }
     return newQueryBranch('found', result, this.client.receipt(call, response, result.id));
   }
+}
+
+/** Retry while a later attempt may create again, and select uncertain at the cap. */
+function resendOrSelectUncertain(sends: SendBudget, failure: Failure, receipt: ReturnType<OpenAIClient['receipt']>): MutationAttempt<Response> {
+  // The claim stays the last checkpoint, so the next attempt counts this send.
+  return sends.canResendLater ? newMutationRetry(failure) : newMutationUncertain(emptyResponse, failure, receipt);
 }
 
 function classifyStatus(operation: string, response: ProviderResponse, client: OpenAIClient): { kind: FailureKind; message: string; retry: boolean; retryAfter: number } {
@@ -239,7 +281,7 @@ class ResponseStream {
     }
     return this.terminal === undefined;
   };
-  async finish(response: ProviderResponse, readBack: (call: Call, heartbeat: CheckpointHeartbeat, responseId: string, createResponse?: ProviderResponse) => Promise<MutationAttempt<Response>>, resolveKnown: (call: Call, heartbeat: CheckpointHeartbeat, result: Response, response?: ProviderResponse) => Promise<MutationAttempt<Response>>): Promise<MutationAttempt<Response>> {
+  async finish(response: ProviderResponse, sends: SendBudget, readBack: (call: Call, heartbeat: CheckpointHeartbeat, responseId: string, createResponse?: ProviderResponse) => Promise<MutationAttempt<Response>>, resolveKnown: (call: Call, heartbeat: CheckpointHeartbeat, result: Response, response?: ProviderResponse) => Promise<MutationAttempt<Response>>): Promise<MutationAttempt<Response>> {
     await this.pendingCheckpoint;
     if (this.terminal) {
       const result = this.terminal;
@@ -247,6 +289,6 @@ class ResponseStream {
       return result;
     }
     if (this.responseId) return readBack(this.call, this.heartbeat, this.responseId, response);
-    return newMutationUncertain(emptyResponse, openAIFailure('PROTOCOL', 'createResponse', this.error || 'stream ended before a terminal event'), this.client.receipt(this.call, response));
+    return resendOrSelectUncertain(sends, openAIFailure('PROTOCOL', 'createResponse', this.error || 'stream ended before a terminal event'), this.client.receipt(this.call, response));
   }
 }

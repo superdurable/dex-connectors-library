@@ -6,6 +6,7 @@ import { SecretString, type Call } from '@superdurable/connectors-sdk';
 import type { ImapFlow } from 'imapflow';
 import { EmailClient, MailFailure } from '../src/index.js';
 import { classifyMailError, hasControls, isBareAddress } from '../src/client.js';
+import { decideSubmissionFromMarker } from '../src/operations.js';
 
 function fakeCall(operation: string, prior?: unknown): { call: Call; heartbeats: unknown[] } {
   const heartbeats: unknown[] = [];
@@ -71,14 +72,36 @@ describe('email operation decisions', () => {
     if (refused.kind === 'branch') expect(refused.branch).toBe('providerRejected');
   });
 
-  test('send validates recipients and never connects after a prior submission claim', async () => {
+  test('send validates recipients, retries after a foreign checkpoint, and never connects at the send cap', async () => {
     const email = client();
     const invalid = await email.sendMessage().invoke(fakeCall('sendMessage').call, { to: ['wrong'], subject: 'Hello', text: 'Hello' });
     expect(invalid.kind).toBe('branch');
     if (invalid.kind === 'branch') expect(invalid.branch).toBe('defect');
-    const prior = await email.sendMessage().invoke(fakeCall('sendMessage', { emailSubmittedCallId: 'earlier' }).call, { to: ['jane@example.com'], subject: 'Hello', text: 'Hello' });
-    expect(prior.kind).toBe('uncertain');
-    if (prior.kind === 'uncertain') { expect(prior.value.messageId).toBe('dex-email-test-call@example.com'); expect(prior.receipt.providerObjectId).toBe(prior.value.messageId); }
+    const input = { to: ['jane@example.com'], subject: 'Hello', text: 'Hello' };
+    const foreign = await email.sendMessage().invoke(fakeCall('sendMessage', { emailSubmittedCallId: 'earlier', emailAttempt: 1, emailSubmissionCount: 1 }).call, input);
+    expect(foreign.kind).toBe('retry');
+    const capped = fakeCall('sendMessage', { emailSubmittedCallId: 'email-test-call', emailAttempt: 3, emailSubmissionCount: 3 }).call;
+    (capped.context as { attempt: number }).attempt = 4;
+    const atCap = await email.sendMessage().invoke(capped, input);
+    expect(atCap.kind).toBe('uncertain');
+    if (atCap.kind === 'uncertain') { expect(atCap.value.messageId).toBe('dex-email-test-call@example.com'); expect(atCap.receipt.providerObjectId).toBe(atCap.value.messageId); }
+  });
+
+  test.each([
+    [undefined, 1, 'allowed', 0],
+    [undefined, 3, 'allowed', 2],
+    [{ emailSubmittedCallId: 'call' }, 2, 'allowed', 1],
+    [{ emailSubmittedCallId: 'other', emailAttempt: 1, emailSubmissionCount: 1 }, 2, 'untrusted', undefined],
+    [{ emailSubmittedCallId: 'call', emailAttempt: 1, emailSubmissionCount: 1 }, 3, 'allowed', 2],
+    [{ emailSubmittedCallId: 'call', emailAttempt: 1 }, 2, 'allowed', 0],
+    [{ emailSubmittedCallId: 'call', emailAttempt: 2, emailSubmissionCount: 1 }, 2, 'untrusted', undefined],
+    [{ emailSubmittedCallId: 'call', emailAttempt: 1, emailSubmissionCount: 2 }, 2, 'untrusted', undefined],
+    [{ emailSubmittedCallId: 'call', emailAttempt: 1, emailSubmissionCount: 1, emailAccepted: true }, 2, 'accepted', undefined],
+    [{ emailSubmittedCallId: 'call', emailAttempt: 3, emailSubmissionCount: 3 }, 4, 'capReached', 3],
+  ])('decides the Go decision table case %j at attempt %i', (marker, attempt, kind, bound) => {
+    const decision = decideSubmissionFromMarker('call', attempt, 3, marker);
+    expect(decision.kind).toBe(kind);
+    if (bound !== undefined) expect(decision.maximumPriorSubmissions).toBe(bound);
   });
 
   test('reply with missing source selects notFound before SMTP', async () => {
@@ -109,7 +132,14 @@ describe('email operation decisions', () => {
     expect(flagsInvalid.kind).toBe('retry');
   });
 
-  test('reply validation and an unreadable checkpoint preserve defect and uncertainty', async () => {
+  test('reply with a missing source after an earlier possible submission is uncertain', async () => {
+    const email = client();
+    vi.spyOn(email, 'openIMAP').mockResolvedValue(fakeIMAP({ fetchOne: async () => false }));
+    const reply = await email.replyToMessage().invoke(fakeCall('replyToMessage', { emailSubmittedCallId: 'email-test-call', emailAttempt: 1, emailSubmissionCount: 1 }).call, { message: { mailbox: 'INBOX', uidValidity: 42, uid: 100 }, text: 'Thanks' });
+    expect(reply.kind).toBe('uncertain');
+  });
+
+  test('reply validation and an unreadable checkpoint preserve defect and Retry', async () => {
     const email = new EmailClient({ imapHost: 'localhost', smtpHost: 'localhost' }, { resolve: async () => ({ username: 'jane', password: new SecretString('test-password') }) });
     const reference = { mailbox: 'INBOX', uidValidity: 42, uid: 100 };
     const defect = await email.replyToMessage().invoke(fakeCall('replyToMessage').call, { message: reference, text: 'Hello' });
@@ -117,8 +147,8 @@ describe('email operation decisions', () => {
     const valid = client();
     const unreadable = fakeCall('replyToMessage').call;
     unreadable.context.hasLastHeartbeatValue = () => { throw new Error('checkpoint unavailable'); };
-    const uncertain = await valid.replyToMessage().invoke(unreadable, { message: reference, text: 'Hello' });
-    expect(uncertain.kind).toBe('uncertain');
+    const retried = await valid.replyToMessage().invoke(unreadable, { message: reference, text: 'Hello' });
+    expect(retried.kind).toBe('retry');
   });
 
   test('move rejects invalid message identifiers and INBOX case variants', async () => {

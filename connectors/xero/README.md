@@ -1,6 +1,6 @@
 # Xero Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/xero/go@v0.25.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/xero/go@v0.25.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/xero`.
 
@@ -289,12 +289,13 @@ errors, such as
 | 401 | `providerRejected`, `AUTHENTICATION`, after one token refresh and resend only when the stored token has expired |
 | 403 | `providerRejected`, `AUTHORIZATION`; an OAuth tenant is read again next time |
 | 404 | `notFound` where declared, otherwise `providerRejected` |
-| 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed |
+| 3xx | `providerRejected`, `PROTOCOL`, for a read; Retry under the same Idempotency-Key for a write; redirects are never followed |
 | 429 daily | `dailyLimitReached`, `QUOTA_EXHAUSTED` |
 | 429 other | Retry after `Retry-After` |
 | 500 | Retry for a read; `uncertain` for a write |
 | 408, 502, 503, 504, transport failure | Retry |
-| 501, other 4xx | `providerRejected` |
+| 409, 501, other 4xx except 411, 413, 414, 415, and 422 | `providerRejected` for a read; Retry under the same Idempotency-Key for a write, because the status does not prove Xero refused it |
+| 411, 413, 414, 415, 422 | `providerRejected` |
 | oversized, malformed, or credential-reflecting 2xx | `invalidResponse`, or `uncertain` for a write |
 | rejected client, grant, or scope at the token endpoint | `providerRejected`, `AUTHENTICATION` |
 | invalid input or connection configuration | `defect`, with no request |
@@ -415,7 +416,7 @@ This snippet comes from
 ## TypeScript package
 
 The [TypeScript package](typescript/README.md) implements all six operations and
-the `invoiceChanged` Trigger at `@superdurable/connector-xero` version `0.2.0`, on
+the `invoiceChanged` Trigger at `@superdurable/connector-xero` version `0.2.1`, on
 the TypeScript poll Trigger kit of `@superdurable/connectors-sdk` `0.12.0`. Its
 cursor documents and Trigger inbox payloads match Go's, so Go and TypeScript
 replicas share a binding's cursor and inbox. The
@@ -480,7 +481,7 @@ become visible after its `UpdatedDateUTC`.
 
 ## Python package
 
-`connectors/xero/python` publishes `dex-connector-xero` v0.2.0 with all six
+`connectors/xero/python` publishes `dex-connector-xero` v0.2.1 with all six
 operations and the `invoiceChanged` Trigger on the Python poll Trigger kit
 (`dex-connectors-sdk>=0.12.0`). Its cursor documents and Trigger inbox
 payloads match Go's byte for byte, so Go and Python replicas share a binding's

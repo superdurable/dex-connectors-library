@@ -6,17 +6,17 @@ metadata:
   description: "Find Xero contacts by email, list and read invoices, raise invoices with exact decimal amounts in any enabled currency, record payments against them, with every write sent under a Xero Idempotency-Key derived from the Step, and receive each invoice or bill that is created or changed."
   company: Xero
   categories: [finance-payments]
-  version: v0.25.0
+  version: v0.25.1
 spec:
   provider: xero
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       package: dex-connector-xero
       operations: [listContacts, findContactByEmail, getInvoice, listInvoices, createInvoice, recordPayment]
       triggers: [invoiceChanged]
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: "@superdurable/connector-xero"
       operations: [listContacts, findContactByEmail, getInvoice, listInvoices, createInvoice, recordPayment]
       triggers: [invoiceChanged]

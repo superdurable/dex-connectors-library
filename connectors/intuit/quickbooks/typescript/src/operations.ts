@@ -1,9 +1,10 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { CheckpointError, newFence, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { isIP } from 'node:net';
-import type { QuickBooksClient, QuickBooksExchange } from './client.js';
+import type { QuickBooksClient, QuickBooksExchange, QuickBooksRequest } from './client.js';
 import { CreateCustomerDefinition, CreateInvoiceDefinition, FindCustomerDefinition, GetInvoiceDefinition, ListInvoicesDefinition, RecordPaymentDefinition, SendInvoiceDefinition } from './generated/definitions.js';
 import type { CreateCustomerInput, CreateCustomerOutput, CreateInvoiceInput, CreateInvoiceOutput, Customer, FindCustomerInput, FindCustomerOutput, GetInvoiceInput, Invoice, InvoiceLine, InvoiceLineInput, InvoicePage, ListInvoicesInput, Payment, RecordPaymentInput, SendInvoiceInput } from './generated/models.js';
 
@@ -134,11 +135,7 @@ function queryOutcome<T>(result: QuickBooksExchange, output: T, notFound = false
   const branch = result.disposition === 'defect' ? 'defect' : result.disposition === 'invalid' ? 'invalidResponse' : result.disposition === 'notFound' && notFound ? 'notFound' : 'providerRejected';
   return newQueryBranch(branch, output, result.receipt, result.failure);
 }
-function mutationOutcome<T>(result: QuickBooksExchange, output: T, nameConflict = false): MutationAttempt<T> | undefined {
-  if (result.disposition === 'succeeded' || result.disposition === 'invalid' || result.disposition === 'interrupted') return undefined;
-  if (result.disposition === 'retry') return newMutationRetry(result.failure!, result.retryAfterMs);
-  return newMutationBranch(result.disposition === 'defect' ? 'defect' : result.disposition === 'nameConflict' && nameConflict ? 'nameConflict' : 'providerRejected', output, result.receipt, result.failure);
-}
+function isExchange<T>(value: QuickBooksExchange | MutationAttempt<T>): value is QuickBooksExchange { return 'disposition' in value; }
 function defect(client: QuickBooksClient, operation: string, error: unknown): Failure { return client.failure('VALIDATION', operation, error instanceof Error ? error.message : 'invalid input'); }
 
 /** Resolve one customer by exact email or display name. */
@@ -236,11 +233,97 @@ function validDecimal(name: string, value: string, fraction: number, integer: nu
 }
 function rawNumber(value: string): unknown { return { __quickbooksRawNumber: value }; }
 function acceptedID(body: Uint8Array | undefined, name: string): string { if (!body) return ''; try { const found = parse(body)[name]; const id = string(object(found).Id); return entityID.test(id) ? id : ''; } catch { return ''; } }
-async function readAccepted(client: QuickBooksClient, call: Call, operation: string, name: string, id: string): Promise<Record<string, unknown> | undefined> {
-  if (!id) return undefined;
-  const result = await client.exchange(call, operation, { method: 'GET', path: `/${name.toLowerCase()}/${id}` });
-  if (result.disposition !== 'succeeded') return undefined;
-  try { return entity(result.body!, name); } catch { return undefined; }
+/** Statuses that prove a write was refused; 409, 501, 3xx, and other statuses are unknown. */
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** Report an outcome after a send that does not prove QuickBooks refused the write. */
+function isWriteOutcomeUnknown(result: QuickBooksExchange): boolean {
+  if (result.disposition === 'retry') return true;
+  // A Fault at 2xx or 400 is a definite business refusal; other unlisted statuses are unknown.
+  return result.disposition === 'rejected' && !definiteRefusalStatuses.has(result.status) && !(result.status >= 200 && result.status < 300);
+}
+
+/** Confirms a read entity body as this Step's write, returning the happy-path output or undefined. */
+type ConfirmWrite<T> = (body: Uint8Array, entityID: string) => T | undefined;
+
+/** One QuickBooks write attempt under a single-dispatch fence capped by the Step's send cap. */
+class FencedWrite<T> {
+  /**
+   * Bind one attempt. canResendUnknownOutcome is false when this send is the last the cap allows;
+   * hasPossibleEarlierSend means a refusal cannot prove nothing was written.
+   */
+  constructor(private readonly client: QuickBooksClient, private readonly call: Call, private readonly operation: string, private readonly fence: Fence,
+    private readonly requested: T, private readonly happy: string, private readonly entityPath: string, private readonly confirm: ConfirmWrite<T>,
+    private readonly hasNameConflict: boolean, private readonly canResendUnknownOutcome: boolean, private readonly hasPossibleEarlierSend: boolean) {}
+
+  /** Send once under the fence; an attempt result means nothing was sent. */
+  async dispatch(request: QuickBooksRequest, objectID = ''): Promise<QuickBooksExchange | MutationAttempt<T>> {
+    try { return await this.fence.dispatch(signal => this.client.exchange(this.call, this.operation, { ...request, signal }, objectID)); }
+    catch (error) {
+      return newMutationRetry(this.client.failure('AVAILABILITY', this.operation, error instanceof CheckpointError
+        ? 'Dex did not record the dispatch checkpoint; nothing was sent in this attempt'
+        : 'too little of the Step deadline remained to send; nothing was sent in this attempt'));
+    }
+  }
+
+  /** Map every outcome except success and an accepted but unusable 2xx. */
+  async attemptForExchange(result: QuickBooksExchange): Promise<MutationAttempt<T> | undefined> {
+    if (result.disposition === 'succeeded' || result.disposition === 'invalid' || result.disposition === 'interrupted') return undefined;
+    if (result.disposition === 'retry' && (result.isProvablyUnsent || result.status === 429 || result.status === 503)) {
+      try { await this.fence.recordCanResend(); }
+      catch { return newMutationRetry(this.client.failure('AVAILABILITY', this.operation, 'the QuickBooks retry checkpoint could not be recorded')); }
+      return newMutationRetry(result.failure!, result.retryAfterMs);
+    }
+    if (!result.isProvablyUnsent && isWriteOutcomeUnknown(result)) return this.resendOrSelectUncertain(result.failure!, result.retryAfterMs, result.receipt);
+    try { await this.fence.recordCanResend(); } catch { /* The refusal proves nothing was written; a lost checkpoint only makes a replay count it. */ }
+    if (this.hasPossibleEarlierSend) return newMutationUncertain(this.requested, this.client.failure(result.failure!.kind, this.operation, `an earlier attempt may have written to QuickBooks, so this refusal cannot prove nothing was written: ${result.failure!.message}`), result.receipt);
+    const branch = result.disposition === 'defect' ? 'defect' : result.disposition === 'nameConflict' && this.hasNameConflict ? 'nameConflict' : 'providerRejected';
+    return newMutationBranch(branch, this.requested, result.receipt, result.failure);
+  }
+
+  /** Read back an accepted 2xx that failed validation and otherwise treat it as unknown. */
+  async unusableAccepted(entityID: string, result: QuickBooksExchange, cause: string): Promise<MutationAttempt<T>> {
+    const unknown = this.client.failure('PROTOCOL', this.operation, `QuickBooks accepted the write but returned an unusable answer: ${cause}`);
+    if (!entityID) return this.resendOrSelectUncertain(unknown, 0, result.receipt);
+    try { await this.fence.recordProviderId(entityID); } catch { /* The read-back below still runs; a later attempt without the ID counts this send. */ }
+    const read = await this.client.exchange(this.call, this.operation, { method: 'GET', path: `/${this.entityPath}/${entityID}` });
+    const output = read.disposition === 'succeeded' ? this.confirm(read.body!, entityID) : undefined;
+    if (output !== undefined) { result.receipt.providerObjectId = entityID; return newMutationBranch(this.happy, output, result.receipt); }
+    return this.resendOrSelectUncertain(unknown, 0, result.receipt);
+  }
+
+  /** Confirm an accepted earlier write by ID; it never sends. */
+  async readBackOnly(entityID: string): Promise<MutationAttempt<T>> {
+    const read = await this.client.exchange(this.call, this.operation, { method: 'GET', path: `/${this.entityPath}/${entityID}` }, entityID);
+    // Reading is harmless to repeat, and a retry of this path never sends.
+    if (read.disposition === 'retry' || read.disposition === 'interrupted') return newMutationRetry(read.failure!, read.retryAfterMs);
+    const output = read.disposition === 'succeeded' ? this.confirm(read.body!, entityID) : undefined;
+    if (output !== undefined) return newMutationBranch(this.happy, output, read.receipt);
+    return newMutationUncertain(this.requested, this.client.failure('PROTOCOL', this.operation, `QuickBooks accepted an earlier attempt's write, but reading entity ${entityID} back could not confirm it`), read.receipt);
+  }
+
+  private resendOrSelectUncertain(unknown: Failure, retryAfterMs: number, receipt: ReceiptDraft): MutationAttempt<T> {
+    // The claim stays the last marker, so the next attempt counts this send.
+    return this.canResendUnknownOutcome ? newMutationRetry(unknown, retryAfterMs) : newMutationUncertain(this.requested, unknown, receipt);
+  }
+}
+
+/** Decide the attempt before credentials; an attempt result means it needs no send. */
+function beginFencedWrite<T>(client: QuickBooksClient, call: Call, operation: string, definition: MutationDefinition, requested: T,
+  happy: string, entityPath: string, confirm: ConfirmWrite<T>, hasNameConflict = false): Promise<MutationAttempt<T>> | MutationAttempt<T> | FencedWrite<T> {
+  const operationMaxSends = definitionMaxSends(definition);
+  let fence: Fence;
+  try { fence = newFence(call, definition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { maxSends: operationMaxSends }); }
+  catch { return newMutationBranch('defect', requested, {}, client.failure('LOCAL_DEFECT', operation, 'QuickBooks dispatch fence could not be constructed')); }
+  const decision = fence.decide();
+  if (decision.kind === 'failClosed') return newMutationRetry(client.failure('AVAILABILITY', operation, 'the dispatch checkpoint could not be read; nothing was sent in this attempt'));
+  const priorSends = decision.priorSendUpperBound ?? 0;
+  const effectiveMaxSends = operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
+  const write = new FencedWrite(client, call, operation, fence, requested, happy, entityPath, confirm, hasNameConflict, priorSends + 1 < effectiveMaxSends, priorSends > 0);
+  // QuickBooks accepted an earlier send with this ID, so it is read back and never resent.
+  if (decision.marker?.providerId) return write.readBackOnly(decision.marker.providerId);
+  if (decision.kind === 'readBackRequired') return newMutationUncertain(requested, client.failure('TRANSPORT', operation, 'an earlier attempt may have written to QuickBooks and the send cap is reached'), {});
+  return write;
 }
 
 /** Create one QuickBooks customer under a stable requestid. */
@@ -262,8 +345,15 @@ export class CreateCustomerOperation implements Mutation<CreateCustomerInput, Cr
       validCurrency('currencyCode', currency);
       payload = { DisplayName: displayName, ...optional(!!email, 'PrimaryEmailAddr', { Address: email }), ...optional(!!givenName, 'GivenName', givenName), ...optional(!!familyName, 'FamilyName', familyName), ...optional(!!companyName, 'CompanyName', companyName), ...optional(!!phone, 'PrimaryPhone', { FreeFormNumber: phone }), ...optional(!!currency, 'CurrencyRef', { value: currency }) };
     } catch (error) { return newMutationBranch('defect', requested, {}, defect(this.client, 'createCustomer', error)); }
-    const result = await this.client.exchange(call, 'createCustomer', { method: 'POST', path: '/customer', body: encoded(payload), mutation: true });
-    const outcome = mutationOutcome(result, requested, true); if (outcome) return outcome;
+    const confirm: ConfirmWrite<CreateCustomerOutput> = (body, id) => {
+      try { const customer = decodeCustomer(entity(body, 'Customer')); return customer.customerId === id && customerMatches(customer, payload) ? { customer, displayName: requested.displayName } : undefined; }
+      catch { return undefined; }
+    };
+    const write = await beginFencedWrite(this.client, call, 'createCustomer', CreateCustomerDefinition, requested, 'created', 'customer', confirm, true);
+    if (!(write instanceof FencedWrite)) return write;
+    const result = await write.dispatch({ method: 'POST', path: '/customer', body: encoded(payload), mutation: true });
+    if (!isExchange(result)) return result;
+    const outcome = await write.attemptForExchange(result); if (outcome) return outcome;
     let cause = 'invalid customer';
     try {
       const customer = decodeCustomer(entity(result.body!, 'Customer'));
@@ -271,10 +361,7 @@ export class CreateCustomerOperation implements Mutation<CreateCustomerInput, Cr
       result.receipt.providerObjectId = customer.customerId;
       return newMutationBranch('created', { customer, displayName: requested.displayName }, result.receipt);
     } catch (error) { cause = error instanceof Error ? error.message : cause; }
-    const id = acceptedID(result.body, 'Customer');
-    const read = await readAccepted(this.client, call, 'createCustomer', 'Customer', id);
-    if (read) try { const customer = decodeCustomer(read); if (customer.customerId === id && customerMatches(customer, payload)) { result.receipt.providerObjectId = id; return newMutationBranch('created', { customer, displayName: requested.displayName }, result.receipt); } } catch { /* An unusable read-back leaves the accepted write uncertain. */ }
-    return newMutationUncertain(requested, this.client.failure('PROTOCOL', 'createCustomer', `QuickBooks accepted the customer but returned an unusable customer: ${cause}`), result.receipt);
+    return write.unusableAccepted(acceptedID(result.body, 'Customer'), result, cause);
   }
 }
 function customerMatches(customer: Customer, payload: Record<string, unknown>): boolean {
@@ -294,14 +381,19 @@ export class CreateInvoiceOperation implements Mutation<CreateInvoiceInput, Crea
     let payload: Record<string, unknown>;
     try { payload = buildInvoicePayload(input); }
     catch (error) { return newMutationBranch('defect', requested, {}, defect(this.client, 'createInvoice', error)); }
-    const result = await this.client.exchange(call, 'createInvoice', { method: 'POST', path: '/invoice', body: encoded(payload), mutation: true });
-    const outcome = mutationOutcome(result, requested); if (outcome) return outcome;
+    const confirm: ConfirmWrite<CreateInvoiceOutput> = (body, id) => {
+      try { const invoice = decodeInvoice(entity(body, 'Invoice')); return invoice.invoiceId === id && invoice.customerId === input.customerId.trim() && (!requested.docNumber || invoice.docNumber === requested.docNumber) ? { invoice, ...optional(!!requested.docNumber, 'docNumber', requested.docNumber ?? '') } : undefined; }
+      catch { return undefined; }
+    };
+    const write = await beginFencedWrite(this.client, call, 'createInvoice', CreateInvoiceDefinition, requested, 'created', 'invoice', confirm);
+    if (!(write instanceof FencedWrite)) return write;
+    const result = await write.dispatch({ method: 'POST', path: '/invoice', body: encoded(payload), mutation: true });
+    if (!isExchange(result)) return result;
+    const outcome = await write.attemptForExchange(result); if (outcome) return outcome;
     let cause = 'invalid invoice';
     try { const invoice = decodeInvoice(entity(result.body!, 'Invoice')); if (invoice.customerId !== input.customerId.trim()) throw new TypeError('invoice belongs to another customer'); result.receipt.providerObjectId = invoice.invoiceId; return newMutationBranch('created', { invoice, ...optional(!!requested.docNumber, 'docNumber', requested.docNumber ?? '') }, result.receipt); }
     catch (error) { cause = error instanceof Error ? error.message : cause; }
-    const id = acceptedID(result.body, 'Invoice'), read = await readAccepted(this.client, call, 'createInvoice', 'Invoice', id);
-    if (read) try { const invoice = decodeInvoice(read); if (invoice.invoiceId === id && invoice.customerId === input.customerId.trim() && (!requested.docNumber || invoice.docNumber === requested.docNumber)) { result.receipt.providerObjectId = id; return newMutationBranch('created', { invoice, ...optional(!!requested.docNumber, 'docNumber', requested.docNumber ?? '') }, result.receipt); } } catch { /* An unusable read-back leaves the accepted write uncertain. */ }
-    return newMutationUncertain(requested, this.client.failure('PROTOCOL', 'createInvoice', `QuickBooks accepted the invoice but returned an unusable invoice: ${cause}`), result.receipt);
+    return write.unusableAccepted(acceptedID(result.body, 'Invoice'), result, cause);
   }
 }
 function buildInvoicePayload(input: CreateInvoiceInput): Record<string, unknown> {
@@ -347,14 +439,19 @@ export class SendInvoiceOperation implements Mutation<SendInvoiceInput, Invoice>
     const invoiceID = input.invoiceId.trim(), sendTo = input.sendTo?.trim() ?? '', requested: Invoice = { ...zeroInvoice, invoiceId: invoiceID };
     try { validID('invoiceId', invoiceID); if (sendTo) validEmail('sendTo', sendTo); }
     catch (error) { return newMutationBranch('defect', requested, {}, defect(this.client, 'sendInvoice', error)); }
-    const result = await this.client.exchange(call, 'sendInvoice', { method: 'POST', path: `/invoice/${invoiceID}/send`, query: sendTo ? { sendTo } : {}, mutation: true }, invoiceID);
-    const outcome = mutationOutcome(result, requested); if (outcome) return outcome;
+    const confirm: ConfirmWrite<Invoice> = (body, id) => {
+      try { const invoice = decodeInvoice(entity(body, 'Invoice')); verifySent(invoice, id, sendTo); return invoice; }
+      catch { return undefined; }
+    };
+    const write = await beginFencedWrite(this.client, call, 'sendInvoice', SendInvoiceDefinition, requested, 'sent', 'invoice', confirm);
+    if (!(write instanceof FencedWrite)) return write;
+    const result = await write.dispatch({ method: 'POST', path: `/invoice/${invoiceID}/send`, query: sendTo ? { sendTo } : {}, mutation: true }, invoiceID);
+    if (!isExchange(result)) return result;
+    const outcome = await write.attemptForExchange(result); if (outcome) return outcome;
     let cause = 'invalid invoice';
     try { const invoice = decodeInvoice(entity(result.body!, 'Invoice')); verifySent(invoice, invoiceID, sendTo); return newMutationBranch('sent', invoice, result.receipt); }
     catch (error) { cause = error instanceof Error ? error.message : cause; }
-    const read = await readAccepted(this.client, call, 'sendInvoice', 'Invoice', invoiceID);
-    if (read) try { const invoice = decodeInvoice(read); verifySent(invoice, invoiceID, sendTo); return newMutationBranch('sent', invoice, result.receipt); } catch { /* An unusable read-back leaves delivery uncertain. */ }
-    return newMutationUncertain(requested, this.client.failure('PROTOCOL', 'sendInvoice', `QuickBooks accepted the delivery but returned an unusable invoice: ${cause}`), result.receipt);
+    return write.unusableAccepted(invoiceID, result, cause);
   }
 }
 function verifySent(invoice: Invoice, invoiceID: string, sendTo: string): void { if (invoice.invoiceId !== invoiceID) throw new TypeError('QuickBooks returned another invoice'); if (invoice.emailStatus !== 'EmailSent') throw new TypeError('the returned invoice is not marked EmailSent'); if (sendTo && invoice.billEmail?.toLowerCase() !== sendTo.toLowerCase()) throw new TypeError('the returned invoice has another billing address'); }
@@ -370,14 +467,19 @@ export class RecordPaymentOperation implements Mutation<RecordPaymentInput, Paym
     let payload: Record<string, unknown>;
     try { payload = buildPaymentPayload(input); }
     catch (error) { return newMutationBranch('defect', requested, {}, defect(this.client, 'recordPayment', error)); }
-    const result = await this.client.exchange(call, 'recordPayment', { method: 'POST', path: '/payment', body: encoded(payload), mutation: true });
-    const outcome = mutationOutcome(result, requested); if (outcome) return outcome;
+    const confirm: ConfirmWrite<Payment> = (body, id) => {
+      try { const payment = decodePayment(entity(body, 'Payment')); verifyPayment(payment, input); return payment.paymentId === id ? payment : undefined; }
+      catch { return undefined; }
+    };
+    const write = await beginFencedWrite(this.client, call, 'recordPayment', RecordPaymentDefinition, requested, 'recorded', 'payment', confirm);
+    if (!(write instanceof FencedWrite)) return write;
+    const result = await write.dispatch({ method: 'POST', path: '/payment', body: encoded(payload), mutation: true });
+    if (!isExchange(result)) return result;
+    const outcome = await write.attemptForExchange(result); if (outcome) return outcome;
     let cause = 'invalid payment';
     try { const payment = decodePayment(entity(result.body!, 'Payment')); verifyPayment(payment, input); result.receipt.providerObjectId = payment.paymentId; return newMutationBranch('recorded', payment, result.receipt); }
     catch (error) { cause = error instanceof Error ? error.message : cause; }
-    const id = acceptedID(result.body, 'Payment'), read = await readAccepted(this.client, call, 'recordPayment', 'Payment', id);
-    if (read) try { const payment = decodePayment(read); verifyPayment(payment, input); if (payment.paymentId !== id) throw new TypeError('another payment'); result.receipt.providerObjectId = id; return newMutationBranch('recorded', payment, result.receipt); } catch { /* An unusable read-back leaves the accepted payment uncertain. */ }
-    return newMutationUncertain(requested, this.client.failure('PROTOCOL', 'recordPayment', `QuickBooks accepted the payment but returned an unusable payment: ${cause}`), result.receipt);
+    return write.unusableAccepted(acceptedID(result.body, 'Payment'), result, cause);
   }
 }
 function buildPaymentPayload(input: RecordPaymentInput): Record<string, unknown> {

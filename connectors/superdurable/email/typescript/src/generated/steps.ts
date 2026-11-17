@@ -74,9 +74,9 @@ export interface SendMessageStepConfig<StepInput, OperationInput = SendMessageIn
   connectionName: string;
   /** The SMTP server accepted the message for delivery. */
   sent: StepTarget<MutationResult<OperationOutput>>;
-  /** The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, so nothing was sent. */
+  /** The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, and no earlier attempt may have submitted it, so nothing was sent. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The message was submitted but the server's answer was lost, so it may have been sent; the connector never submits it again. */
+  /** Submissions may have been sent as often as the send cap allows, but the server's answer to the last one was lost or a later attempt could not settle it; the connector does not submit it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -102,13 +102,13 @@ export interface ReplyToMessageStepConfig<StepInput, OperationInput = ReplyToMes
   connectionName: string;
   /** The SMTP server accepted the reply for delivery. */
   sent: StepTarget<MutationResult<OperationOutput>>;
-  /** The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, so nothing was sent. */
+  /** The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, and no earlier attempt may have submitted the reply, so nothing was sent. */
   notFound?: StepTarget<MutationResult<OperationOutput>>;
-  /** The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, so nothing was sent. */
+  /** The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, and no earlier attempt may have submitted it, so nothing was sent. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The source message has no usable reply address or could not be parsed, so nothing was sent. */
+  /** The source message has no usable reply address or could not be parsed, and no earlier attempt may have submitted the reply, so nothing was sent. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** The reply was submitted but the server's answer was lost, so it may have been sent; the connector never submits it again. */
+  /** Submissions may have been sent as often as the send cap allows, but the server's answer to the last one was lost or a later attempt could not settle it; the connector does not submit the reply again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

@@ -35,6 +35,7 @@ ADAPTER = PythonOperationAdapter(
         client,
         local_provider_url="http://127.0.0.1:12345",
     ),
+    with_context=True,
 )
 
 

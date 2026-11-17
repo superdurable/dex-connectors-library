@@ -7,8 +7,8 @@ import type { Failure } from '@superdurable/connectors-sdk';
 export type SessionPhase = 'connect' | 'begin' | 'statement' | 'commit';
 /** Secret-safe MySQL failure and its Dex disposition. */
 export interface ClassifiedFailure {
-  /** Dex action for this failure. */
-  disposition: 'retry' | 'providerRejected' | 'uncertain' | 'invalidResponse' | 'defect';
+  /** Dex action for this failure; classifyDriverError never returns limitExceeded, which only row bounds select. */
+  disposition: 'retry' | 'providerRejected' | 'uncertain' | 'invalidResponse' | 'defect' | 'limitExceeded';
   /** Failure kind shared with Go. */
   kind: Failure['kind'];
   /** Public message without SQL, parameters, or credentials. */

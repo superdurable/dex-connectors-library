@@ -76,3 +76,12 @@ it('accepts Go email forms and rejects malformed domain literals before dispatch
   }
   expect(requests).toHaveLength(addresses.length);
 });
+
+it('retries a write status that does not prove a refusal under the same Idempotency-Key', async () => {
+  const paymentCall = { ...call, idempotencyKey: '801feb97-5ad4-5063-b93c-9a25f054e79b' } as Call;
+  for (const [status, outcome] of [[409, 'retry'], [501, 'retry'], [307, 'retry'], [400, 'providerRejected'], [422, 'providerRejected']] as const) {
+    const client = new XeroClient({}, staticCredentials('custom-connection'), { send: async () => response(status, Buffer.from('{}')) });
+    const attempt = await client.recordPayment().invoke(paymentCall, { invoiceId: invoiceID, accountCode: '090', date: '2026-10-01', amount: '109.89' });
+    expect(attempt.kind === 'branch' ? attempt.branch : attempt.kind, `HTTP ${status}`).toBe(outcome);
+  }
+});

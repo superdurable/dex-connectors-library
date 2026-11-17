@@ -4,8 +4,9 @@
 // Package mailchimp implements Mailchimp Marketing API audience and campaign operations as Dex
 // connector Steps: getMember and listMembers read audience contacts, upsertMember and
 // updateMemberTags write a contact so that a repeated attempt writes the same values, and
-// sendCampaign sends an existing draft campaign at most once per Step execution, because a send is
-// irreversible and Mailchimp documents no idempotency key.
+// sendCampaign sends an existing draft campaign under a single-dispatch fence: Mailchimp documents no
+// idempotency key, so a send whose outcome is unknown is resent only after the campaign reads as a
+// draft again and only while the possible sends stay below the Step's send cap.
 //
 // The connector authenticates with a Mailchimp API key sent as a Bearer token. A key ends with a
 // hyphen and the account's data center, such as -us6, and the connector derives the API host
@@ -32,6 +33,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -110,6 +112,8 @@ type mailchimpRequest struct {
 	path    string
 	query   url.Values
 	payload any
+	// isFencedWrite stops the HTTP transport from replaying a single-dispatch send.
+	isFencedWrite bool
 }
 
 type mailchimpResponse struct {
@@ -296,6 +300,11 @@ func (client *Client) buildRequest(ctx context.Context, connection resolvedConne
 	httpRequest.Header.Set("Accept", "application/json")
 	if request.payload != nil {
 		httpRequest.Header.Set("Content-Type", "application/json")
+	}
+	if request.isFencedWrite {
+		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+			return nil, errMailchimpRequestNotBuilt
+		}
 	}
 	return httpRequest, nil
 }

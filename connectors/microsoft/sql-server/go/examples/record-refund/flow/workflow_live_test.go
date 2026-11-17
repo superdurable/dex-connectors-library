@@ -39,12 +39,14 @@ func TestRecordRefundExampleAgainstALiveServer(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, administration.Close()) })
 	schema, err := os.ReadFile("../schema.sql")
 	require.NoError(t, err)
-	_, err = administration.ExecContext(context.Background(), "IF OBJECT_ID(N'dbo.refund_ledger') IS NOT NULL DROP TABLE dbo.refund_ledger")
+	_, err = administration.ExecContext(context.Background(),
+		"IF OBJECT_ID(N'dbo.refund_ledger') IS NOT NULL DROP TABLE dbo.refund_ledger; "+
+			"IF OBJECT_ID(N'dbo.refund_daily_totals') IS NOT NULL DROP TABLE dbo.refund_daily_totals")
 	require.NoError(t, err)
 	_, err = administration.ExecContext(context.Background(), string(schema))
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		_, err := administration.ExecContext(context.Background(), "DROP TABLE dbo.refund_ledger")
+		_, err := administration.ExecContext(context.Background(), "DROP TABLE dbo.refund_ledger; DROP TABLE dbo.refund_daily_totals")
 		require.NoError(t, err)
 	})
 	harness := startTestWorker(t, config, password)
@@ -55,6 +57,11 @@ func TestRecordRefundExampleAgainstALiveServer(t *testing.T) {
 	require.Equal(t, StatusRecorded, outcome.Status)
 	require.Equal(t, "250.00", outcome.Refund.AmountUSD)
 	require.Len(t, outcome.Refund.IdempotencyKey, 36)
+	require.True(t, outcome.IsAddedToDailyTotal)
+	var dailyTotal string
+	require.NoError(t, administration.QueryRowContext(context.Background(),
+		"SELECT CONVERT(nvarchar(20), total_usd) FROM dbo.refund_daily_totals").Scan(&dailyTotal))
+	require.Equal(t, "250.00", dailyTotal, "executeNonIdempotent added the refund exactly once")
 
 	flowID, result = harness.runRefundFlow(t, Input{OrderID: orderID, AmountUSD: "250.00"})
 	require.Equal(t, StatusAlreadyRecorded, harness.requireCompletedOutcome(t, flowID, result).Status)

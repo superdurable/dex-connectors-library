@@ -369,6 +369,10 @@ def _query_outcome(
     return QueryAttempt.branch_result(branch, empty, client.receipt(call, result), result.error)
 
 
+# Statuses that prove a write was refused; 409, 501, 3xx, and other statuses are unknown.
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
 def _mutation_outcome(client: Client, call: Call, result: Exchange, empty: _T) -> MutationAttempt[_T] | None:
     if result.outcome == "success":
         return None
@@ -376,6 +380,13 @@ def _mutation_outcome(client: Client, call: Call, result: Exchange, empty: _T) -
         return MutationAttempt.retry(_require_failure(result), result.retry_after)
     if result.outcome in ("server", "invalid"):
         return MutationAttempt.uncertain(empty, _require_failure(result), client.receipt(call, result))
+    if (
+        result.outcome == "rejected"
+        and result.status >= 300
+        and result.status not in _DEFINITE_REFUSAL_STATUSES
+    ):
+        # A 409, 501, 3xx, or other unlisted status does not prove a refusal; the key makes the repeat safe.
+        return MutationAttempt.retry(_require_failure(result), result.retry_after)
     branch = {"daily": "dailyLimitReached", "defect": "defect"}.get(result.outcome, "providerRejected")
     return MutationAttempt.branch_result(branch, empty, client.receipt(call, result), result.error)
 

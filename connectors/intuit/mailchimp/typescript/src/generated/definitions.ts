@@ -152,7 +152,7 @@ export const SendCampaignBranch = {
 } as const;
 /** Mailchimp accepted the send of the draft campaign this Step read. */
 export const SendCampaignBranchSent = SendCampaignBranch.Sent;
-/** Mailchimp reports the campaign as sending or sent, so this attempt sent nothing. */
+/** Mailchimp reports the campaign as sending or sent, because another send or an earlier attempt of this Step sent it; this attempt sent nothing. */
 export const SendCampaignBranchAlreadySent = SendCampaignBranch.AlreadySent;
 /** The campaign is not a draft that can be sent now, such as a scheduled, paused, canceled, or RSS campaign, or it targets another audience than expectedListId; nothing was sent. */
 export const SendCampaignBranchNotSendable = SendCampaignBranch.NotSendable;
@@ -160,24 +160,24 @@ export const SendCampaignBranchNotSendable = SendCampaignBranch.NotSendable;
 export const SendCampaignBranchNotFound = SendCampaignBranch.NotFound;
 /** Mailchimp conclusively rejected the send, such as a campaign that fails its send checklist or a role that cannot send; nothing was sent. */
 export const SendCampaignBranchProviderRejected = SendCampaignBranch.ProviderRejected;
-/** Mailchimp returned an invalid or oversized campaign before the send; nothing was sent. */
+/** Mailchimp returned an invalid or oversized campaign before the first send; nothing was sent. */
 export const SendCampaignBranchInvalidResponse = SendCampaignBranch.InvalidResponse;
-/** The send request was sent but its outcome cannot be confirmed, so the campaign may be sending; the connector never sends it again. */
+/** A send may have reached Mailchimp, but the campaign does not read as sending or sent and no further send is allowed, because maxSends is reached or the campaign changed after a possible send. */
 export const SendCampaignBranchUncertain = SendCampaignBranch.Uncertain;
-/** Local input, connection configuration, or connector definition is invalid. */
+/** Local input, connection configuration, or connector definition is invalid, and no send was attempted. */
 export const SendCampaignBranchDefect = SendCampaignBranch.Defect;
 /** Manifest definition for sendCampaign. */
 export const SendCampaignDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "sendCampaign" },
   branches: [
     { id: "sent", description: "Mailchimp accepted the send of the draft campaign this Step read." },
-    { id: "alreadySent", description: "Mailchimp reports the campaign as sending or sent, so this attempt sent nothing.", optional: true },
+    { id: "alreadySent", description: "Mailchimp reports the campaign as sending or sent, because another send or an earlier attempt of this Step sent it; this attempt sent nothing.", optional: true },
     { id: "notSendable", description: "The campaign is not a draft that can be sent now, such as a scheduled, paused, canceled, or RSS campaign, or it targets another audience than expectedListId; nothing was sent.", optional: true },
     { id: "notFound", description: "The campaign does not exist; nothing was sent.", optional: true },
     { id: "providerRejected", description: "Mailchimp conclusively rejected the send, such as a campaign that fails its send checklist or a role that cannot send; nothing was sent.", optional: true },
-    { id: "invalidResponse", description: "Mailchimp returned an invalid or oversized campaign before the send; nothing was sent.", optional: true },
-    { id: "uncertain", description: "The send request was sent but its outcome cannot be confirmed, so the campaign may be sending; the connector never sends it again.", optional: true },
-    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
+    { id: "invalidResponse", description: "Mailchimp returned an invalid or oversized campaign before the first send; nothing was sent.", optional: true },
+    { id: "uncertain", description: "A send may have reached Mailchimp, but the campaign does not read as sending or sent and no further send is allowed, because maxSends is reached or the campaign changed after a possible send.", optional: true },
+    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid, and no send was attempted.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 60000, executeDurability: "sync" },
   repeatOnUnknown: "limited",

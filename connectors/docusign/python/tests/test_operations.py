@@ -112,6 +112,7 @@ def test_checkpoint_timestamp_trims_fractional_zeros() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("attempt", [2, 4])
 @pytest.mark.parametrize(
     "stored",
     [
@@ -120,13 +121,10 @@ def test_checkpoint_timestamp_trims_fractional_zeros() -> None:
         _CreateDispatchCheckpoint(True, "2026-10-04T11:00:00Z"),
     ],
 )
-async def test_checkpoint_controls_retry_send(
-    stored: _CreateDispatchCheckpoint | None,
-) -> None:
-    """Cleared and false heartbeats permit resends; a dispatched one only reads back."""
+async def test_checkpoint_controls_retry_send(stored: _CreateDispatchCheckpoint | None, attempt: int) -> None:
+    """A later attempt reads back, resends below the cap of 3, and selects uncertain at the cap."""
 
     class Context:
-        attempt = 2
         first_attempt_at = datetime(2026, 10, 4, 12, tzinfo=UTC)
         deadline = None
 
@@ -177,29 +175,33 @@ async def test_checkpoint_controls_retry_send(
             return sdk.Receipt()
 
     context = Context()
+    context.attempt = attempt
     await context.heartbeat()
     if stored is not None:
         await context.heartbeat(stored)
     client = ClientStub()
-    call = SimpleNamespace(id="call-1", idempotency_key="call-1", context=context)
+    call = SimpleNamespace(id="call-1", idempotency_key="call-1", context=context, max_sends=3)
     input = CreateEnvelopeFromTemplateInput(
         template_id="8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
         template_roles=(TemplateRole("Customer", "Priya Raman", "priya@example.com"),),
     )
     result = await CreateEnvelopeFromTemplateOperation(client).invoke(call, input)
-    if stored is not None and stored.is_dispatched:
+    is_dispatched = stored is not None and stored.is_dispatched
+    expected_from_date = "2026-10-04T10:00:00Z" if is_dispatched else "2026-10-04T11:00:00Z"
+    assert client.queries[0]["from_date"] == expected_from_date
+    if attempt > 3:
         assert result.kind == "uncertain"
         assert client.methods == ["GET"]
-        assert client.queries[0]["from_date"] == "2026-10-04T10:00:00Z"
     else:
         assert result.branch == "created"
         assert client.methods == ["GET", "POST"]
-        assert client.queries[0]["from_date"] == "2026-10-04T11:00:00Z"
+        if is_dispatched:
+            assert context.value == stored, "the resend keeps the earliest dispatch time"
 
 
 @pytest.mark.asyncio
-async def test_after_send_multiple_matches_preserves_original_failure() -> None:
-    """Ambiguous read-back keeps the failure that triggered recovery."""
+async def test_after_send_multiple_matches_selects_uncertain_without_resending() -> None:
+    """Several tagged envelopes are duplicates already present, so no resend is allowed."""
 
     class ClientStub:
         def now(self) -> datetime:
@@ -226,7 +228,37 @@ async def test_after_send_multiple_matches_preserves_original_failure() -> None:
     call = SimpleNamespace(context=context)
     unknown = failure("createEnvelopeFromTemplate", sdk.FailureKind.AVAILABILITY, "original create failure")
     result = await CreateEnvelopeFromTemplateOperation(ClientStub())._recover_or_uncertain(
-        call, object(), "call-1", unknown
+        call, object(), "call-1", True, unknown
     )
     assert result.kind == "uncertain"
+    assert result.failure is not None and result.failure.kind == sdk.FailureKind.CONFLICT
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("can_resend_later,expected", [(True, "retry"), (False, "uncertain")])
+async def test_after_send_miss_resends_below_the_cap(can_resend_later: bool, expected: str) -> None:
+    """A read-back miss after an unknown send retries below the cap and is uncertain at it."""
+
+    class ClientStub:
+        def now(self) -> datetime:
+            return datetime(2026, 10, 4, 12, tzinfo=UTC)
+
+        def receipt(self, _envelope_id: str = "") -> sdk.Receipt:
+            return sdk.Receipt()
+
+        async def request(
+            self, _call: object, _session: object, _method: str, _path: str, _query: object, **_kwargs: object
+        ) -> ProviderResponse:
+            return ProviderResponse(200, {}, b'{"envelopes":[]}')
+
+    context = SimpleNamespace(
+        deadline=None,
+        first_attempt_at=datetime(2026, 10, 4, 12, tzinfo=UTC),
+        has_last_heartbeat_value=lambda: False,
+    )
+    unknown = failure("createEnvelopeFromTemplate", sdk.FailureKind.AVAILABILITY, "original create failure")
+    result = await CreateEnvelopeFromTemplateOperation(ClientStub())._recover_or_uncertain(
+        SimpleNamespace(context=context), object(), "call-1", can_resend_later, unknown
+    )
+    assert result.kind == expected
     assert result.failure == unknown

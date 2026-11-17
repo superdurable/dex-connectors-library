@@ -240,16 +240,18 @@ func TestCreateEnvelopeFindsTheEnvelopeAfterAnAmbiguousAnswer(t *testing.T) {
 	}
 }
 
-func TestCreateEnvelopeReportsUncertainWhenTheReadBackCannotProveOneEnvelope(t *testing.T) {
+func TestCreateEnvelopeResendsAnUnprovenCreateBelowTheCapAndSelectsUncertainAtTheCap(t *testing.T) {
 	for name, test := range map[string]struct {
 		isCreated                  bool
 		isCustomFieldFilterIgnored bool
+		isReadBackUnavailable      bool
 		listAnswer                 http.HandlerFunc
 	}{
 		"not listed yet":             {isCreated: false},
 		"filter ignored by DocuSign": {isCreated: true, isCustomFieldFilterIgnored: true},
 		"listing rejected":           {isCreated: true, listAnswer: respondJSON(http.StatusBadRequest, docusignError("INVALID_REQUEST_PARAMETER"))},
 		"listing malformed":          {isCreated: true, listAnswer: respondJSON(http.StatusOK, `{"envelopes":[{"envelopeId":"x"}]}`)},
+		"listing unavailable":        {isCreated: true, isReadBackUnavailable: true, listAnswer: respondJSON(http.StatusServiceUnavailable, `{}`)},
 	} {
 		t.Run(name, func(t *testing.T) {
 			store := &fakeEnvelopeStore{isCustomFieldFilterIgnored: test.isCustomFieldFilterIgnored}
@@ -269,34 +271,90 @@ func TestCreateEnvelopeReportsUncertainWhenTheReadBackCannotProveOneEnvelope(t *
 				},
 				"GET " + envelopesPath: listAnswer,
 			})
-			result, err := sdkgo.RunMutation(newTestDexContext("uncertain"), newTestClient(t, fake, staticCredentials(productionCredentials()), docusign.Config{}).CreateEnvelopeFromTemplate(), testConnection, validCreateInput())
-			require.NoError(t, err)
-			require.Equal(t, docusign.CreateEnvelopeFromTemplateBranchUncertain, result.Branch)
-			require.Empty(t, result.Value.EnvelopeID)
+			client := newTestClient(t, fake, staticCredentials(productionCredentials()), docusign.Config{})
+			context := newTestDexContext("unproven")
+			_, err := sdkgo.RunMutation(context, client.CreateEnvelopeFromTemplate(), testConnection, validCreateInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "the first of three possible sends resends on a later attempt")
+			require.Contains(t, string(context.lastHeartbeat()), `"isDispatched":true`, "the next attempt reads back before it sends")
 			require.Len(t, fake.requestsTo(http.MethodPost, envelopesPath), 1)
+
+			result, err := sdkgo.RunMutation(newRetriedTestDexContext("unproven", 3), client.CreateEnvelopeFromTemplate(), testConnection, validCreateInput())
+			if test.isReadBackUnavailable {
+				require.ErrorAs(t, err, &retry, "an unavailable read-back retries before any send")
+				require.Len(t, fake.requestsTo(http.MethodPost, envelopesPath), 1)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, docusign.CreateEnvelopeFromTemplateBranchUncertain, result.Branch, "the third send reached the cap")
+			require.Empty(t, result.Value.EnvelopeID)
+			require.Len(t, fake.requestsTo(http.MethodPost, envelopesPath), 2)
 		})
 	}
 }
 
-func TestCreateEnvelopeNeverResendsAfterAnEarlierAttemptDispatched(t *testing.T) {
+func TestCreateEnvelopeReadsBackBeforeEveryResendAndStopsAtTheCap(t *testing.T) {
 	store := &fakeEnvelopeStore{}
-	var context *testDexContext
-	fake := newFakeDocuSign(t, map[string]http.HandlerFunc{"GET " + envelopesPath: store.list})
+	fake := newFakeDocuSign(t, map[string]http.HandlerFunc{
+		"POST " + envelopesPath: func(response http.ResponseWriter, request *http.Request) {
+			envelopeID := store.create(request)
+			writeJSON(response, http.StatusCreated, strings.ReplaceAll(createdEnvelopeJSON("sent"), testEnvelopeID, envelopeID))
+		},
+		"GET " + envelopesPath: store.list,
+	})
 	client := newTestClient(t, fake, staticCredentials(productionCredentials()), docusign.Config{})
+	checkpoint := map[string]any{"isDispatched": true, "dispatchedAt": fixedNow.Add(-time.Minute)}
 
-	context = newTestDexContext("retried")
-	require.NoError(t, context.RecordHeartbeat(map[string]any{"isDispatched": true, "dispatchedAt": fixedNow.Add(-time.Minute)}))
-	result, err := sdkgo.RunMutation(context, client.CreateEnvelopeFromTemplate(), testConnection, validCreateInput())
+	atCap := newRetriedTestDexContext("retried", 4)
+	require.NoError(t, atCap.RecordHeartbeat(checkpoint))
+	result, err := sdkgo.RunMutation(atCap, client.CreateEnvelopeFromTemplate(), testConnection, validCreateInput())
 	require.NoError(t, err)
-	require.Equal(t, docusign.CreateEnvelopeFromTemplateBranchUncertain, result.Branch, "nothing listed yet")
+	require.Equal(t, docusign.CreateEnvelopeFromTemplateBranchUncertain, result.Branch, "three earlier attempts may each have sent")
 	require.Empty(t, fake.requestsTo(http.MethodPost, envelopesPath))
+	require.Contains(t, string(atCap.lastHeartbeat()), `"isDispatched":true`)
 
-	store.envelopes = map[string]string{testEnvelopeID: string(result.Receipt.IdempotencyKey)}
-	result, err = sdkgo.RunMutation(context, client.CreateEnvelopeFromTemplate(), testConnection, validCreateInput())
+	belowCap := newRetriedTestDexContext("retried", 2)
+	require.NoError(t, belowCap.RecordHeartbeat(checkpoint))
+	result, err = sdkgo.RunMutation(belowCap, client.CreateEnvelopeFromTemplate(), testConnection, validCreateInput())
+	require.NoError(t, err)
+	require.Equal(t, docusign.CreateEnvelopeFromTemplateBranchCreated, result.Branch)
+	require.False(t, result.Value.WasRecovered, "the read-back missed, so this attempt resent")
+	reads := fake.requestsTo(http.MethodGet, envelopesPath)
+	require.Len(t, reads, 2)
+	require.Equal(t, "2026-10-04T10:59:00Z", reads[1].query.Get("from_date"), "the read-back starts an hour before the earlier dispatch")
+	require.Len(t, fake.requestsTo(http.MethodPost, envelopesPath), 1)
+	require.Contains(t, string(belowCap.lastHeartbeat()), `"dispatchedAt":"2026-10-04T11:59:00Z"`, "the resend keeps the earliest dispatch time")
+
+	result, err = sdkgo.RunMutation(newRetriedTestDexContext("retried", 4), client.CreateEnvelopeFromTemplate(), testConnection, validCreateInput())
 	require.NoError(t, err)
 	require.Equal(t, docusign.CreateEnvelopeFromTemplateBranchCreated, result.Branch)
 	require.True(t, result.Value.WasRecovered)
-	require.Empty(t, fake.requestsTo(http.MethodPost, envelopesPath))
+	require.Len(t, fake.requestsTo(http.MethodPost, envelopesPath), 1)
+}
+
+func TestCreateEnvelopeRefusalAfterAnEarlierDispatchSelectsUncertain(t *testing.T) {
+	fake := newFakeDocuSign(t, map[string]http.HandlerFunc{
+		"POST " + envelopesPath: respondJSON(http.StatusBadRequest, docusignError("TEMPLATE_ID_INVALID")),
+		"GET " + envelopesPath:  (&fakeEnvelopeStore{}).list,
+	})
+	client := newTestClient(t, fake, staticCredentials(productionCredentials()), docusign.Config{})
+	context := newRetriedTestDexContext("refused-resend", 2)
+	require.NoError(t, context.RecordHeartbeat(map[string]any{"isDispatched": true, "dispatchedAt": fixedNow}))
+	result, err := sdkgo.RunMutation(context, client.CreateEnvelopeFromTemplate(), testConnection, validCreateInput())
+	require.NoError(t, err)
+	require.Equal(t, docusign.CreateEnvelopeFromTemplateBranchUncertain, result.Branch, "the earlier attempt's create may exist")
+	require.Len(t, fake.requestsTo(http.MethodPost, envelopesPath), 1)
+}
+
+func TestCreateEnvelopeConflictIsAnUnknownOutcome(t *testing.T) {
+	fake := newFakeDocuSign(t, map[string]http.HandlerFunc{
+		"POST " + envelopesPath: respondJSON(http.StatusConflict, docusignError("UNSPECIFIED_ERROR")),
+		"GET " + envelopesPath:  (&fakeEnvelopeStore{}).list,
+	})
+	_, err := sdkgo.RunMutation(newTestDexContext("conflict"), newTestClient(t, fake, staticCredentials(productionCredentials()), docusign.Config{}).CreateEnvelopeFromTemplate(), testConnection, validCreateInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Len(t, fake.requestsTo(http.MethodGet, envelopesPath), 1, "a 409 reads back before resending")
 }
 
 func TestCreateEnvelopeRetriesAReadBackThatDocuSignRateLimitedAndKeepsTheCheckpoint(t *testing.T) {
@@ -335,12 +393,20 @@ func TestCreateEnvelopeReportsUncertainWhenALaterAttemptCannotOpenItsSession(t *
 			if test.credentials != nil {
 				credentials = test.credentials()
 			}
-			context := newRetriedTestDexContext("dispatched-then-unauthorized", 2)
+			client := newTestClient(t, fake, credentials, test.config)
+			belowCap := newRetriedTestDexContext("dispatched-then-unauthorized", 2)
+			require.NoError(t, belowCap.RecordHeartbeat(map[string]any{"isDispatched": true, "dispatchedAt": fixedNow.Add(-time.Minute)}))
+			_, err := sdkgo.RunMutation(belowCap, client.CreateEnvelopeFromTemplate(), testConnection, validCreateInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "a later attempt may still read back and resend")
+			require.Contains(t, retry.Failure.Message, "an earlier attempt may have sent the DocuSign create request")
+
+			context := newRetriedTestDexContext("dispatched-then-unauthorized", 3)
 			require.NoError(t, context.RecordHeartbeat(map[string]any{"isDispatched": true, "dispatchedAt": fixedNow.Add(-time.Minute)}))
-			result, err := sdkgo.RunMutation(context, newTestClient(t, fake, credentials, test.config).CreateEnvelopeFromTemplate(), testConnection, validCreateInput())
+			result, err := sdkgo.RunMutation(context, client.CreateEnvelopeFromTemplate(), testConnection, validCreateInput())
 			require.NoError(t, err)
 			require.Equal(t, docusign.CreateEnvelopeFromTemplateBranchUncertain, result.Branch, "the earlier attempt may have created the envelope")
-			require.Contains(t, result.Failure.Message, "an earlier attempt sent the DocuSign create request")
+			require.Contains(t, result.Failure.Message, "an earlier attempt may have sent the DocuSign create request")
 			require.Empty(t, fake.requestsTo(http.MethodPost, envelopesPath))
 			require.Contains(t, string(context.lastHeartbeat()), `"isDispatched":true`, "the checkpoint survives for a later attempt")
 			requireNoSecrets(t, result)

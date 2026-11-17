@@ -110,7 +110,7 @@ func CreateCardCheckoutSessionUncertain(value stripe.CheckoutSession, failure sd
 	return connectormock.Uncertain(value, failure)
 }
 
-// CreateCardCheckoutSessionInvalidResponse selects the invalidResponse branch: Stripe returned an invalid or oversized Checkout Session response.
+// CreateCardCheckoutSessionInvalidResponse selects the invalidResponse branch: Stripe accepted the request but returned an invalid or oversized Checkout Session, which a resend under the same key would only replay.
 func CreateCardCheckoutSessionInvalidResponse(value stripe.CheckoutSession, failure *sdkgo.Failure) connectormock.Case[stripe.CheckoutSession] {
 	return connectormock.Branch(stripe.CreateCardCheckoutSessionBranchInvalidResponse, value, failure)
 }
@@ -175,7 +175,7 @@ func CreateACHCheckoutSessionUncertain(value stripe.CheckoutSession, failure sdk
 	return connectormock.Uncertain(value, failure)
 }
 
-// CreateACHCheckoutSessionInvalidResponse selects the invalidResponse branch: Stripe returned an invalid or oversized Checkout Session response.
+// CreateACHCheckoutSessionInvalidResponse selects the invalidResponse branch: Stripe accepted the request but returned an invalid or oversized Checkout Session, which a resend under the same key would only replay.
 func CreateACHCheckoutSessionInvalidResponse(value stripe.CheckoutSession, failure *sdkgo.Failure) connectormock.Case[stripe.CheckoutSession] {
 	return connectormock.Branch(stripe.CreateACHCheckoutSessionBranchInvalidResponse, value, failure)
 }
@@ -370,7 +370,7 @@ func CreateRefundUncertain(value stripe.Refund, failure sdkgo.Failure) connector
 	return connectormock.Uncertain(value, failure)
 }
 
-// CreateRefundInvalidResponse selects the invalidResponse branch: Stripe returned an invalid or oversized refund response.
+// CreateRefundInvalidResponse selects the invalidResponse branch: Stripe accepted the refund request but returned an invalid or oversized refund, which a resend under the same key would only replay.
 func CreateRefundInvalidResponse(value stripe.Refund, failure *sdkgo.Failure) connectormock.Case[stripe.Refund] {
 	return connectormock.Branch(stripe.CreateRefundBranchInvalidResponse, value, failure)
 }

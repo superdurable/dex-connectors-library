@@ -5,7 +5,7 @@ import type { Failure } from '@superdurable/connectors-sdk';
 import pg from 'pg';
 
 export type Phase = 'connect' | 'BEGIN' | 'the statement' | 'COMMIT';
-export type Disposition = 'retry' | 'rejected' | 'uncertain' | 'invalidResponse' | 'defect';
+export type Disposition = 'retry' | 'rejected' | 'uncertain' | 'invalidResponse' | 'defect' | 'limitExceeded';
 export interface ClassifiedFailure { disposition: Disposition; kind: Failure['kind']; message: string; sqlState?: string }
 
 const conditionNames: Record<string, string> = {
@@ -36,7 +36,8 @@ export function classifyFailure(error: unknown, phase: Phase): ClassifiedFailure
     const description = name ? `${code} (${name})` : code;
     let disposition: Disposition = 'rejected';
     let kind: Failure['kind'] = 'PROVIDER_REJECTION';
-    if (phase === 'COMMIT' && !code.startsWith('23') && !code.startsWith('40')) {
+    // SQLSTATE 40003 (statement_completion_unknown) is the one rollback-class code that proves nothing.
+    if (phase === 'COMMIT' && (code === '40003' || (!code.startsWith('23') && !code.startsWith('40')))) {
       return { disposition: 'uncertain', kind: 'AVAILABILITY', sqlState: code, message: `PostgreSQL returned SQLSTATE ${description} while committing, so whether the transaction committed is unknown` };
     }
     if (['40001', '40P01', '55P03'].includes(code)) { disposition = 'retry'; kind = 'CONFLICT'; }

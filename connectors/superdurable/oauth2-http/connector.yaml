@@ -6,19 +6,19 @@ metadata:
   description: "Call any HTTP API that an OAuth 2.0 authorization server protects, such as a Keycloak realm or an internal service: the connection names the server's endpoints and scopes, the host authorizes it with PKCE, and the connector refreshes the access token before it expires."
   company: Super Durable
   categories: [developer-tools]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: oauth2-http
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: "@superdurable/connector-superdurable-oauth2-http"
-      operations: [sendRequest]
+      operations: [sendRequest, postNonIdempotent]
       triggers: []
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-superdurable-oauth2-http
-      operations: [sendRequest]
+      operations: [sendRequest, postNonIdempotent]
       triggers: []
   codegen:
     go:
@@ -121,17 +121,19 @@ spec:
       inputType: SendRequestInput
       outputType: SendRequestOutput
       kind: mutation
-      description: "Send one HTTP request to the connection's API with the OAuth access token as a Bearer credential, and return the status code and body. Refreshes the token first when it is about to expire and once more after a 401. GET, HEAD, and OPTIONS are retried on a transient failure; any other method whose request may have reached the API selects uncertain instead of repeating it."
+      description: "Send one HTTP request to the connection's API with the OAuth access token as a Bearer credential, and return the status code and body. Refreshes the token first when it is about to expire and once more after a 401. Every unknown outcome, such as a lost connection, a timeout, a 5xx, or a status that does not prove a refusal, sends the request again, except that a POST without idempotencyKeyHeader whose answer was lost selects uncertain; use it only for requests that are safe to repeat: reads, absolute updates, deletes, or writes the API deduplicates through idempotencyKeyHeader. Use postNonIdempotent for a POST that must never be sent twice."
       idempotency: required
       branches:
         - {id: completed, goName: Completed, description: "The API answered 2xx; the Result carries the status code and body."}
-        - {id: rejected, goName: Rejected, description: "The API answered a redirect or a 4xx other than 408 and 429, or the connection's authorization could not be renewed. The Result carries the status code, which is zero when no request was sent.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request may have reached the API, but a method that is not safe to repeat got no usable answer: the connection closed, timed out, or the API answered 5xx.", optional: true}
+        - {id: rejected, goName: Rejected, description: "The API answered a redirect or a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or the connection's authorization could not be renewed. The Result carries the status code, which is zero when no request was sent.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "A POST without idempotencyKeyHeader was sent, but its answer was lost or cut off, so the API may have processed it; it is not repeated. Every other unknown outcome is sent again.", optional: true}
         - {id: defect, goName: Defect, description: "The input or the connection settings are invalid, so no request was sent.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "sendRequest permits POST without a provider deduplication header, so bound retries that can repeat a write after a transient response."}}
+        # The application sends only repeat-safe requests here; a non-idempotent POST uses postNonIdempotent.
+        repeatOnUnknown: safe
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "sendRequest repeats every unknown outcome, so five attempts bound the copies a misused non-idempotent request could create, and a status that keeps answering unknown, such as 409, fails the Flow within two minutes."}}
       mocks:
         - name: userProfile
           branch: completed
@@ -149,12 +151,51 @@ spec:
           output: {statusCode: 0}
           failure: {kind: AUTHENTICATION, message: The OAuth authorization must be renewed in Dex Web Connections.}
         - name: connectionLost
-          description: The connection closed after a POST was sent, so the API may have processed it.
-          uncertain: {failure: {kind: TRANSPORT, message: The connection closed before the API answered.}}
+          description: The connection closed before the API answered, so the request is sent again.
+          retry: {failure: {kind: TRANSPORT, message: The connection closed before the API answered.}}
         - name: invalidPath
           branch: defect
           description: The request path is not an absolute path, so no request is sent.
           failure: {kind: VALIDATION, message: The request path must start with a slash.}
         - name: throttled
           description: The API throttles the request once before processing it.
+          retry: {failure: {kind: RATE_LIMIT, message: The API answered HTTP 429.}, after: 2s}
+    - name: postNonIdempotent
+      goName: PostNonIdempotent
+      inputType: PostNonIdempotentInput
+      outputType: SendRequestOutput
+      kind: mutation
+      description: "Send one HTTP POST that must never be sent twice, such as a payment or an order the API does not deduplicate, with the OAuth access token as a Bearer credential, and return the status code and body. It is sent at most once per Step execution: when the POST may have reached the API but no usable answer arrived, the Step selects uncertain instead of sending it again. A 401 renews the token and a 429 or 503 waits, then sends again, because those answers prove the API did not process it."
+      idempotency: required
+      branches:
+        - {id: completed, goName: Completed, description: "The API answered 2xx; the Result carries the status code and body."}
+        - {id: rejected, goName: Rejected, description: "The API refused the only POST of this Step execution with a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or the connection's authorization could not be renewed before it was sent. The Result carries the status code, which is zero when no request was sent.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The POST may have reached the API, but no usable answer arrived: the connection closed or timed out, the API answered a redirect, a 5xx other than 503, or another status that does not prove a refusal, or an earlier attempt may have sent it. It is never sent again; check the API before acting.", optional: true}
+        - {id: defect, goName: Defect, description: "The input or the connection settings are invalid, so no request was sent.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        dispatchFence: true
+        # A duplicate POST may create a second payment or order, and the connector cannot read it back.
+        repeatOnUnknown: unsafe
+      mocks:
+        - name: createdOrder
+          branch: completed
+          description: The API answered 201 with the created order.
+          default: true
+          output: {statusCode: 201, contentType: application/json, body: "{\"id\":\"order-1\",\"status\":\"created\"}"}
+        - name: invalidOrder
+          branch: rejected
+          description: The API refused the order body with 422.
+          output: {statusCode: 422, contentType: application/json, body: "{\"error\":\"invalid_order\"}"}
+          failure: {kind: VALIDATION, message: The API answered HTTP 422.}
+        - name: connectionLost
+          description: The connection closed after the POST was sent, so the API may have processed it.
+          uncertain: {failure: {kind: TRANSPORT, message: The connection closed before the API answered.}}
+        - name: invalidPath
+          branch: defect
+          description: The request path is not an absolute path, so no request is sent.
+          failure: {kind: VALIDATION, message: The request path must start with a slash.}
+        - name: throttled
+          description: The API throttles the POST once before processing it.
           retry: {failure: {kind: RATE_LIMIT, message: The API answered HTTP 429.}, after: 2s}

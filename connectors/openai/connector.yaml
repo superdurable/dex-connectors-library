@@ -6,17 +6,17 @@ metadata:
   description: "OpenAI Responses API stored responses: create a model response with JSON Schema structured output, streamed text and progress, token usage, and explicit uncertainty, and retrieve it by ID for recovery. Text generation Steps use the llm connector."
   company: OpenAI
   categories: [ai]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: openai
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       package: dex-connector-openai
       operations: [createResponse, retrieveResponse]
       triggers: []
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: "@superdurable/connector-openai"
       operations: [createResponse, retrieveResponse]
       triggers: []
@@ -40,13 +40,13 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: "Positive maximum total response size in bytes, counting every byte of a stream. Each streamed text delta carries about 260 bytes of event framing, so the displayed default holds roughly 30,000 streamed output tokens; raise it only for longer outputs. When a createResponse stream grows larger, the connector reads it to the end and reads the stored response back if its ID was observed, or selects uncertain otherwise; a larger non-streamed createResponse response selects uncertain, and a larger retrieveResponse response selects invalidResponse."
+        description: "Positive maximum total response size in bytes, counting every byte of a stream. Each streamed text delta carries about 260 bytes of event framing, so the displayed default holds roughly 30,000 streamed output tokens; raise it only for longer outputs. When a createResponse stream grows larger, the connector reads it to the end and reads the stored response back if its ID was observed, or otherwise resends below the send cap and selects uncertain at it; a larger non-streamed createResponse response is handled the same way, and a larger retrieveResponse response selects invalidResponse."
         required: false
         default: 8388608
       - name: maxSseEventBytes
         goName: MaxSSEEventBytes
         type: integer
-        description: Positive maximum size of one createResponse server-sent event in bytes. The final Responses event repeats the whole response, so raise it only for very long outputs. After an oversized event the connector reads the stream to the end and reads the stored response back if its ID was observed, or selects uncertain otherwise.
+        description: Positive maximum size of one createResponse server-sent event in bytes. The final Responses event repeats the whole response, so raise it only for very long outputs. After an oversized event the connector reads the stream to the end and reads the stored response back if its ID was observed, or otherwise resends below the send cap and selects uncertain at it.
         required: false
         default: 1048576
   auth:
@@ -98,13 +98,14 @@ spec:
         - {id: completed, goName: Completed, description: OpenAI completed the response.}
         - {id: failed, goName: Failed, description: "OpenAI returned a terminal failed or incomplete response. A cancelled response is not failed: the next attempt creates a new one.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: OpenAI conclusively rejected the response request., optional: true}
-        - {id: uncertain, goName: Uncertain, description: "A request may have created a response that cannot be confirmed: no response ID was observed or checkpointed, for example after HTTP 408 or 409, a 5xx other than 503, or a streamed error event, or the stored response cannot be read back. The Responses API documents no deduplication of create requests.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "A request may have created a response that cannot be confirmed: the send cap was reached without a response ID observed or checkpointed, for example after HTTP 408 or 409, a 5xx other than 503, or a streamed error event; a resend was refused after an earlier possible create; or the stored response cannot be read back. The Responses API documents no deduplication of create requests.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       progress: [structured, text]
       execution:
         executeMethodTimeout: 150s
         durability: sync
-        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "An unconfirmed response creation may already incur charges, and a retry can create another billed response without a provider deduplication key."}}
+        # maxSends caps billed creates at 3; the extra attempts only retry refusals or read back.
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 8, totalDuration: 15m, reason: {kind: billedOperation, explanation: "An unconfirmed response creation may already incur charges; the send cap allows at most three billed creates without a provider deduplication key, and the remaining attempts only retry refusals or read a known response back."}}
       mockChecks:
         requestFunction: ValidateCreateResponseRequest
         answer: {branch: completed, function: ValidateCreateResponseAnswer}

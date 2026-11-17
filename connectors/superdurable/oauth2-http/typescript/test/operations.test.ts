@@ -68,19 +68,27 @@ describe('sendRequest provider semantics', () => {
     }
   });
 
-  it('keeps response status and partial body on an unsafe mid-body read failure', async () => {
+  it('retries a cut-off POST that names an idempotency header, and never repeats one that does not', async () => {
     const client = new OAuth2HTTPClient(config, new StaticCredentialProvider([[connection, firstCredentials]]), {
       send: async request => {
         request.onResponseChunk?.(Buffer.from('partial'), 200, { 'content-type': 'text/plain' });
         throw new ProviderTransportError(false);
       },
     });
-    const attempt = await client.sendRequest().invoke(call, { method: 'POST', path: '/items', body: 'item' });
-    expect(attempt.kind).toBe('uncertain');
-    if (attempt.kind === 'uncertain') {
-      expect(attempt.value).toEqual({ statusCode: 200, contentType: 'text/plain', body: 'partial' });
-      expect(attempt.failure.kind).toBe('TRANSPORT');
-    }
+    const keyed = await client.sendRequest().invoke(call, { method: 'POST', path: '/items', body: 'item', idempotencyKeyHeader: 'Idempotency-Key' });
+    expect(keyed.kind).toBe('retry');
+    if (keyed.kind === 'retry') expect(keyed.failure.kind).toBe('TRANSPORT');
+    const unkeyed = await client.sendRequest().invoke(call, { method: 'POST', path: '/items', body: 'item' });
+    expect(unkeyed.kind).toBe('uncertain');
+    if (unkeyed.kind === 'uncertain') expect(unkeyed.value).toEqual({ statusCode: 200, contentType: 'text/plain', body: 'partial' });
+  });
+
+  it.each([409, 410, 425, 418, 500, 502])('retries HTTP %i for every method', async status => {
+    const client = new OAuth2HTTPClient(config, new StaticCredentialProvider([[connection, firstCredentials]]), {
+      send: async () => ({ status, headers: {}, body: Buffer.from('unknown') }),
+    });
+    const attempt = await client.sendRequest().invoke(call, { method: 'PUT', path: '/items/1', body: '{}' });
+    expect(attempt.kind).toBe('retry');
   });
 
   it.each([

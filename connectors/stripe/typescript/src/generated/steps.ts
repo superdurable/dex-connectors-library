@@ -17,9 +17,9 @@ export interface CreateCardCheckoutSessionStepConfig<StepInput, OperationInput =
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Stripe conclusively rejected the Checkout Session request. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed. */
+  /** Stripe replayed a cached server error for this idempotency key, so no resend can confirm the Checkout Session; every other unknown outcome is resent under the same key. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
-  /** Stripe returned an invalid or oversized Checkout Session response. */
+  /** Stripe accepted the request but returned an invalid or oversized Checkout Session, which a resend under the same key would only replay. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -48,9 +48,9 @@ export interface CreateACHCheckoutSessionStepConfig<StepInput, OperationInput = 
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Stripe conclusively rejected the Checkout Session request. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed. */
+  /** Stripe replayed a cached server error for this idempotency key, so no resend can confirm the Checkout Session; every other unknown outcome is resent under the same key. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
-  /** Stripe returned an invalid or oversized Checkout Session response. */
+  /** Stripe accepted the request but returned an invalid or oversized Checkout Session, which a resend under the same key would only replay. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -141,9 +141,9 @@ export interface CreateRefundStepConfig<StepInput, OperationInput = CreateRefund
   refunded: StepTarget<MutationResult<OperationOutput>>;
   /** Stripe conclusively rejected the refund with a 4xx error such as charge_already_refunded or an amount that is too large. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** A non-retryable Stripe server response left the refund outcome unconfirmed after bounded read-back. */
+  /** Stripe replayed a cached server error for this idempotency key and bounded read-back found no refund with this call ID; every other unknown outcome is resent under the same key. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
-  /** Stripe returned an invalid or oversized refund response. */
+  /** Stripe accepted the refund request but returned an invalid or oversized refund, which a resend under the same key would only replay. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

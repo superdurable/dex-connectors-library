@@ -3,10 +3,13 @@
 
 // Package postgresql connects Dex applications to PostgreSQL databases.
 //
-// The connector exposes two operations. QueryRows runs one parameterized
+// The connector exposes three operations. QueryRows runs one parameterized
 // statement inside a read-only transaction and returns bounded rows.
-// ExecuteStatement runs one parameterized write statement in its own
-// transaction and reports the rows it affected. Both bind values only through
+// ExecuteStatement runs one parameterized, repeat-safe write statement in its
+// own transaction and reports the rows it affected; an unknown COMMIT outcome
+// runs it again. ExecuteStatementNonIdempotent runs a write that must not run
+// twice, commits it at most once, and selects uncertain when a COMMIT outcome
+// is unknown. All bind values only through
 // positional $1..$n parameters, send every parameter as text that PostgreSQL
 // parses for the parameter's inferred type, and read every result column as
 // text, so numeric precision survives the round trip.
@@ -144,9 +147,15 @@ func (client *Client) QueryRows() QueryRowsOperation {
 	return QueryRowsOperation{client: client}
 }
 
-// ExecuteStatement returns the transactional write operation bound to this client.
+// ExecuteStatement returns the repeat-safe transactional write operation bound to this client.
 func (client *Client) ExecuteStatement() ExecuteStatementOperation {
 	return ExecuteStatementOperation{client: client}
+}
+
+// ExecuteStatementNonIdempotent returns the fenced transactional write operation, which never
+// runs its statement twice, bound to this client.
+func (client *Client) ExecuteStatementNonIdempotent() ExecuteStatementNonIdempotentOperation {
+	return ExecuteStatementNonIdempotentOperation{client: client}
 }
 
 // newCallContext bounds the whole call so it returns a classified attempt before Dex's Execute timeout.

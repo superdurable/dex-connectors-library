@@ -68,6 +68,46 @@ async def test_reply_all_threads_and_omits_own_sender(
     assert b"agent@example.com" in server.content  # The sender remains in From only.
 
 
+@pytest.mark.parametrize(
+    ("outcome", "fresh_branch"), (("not_found", "notFound"), ("invalid", "invalidResponse"))
+)
+@pytest.mark.asyncio
+async def test_reply_source_failure_after_an_earlier_possible_submission_is_uncertain(
+    monkeypatch: pytest.MonkeyPatch, outcome: str, fresh_branch: str
+) -> None:
+    """A source that can no longer be read cannot prove an earlier reply was not accepted."""
+    import dex
+    from dex_connectors.sdk import Call, CallID, ConnectionRef, IdempotencyKey, OperationRef
+
+    from dex_connectors.superdurable_email._generated.definitions import REPLY_TO_MESSAGE_DEFINITION
+    from dex_connectors.superdurable_email.client import MailFailure
+    from dex_connectors.superdurable_email.operations import _failure, _SubmissionMarker
+
+    def missing_source(*_: object) -> Message:
+        raise MailFailure(outcome, _failure(operations.FailureKind.NOT_FOUND, "replyToMessage", "missing"))
+
+    client = make_client()
+    monkeypatch.setattr(client, "open_smtp", lambda *_: pytest.fail("connected"))
+    monkeypatch.setattr(operations, "_read_message", missing_source)
+    identifier = CallID("00000000-0000-4000-8000-000000000003")
+    for context, expected in (
+        (Context(), fresh_branch),
+        (Context(attempt=2, visible_marker=_SubmissionMarker(str(identifier), 1, 1)), "uncertain"),
+    ):
+        call = Call(
+            identifier,
+            ConnectionRef("email", "mail"),
+            OperationRef("email", "replyToMessage"),
+            IdempotencyKey(identifier),
+            context=cast(dex.AsyncContext, context),
+            max_sends=REPLY_TO_MESSAGE_DEFINITION.max_sends,
+        )
+        attempt = await client.reply_to_message().invoke(
+            call, ReplyToMessageInput(MessageReference("INBOX", 42, 97), "Thanks for contacting us")
+        )
+        assert attempt.branch == expected
+
+
 def test_html_fallback_extracts_visible_text_and_attachment_names(monkeypatch: pytest.MonkeyPatch) -> None:
     """GetMessage uses visible HTML when plain text is absent and lists attachments."""
     body = (

@@ -6,7 +6,9 @@ import { SecretString, type Call } from '@superdurable/connectors-sdk';
 import type { ProviderRequest, ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { QuickBooksClient } from '../src/client.js';
 
-const call = { id: 'quickbooks-unit-call', idempotencyKey: 'quickbooks-unit-call', connection: { provider: 'quickbooks', name: 'test' }, operation: { connectorId: 'quickbooks', operationId: 'createInvoice' }, context: { cancellationSignal: new AbortController().signal } } as Call;
+// A fenced write needs a UUID Call ID and an attempt context; maxSendsOverride 1 makes one attempt final.
+const call = { id: '5af8fafa-06ff-5b2d-bb13-04693809fabf', idempotencyKey: 'quickbooks-unit-call', connection: { provider: 'quickbooks', name: 'test' }, operation: { connectorId: 'quickbooks', operationId: 'createInvoice' }, maxSendsOverride: 1,
+  context: { attempt: 1, cancellationSignal: new AbortController().signal, hasLastHeartbeatValue: () => false, getLastHeartbeatValue: () => undefined, recordHeartbeat: async () => {} } } as unknown as Call;
 const credentials = { accessToken: new SecretString('quickbooks-test-token'), clientId: 'test-client', clientSecret: new SecretString('test-secret'), refreshToken: new SecretString(''), idToken: new SecretString('') };
 const source = { resolve: async () => credentials, resolveWithRefresh: async () => credentials };
 const response = (status: number, body: unknown): ProviderResponse => ({ status, headers: {}, body: Buffer.from(JSON.stringify(body)) });

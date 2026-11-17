@@ -221,9 +221,14 @@ function queryExchange<T>(result: XeroExchange, zero: T, receipt: ReceiptDraft, 
   const branch = result.outcome === 'notFound' ? (hasNotFound ? 'notFound' : 'providerRejected') : result.outcome === 'dailyLimit' ? 'dailyLimitReached' : result.outcome === 'invalid' ? 'invalidResponse' : result.outcome === 'defect' ? 'defect' : 'providerRejected';
   return newQueryBranch(branch, zero, receipt, result.failure);
 }
+/** Statuses that prove a write was refused; 409, 501, 3xx, and other statuses are unknown. */
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 function mutationExchange<T>(result: XeroExchange, zero: T, receipt: ReceiptDraft): MutationAttempt<T> {
   if (result.outcome === 'retry') return newMutationRetry(result.failure!, result.retryAfterMs);
   if (result.outcome === 'serverError' || result.outcome === 'invalid') return newMutationUncertain(zero, result.failure!, receipt);
+  const status = result.response?.status ?? 0;
+  // A 409, 501, 3xx, or other unlisted status does not prove a refusal; the key makes the repeat safe.
+  if (result.outcome === 'rejected' && status >= 300 && !definiteRefusalStatuses.has(status)) return newMutationRetry(result.failure!, result.retryAfterMs);
   return newMutationBranch(result.outcome === 'dailyLimit' ? 'dailyLimitReached' : result.outcome === 'defect' ? 'defect' : 'providerRejected', zero, receipt, result.failure);
 }
 

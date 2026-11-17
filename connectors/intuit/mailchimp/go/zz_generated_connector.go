@@ -568,13 +568,13 @@ var SendCampaignDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendCampaign"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendCampaignBranchSent, Description: "Mailchimp accepted the send of the draft campaign this Step read."},
-		{ID: SendCampaignBranchAlreadySent, Description: "Mailchimp reports the campaign as sending or sent, so this attempt sent nothing.", Optional: true},
+		{ID: SendCampaignBranchAlreadySent, Description: "Mailchimp reports the campaign as sending or sent, because another send or an earlier attempt of this Step sent it; this attempt sent nothing.", Optional: true},
 		{ID: SendCampaignBranchNotSendable, Description: "The campaign is not a draft that can be sent now, such as a scheduled, paused, canceled, or RSS campaign, or it targets another audience than expectedListId; nothing was sent.", Optional: true},
 		{ID: SendCampaignBranchNotFound, Description: "The campaign does not exist; nothing was sent.", Optional: true},
 		{ID: SendCampaignBranchProviderRejected, Description: "Mailchimp conclusively rejected the send, such as a campaign that fails its send checklist or a role that cannot send; nothing was sent.", Optional: true},
-		{ID: SendCampaignBranchInvalidResponse, Description: "Mailchimp returned an invalid or oversized campaign before the send; nothing was sent.", Optional: true},
-		{ID: SendCampaignBranchUncertain, Description: "The send request was sent but its outcome cannot be confirmed, so the campaign may be sending; the connector never sends it again.", Optional: true},
-		{ID: SendCampaignBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+		{ID: SendCampaignBranchInvalidResponse, Description: "Mailchimp returned an invalid or oversized campaign before the first send; nothing was sent.", Optional: true},
+		{ID: SendCampaignBranchUncertain, Description: "A send may have reached Mailchimp, but the campaign does not read as sending or sent and no further send is allowed, because maxSends is reached or the campaign changed after a possible send.", Optional: true},
+		{ID: SendCampaignBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid, and no send was attempted.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(60000000000), HeartbeatTimeout: time.Duration(0),

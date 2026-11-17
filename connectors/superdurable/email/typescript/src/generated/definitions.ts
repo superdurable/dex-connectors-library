@@ -80,9 +80,9 @@ export const SendMessageBranch = {
 } as const;
 /** The SMTP server accepted the message for delivery. */
 export const SendMessageBranchSent = SendMessageBranch.Sent;
-/** The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, so nothing was sent. */
+/** The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, and no earlier attempt may have submitted it, so nothing was sent. */
 export const SendMessageBranchProviderRejected = SendMessageBranch.ProviderRejected;
-/** The message was submitted but the server's answer was lost, so it may have been sent; the connector never submits it again. */
+/** Submissions may have been sent as often as the send cap allows, but the server's answer to the last one was lost or a later attempt could not settle it; the connector does not submit it again. */
 export const SendMessageBranchUncertain = SendMessageBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const SendMessageBranchDefect = SendMessageBranch.Defect;
@@ -91,11 +91,13 @@ export const SendMessageDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "sendMessage" },
   branches: [
     { id: "sent", description: "The SMTP server accepted the message for delivery." },
-    { id: "providerRejected", description: "The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, so nothing was sent.", optional: true },
-    { id: "uncertain", description: "The message was submitted but the server's answer was lost, so it may have been sent; the connector never submits it again.", optional: true },
+    { id: "providerRejected", description: "The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, and no earlier attempt may have submitted it, so nothing was sent.", optional: true },
+    { id: "uncertain", description: "Submissions may have been sent as often as the send cap allows, but the server's answer to the last one was lost or a later attempt could not settle it; the connector does not submit it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
-  stepDefaults: { executeMethodTimeoutMs: 150000, executeDurability: "sync", executeRetry: { initialIntervalMs: 2000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 600000 } },
+  stepDefaults: { executeMethodTimeoutMs: 150000, executeDurability: "sync", executeRetry: { initialIntervalMs: 2000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 10, totalDurationMs: 600000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for sendMessage. */
 export const SendMessageMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -111,13 +113,13 @@ export const ReplyToMessageBranch = {
 } as const;
 /** The SMTP server accepted the reply for delivery. */
 export const ReplyToMessageBranchSent = ReplyToMessageBranch.Sent;
-/** The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, so nothing was sent. */
+/** The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, and no earlier attempt may have submitted the reply, so nothing was sent. */
 export const ReplyToMessageBranchNotFound = ReplyToMessageBranch.NotFound;
-/** The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, so nothing was sent. */
+/** The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, and no earlier attempt may have submitted it, so nothing was sent. */
 export const ReplyToMessageBranchProviderRejected = ReplyToMessageBranch.ProviderRejected;
-/** The source message has no usable reply address or could not be parsed, so nothing was sent. */
+/** The source message has no usable reply address or could not be parsed, and no earlier attempt may have submitted the reply, so nothing was sent. */
 export const ReplyToMessageBranchInvalidResponse = ReplyToMessageBranch.InvalidResponse;
-/** The reply was submitted but the server's answer was lost, so it may have been sent; the connector never submits it again. */
+/** Submissions may have been sent as often as the send cap allows, but the server's answer to the last one was lost or a later attempt could not settle it; the connector does not submit the reply again. */
 export const ReplyToMessageBranchUncertain = ReplyToMessageBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const ReplyToMessageBranchDefect = ReplyToMessageBranch.Defect;
@@ -126,13 +128,15 @@ export const ReplyToMessageDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "replyToMessage" },
   branches: [
     { id: "sent", description: "The SMTP server accepted the reply for delivery." },
-    { id: "notFound", description: "The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, so nothing was sent.", optional: true },
-    { id: "providerRejected", description: "The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, so nothing was sent.", optional: true },
-    { id: "invalidResponse", description: "The source message has no usable reply address or could not be parsed, so nothing was sent.", optional: true },
-    { id: "uncertain", description: "The reply was submitted but the server's answer was lost, so it may have been sent; the connector never submits it again.", optional: true },
+    { id: "notFound", description: "The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, and no earlier attempt may have submitted the reply, so nothing was sent.", optional: true },
+    { id: "providerRejected", description: "The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, and no earlier attempt may have submitted it, so nothing was sent.", optional: true },
+    { id: "invalidResponse", description: "The source message has no usable reply address or could not be parsed, and no earlier attempt may have submitted the reply, so nothing was sent.", optional: true },
+    { id: "uncertain", description: "Submissions may have been sent as often as the send cap allows, but the server's answer to the last one was lost or a later attempt could not settle it; the connector does not submit the reply again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
-  stepDefaults: { executeMethodTimeoutMs: 150000, executeDurability: "sync", executeRetry: { initialIntervalMs: 2000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 600000 } },
+  stepDefaults: { executeMethodTimeoutMs: 150000, executeDurability: "sync", executeRetry: { initialIntervalMs: 2000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 10, totalDurationMs: 600000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for replyToMessage. */
 export const ReplyToMessageMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -162,6 +166,7 @@ export const MoveMessageDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for moveMessage. */
 export const MoveMessageMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -191,6 +196,7 @@ export const SetFlagsDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for setFlags. */
 export const SetFlagsMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

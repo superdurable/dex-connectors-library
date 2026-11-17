@@ -190,9 +190,11 @@ func TestSendRequestMapsAnswersToBranches(t *testing.T) {
 		{http.StatusBadRequest, oauth2http.SendRequestBranchRejected, sdkgo.FailureValidation},
 		{http.StatusForbidden, oauth2http.SendRequestBranchRejected, sdkgo.FailureAuthorization},
 		{http.StatusNotFound, oauth2http.SendRequestBranchRejected, sdkgo.FailureNotFound},
-		{http.StatusConflict, oauth2http.SendRequestBranchRejected, sdkgo.FailureConflict},
+		{http.StatusLengthRequired, oauth2http.SendRequestBranchRejected, sdkgo.FailureProviderRejection},
+		{http.StatusRequestEntityTooLarge, oauth2http.SendRequestBranchRejected, sdkgo.FailureProviderRejection},
+		{http.StatusRequestURITooLong, oauth2http.SendRequestBranchRejected, sdkgo.FailureProviderRejection},
+		{http.StatusUnsupportedMediaType, oauth2http.SendRequestBranchRejected, sdkgo.FailureProviderRejection},
 		{http.StatusUnprocessableEntity, oauth2http.SendRequestBranchRejected, sdkgo.FailureValidation},
-		{http.StatusTeapot, oauth2http.SendRequestBranchRejected, sdkgo.FailureProviderRejection},
 	} {
 		t.Run(strconv.Itoa(test.statusCode), func(t *testing.T) {
 			session := newTestSession(t, nil, time.Hour)
@@ -245,7 +247,7 @@ func TestSendRequestRetriesThrottledRequestsWithTheServersDelay(t *testing.T) {
 	}
 }
 
-func TestSendRequestRepeatsASafeMethodAfterAServerErrorButNeverAnUnsafeOne(t *testing.T) {
+func TestSendRequestRepeatsEveryMethodAfterAServerError(t *testing.T) {
 	for _, statusCode := range []int{http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable} {
 		t.Run(strconv.Itoa(statusCode), func(t *testing.T) {
 			session := newTestSession(t, nil, time.Hour)
@@ -255,24 +257,39 @@ func TestSendRequestRepeatsASafeMethodAfterAServerErrorButNeverAnUnsafeOne(t *te
 				_, _ = io.WriteString(response, "server trouble")
 			}
 
-			for _, method := range []string{"GET", "HEAD", "OPTIONS"} {
-				_, err := session.send(t, "safe", oauth2http.SendRequestInput{Method: method, Path: "/things"})
+			for _, method := range []string{"GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"} {
+				_, err := session.send(t, "server-error", oauth2http.SendRequestInput{Method: method, Path: "/things"})
 				var retry *sdkgo.RetryError
 				require.ErrorAs(t, err, &retry, method)
 				require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind, method)
-			}
-			for _, method := range []string{"POST", "PUT", "PATCH", "DELETE"} {
-				result, err := session.send(t, "unsafe", oauth2http.SendRequestInput{Method: method, Path: "/things"})
-				require.NoError(t, err, method)
-				require.Equal(t, oauth2http.SendRequestBranchUncertain, result.Branch, method)
-				require.Equal(t, sdkgo.FailureAvailability, result.Failure.Kind, method)
-				require.Equal(t, statusCode, result.Value.StatusCode, method)
+				var retryAfter *dex.RetryAfterError
+				require.ErrorAs(t, err, &retryAfter, method)
+				require.Equal(t, 3*time.Second, retryAfter.After, method)
 			}
 		})
 	}
 }
 
-func TestSendRequestRetriesAnUndispatchedRequestAndTreatsALostAnswerPerMethod(t *testing.T) {
+func TestSendRequestRepeatsAStatusThatDoesNotProveARefusal(t *testing.T) {
+	for _, statusCode := range []int{http.StatusConflict, http.StatusGone, http.StatusTooEarly, http.StatusTeapot, http.StatusPreconditionFailed} {
+		t.Run(strconv.Itoa(statusCode), func(t *testing.T) {
+			session := newTestSession(t, nil, time.Hour)
+			session.server.api = func(response http.ResponseWriter, _ *http.Request) {
+				response.WriteHeader(statusCode)
+				_, _ = io.WriteString(response, "body of "+strconv.Itoa(statusCode))
+			}
+
+			_, err := session.send(t, "unknown-status", oauth2http.SendRequestInput{Method: "PUT", Path: "/things/1", Body: "{}"})
+
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			require.Contains(t, retry.Failure.Message, strconv.Itoa(statusCode))
+			require.NotContains(t, retry.Failure.Message, "body of", "a failure never repeats the answer's text")
+		})
+	}
+}
+
+func TestSendRequestRetriesAnUndispatchedRequestAndALostAnswer(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	closedAddress := listener.Addr().String()
@@ -295,15 +312,18 @@ func TestSendRequestRetriesAnUndispatchedRequestAndTreatsALostAnswerPerMethod(t 
 	t.Cleanup(cutOff.Close)
 	lost := newTestSession(t, func(config *oauth2http.Config) { config.APIBaseURL = cutOff.URL }, time.Hour)
 
-	_, err = lost.send(t, "lost-get", oauth2http.SendRequestInput{Path: "/things"})
-	var retry *sdkgo.RetryError
-	require.ErrorAs(t, err, &retry, "a lost GET is repeated")
-	require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
+	for _, input := range []oauth2http.SendRequestInput{
+		{Path: "/things"}, {Method: "PUT", Path: "/things/1", Body: "{}"},
+		{Method: "POST", Path: "/things", Body: "{}", IdempotencyKeyHeader: "Idempotency-Key"},
+	} {
+		_, err = lost.send(t, "lost", input)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "a lost %s answer is repeated", input.Method)
+		require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
+	}
 	result, err := lost.send(t, "lost-post", oauth2http.SendRequestInput{Method: "POST", Path: "/things", Body: "{}"})
 	require.NoError(t, err)
-	require.Equal(t, oauth2http.SendRequestBranchUncertain, result.Branch, "the server read the POST and may have processed it")
-	require.Equal(t, sdkgo.FailureTransport, result.Failure.Kind)
-	require.Zero(t, result.Value.StatusCode)
+	require.Equal(t, oauth2http.SendRequestBranchUncertain, result.Branch, "a POST the API cannot deduplicate is not repeated")
 }
 
 func TestSendRequestBoundsTheBodyItReturns(t *testing.T) {
@@ -360,11 +380,11 @@ func TestSendRequestReturnsTheRequestTimeoutAsALostAnswer(t *testing.T) {
 		config.APIBaseURL, config.RequestTimeout = hanging.URL, time.Second
 	}, time.Hour)
 
-	result, err := session.send(t, "hanging", oauth2http.SendRequestInput{Method: "DELETE", Path: "/things/1"})
+	_, err := session.send(t, "hanging", oauth2http.SendRequestInput{Method: "DELETE", Path: "/things/1"})
 
-	require.NoError(t, err)
-	require.Equal(t, oauth2http.SendRequestBranchUncertain, result.Branch)
-	require.Equal(t, sdkgo.FailureTransport, result.Failure.Kind)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "a timed-out request is sent again")
+	require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
 }
 
 func TestSendRequestReadsAServerThatClosesAfterTheHeaders(t *testing.T) {
@@ -385,6 +405,6 @@ func TestSendRequestReadsAServerThatClosesAfterTheHeaders(t *testing.T) {
 	var retry *sdkgo.RetryError
 	require.True(t, errors.As(getErr, &retry), "a GET cut off mid-body is repeated")
 	require.NoError(t, postErr)
-	require.Equal(t, oauth2http.SendRequestBranchUncertain, postResult.Branch, "a POST cut off mid-body may have taken effect")
+	require.Equal(t, oauth2http.SendRequestBranchUncertain, postResult.Branch, "a POST without an idempotency header is not repeated")
 	require.Equal(t, http.StatusOK, postResult.Value.StatusCode)
 }

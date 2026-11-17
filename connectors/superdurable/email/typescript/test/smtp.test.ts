@@ -57,10 +57,21 @@ beforeAll(async () => {
 });
 afterAll(async () => { await new Promise<void>(resolve => server.close(() => resolve())); rmSync(directory, { recursive: true, force: true }); });
 
-function call(): { call: Call; heartbeats: unknown[] } {
+function call(): { call: Call; heartbeats: unknown[]; nextAttempt: () => void } {
   const heartbeats: unknown[] = [];
-  return { call: { id: 'send-test-call', idempotencyKey: 'send-test-call', connection: { provider: 'email', name: 'email' }, operation: { connectorId: 'email', operationId: 'sendMessage' }, context: { attempt: 1, hasLastHeartbeatValue: () => false, recordHeartbeat: async (value: unknown) => { heartbeats.push(value); } } } as unknown as Call, heartbeats };
+  let visible: unknown;
+  let recordedThisAttempt = false;
+  const context = {
+    attempt: 1,
+    hasLastHeartbeatValue: () => visible !== undefined,
+    getLastHeartbeatValue: () => visible,
+    recordHeartbeat: async (value: unknown) => { heartbeats.push(value); recordedThisAttempt = true; },
+  };
+  // The next attempt sees the last heartbeat persisted, as Dex keeps it.
+  const nextAttempt = () => { context.attempt++; if (recordedThisAttempt) visible = heartbeats.at(-1); recordedThisAttempt = false; };
+  return { call: { id: 'send-test-call', idempotencyKey: 'send-test-call', connection: { provider: 'email', name: 'email' }, operation: { connectorId: 'email', operationId: 'sendMessage' }, context } as unknown as Call, heartbeats, nextAttempt };
 }
+const claim = (attempt: number, count: number) => ({ emailSubmittedCallId: 'send-test-call', emailAttempt: attempt, ...(count ? { emailSubmissionCount: count } : {}) });
 function client() { return new EmailClient({ imapHost: 'localhost', smtpHost: 'localhost', smtpPort: port, fromAddress: 'support@example.com', fromName: 'Support' }, { resolve: async () => ({ username: 'support@example.com', password: new SecretString('test-password') }) }, { ca: certificate, now: () => new Date('2026-01-28T10:05:00Z') }); }
 
 test('SMTP accepts one message after a checkpoint and hides Bcc', async () => {
@@ -69,7 +80,7 @@ test('SMTP accepts one message after a checkpoint and hides Bcc', async () => {
   const result = await client().sendMessage().invoke(invocation, { to: ['jane@example.com'], bcc: ['audit@example.com'], subject: 'Überweisung', text: 'A line\n.\nDone' });
   expect(result.kind).toBe('branch');
   if (result.kind === 'branch') { expect(result.branch).toBe('sent'); expect(result.value.messageId).toBe('dex-send-test-call@example.com'); }
-  expect(heartbeats).toEqual([{ emailSubmittedCallId: 'send-test-call' }]);
+  expect(heartbeats).toEqual([claim(1, 1), { ...claim(1, 1), emailAccepted: true }]);
   expect(submissions).toBe(1);
   expect(lastContent).toContain('Message-ID: <dex-send-test-call@example.com>');
   expect(lastContent).not.toContain('Bcc:');
@@ -98,13 +109,42 @@ test('long ASCII subjects fold below the RFC line limit', async () => {
   expect(lastContent).toContain('Subject: =?UTF-8?B?');
 });
 
-test('lost answer after the final dot is uncertain and retains the checkpoint', async () => {
+test('lost answer after the final dot is resent until the send cap, then uncertain', async () => {
   const before = submissions;
   loseFinalAnswer = true; recipientReply = 250; authReply = 235;
-  const { call: invocation, heartbeats } = call();
-  const result = await client().sendMessage().invoke(invocation, { to: ['jane@example.com'], subject: 'Maybe sent', text: 'The answer was lost.' });
-  expect(result.kind).toBe('uncertain');
-  expect(heartbeats).toEqual([{ emailSubmittedCallId: 'send-test-call' }]);
+  const { call: invocation, heartbeats, nextAttempt } = call();
+  const input = { to: ['jane@example.com'], subject: 'Maybe sent', text: 'The answer was lost.' };
+  for (let submission = 1; submission < 3; submission++) {
+    expect((await client().sendMessage().invoke(invocation, input)).kind).toBe('retry');
+    expect(heartbeats.at(-1)).toEqual(claim(submission, submission));
+    nextAttempt();
+  }
+  expect((await client().sendMessage().invoke(invocation, input)).kind).toBe('uncertain');
+  nextAttempt();
+  expect((await client().sendMessage().invoke(invocation, input)).kind).toBe('uncertain');
+  expect(submissions).toBe(before + 3);
+  loseFinalAnswer = false;
+});
+
+test('a refusal after an earlier possible submission is uncertain', async () => {
+  loseFinalAnswer = true; recipientReply = 250; authReply = 235;
+  const { call: invocation, nextAttempt } = call();
+  const input = { to: ['jane@example.com'], subject: 'Maybe sent', text: 'Hello' };
+  expect((await client().sendMessage().invoke(invocation, input)).kind).toBe('retry');
+  nextAttempt();
+  loseFinalAnswer = false; recipientReply = 550;
+  expect((await client().sendMessage().invoke(invocation, input)).kind).toBe('uncertain');
+  recipientReply = 250;
+});
+
+test('a replay after an accepted submission is uncertain without resubmitting', async () => {
+  loseFinalAnswer = false; recipientReply = 250; authReply = 235;
+  const before = submissions;
+  const { call: invocation, nextAttempt } = call();
+  const input = { to: ['jane@example.com'], subject: 'Sent once', text: 'Hello' };
+  expect((await client().sendMessage().invoke(invocation, input)).kind).toBe('branch');
+  nextAttempt();
+  expect((await client().sendMessage().invoke(invocation, input)).kind).toBe('uncertain');
   expect(submissions).toBe(before + 1);
 });
 
@@ -168,7 +208,7 @@ test('SMTP temporary recipient refusal retries and clears the claim', async () =
   const result = await client().sendMessage().invoke(invocation, { to: ['jane@example.com'], subject: 'Try later', text: 'Hello' });
   expect(result.kind).toBe('retry');
   if (result.kind === 'retry') expect(result.failure.kind).toBe('AVAILABILITY');
-  expect(heartbeats).toEqual([{ emailSubmittedCallId: 'send-test-call' }, undefined]);
+  expect(heartbeats).toEqual([claim(1, 1), claim(1, 0)]);
   expect(submissions).toBe(before);
 });
 
@@ -179,7 +219,7 @@ test('SMTP authentication failure is terminal before DATA', async () => {
   const result = await client().sendMessage().invoke(invocation, { to: ['jane@example.com'], subject: 'Wrong credential', text: 'Hello' });
   expect(result.kind).toBe('branch');
   if (result.kind === 'branch') { expect(result.branch).toBe('providerRejected'); expect(result.failure?.kind).toBe('AUTHENTICATION'); }
-  expect(heartbeats).toEqual([{ emailSubmittedCallId: 'send-test-call' }, undefined]);
+  expect(heartbeats).toEqual([claim(1, 1), claim(1, 0)]);
   expect(submissions).toBe(before);
 });
 
@@ -189,7 +229,7 @@ test('untrusted SMTP certificate is terminal before credentials', async () => {
   const result = await email.sendMessage().invoke(invocation, { to: ['jane@example.com'], subject: 'Untrusted', text: 'Hello' });
   expect(result.kind).toBe('branch');
   if (result.kind === 'branch') { expect(result.branch).toBe('providerRejected'); expect(result.failure?.kind).toBe('PROTOCOL'); }
-  expect(heartbeats).toEqual([{ emailSubmittedCallId: 'send-test-call' }, undefined]);
+  expect(heartbeats).toEqual([claim(1, 1), claim(1, 0)]);
 });
 
 test('permanent SMTP recipient refusal is terminal and clears the claim', async () => {
@@ -199,6 +239,6 @@ test('permanent SMTP recipient refusal is terminal and clears the claim', async 
   const result = await client().sendMessage().invoke(invocation, { to: ['jane@example.com'], subject: 'Rejected', text: 'Hello' });
   expect(result.kind).toBe('branch');
   if (result.kind === 'branch') { expect(result.branch).toBe('providerRejected'); expect(result.failure?.kind).toBe('PROVIDER_REJECTION'); }
-  expect(heartbeats).toEqual([{ emailSubmittedCallId: 'send-test-call' }, undefined]);
+  expect(heartbeats).toEqual([claim(1, 1), claim(1, 0)]);
   expect(submissions).toBe(before);
 });

@@ -26,6 +26,7 @@ from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
+    ProviderTransportError,
     parse_retry_after,
     read_bounded_body,
     send_traced,
@@ -66,6 +67,8 @@ class Exchange:
     request_id: str = ""
     metadata: dict[str, str] = field(default_factory=dict)
     retry_after: float = 0
+    # No request byte reached QuickBooks, such as a credential failure or a refused connection.
+    provably_unsent: bool = False
 
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -389,6 +392,7 @@ class Client:
                     FailureKind.AUTHENTICATION,
                     "QuickBooks authorization must be renewed: connect the company again",
                 ),
+                provably_unsent=True,
             )
         except RefreshFailedError:
             return Exchange(
@@ -398,6 +402,7 @@ class Client:
                     FailureKind.AVAILABILITY,
                     "Intuit access token refresh is temporarily unavailable",
                 ),
+                provably_unsent=True,
             )
         except Exception:
             return Exchange(
@@ -405,6 +410,7 @@ class Client:
                 _failure(
                     operation, FailureKind.AUTHENTICATION, "QuickBooks connection credentials are unavailable"
                 ),
+                provably_unsent=True,
             )
         if not isinstance(credentials, Credentials) or not credentials.access_token.reveal():
             return Exchange(
@@ -412,11 +418,14 @@ class Client:
                 _failure(
                     operation, FailureKind.AUTHENTICATION, "QuickBooks connection credentials are unavailable"
                 ),
+                provably_unsent=True,
             )
         try:
             realm = _resolve_realm(credentials, self.config.realm_id.strip())
         except ValueError as error:
-            return Exchange("defect", _failure(operation, FailureKind.AUTHENTICATION, str(error)))
+            return Exchange(
+                "defect", _failure(operation, FailureKind.AUTHENTICATION, str(error)), provably_unsent=True
+            )
         parameters = dict(query or {})
         parameters["minorversion"] = "75"
         if mutation:
@@ -426,6 +435,7 @@ class Client:
                     _failure(
                         operation, FailureKind.LOCAL_DEFECT, "QuickBooks mutation has no usable requestid"
                     ),
+                    provably_unsent=True,
                 )
             parameters["requestid"] = str(call.idempotency_key)
         query_string = _encode_query(parameters)
@@ -557,12 +567,18 @@ class Client:
                                 "QuickBooks request failed before a response arrived",
                             ),
                         )
-        except (httpx.HTTPError, OSError, ValueError):
+        except (httpx.HTTPError, OSError, ValueError) as error:
+            is_unsent = isinstance(error, ProviderTransportError) and error.provably_not_sent
             result = Exchange(
                 "retry",
                 _failure(
-                    operation, FailureKind.TRANSPORT, "QuickBooks request failed before a response arrived"
+                    operation,
+                    FailureKind.TRANSPORT,
+                    "QuickBooks could not be reached; no request was sent"
+                    if is_unsent
+                    else "QuickBooks request failed before a response arrived",
                 ),
+                provably_unsent=is_unsent,
             )
         result.metadata.update({"realmId": realm, "environment": self.config.environment})
         return result

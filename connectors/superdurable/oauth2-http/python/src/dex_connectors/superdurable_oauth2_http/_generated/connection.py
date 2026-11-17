@@ -12,30 +12,37 @@ from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
 from dex_connectors.sdk.providerhttp import new_provider_http_client
 
 from ..client import Client, Config, Credentials
-from .definitions import CONNECTOR_ID, SEND_REQUEST_DEFINITION
+from .definitions import CONNECTOR_ID, POST_NON_IDEMPOTENT_DEFINITION, SEND_REQUEST_DEFINITION
 from .refresh import AUTHORIZATION, CREDENTIAL_FIELDS
-from ..models import SendRequestInput, SendRequestOutput
+from ..models import PostNonIdempotentInput, SendRequestInput, SendRequestOutput
 
 class Connection:
 
-    __slots__ = ('_send_request', '_client', 'reference')
+    __slots__ = ('_send_request', '_post_non_idempotent', '_client', 'reference')
 
     def __init__(self,
         reference: ConnectionRef,
         send_request: Mutation[SendRequestInput, SendRequestOutput],
+        post_non_idempotent: Mutation[PostNonIdempotentInput, SendRequestOutput],
         client: Client | None = None,
     ) -> None:
         reference.validate()
-        if reference.provider != CONNECTOR_ID or send_request is None:
+        if reference.provider != CONNECTOR_ID or send_request is None or post_non_idempotent is None:
             raise ValueError("OAuth 2.0 HTTP connection provider and operations are required")
         if send_request.definition().operation != SEND_REQUEST_DEFINITION.operation:
             raise ValueError("OAuth 2.0 HTTP connection operation identity differs")
+        if post_non_idempotent.definition().operation != POST_NON_IDEMPOTENT_DEFINITION.operation:
+            raise ValueError("OAuth 2.0 HTTP connection operation identity differs")
         self.reference = reference
         self._send_request = send_request
+        self._post_non_idempotent = post_non_idempotent
         self._client = client
 
     def send_request(self) -> Mutation[SendRequestInput, SendRequestOutput]:
         return self._send_request
+
+    def post_non_idempotent(self) -> Mutation[PostNonIdempotentInput, SendRequestOutput]:
+        return self._post_non_idempotent
 
     async def aclose(self) -> None:
         if self._client is not None:
@@ -53,16 +60,17 @@ setattr(Connection, '__module__', 'dex_connectors.superdurable_oauth2_http.conne
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
     if client is None:
         raise ValueError("OAuth 2.0 HTTP client is required")
-    return Connection(reference, client.send_request(), client)
+    return Connection(reference, client.send_request(), client.post_non_idempotent(), client)
 
 setattr(new_connection, '__module__', 'dex_connectors.superdurable_oauth2_http.connection')
 
 
 def new_connection_with_operations(
     send_request: Mutation[SendRequestInput, SendRequestOutput],
+    post_non_idempotent: Mutation[PostNonIdempotentInput, SendRequestOutput],
     reference: ConnectionRef,
 ) -> Connection:
-    return Connection(reference, send_request)
+    return Connection(reference, send_request, post_non_idempotent)
 
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.superdurable_oauth2_http.connection')
 

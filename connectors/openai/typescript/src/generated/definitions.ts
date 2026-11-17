@@ -23,7 +23,7 @@ export const CreateResponseBranchCompleted = CreateResponseBranch.Completed;
 export const CreateResponseBranchFailed = CreateResponseBranch.Failed;
 /** OpenAI conclusively rejected the response request. */
 export const CreateResponseBranchProviderRejected = CreateResponseBranch.ProviderRejected;
-/** A request may have created a response that cannot be confirmed: no response ID was observed or checkpointed, for example after HTTP 408 or 409, a 5xx other than 503, or a streamed error event, or the stored response cannot be read back. The Responses API documents no deduplication of create requests. */
+/** A request may have created a response that cannot be confirmed: the send cap was reached without a response ID observed or checkpointed, for example after HTTP 408 or 409, a 5xx other than 503, or a streamed error event; a resend was refused after an earlier possible create; or the stored response cannot be read back. The Responses API documents no deduplication of create requests. */
 export const CreateResponseBranchUncertain = CreateResponseBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateResponseBranchDefect = CreateResponseBranch.Defect;
@@ -34,10 +34,12 @@ export const CreateResponseDefinition: MutationDefinition = {
     { id: "completed", description: "OpenAI completed the response." },
     { id: "failed", description: "OpenAI returned a terminal failed or incomplete response. A cancelled response is not failed: the next attempt creates a new one.", optional: true },
     { id: "providerRejected", description: "OpenAI conclusively rejected the response request.", optional: true },
-    { id: "uncertain", description: "A request may have created a response that cannot be confirmed: no response ID was observed or checkpointed, for example after HTTP 408 or 409, a 5xx other than 503, or a streamed error event, or the stored response cannot be read back. The Responses API documents no deduplication of create requests.", optional: true },
+    { id: "uncertain", description: "A request may have created a response that cannot be confirmed: the send cap was reached without a response ID observed or checkpointed, for example after HTTP 408 or 409, a 5xx other than 503, or a streamed error event; a resend was refused after an earlier possible create; or the stored response cannot be read back. The Responses API documents no deduplication of create requests.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
-  stepDefaults: { executeMethodTimeoutMs: 150000, executeDurability: "sync", executeRetry: { initialIntervalMs: 2000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 3, totalDurationMs: 300000 } },
+  stepDefaults: { executeMethodTimeoutMs: 150000, executeDurability: "sync", executeRetry: { initialIntervalMs: 2000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 8, totalDurationMs: 900000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for createResponse. */
 export const CreateResponseMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

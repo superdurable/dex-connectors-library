@@ -3,9 +3,10 @@
 
 import type { Client as PgClient, FieldDef, QueryResult } from 'pg';
 import Cursor from 'pg-cursor';
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import type { Column, ExecuteStatementInput, QueryRowsInput, RowSet, StatementExecution } from './generated/models.js';
-import { ExecuteStatementDefinition, QueryRowsDefinition } from './generated/definitions.js';
+import { ExecuteStatementDefinition, ExecuteStatementNonIdempotentDefinition, QueryRowsDefinition } from './generated/definitions.js';
 import type { PostgreSQLClient } from './client.js';
 import { classifyFailure, type ClassifiedFailure, type Phase } from './failures.js';
 
@@ -20,7 +21,7 @@ class UndecodableValueError extends Error {
 
 class StatementDescriptionError extends Error { constructor() { super('PostgreSQL statement description is invalid'); this.name = 'StatementDescriptionError'; } }
 
-function failure(operation: 'query' | 'execute', classified: ClassifiedFailure): Failure {
+function failure(operation: 'query' | 'execute' | 'executeNonIdempotent', classified: ClassifiedFailure): Failure {
   return { kind: classified.kind, provider: 'postgresql', operation, message: classified.message };
 }
 
@@ -287,46 +288,125 @@ export class ExecuteStatementOperation implements Mutation<ExecuteStatementInput
   /** Bind one configured client. */ constructor(private readonly client: PostgreSQLClient) {}
   /** Return the generated operation definition. */ definition() { return ExecuteStatementDefinition; }
   /** Use the stable Dex Call ID as the optional bound deduplication value. */ idempotencyKey(callId: string): string { return callId; }
-  /** Commit one bounded write; classify only a possibly received COMMIT as uncertain. */
+  /** Commit one repeat-safe bounded write; an unknown COMMIT outcome returns Retry, never uncertain. */
   async invoke(call: Call, input: ExecuteStatementInput): Promise<MutationAttempt<StatementExecution>> {
     let values: Array<string | null>;
-    try {
-      const parameters = [...(input.parameters ?? [])];
-      const placeholder = input.idempotencyKeyPlaceholder ?? 0;
-      if (placeholder !== 0 && placeholder !== parameters.length + 1) throw new TypeError('idempotencyKeyPlaceholder must be the last parameter');
-      if (placeholder) parameters.push(call.idempotencyKey ?? call.id);
-      values = validateStatement(input.statement, parameters);
-      if (input.maxRowsAffected !== undefined && (!Number.isSafeInteger(input.maxRowsAffected) || input.maxRowsAffected < 0)) throw new TypeError('maxRowsAffected cannot be negative');
-    } catch { return newMutationBranch('defect', emptyExecution(), zeroReceipt(), failure('execute', { disposition: 'defect', kind: 'VALIDATION', message: 'PostgreSQL statement or parameters are invalid' })); }
-    let connection: PgClient | null = null;
-    const deadlineController = new AbortController();
-    const deadline = setTimeout(() => deadlineController.abort(), this.client.configuration.connectTimeoutMs + this.client.configuration.statementTimeoutMs + 5000);
-    let phase: Phase = 'connect';
-    try {
-      connection = await this.client.connect(call, deadlineController.signal);
-      if (!connection) return newMutationBranch('defect', emptyExecution(), zeroReceipt(), failure('execute', { disposition: 'defect', kind: 'AUTHENTICATION', message: 'PostgreSQL connection credentials are unavailable' }));
-      phase = 'BEGIN';
-      await begin(connection, false, this.client.configuration.statementTimeoutMs);
-      phase = 'the statement';
-      const read = await readRows(connection, input.statement, values, this.client.configuration.maxRows, this.client.configuration.maxResponseBytes);
-      if (read.truncated) return newMutationBranch('limitExceeded', emptyExecution(), this.client.receipt(call, connection), failure('execute', { disposition: 'rejected', kind: 'RESPONSE_TOO_LARGE', message: 'RETURNING rows exceeded maxRows or maxResponseBytes, so the transaction was rolled back' }));
-      if (input.maxRowsAffected !== undefined && read.rowCount > input.maxRowsAffected) return newMutationBranch('limitExceeded', emptyExecution(), this.client.receipt(call, connection), failure('execute', { disposition: 'rejected', kind: 'CONFLICT', message: `the statement affected ${read.rowCount} rows but maxRowsAffected is ${input.maxRowsAffected}, so the transaction was rolled back` }));
-      phase = 'COMMIT';
-      const driverState = connection as PgClient & { _queryable?: boolean; _ending?: boolean };
-      if (driverState._queryable === false || driverState._ending === true) throw Object.assign(new Error('COMMIT not sent'), { name: 'CommitNotSentError' });
-      const committed = await connection.query('COMMIT');
-      if (committed.command !== 'COMMIT') return newMutationBranch('providerRejected', emptyExecution(), this.client.receipt(call, connection), failure('execute', { disposition: 'rejected', kind: 'PROVIDER_REJECTION', message: 'PostgreSQL rolled back the transaction at COMMIT' }));
-      return newMutationBranch('completed', { command: read.command, rowsAffected: read.rowCount, columns: read.columns, rows: read.rows }, this.client.receipt(call, connection));
-    } catch (error) {
-      const classified = classifyFailure(error, phase);
-      if (classified.disposition === 'retry') return newMutationRetry(failure('execute', classified));
-      if (classified.disposition === 'uncertain') return newMutationUncertain(emptyExecution(), failure('execute', classified), this.client.receipt(call, connection ?? undefined, classified));
-      const branch = classified.disposition === 'invalidResponse' ? 'invalidResponse' : classified.disposition === 'defect' ? 'defect' : 'providerRejected';
-      return newMutationBranch(branch, emptyExecution(), this.client.receipt(call, connection ?? undefined, classified), failure('execute', classified));
-    } finally {
-      // Closing is best effort: PostgreSQL rolls back any transaction that was not committed.
-      if (connection) await connection.end().catch(() => undefined);
-      clearTimeout(deadline);
-    }
+    try { values = bindExecuteValues(call, input); }
+    catch { return writeAttempt('execute', invalidInput(), zeroReceipt()); }
+    const outcome = await runWrite(this.client, call, input, values, commit);
+    if (!outcome.failure) return newMutationBranch('completed', outcome.value, outcome.receipt);
+    // The statement is repeat-safe, so an unknown COMMIT outcome runs it again.
+    const classified: ClassifiedFailure = outcome.failure.disposition === 'uncertain' ? { ...outcome.failure, disposition: 'retry' } : outcome.failure;
+    return writeAttempt('execute', classified, outcome.receipt);
   }
+}
+
+/** One transactional PostgreSQL write that must not run twice, committed at most once behind a single-dispatch fence. */
+export class ExecuteStatementNonIdempotentOperation implements Mutation<ExecuteStatementInput, StatementExecution> {
+  /** Bind one configured client. */ constructor(private readonly client: PostgreSQLClient) {}
+  /** Return the generated operation definition. */ definition() { return ExecuteStatementNonIdempotentDefinition; }
+  /** Use the stable Dex Call ID as the optional bound deduplication value. */ idempotencyKey(callId: string): string { return callId; }
+  /**
+   * Commit at most once; an unknown COMMIT outcome selects uncertain.
+   *
+   * A later attempt after a possibly sent COMMIT, or after a lost Worker, selects uncertain without
+   * connecting. A proven rollback returns Retry, and an unreadable checkpoint returns Retry without connecting.
+   */
+  async invoke(call: Call, input: ExecuteStatementInput): Promise<MutationAttempt<StatementExecution>> {
+    let values: Array<string | null>;
+    try { values = bindExecuteValues(call, input); }
+    catch { return writeAttempt('executeNonIdempotent', invalidInput(), zeroReceipt()); }
+    let fence: Fence;
+    try { fence = newFence(call, ExecuteStatementNonIdempotentDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { writeWindowFraction: nonIdempotentWriteWindow, maxSends: definitionMaxSends(ExecuteStatementNonIdempotentDefinition) }); }
+    catch { return writeAttempt('executeNonIdempotent', { disposition: 'defect', kind: 'LOCAL_DEFECT', message: 'PostgreSQL dispatch fence could not be constructed' }, zeroReceipt()); }
+    const decision = fence.decide();
+    if (decision.kind === 'failClosed') return newMutationRetry(failure('executeNonIdempotent', { disposition: 'retry', kind: 'AVAILABILITY', message: 'the dispatch checkpoint could not be read, so nothing was sent in this attempt' }));
+    if (decision.kind !== 'sendAllowed') return newMutationUncertain(emptyExecution(), failure('executeNonIdempotent', { disposition: 'uncertain', kind: 'TRANSPORT', message: 'an earlier attempt may have committed the statement, and executeNonIdempotent never runs it again' }), this.client.receipt(call));
+    // Overcounts when an earlier attempt proved its COMMIT unsent, which only costs a rejection branch.
+    const hasPossibleEarlierSend = (decision.priorSendUpperBound ?? 0) > 0;
+    const commitOnce = async (connection: PgClient): Promise<void> => {
+      try { await fence.dispatch(() => commit(connection)); }
+      catch (error) {
+        if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || error instanceof AggregateError) throw new CommitNotSentError();
+        throw error;
+      }
+    };
+    const outcome = await runWrite(this.client, call, input, values, commitOnce);
+    if (!outcome.failure) return newMutationBranch('completed', outcome.value, outcome.receipt);
+    let classified = outcome.failure;
+    if (!outcome.isCommitPhase) {
+      // A lost notSent checkpoint only makes the next attempt select uncertain, never send twice.
+      await fence.recordNotSent().catch(() => undefined);
+    } else if (classified.disposition !== 'uncertain') {
+      // PostgreSQL rolled the transaction back; a lost checkpoint only makes a later attempt uncertain.
+      await fence.recordCanResend().catch(() => undefined);
+    }
+    if (classified.disposition !== 'retry' && classified.disposition !== 'uncertain' && hasPossibleEarlierSend) classified = { ...classified, disposition: 'uncertain' };
+    return writeAttempt('executeNonIdempotent', classified, outcome.receipt);
+  }
+}
+
+/** Nothing is read back, so the request may use most of the attempt. */
+const nonIdempotentWriteWindow = 5 / 6;
+
+type WriteOperation = 'execute' | 'executeNonIdempotent';
+
+/** A committed write, or a failure and whether it happened at COMMIT. */
+interface WriteOutcome { failure?: ClassifiedFailure; receipt: ReceiptDraft; value: StatementExecution; isCommitPhase: boolean }
+
+class CommitNotSentError extends Error { constructor() { super('COMMIT not sent'); this.name = 'CommitNotSentError'; } }
+
+/** Run one statement in its own transaction and commit it through `commitTransaction`; failures before it commit nothing. */
+async function runWrite(client: PostgreSQLClient, call: Call, input: ExecuteStatementInput, values: Array<string | null>, commitTransaction: (connection: PgClient) => Promise<void>): Promise<WriteOutcome> {
+  let connection: PgClient | null = null;
+  const deadlineController = new AbortController();
+  const deadline = setTimeout(() => deadlineController.abort(), client.configuration.connectTimeoutMs + client.configuration.statementTimeoutMs + 5000);
+  let phase: Phase = 'connect';
+  try {
+    connection = await client.connect(call, deadlineController.signal);
+    if (!connection) return { failure: { disposition: 'defect', kind: 'AUTHENTICATION', message: 'PostgreSQL connection credentials are unavailable' }, receipt: zeroReceipt(), value: emptyExecution(), isCommitPhase: false };
+    phase = 'BEGIN';
+    await begin(connection, false, client.configuration.statementTimeoutMs);
+    phase = 'the statement';
+    const read = await readRows(connection, input.statement, values, client.configuration.maxRows, client.configuration.maxResponseBytes);
+    if (read.truncated) return { failure: { disposition: 'limitExceeded', kind: 'RESPONSE_TOO_LARGE', message: 'RETURNING rows exceeded maxRows or maxResponseBytes, so the transaction was rolled back' }, receipt: client.receipt(call, connection), value: emptyExecution(), isCommitPhase: false };
+    if (input.maxRowsAffected !== undefined && read.rowCount > input.maxRowsAffected) return { failure: { disposition: 'limitExceeded', kind: 'CONFLICT', message: `the statement affected ${read.rowCount} rows but maxRowsAffected is ${input.maxRowsAffected}, so the transaction was rolled back` }, receipt: client.receipt(call, connection), value: emptyExecution(), isCommitPhase: false };
+    const driverState = connection as PgClient & { _queryable?: boolean; _ending?: boolean };
+    if (driverState._queryable === false || driverState._ending === true) throw new CommitNotSentError();
+    phase = 'COMMIT';
+    await commitTransaction(connection);
+    return { receipt: client.receipt(call, connection), value: { command: read.command, rowsAffected: read.rowCount, columns: read.columns, rows: read.rows }, isCommitPhase: true };
+  } catch (error) {
+    const classified = classifyFailure(error, phase);
+    return { failure: classified, receipt: client.receipt(call, connection ?? undefined, classified), value: emptyExecution(), isCommitPhase: phase === 'COMMIT' };
+  } finally {
+    // Closing is best effort: PostgreSQL rolls back any transaction that was not committed.
+    if (connection) await connection.end().catch(() => undefined);
+    clearTimeout(deadline);
+  }
+}
+
+async function commit(connection: PgClient): Promise<void> {
+  const committed = await connection.query('COMMIT');
+  if (committed.command !== 'COMMIT') throw Object.assign(new Error('COMMIT rolled back'), { name: 'CommitRolledBackError' });
+}
+
+function bindExecuteValues(call: Call, input: ExecuteStatementInput): Array<string | null> {
+  const parameters = [...(input.parameters ?? [])];
+  const placeholder = input.idempotencyKeyPlaceholder ?? 0;
+  if (placeholder !== 0 && placeholder !== parameters.length + 1) throw new TypeError('idempotencyKeyPlaceholder must be the last parameter');
+  if (placeholder) parameters.push(call.idempotencyKey ?? call.id);
+  const values = validateStatement(input.statement, parameters);
+  if (input.maxRowsAffected !== undefined && (!Number.isSafeInteger(input.maxRowsAffected) || input.maxRowsAffected < 0)) throw new TypeError('maxRowsAffected cannot be negative');
+  return values;
+}
+
+function invalidInput(): ClassifiedFailure { return { disposition: 'defect', kind: 'VALIDATION', message: 'PostgreSQL statement or parameters are invalid' }; }
+
+/** Map a failure to an attempt; both write operations share their branch IDs. */
+function writeAttempt(operation: WriteOperation, classified: ClassifiedFailure, receipt: ReceiptDraft): MutationAttempt<StatementExecution> {
+  if (classified.disposition === 'retry') return newMutationRetry(failure(operation, classified));
+  if (classified.disposition === 'uncertain') return newMutationUncertain(emptyExecution(), failure(operation, classified), receipt);
+  const branch = classified.disposition === 'limitExceeded' ? 'limitExceeded' : classified.disposition === 'invalidResponse' ? 'invalidResponse' : classified.disposition === 'defect' ? 'defect' : 'providerRejected';
+  return newMutationBranch(branch, emptyExecution(), receipt, failure(operation, classified));
 }

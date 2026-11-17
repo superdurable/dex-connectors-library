@@ -1,8 +1,8 @@
 # QuickBooks Online Connector
 
-The [TypeScript package](typescript/) is versioned independently as `@superdurable/connector-intuit-quickbooks` v0.2.0 and implements all seven operations and the `invoiceChanged` poll Trigger at parity with Go, sharing Go's cursor documents byte for byte. Its [invoice lookup example](typescript/examples/get-invoice/) and [invoice change example](typescript/examples/invoice-changed/) run through a real Dex Worker and Client against local provider stand-ins, and its `invoiceChanged` fetcher replays Go-recorded polls. Live Intuit authorization, QuickBooks calls, and live invoice polling have not been verified for the TypeScript port.
+The [TypeScript package](typescript/) is versioned independently as `@superdurable/connector-intuit-quickbooks` v0.2.1 and implements all seven operations and the `invoiceChanged` poll Trigger at parity with Go, sharing Go's cursor documents byte for byte. Its [invoice lookup example](typescript/examples/get-invoice/) and [invoice change example](typescript/examples/invoice-changed/) run through a real Dex Worker and Client against local provider stand-ins, and its `invoiceChanged` fetcher replays Go-recorded polls. Live Intuit authorization, QuickBooks calls, and live invoice polling have not been verified for the TypeScript port.
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks/go@v0.25.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks/go@v0.25.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks`.
 
@@ -26,10 +26,12 @@ factories:
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
-uses async Execute durability and a 30-second Execute timeout. Reads and
-`createCustomer` use the one-hour default retry budget. `createInvoice`,
-`sendInvoice`, and `recordPayment` use six attempts within five minutes because
-QuickBooks does not document `requestid` retention or whether `/send` honors it.
+uses a 30-second Execute timeout. Reads use async Execute durability; the four
+writes use sync durability because each sends under a single-dispatch fence
+(`repeatOnUnknown: limited`, `maxSends: 3`). Reads and `createCustomer` use the
+one-hour default retry budget. `createInvoice`, `sendInvoice`, and
+`recordPayment` use six attempts within five minutes because QuickBooks does not
+document `requestid` retention or whether `/send` honors it.
 
 The `invoiceChanged` poll Trigger starts a Flow for each invoice created or
 changed in the company; see [invoiceChanged Trigger](#invoicechanged-trigger).
@@ -259,23 +261,32 @@ error, it can recognize and send the same response for the original request",
 for request IDs unique per company and at most 50 characters. All four
 mutations send the Step's stable Call ID, a 36-character UUID, as
 `requestid`, and their bodies are deterministic for one input, so every
-attempt of one Step execution, including Dex's async backup dispatch and a
-replay on a new Worker, sends the same request:
+attempt of one Step execution, including a replay on a new Worker, sends the
+same request. Because retention and `/send` replay remain unverified, each
+write also runs under the SDK single-dispatch fence, which records a Dex
+heartbeat claim with the possible send count of the Call ID before the request:
 
-- a lost response, a timeout, HTTP 429, 408, or 5xx, or a `SystemFault` is
-  retried with the identical request. QuickBooks may replay the first answer
-  while it retains the ID; retention and `/send` replay remain unverified;
-- error 600, Duplicate Request ID, is also retried. QuickBooks does not say
-  when it sends 600 rather than the replay; the connector treats it as a
-  repeat that arrived while the first request still ran, then retries under
-  the same ID;
+- HTTP 429, 503, and a request that provably never left the process, such as a
+  refused connection or a credential failure, are retried without counting the
+  send;
+- any other unknown outcome is resent with the identical request while the
+  possible sends stay below `maxSends` (3 unless the application sets the
+  factory's `MaxSends`), and selects `uncertain` at the cap: a lost response, a
+  timeout, HTTP 408, 409, 425, 501, another 5xx, a 3xx, an unlisted 4xx, a
+  `SystemFault`, and error 600, Duplicate Request ID, which QuickBooks sends
+  while the first request may still run;
 - an accepted 2xx whose body is interrupted, cannot be decoded, or names another customer,
-  invoice, or invoice application, is never resent. When the reply contains a
-  valid entity ID, the connector reads that customer, invoice, or payment by
-  ID and selects success only when the read-back matches the request.
-  `sendInvoice` reads the known invoice ID and requires `EmailSent`. An
-  inconclusive read-back selects `uncertain`; the request ID remains fixed
-  for failures whose acceptance is unknown.
+  invoice, or invoice application is read back. When the reply contains a valid
+  entity ID, the connector records it in the claim and reads that customer,
+  invoice, or payment by ID, and selects success only when the read-back
+  matches the request; every later attempt reads that ID back and never
+  resends. `sendInvoice` reads the known invoice ID and requires `EmailSent`.
+  An inconclusive read-back counts as an unknown outcome;
+- a definite refusal (HTTP 400, 401, 403, 404, 411, 413, 414, 415, 422, or a
+  validation Fault) selects its branch on a first send. After a possible
+  earlier send it selects `uncertain`, because the earlier send may have
+  written the entity that now conflicts. An unreadable checkpoint is retried
+  without a send.
 
 A new Step execution is a new logical write. Set `docNumber` to an
 application ID, such as an order ID, and look it up with `listInvoices`
@@ -372,18 +383,23 @@ and the first code is in the Receipt metadata `faultCode`.
 | 400 or 200 with Fault code 610 | `notFound` where declared, otherwise `providerRejected` with `NOT_FOUND` |
 | 400 with code 6240 | `nameConflict` for `createCustomer`, `CONFLICT` |
 | 400 with code 6140 | `providerRejected`, `CONFLICT` |
-| 400 with code 600 | Retry under the same requestid |
-| 409 | Retry under the same requestid |
+| 400 with code 600 | Retry under the same requestid; a write counts the send |
+| 409 | Retry under the same requestid; a write counts the send |
 | other 400 or 200 `ValidationFault` | `providerRejected`, `VALIDATION` |
-| `SystemFault` in a 200 or 400 | Retry |
+| `SystemFault` in a 200 or 400 | Retry; a write counts the send |
 | 401 | `providerRejected`, `AUTHENTICATION`, after one token refresh and resend only when the stored token has expired |
 | 403 | `providerRejected`, `AUTHORIZATION`; code 3100 names the missing scope |
 | 404 | `notFound` where declared, otherwise `providerRejected` |
-| 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed |
-| 429 | Retry after `Retry-After`, or 60 seconds |
-| 408, 500, 502, 503, 504, transport failure | Retry |
-| 501, other 4xx | `providerRejected` |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for a read; for a write, read back when possible, then `uncertain` if unconfirmed |
+| 3xx | `providerRejected`, `PROTOCOL`, for a read; an unknown outcome for a write; redirects are never followed |
+| 429 | Retry after `Retry-After`, or 60 seconds; a write does not count the send |
+| 503, refused connection | Retry; a write does not count the send |
+| 408, 500, 502, 504, transport failure after sending | Retry; a write counts the send |
+| 501, other 4xx | `providerRejected` for a read; an unknown outcome for a write |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for a read; for a write, read back when possible, then an unknown outcome if unconfirmed |
+
+A write's unknown outcome is resent while the possible sends stay below
+`maxSends`, and selects `uncertain` at the cap; a refusal after a possible
+earlier send also selects `uncertain`. See [Duplicate safety](#duplicate-safety).
 | `invalid_grant` or `invalid_client` at the token endpoint | `providerRejected`, `AUTHENTICATION` |
 | invalid input, or no known company | `defect`, with no request |
 
@@ -520,7 +536,7 @@ Secret; and the developer portal labels in the setup guidance.
 
 ## Python package
 
-`dex-connector-intuit-quickbooks` v0.2.0 implements `findCustomer`, `createCustomer`, `createInvoice`, `getInvoice`, `listInvoices`, `sendInvoice`, and `recordPayment`, and the `invoiceChanged` poll Trigger, with Dex Connector SDK 0.12.0 or newer. It uses the generated OAuth connection and refresh wiring from this manifest. Python application code imports `dex_connectors.intuit_quickbooks`; the [invoice lookup example](python/examples/get_invoice/) runs a Worker with the static connection name `quickbooks-invoice-reader` and wires only the `found` branch.
+`dex-connector-intuit-quickbooks` v0.2.1 implements `findCustomer`, `createCustomer`, `createInvoice`, `getInvoice`, `listInvoices`, `sendInvoice`, and `recordPayment`, and the `invoiceChanged` poll Trigger, with Dex Connector SDK 0.12.0 or newer. It uses the generated OAuth connection and refresh wiring from this manifest. Python application code imports `dex_connectors.intuit_quickbooks`; the [invoice lookup example](python/examples/get_invoice/) runs a Worker with the static connection name `quickbooks-invoice-reader` and wires only the `found` branch.
 
 The Python `invoiceChanged` Trigger runs on the Python SDK's durable poll Trigger kit at behavior parity with Go: the same queries, 30-second lookback window, `Id:SyncToken` versions, 1,000-version bound, tie paging, event IDs, `changeKind`, 429 pause, and reseed on a rejected cursor. Its cursor documents match Go's byte for byte, so Go and Python replicas share one binding. `new_project_invoice_trigger_runner` records each change in the binding's project Trigger inbox before the cursor commits, `new_invoice_trigger_runner` takes targets and cursor stores directly, and `new_invoice_changed_trigger` keeps the cursor in memory. The [invoice change example](python/examples/invoice_changed/) starts `QuickBooksInvoiceChangePython` once per invoice version through the `quickbooks-invoice-watcher` connection.
 

@@ -177,3 +177,23 @@ def test_bare_email_matches_go_mail_address_edges(address: str, accepted: bool) 
     from dex_connectors.xero.operations import _valid_bare_email
 
     assert _valid_bare_email(address) is accepted
+
+
+@pytest.mark.parametrize(
+    ("status", "kind"), [(409, "retry"), (501, "retry"), (307, "retry"), (400, "branch"), (422, "branch")]
+)
+def test_write_retries_a_status_that_does_not_prove_a_refusal(status: int, kind: str) -> None:
+    """Only a definite refusal status selects providerRejected; the Idempotency-Key makes a repeat safe."""
+    from dex_connectors.sdk import Failure
+
+    from dex_connectors.xero.client import Exchange
+    from dex_connectors.xero.operations import _mutation_outcome
+
+    client = Client(Config(), _FailedCredentials(ValueError()))
+    rejected = Exchange(
+        "rejected", status, error=Failure(FailureKind.PROVIDER_REJECTION, "xero", "createInvoice", "rejected")
+    )
+    attempt = _mutation_outcome(client, _call(), rejected, None)
+    assert attempt is not None and attempt.kind == kind
+    if kind == "branch":
+        assert attempt.branch == "providerRejected"

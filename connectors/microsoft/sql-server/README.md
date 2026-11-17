@@ -2,9 +2,9 @@
 
 ## TypeScript package
 
-`@superdurable/connector-microsoft-sql-server` v0.1.0 provides the `query` and `execute` operations with `mssql` over Tedious. Install it with `npm install @superdurable/connector-microsoft-sql-server`, then load the named Dex project connection with `newProjectConnection(project, ConnectionName)`. The runnable [query example](typescript/examples/query-rows/README.md) and [record-refund write example](typescript/examples/record-refund/README.md) show Workers, starters, and static connection names. See the [TypeScript package contract](typescript/README.md) for TLS roots, pinned session settings, and type limitations.
+`@superdurable/connector-microsoft-sql-server` v0.2.0 provides the `query`, `execute`, and `executeNonIdempotent` operations with `mssql` over Tedious. Install it with `npm install @superdurable/connector-microsoft-sql-server`, then load the named Dex project connection with `newProjectConnection(project, ConnectionName)`. The runnable [query example](typescript/examples/query-rows/README.md) and [record-refund write example](typescript/examples/record-refund/README.md) show Workers, starters, and static connection names. See the [TypeScript package contract](typescript/README.md) for TLS roots, pinned session settings, and type limitations.
 
-The TypeScript package uses the same manifest configuration fields and branches as Go. Use constant, parameterized SQL with `@p1` through `@pN`; bind user values in `parameters`. An `execute` statement must be idempotent across retries, and `idempotencyKeyPlaceholder` appends the stable Dex Call ID. Its `uncertain` branch means a failed COMMIT may have reached SQL Server. The TypeScript test suite checks SQL Server error-number classification; `test/integration.test.ts` needs the `SQLSERVER_CONNECTOR_TEST_*` variables and a disposable SQL Server database, and `test/dex.integration.test.ts` additionally needs a real `dexcli dev` Flow service address.
+The TypeScript package uses the same manifest configuration fields and branches as Go. Use constant, parameterized SQL with `@p1` through `@pN`; bind user values in `parameters`. An `execute` statement must be repeat-safe across retries, because a failed COMMIT that may have reached SQL Server returns Retry, and `idempotencyKeyPlaceholder` appends the stable Dex Call ID. A statement that must not run twice uses `executeNonIdempotent`, whose `uncertain` branch means a failed COMMIT may have reached SQL Server and is never sent again. The TypeScript test suite checks SQL Server error-number classification and both writes' COMMIT handling; `test/integration.test.ts` needs the `SQLSERVER_CONNECTOR_TEST_*` variables and a disposable SQL Server database, and `test/dex.integration.test.ts` additionally needs a real `dexcli dev` Flow service address.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server`.
 
@@ -14,13 +14,17 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/
 > is not verified.
 
 This module runs parameterized SQL against Microsoft SQL Server, Azure SQL Database, and Azure SQL
-Managed Instance from Dex Steps. It has two operations, the same two the PostgreSQL and MySQL
+Managed Instance from Dex Steps. It has three operations, the same three the PostgreSQL and MySQL
 connectors have:
 
 - `query` (`QueryRows`) runs one `SELECT` inside a transaction that the connector always rolls
   back, and returns bounded rows.
-- `execute` (`ExecuteStatement`) runs one `INSERT`, `UPDATE`, `DELETE`, or `MERGE` in its own
-  transaction, commits it, and returns the rows affected and any bounded `OUTPUT` rows.
+- `execute` (`ExecuteStatement`) runs one repeat-safe `INSERT`, `UPDATE`, `DELETE`, or `MERGE` in
+  its own transaction, commits it, and returns the rows affected and any bounded `OUTPUT` rows. It
+  is `repeatOnUnknown: safe`: a `COMMIT` with an unknown outcome runs the statement again.
+- `executeNonIdempotent` (`ExecuteStatementNonIdempotent`) runs a write that must not run twice,
+  such as adding to a balance, with the same input and Result. It is `repeatOnUnknown: unsafe`: it
+  commits at most once and selects `uncertain` when a `COMMIT` outcome is unknown.
 
 The connector is built on Microsoft's pure-Go `github.com/microsoft/go-mssqldb` driver, pinned at
 v1.9.7, and uses it below `database/sql` so that it owns the transaction and the read bounds. v1.9.7
@@ -31,8 +35,8 @@ Step.
 
 ## Python package
 
-The [Python package](python/README.md) adds native `query` and `execute` operations at
-`v0.1.0`, with a [runnable refund Flow](python/examples/record_refund/flow.py).
+The [Python package](python/README.md) adds native `query`, `execute`, and `executeNonIdempotent`
+operations at `v0.2.0`, with a [runnable refund Flow](python/examples/record_refund/flow.py).
 Its default `mandatory` TLS mode verifies a server certificate. Python currently rejects
 `strict` and `trust-server-certificate` before connecting because its native driver lacks
 per-connection support for those modes; the Go connector continues to support them.
@@ -271,9 +275,14 @@ rolls the transaction back.
 | `completed` | The server acknowledged `COMMIT` |
 | `limitExceeded` | `MaxRowsAffected`, `maxRows`, or `maxResponseBytes` was exceeded; nothing was written |
 | `providerRejected` | A duplicate key or constraint violation, which names its constraint or index, or a syntax, data, permission, or connection rejection, `statementTimeout`, or a `COMMIT` the server reports it never began (error 3902); nothing was written |
-| `uncertain` | The connection failed after `COMMIT` was sent, or the server reported any other error while committing |
+| `uncertain` | Never selected by `execute`; declared for identity stability. `executeNonIdempotent` selects it as described below |
 | `invalidResponse` | An `OUTPUT` value that does not match its type, or a reply the driver cannot decode; nothing was written |
 | `defect` | Invalid input, including an `IdempotencyKeyPlaceholder` that is not the last placeholder, or `ReturnsOutputRows` on a statement that returned no result set |
+
+`executeNonIdempotent` declares the same branches and runs the same transaction. Its `uncertain`
+branch is selected when the connection failed after `COMMIT` was sent, when the server reported
+any error other than 1205, 3902, or 3903 while committing, or on a later attempt of a Step
+execution whose earlier attempt may have sent `COMMIT`.
 
 Only a happy path is required. Every other branch is optional, and an unwired optional branch fails
 the Flow.
@@ -290,7 +299,7 @@ that sum under the Step's Execute timeout.
 
 ## Retries, uncertainty, and idempotency
 
-Both operations return Retry, which Dex retries with the Step's one-hour default retry budget, for connection refusal and connect timeouts, a connection lost before `COMMIT` was sent,
+Every operation returns Retry, which Dex retries with the Step's one-hour default retry budget, for connection refusal and connect timeouts, a connection lost before `COMMIT` was sent,
 deadlocks (1205), lock timeouts (1222), snapshot update conflicts (3960, 3961), resource and
 availability errors (701, 1101, 1105, 6005, 8628, 8645, 8651, 9002, 10922), the Azure SQL transient
 errors Microsoft lists (615, 926, 4221, 10928, 10929, 10936, 40197, 40501, 40613, 49918, 49919,
@@ -300,8 +309,18 @@ which ends the connection.
 The server rolls back an open transaction when its connection ends, so a write that fails before
 `COMMIT` left nothing behind and is safe to retry. The connector counts the bytes it writes below
 TLS, so a `COMMIT` that never left the client is also retried. A connection lost after `COMMIT` was
-sent is different: the server may have committed. The connector selects `uncertain` instead of
-retrying, and the Result's `Receipt.IdempotencyKey` tells the application which write to look for.
+sent is different: the server may have committed. `execute` returns Retry for this unknown outcome
+too, so Dex runs the statement again with the same idempotency key until the retry budget runs
+out; it never selects `uncertain`.
+
+`executeNonIdempotent` instead guards `COMMIT` with the shared single-dispatch fence
+(`sdkgo/singledispatch`, with sync durability). Before `COMMIT` it records a claim in the Step
+heartbeat. After an unknown outcome it selects `uncertain`, and a later attempt that finds the
+claim, or no checkpoint after a lost Worker, selects `uncertain` without connecting. Only a proven
+rollback, such as a `COMMIT` that sent no bytes or a deadlock victim, records that nothing was
+committed and returns Retry. An unreadable checkpoint returns Retry without connecting. The server
+has no generic read-back for an arbitrary statement, so the application reconciles `uncertain`
+itself; the Result's `Receipt.IdempotencyKey` identifies the Step execution.
 
 Dex can run `execute` more than once for one Step execution after a Worker is lost mid-call.
 The example's integration test holds the commit acknowledgement after the first
@@ -316,7 +335,8 @@ existence check's key range locked until `COMMIT`, so a second dispatch waits fo
 then inserts nothing. The key covers one Step execution; add a business unique key, such as one
 refund per order, to deduplicate across Flows. `execute` keeps the repository's async default,
 because most statements finish in milliseconds, and sync durability would not remove the need for
-idempotency: a Worker lost after `COMMIT` still runs the Step execution again.
+idempotency: a Worker lost after `COMMIT` still runs the Step execution again. Run a statement that
+is not repeat-safe, such as `UPDATE ... SET total = total + @p1`, with `executeNonIdempotent`.
 
 The runnable example's write, from
 [`examples/record-refund/flow/workflow.go`](go/examples/record-refund/flow/workflow.go):
@@ -339,10 +359,11 @@ return sqlserver.ExecuteStatementInput{
 }
 ```
 
-Both `completed` and `uncertain` go to `CompleteRefundRecording`, which completes with the `OUTPUT`
-row, or reads the row back by the key and the order when the insert was uncertain or inserted
-nothing. When the read-back finds no row, the example fails the Flow for review instead of
-inserting again.
+`completed` goes to `CompleteRefundRecording`, which records the `OUTPUT` row, or reads the row back
+by the key and the order when the insert inserted nothing. When the read-back finds no row, the
+example fails the Flow for review instead of inserting again. A new refund is then added to a daily
+total with `executeNonIdempotent`, because the `MERGE` that adds it must not run twice; only
+`completed` is wired, so an `uncertain` daily total fails the Flow for review.
 
 ## Error mapping
 
@@ -393,8 +414,9 @@ and is treated as an authentication rejection. Any other error is `providerRejec
 ## Runnable example
 
 [`examples/record-refund`](go/examples/record-refund/README.md) records one refund in a ledger at most
-once. It uses `query` for the duplicate check and the read-back, and `execute` for the idempotent
-`INSERT ... OUTPUT`, and reconciles an uncertain `COMMIT`.
+once. It uses `query` for the duplicate check and the read-back, `execute` for the idempotent
+`INSERT ... OUTPUT`, which it retries after an unknown `COMMIT`, and `executeNonIdempotent` to add
+the refund to a daily total once.
 
 ## Verification
 
@@ -433,8 +455,8 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=live ./... -cou
 
 ## TypeScript package
 
-The [TypeScript package](typescript/README.md) implements `query` and `execute` with the
-same operation and branch identities as Go. Its runnable Dex query Flow is under
+The [TypeScript package](typescript/README.md) implements `query`, `execute`, and
+`executeNonIdempotent` with the same operation and branch identities as Go. Its runnable Dex query Flow is under
 [`typescript/examples/query-rows`](typescript/examples/query-rows/README.md).
 
 ## Limitations
@@ -466,7 +488,7 @@ same operation and branch identities as Go. Its runnable Dex query Flow is under
 
 ## Mocks
 
-The `sqlservermock` default provides a committed refund row for order `88213` and a successful insert with one `OUTPUT` row. The named `raceLost` case returns six columns with zero rows after another Flow won the race. Named `rowLimit`, `missingTable`, and `duplicateKey` cases cover definite limits and rejections. The [record refund example](go/examples/record-refund/flow/workflow_mock_integration_test.go) scripts an empty first query with six columns and checks both the race-lost read-back and the default successful insert against a real Dex Worker.
+The `sqlservermock` default provides a committed refund row for order `88213` and a successful insert with one `OUTPUT` row. The named `raceLost` case returns six columns with zero rows after another Flow won the race. Named `rowLimit`, `missingTable`, and `duplicateKey` cases cover definite limits and rejections. The executeNonIdempotent default adds that refund to the daily total, and `missingDailyTotalTable` covers its rejection. The [record refund example](go/examples/record-refund/flow/workflow_mock_integration_test.go) scripts an empty first query with six columns and checks both the race-lost read-back and the default successful insert against a real Dex Worker.
 
 ```go
 mock := sqlservermock.New(t, ConnectionName)
@@ -479,4 +501,4 @@ mock.ExecuteStatement().Respond(sqlservermock.ExecuteStatementRaceLost())
 harness := startTestWorkerWithConnection(t, mock.Connection())
 ```
 
-Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/go@v0.23.0`.
+Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/go@v0.24.0`.

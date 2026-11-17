@@ -16,6 +16,7 @@ from typing import Any
 from dex_connectors.sdk import (
     Call,
     CallID,
+    Failure,
     FailureKind,
     IdempotencyKey,
     MutationAttempt,
@@ -23,6 +24,14 @@ from dex_connectors.sdk import (
     QueryAttempt,
     QueryDefinition,
     Receipt,
+)
+from dex_connectors.sdk.singledispatch import (
+    CheckpointError,
+    Decision,
+    DecisionKind,
+    DispatchNotAllowedError,
+    Fence,
+    InsufficientAttemptTimeError,
 )
 
 from ._generated.definitions import (
@@ -49,8 +58,11 @@ from .models import (
 
 
 @dataclass(frozen=True, slots=True)
-class _SendDispatchMarker:
+class _LegacySendDispatchMarker:
+    """Checkpoint that releases before 0.2.1 recorded before a send."""
+
     dispatched_call_id: CallID = field(metadata={"dex_json_name": "mailchimpDispatchedCallId"})
+
 
 _RESOURCE_ID = re.compile(r"[A-Za-z0-9]{1,64}\Z")
 _SUBSCRIBER_HASH = re.compile(r"[0-9a-f]{32}\Z")
@@ -98,6 +110,8 @@ _CAMPAIGN_FIELDS = ",".join(
         "recipients.recipient_count",
     )
 )
+# Statuses that prove a write was refused; 409, 3xx, and other statuses are unknown.
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
 _WRITABLE_STATUSES = frozenset(("subscribed", "pending", "unsubscribed", "transactional"))
 _READABLE_STATUSES = _WRITABLE_STATUSES | {"cleaned", "archived"}
 
@@ -109,11 +123,7 @@ def _resource_id(name: str, value: str) -> None:
 
 def _member_address(list_id: str, email_address: str) -> None:
     _resource_id("listId", list_id)
-    if (
-        not email_address
-        or len(email_address.encode()) > 254
-        or not _BARE_ADDRESS.fullmatch(email_address)
-    ):
+    if not email_address or len(email_address.encode()) > 254 or not _BARE_ADDRESS.fullmatch(email_address):
         raise ValueError("emailAddress must be one bare email address such as jane@example.com")
     domain = email_address.rsplit("@", 1)[1]
     if domain.startswith("["):
@@ -264,6 +274,13 @@ def _query_exchange(
     return QueryAttempt.branch_result(branch, empty, receipt, exchange.failure)
 
 
+def _is_outcome_unknown_after_dispatch(exchange: Exchange) -> bool:
+    """Report an outcome that does not prove Mailchimp refused or skipped a write."""
+    if exchange.outcome in ("rateLimited", "notSent", "unavailable", "invalid"):
+        return True
+    return exchange.outcome == "rejected" and exchange.status not in _DEFINITE_REFUSAL_STATUSES
+
+
 def _mutation_exchange(
     exchange: Exchange,
     receipt: Receipt,
@@ -273,7 +290,8 @@ def _mutation_exchange(
 ) -> MutationAttempt[Any] | None:
     if exchange.outcome == "succeeded":
         return None
-    if exchange.outcome in ("rateLimited", "notSent", "unavailable"):
+    # A status that is not a definite refusal is retried; an unusable 2xx keeps invalidResponse.
+    if exchange.outcome != "invalid" and _is_outcome_unknown_after_dispatch(exchange):
         assert exchange.failure is not None
         return MutationAttempt.retry(exchange.failure, exchange.retry_after)
     branch = (
@@ -594,7 +612,7 @@ class UpdateMemberTagsOperation:
 
 
 class SendCampaignOperation:
-    """Read a campaign and send it once behind a Dex heartbeat checkpoint."""
+    """Read a campaign and send a draft under a single-dispatch fence capped by maxSends."""
 
     def __init__(self, client: Client) -> None:
         self._client = client
@@ -608,7 +626,7 @@ class SendCampaignOperation:
         return IdempotencyKey(str(call_id))
 
     async def invoke(self, call: Call, input: SendCampaignInput) -> MutationAttempt[SendCampaignOutput]:
-        """Read, checkpoint, and at most once dispatch an approved draft."""
+        """Read the campaign, then send a draft; resend an unknown outcome only below the cap."""
         empty = SendCampaignOutput(Campaign(status=""))
         try:
             _resource_id("campaignId", input.campaign_id)
@@ -618,65 +636,104 @@ class SendCampaignOperation:
             return MutationAttempt.branch_result(
                 "defect", empty, Receipt(), failure(FailureKind.VALIDATION, "sendCampaign", str(error))
             )
-        connection = await self._client.resolve_credentials(call, "sendCampaign")
+        if _has_legacy_dispatch(call):
+            return await _read_back_without_send(
+                self._client, call, input, "an earlier attempt of this Step may have sent the campaign"
+            )
+        try:
+            fence = Fence(
+                call,
+                SEND_CAMPAIGN_DEFINITION.step_defaults.execute_method_timeout,
+                max_sends=call.max_sends,
+            )
+            decision = await fence.decide()
+        except ValueError:
+            return MutationAttempt.branch_result(
+                "defect",
+                empty,
+                Receipt(),
+                failure(
+                    FailureKind.LOCAL_DEFECT,
+                    "sendCampaign",
+                    "the Mailchimp dispatch fence could not be constructed",
+                ),
+            )
+        if decision.kind == DecisionKind.FAIL_CLOSED:
+            return MutationAttempt.retry(
+                failure(
+                    FailureKind.AVAILABILITY,
+                    "sendCampaign",
+                    "the dispatch checkpoint could not be read; nothing was sent in this attempt",
+                )
+            )
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+            return await _read_back_without_send(self._client, call, input, "the send cap is reached")
+        attempt = _SendCampaignAttempt(self._client, call, input, fence, decision)
+        return await attempt.read_then_send()
+
+
+class _SendCampaignAttempt:
+    """One fenced sendCampaign attempt after the Fence decided it may send."""
+
+    def __init__(
+        self, client: Client, call: Call, input: SendCampaignInput, fence: Fence, decision: Decision
+    ) -> None:
+        self._client = client
+        self._call = call
+        self._input = input
+        self._fence = fence
+        self._decision = decision
+        # False when this attempt's send is the last one the cap allows.
+        self._can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
+        # A refusal or a changed campaign cannot prove nothing was sent.
+        self._has_possible_earlier_send = decision.prior_send_upper_bound > 0
+
+    async def read_then_send(self) -> MutationAttempt[SendCampaignOutput]:
+        """Read the campaign, which is also the read-back of an earlier send, and send a draft."""
+        empty = SendCampaignOutput(Campaign(status=""))
+        connection = await self._client.resolve_credentials(self._call, "sendCampaign")
         if not isinstance(connection, tuple):
+            if self._has_possible_earlier_send:
+                return MutationAttempt.uncertain(
+                    empty,
+                    failure(
+                        FailureKind.AUTHENTICATION,
+                        "sendCampaign",
+                        "an earlier attempt may have sent the campaign, and the connection credentials "
+                        "are unavailable to read it; reconnect the connection",
+                    ),
+                    Receipt(),
+                )
             return MutationAttempt.branch_result("defect", empty, Receipt(), connection)
-        context = call.context
-        earlier_dispatch = False
-        if context is not None:
-            try:
-                if context.has_last_heartbeat_value():
-                    context.get_last_heartbeat_value(_SendDispatchMarker)
-                    earlier_dispatch = True
-            except Exception:
-                earlier_dispatch = True
         exchange = await self._client.exchange(
-            call,
+            self._call,
             "sendCampaign",
             connection,
             "GET",
-            f"/campaigns/{input.campaign_id}",
+            f"/campaigns/{self._input.campaign_id}",
             query={"fields": _CAMPAIGN_FIELDS},
         )
-        receipt = self._client.receipt(call, exchange, input.campaign_id)
-        if earlier_dispatch:
-            try:
-                campaign = _decode_campaign(exchange.body, input.campaign_id)
-                if exchange.outcome == "succeeded":
-                    output = SendCampaignOutput(campaign)
-                    if campaign.status in ("sending", "sent"):
-                        return MutationAttempt.branch_result("alreadySent", output, receipt)
-                    return MutationAttempt.uncertain(
-                        output,
-                        failure(
-                            FailureKind.TRANSPORT,
-                            "sendCampaign",
-                            "an earlier attempt may have sent the campaign; it is not sent again",
-                        ),
-                        receipt,
-                    )
-            except (ValueError, TypeError, KeyError):
-                pass
-            return MutationAttempt.uncertain(
-                empty,
-                failure(
-                    FailureKind.TRANSPORT,
-                    "sendCampaign",
-                    "an earlier attempt may have sent the campaign and its status could not be read",
-                ),
-                receipt,
+        receipt = self._client.receipt(self._call, exchange, self._input.campaign_id)
+        if exchange.outcome in ("rateLimited", "notSent", "unavailable"):
+            assert exchange.failure is not None
+            return await self._retry_before_send(exchange.failure, exchange.retry_after)
+        if exchange.outcome != "succeeded":
+            assert exchange.failure is not None
+            return self._refuse_or_select_uncertain(
+                _campaign_read_branch(exchange.outcome), empty, exchange.failure, receipt
             )
-        terminal = _mutation_exchange(exchange, receipt, empty)
-        if terminal is not None:
-            return terminal
         try:
-            campaign = _decode_campaign(exchange.body, input.campaign_id)
+            campaign = _decode_campaign(exchange.body, self._input.campaign_id)
         except (ValueError, TypeError, KeyError):
-            return MutationAttempt.branch_result(
+            return self._refuse_or_select_uncertain(
                 "invalidResponse",
                 empty,
+                failure(
+                    FailureKind.PROTOCOL,
+                    "sendCampaign",
+                    "Mailchimp returned an invalid campaign, so it was not sent",
+                ),
                 receipt,
-                failure(FailureKind.PROTOCOL, "sendCampaign", "Mailchimp returned an invalid campaign"),
             )
         output = SendCampaignOutput(campaign)
         if campaign.status in ("sending", "sent"):
@@ -684,52 +741,208 @@ class SendCampaignOperation:
         if (
             campaign.status != "save"
             or campaign.type not in ("regular", "plaintext", "absplit", "variate")
-            or (input.expected_list_id and campaign.list_id != input.expected_list_id)
+            or (self._input.expected_list_id and campaign.list_id != self._input.expected_list_id)
         ):
-            return MutationAttempt.branch_result(
+            # A campaign canceled or changed after a possible earlier send may have partly sent.
+            return self._refuse_or_select_uncertain(
                 "notSendable",
                 output,
-                receipt,
                 failure(
-                    FailureKind.CONFLICT, "sendCampaign", "the campaign is not sendable; nothing was sent"
+                    FailureKind.CONFLICT,
+                    "sendCampaign",
+                    "the campaign is not sendable; nothing was sent in this attempt",
+                ),
+                receipt,
+            )
+        return await self._send(connection, output)
+
+    async def _send(
+        self, connection: tuple[str, str], output: SendCampaignOutput
+    ) -> MutationAttempt[SendCampaignOutput]:
+        try:
+            sent = await self._fence.dispatch(
+                lambda _deadline: self._client.exchange(
+                    self._call,
+                    "sendCampaign",
+                    connection,
+                    "POST",
+                    f"/campaigns/{self._input.campaign_id}/actions/send",
+                )
+            )
+        except CheckpointError:
+            return MutationAttempt.retry(
+                failure(
+                    FailureKind.AVAILABILITY,
+                    "sendCampaign",
+                    "Dex did not record the dispatch checkpoint; nothing was sent in this attempt",
+                )
+            )
+        except (InsufficientAttemptTimeError, DispatchNotAllowedError):
+            return MutationAttempt.retry(
+                failure(
+                    FailureKind.AVAILABILITY,
+                    "sendCampaign",
+                    "too little of the Step deadline remained to send; nothing was sent in this attempt",
+                )
+            )
+        except TimeoutError:
+            sent = Exchange(
+                "unavailable",
+                failure(
+                    FailureKind.TRANSPORT,
+                    "sendCampaign",
+                    "Mailchimp request failed before a response arrived",
                 ),
             )
-        if context is None:
-            return MutationAttempt.retry(
-                failure(
-                    FailureKind.AVAILABILITY,
-                    "sendCampaign",
-                    "Dex did not record the dispatch checkpoint; nothing was sent",
+        receipt = self._client.receipt(self._call, sent, self._input.campaign_id)
+        if sent.outcome == "succeeded":
+            return MutationAttempt.branch_result("sent", output, receipt)
+        assert sent.failure is not None
+        if sent.outcome in ("rateLimited", "notSent") or (
+            sent.outcome == "unavailable" and sent.status == 503
+        ):
+            try:
+                await self._fence.record_can_resend()
+            except Exception:
+                return MutationAttempt.retry(
+                    failure(
+                        FailureKind.AVAILABILITY,
+                        "sendCampaign",
+                        "the Mailchimp retry checkpoint could not be recorded",
+                    )
                 )
+            return MutationAttempt.retry(sent.failure, sent.retry_after)
+        if _is_outcome_unknown_after_dispatch(sent):
+            if self._can_resend_unknown_outcome:
+                # The claim stays the last marker, so the next attempt counts this send and reads first.
+                return MutationAttempt.retry(sent.failure, sent.retry_after)
+            return MutationAttempt.uncertain(output, sent.failure, receipt)
+        if self._has_possible_earlier_send:
+            # A refused resend usually means an earlier send landed, so the campaign is read instead.
+            return await _read_back_without_send(
+                self._client,
+                self._call,
+                self._input,
+                "Mailchimp refused a resend after a possible earlier send",
             )
         try:
-            await context.heartbeat(_SendDispatchMarker(call.id))
+            await self._fence.record_can_resend()
         except Exception:
-            return MutationAttempt.retry(
-                failure(
-                    FailureKind.AVAILABILITY,
-                    "sendCampaign",
-                    "Dex did not record the dispatch checkpoint; nothing was sent",
-                )
-            )
-        sent = await self._client.exchange(
-            call, "sendCampaign", connection, "POST", f"/campaigns/{input.campaign_id}/actions/send"
-        )
-        send_receipt = self._client.receipt(call, sent, input.campaign_id)
-        if sent.outcome == "succeeded":
-            return MutationAttempt.branch_result("sent", output, send_receipt)
-        if sent.outcome in ("rateLimited", "notSent"):
+            pass  # The refusal proves nothing was sent; a lost checkpoint only makes a replay read first.
+        branch = {"notFound": "notFound", "defect": "defect"}.get(sent.outcome, "providerRejected")
+        return MutationAttempt.branch_result(branch, output, receipt, sent.failure)
+
+    async def _retry_before_send(
+        self, retry_failure: Failure, retry_after: float
+    ) -> MutationAttempt[SendCampaignOutput]:
+        """Record notSent before a pre-send Retry so the next attempt does not count a send."""
+        if self._decision.kind == DecisionKind.SEND_ALLOWED:
+            # After READ_BACK_THEN_RESEND_ALLOWED, notSent would hide the earlier possible send.
             try:
-                await context.heartbeat()
+                await self._fence.record_not_sent()
             except Exception:
-                pass  # A retained claim fails closed on the next attempt.
-            assert sent.failure is not None
-            return MutationAttempt.retry(sent.failure, sent.retry_after)
-        if sent.outcome in ("unavailable", "invalid"):
-            assert sent.failure is not None
-            return MutationAttempt.uncertain(output, sent.failure, send_receipt)
-        if sent.outcome == "notFound":
-            return MutationAttempt.branch_result("notFound", output, send_receipt, sent.failure)
-        if sent.outcome == "defect":
-            return MutationAttempt.branch_result("defect", output, send_receipt, sent.failure)
-        return MutationAttempt.branch_result("providerRejected", output, send_receipt, sent.failure)
+                return MutationAttempt.retry(
+                    failure(
+                        FailureKind.AVAILABILITY,
+                        "sendCampaign",
+                        "the no-send checkpoint could not be recorded; nothing was sent in this attempt",
+                    )
+                )
+        return MutationAttempt.retry(retry_failure, retry_after)
+
+    def _refuse_or_select_uncertain(
+        self, branch: str, output: SendCampaignOutput, refusal: Failure, receipt: Receipt
+    ) -> MutationAttempt[SendCampaignOutput]:
+        """Select branch only when no earlier attempt may have sent the campaign."""
+        if self._has_possible_earlier_send:
+            return MutationAttempt.uncertain(
+                output,
+                failure(
+                    refusal.kind,
+                    "sendCampaign",
+                    "an earlier attempt may have sent the campaign and Mailchimp does not show it "
+                    "sending or sent: " + refusal.message,
+                ),
+                receipt,
+            )
+        return MutationAttempt.branch_result(branch, output, receipt, refusal)
+
+
+def _has_legacy_dispatch(call: Call) -> bool:
+    """Report a pre-fence checkpoint of this call; such a Step execution never sends again."""
+    context = call.context
+    if context is None:
+        return False
+    try:
+        if not context.has_last_heartbeat_value():
+            return False
+        marker = context.get_last_heartbeat_value(_LegacySendDispatchMarker)
+    except Exception:
+        return False  # Not a pre-fence checkpoint; the Fence judges it.
+    return isinstance(marker, _LegacySendDispatchMarker) and marker.dispatched_call_id == call.id
+
+
+async def _read_back_without_send(
+    client: Client, call: Call, input: SendCampaignInput, reason: str
+) -> MutationAttempt[SendCampaignOutput]:
+    """Never send; report alreadySent only when Mailchimp shows the campaign sending or sent."""
+    empty = SendCampaignOutput(Campaign(status=""))
+    connection = await client.resolve_credentials(call, "sendCampaign")
+    if not isinstance(connection, tuple):
+        return MutationAttempt.uncertain(
+            empty,
+            failure(
+                FailureKind.AUTHENTICATION,
+                "sendCampaign",
+                reason + ", and the connection credentials are unavailable to read the campaign; "
+                "reconnect the connection",
+            ),
+            Receipt(),
+        )
+    exchange = await client.exchange(
+        call,
+        "sendCampaign",
+        connection,
+        "GET",
+        f"/campaigns/{input.campaign_id}",
+        query={"fields": _CAMPAIGN_FIELDS},
+    )
+    receipt = client.receipt(call, exchange, input.campaign_id)
+    if exchange.outcome in ("rateLimited", "notSent", "unavailable"):
+        # Reading is harmless to repeat, and a retry of this path never sends.
+        assert exchange.failure is not None
+        return MutationAttempt.retry(exchange.failure, exchange.retry_after)
+    if exchange.outcome == "succeeded":
+        try:
+            campaign = _decode_campaign(exchange.body, input.campaign_id)
+        except (ValueError, TypeError, KeyError):
+            pass  # An undecodable campaign cannot confirm the earlier send.
+        else:
+            output = SendCampaignOutput(campaign)
+            if campaign.status in ("sending", "sent"):
+                return MutationAttempt.branch_result("alreadySent", output, receipt)
+            return MutationAttempt.uncertain(
+                output,
+                failure(
+                    FailureKind.TRANSPORT,
+                    "sendCampaign",
+                    reason + " and Mailchimp does not show it sending or sent, so it is not sent again",
+                ),
+                receipt,
+            )
+    return MutationAttempt.uncertain(
+        empty,
+        failure(
+            FailureKind.TRANSPORT,
+            "sendCampaign",
+            reason + " and its status could not be read, so it is not sent again",
+        ),
+        receipt,
+    )
+
+
+def _campaign_read_branch(outcome: str) -> str:
+    """Map a definite read failure before a send; nothing was sent by this attempt."""
+    return {"notFound": "notFound", "invalid": "invalidResponse", "defect": "defect"}.get(
+        outcome, "providerRejected"
+    )
