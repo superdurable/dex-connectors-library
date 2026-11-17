@@ -1761,7 +1761,7 @@
       "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"category\":\"CONFLICT\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -1813,7 +1813,7 @@
       "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"status\":\"COMPLETE\",\"results\":[],\"numErrors\":1,\"errors\":[{\"status\":\"409\",\"category\":\"CONFLICT\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1841,10 +1841,10 @@
               "application/json"
             ]
           },
-          "status": 409
+          "status": 207
         },
         {
-          "body": "{}",
+          "body": "{\"status\":\"COMPLETE\",\"results\":[],\"numErrors\":1,\"errors\":[{\"status\":\"409\",\"category\":\"CONFLICT\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1872,7 +1872,7 @@
               "application/json"
             ]
           },
-          "status": 409
+          "status": 207
         }
       ],
       "expected": {
@@ -1972,7 +1972,7 @@
       "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"category\":\"CONFLICT\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",

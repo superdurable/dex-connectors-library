@@ -316,6 +316,23 @@ async def test_upsert_maps_404_to_provider_rejected() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("status", [409, 501, 302, 418])
+async def test_writes_retry_a_status_that_does_not_prove_a_refusal(status: int) -> None:
+    with pytest.raises(RetryError):
+        await run_mutation(
+            make_client(fixed(httpx.Response(status))).update_records(),
+            call_for(UPDATE_RECORDS_DEFINITION),
+            UpdateRecordsInput(BASE, "Policies", (RecordUpdate(RECORD_ID, {"a": 1}),)),
+        )
+    with pytest.raises(RetryError):
+        await run_mutation(
+            make_client(fixed(httpx.Response(status))).upsert_records(),
+            call_for(UPSERT_RECORDS_DEFINITION),
+            UpsertRecordsInput(BASE, "Log", ("a",), (RecordUpsert({"a": 1}),)),
+        )
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("status", "kind"),
     [

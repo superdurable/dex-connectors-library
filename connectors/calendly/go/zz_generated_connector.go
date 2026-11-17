@@ -594,7 +594,7 @@ var CancelScheduledEventDefinition = sdkgo.MutationDefinition{
 		{ID: CancelScheduledEventBranchCanceled, Description: "The scheduled event is canceled, by this call or earlier; alreadyCanceled tells which."},
 		{ID: CancelScheduledEventBranchNotFound, Description: "The scheduled event does not exist or is not visible to the token.", Optional: true},
 		{ID: CancelScheduledEventBranchProviderRejected, Description: "Calendly refused to cancel an active event, such as one that already started or one the token may not cancel.", Optional: true},
-		{ID: CancelScheduledEventBranchInvalidResponse, Description: "Calendly returned a malformed or oversized response.", Optional: true},
+		{ID: CancelScheduledEventBranchInvalidResponse, Description: "Calendly returned a malformed or oversized scheduled event when the connector read it back after a 403.", Optional: true},
 		{ID: CancelScheduledEventBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -602,6 +602,7 @@ var CancelScheduledEventDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type CancelScheduledEventResult = sdkgo.MutationResult[ScheduledEventCancellation]
@@ -670,8 +671,8 @@ var CreateSchedulingLinkDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createSchedulingLink"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateSchedulingLinkBranchCreated, Description: "Calendly created the single-use scheduling link."},
-		{ID: CreateSchedulingLinkBranchProviderRejected, Description: "Calendly conclusively rejected the request, such as an event type the token cannot use.", Optional: true},
-		{ID: CreateSchedulingLinkBranchUncertain, Description: "The request was sent but Calendly's answer was lost, a server error, or unreadable, so a link may exist that this Result does not name.", Optional: true},
+		{ID: CreateSchedulingLinkBranchProviderRejected, Description: "Calendly conclusively rejected the first send with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an event type the token cannot use.", Optional: true},
+		{ID: CreateSchedulingLinkBranchUncertain, Description: "Sends up to the send cap had a lost, server-error, conflicting, or unreadable answer, or Calendly accepted the link without a usable URL, so a link may exist that this Result does not name.", Optional: true},
 		{ID: CreateSchedulingLinkBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -679,6 +680,8 @@ var CreateSchedulingLinkDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 6, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateSchedulingLinkResult = sdkgo.MutationResult[SchedulingLink]
@@ -699,6 +702,8 @@ type CreateSchedulingLinkStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateSchedulingLinkResult]             `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SchedulingLink]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateSchedulingLinkStep[IN any](config CreateSchedulingLinkStepConfig[IN]) sdkgo.MutationStep[IN, CreateSchedulingLinkInput, SchedulingLink] {
@@ -731,6 +736,7 @@ func NewCreateSchedulingLinkStep[IN any](config CreateSchedulingLinkStepConfig[I
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -746,7 +752,7 @@ var CreateWebhookSubscriptionDefinition = sdkgo.MutationDefinition{
 		{ID: CreateWebhookSubscriptionBranchSubscribed, Description: "An active subscription with this callback URL covers the requested events; wasCreated tells whether this attempt created it."},
 		{ID: CreateWebhookSubscriptionBranchConflictingSubscription, Description: "A subscription with this callback URL already exists but is disabled, lacks a requested event, or belongs to another scope or user; delete it in Calendly and run again.", Optional: true},
 		{ID: CreateWebhookSubscriptionBranchProviderRejected, Description: "Calendly conclusively rejected the request, such as a plan without webhooks or a token that is not an organization admin.", Optional: true},
-		{ID: CreateWebhookSubscriptionBranchInvalidResponse, Description: "Calendly returned a malformed or oversized response.", Optional: true},
+		{ID: CreateWebhookSubscriptionBranchInvalidResponse, Description: "Calendly returned a malformed or oversized user or subscription list before the connector created anything.", Optional: true},
 		{ID: CreateWebhookSubscriptionBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -754,6 +760,7 @@ var CreateWebhookSubscriptionDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 6, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type CreateWebhookSubscriptionResult = sdkgo.MutationResult[WebhookSubscription]

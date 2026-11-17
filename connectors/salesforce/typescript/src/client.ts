@@ -72,6 +72,8 @@ export interface SalesforceOutcome {
   apiUsage: string;
   /** The Date header of the classified HTTP response; absent when no response arrived. */
   responseDate?: string;
+  /** The status of the classified HTTP response; absent when no response arrived. */
+  status?: number;
 }
 
 /** Provider transport and clock seams; production uses the SDK HTTP sender. */
@@ -299,7 +301,7 @@ export class SalesforceClient {
     const retryAfter = parseRetryAfter(firstHeader(response.headers['retry-after']), this.now());
     const result = (
       route: SalesforceOutcome['route'], kind: Failure['kind'], description: string, delay = 0,
-    ) => ({ ...this.outcome(route, operation, kind, message(description), delay, providerErrors, response.apiUsage), responseDate: firstHeader(response.headers.date) });
+    ) => ({ ...this.outcome(route, operation, kind, message(description), delay, providerErrors, response.apiUsage), responseDate: firstHeader(response.headers.date), status: response.status });
     if (code === 'REQUEST_LIMIT_EXCEEDED' || response.status === 429) return result('retry', 'RATE_LIMIT', 'Salesforce API request limit was reached', retryAfter);
     if (code === 'UNABLE_TO_LOCK_ROW') return result('retry', 'CONFLICT', 'Salesforce could not lock the record', retryAfter);
     if (code === 'DUPLICATE_VALUE' && duplicateRetry) return result('retry', 'CONFLICT', 'a concurrent write holds the unique value');

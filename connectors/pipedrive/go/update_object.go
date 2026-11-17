@@ -56,7 +56,7 @@ func (operation UpdateObjectOperation) Invoke(call sdkgo.Call, input UpdateObjec
 	object, result := operation.client.patchRecord(session, input.ObjectType, input.ObjectID, body)
 	receipt := operation.client.receipt(call, result.response, input.ObjectID)
 	if result.outcome != exchangeSucceeded {
-		return repeatableMutationAttemptForExchange[CRMObject](result, receipt, updateBranches)
+		return repeatSafeWriteAttemptForExchange[CRMObject](result, receipt, updateBranches)
 	}
 	return sdkgo.NewMutationBranch(UpdateObjectBranchUpdated, object, nil, receipt)
 }

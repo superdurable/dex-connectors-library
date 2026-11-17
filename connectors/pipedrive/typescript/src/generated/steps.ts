@@ -108,7 +108,7 @@ export interface UpsertObjectStepConfig<StepInput, OperationInput = UpsertObject
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Pipedrive returned an invalid or oversized search page or updated record. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** A create sent in this or an earlier attempt was not confirmed, and identity read-back finds no record or cannot complete; the record may exist, so the connector does not create it again. */
+  /** Creates sent up to the Step's send cap were not confirmed, or Pipedrive refused a create after an earlier possible one, and identity read-back finds no record or cannot complete; the record may exist, so the connector does not create it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -138,7 +138,7 @@ export interface CreateObjectStepConfig<StepInput, OperationInput = CreateObject
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Pipedrive conclusively rejected the create, such as a missing title or name, an unknown stage or owner, or a revoked token; nothing was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The create was sent but its outcome cannot be confirmed, so the record may exist; the connector never sends it again. */
+  /** Creates whose outcome is unknown, such as a 5xx or lost response, were sent up to the Step's send cap, or Pipedrive accepted a create without a usable record, so the record may exist; the connector does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

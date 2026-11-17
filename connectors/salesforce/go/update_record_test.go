@@ -90,6 +90,19 @@ func TestUpdateRecordRetriesRowLocksAndOutages(t *testing.T) {
 	}
 }
 
+func TestUpdateRecordRetriesAStatusThatDoesNotProveARefusal(t *testing.T) {
+	for _, status := range []int{http.StatusConflict, http.StatusPreconditionFailed, http.StatusFound, http.StatusTeapot} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			fake := newFakeSalesforce(t, func(response http.ResponseWriter, _ *http.Request, _ []byte) {
+				writeJSON(t, response, status, `[{"message":"`+providerMessageSentinel+`","errorCode":"UNKNOWN"}]`)
+			})
+			_, err := runUpdate(t, newSalesforceClient(t, fake.URL), closeOpportunity())
+			var retryErr *sdkgo.RetryError
+			require.ErrorAs(t, err, &retryErr, "the update is repeat-safe, so an unknown outcome is retried")
+		})
+	}
+}
+
 func TestUpdateRecordValidatesInputWithoutAProviderRequest(t *testing.T) {
 	fake := newFakeSalesforce(t, func(http.ResponseWriter, *http.Request, []byte) {})
 	client := newSalesforceClient(t, fake.URL)

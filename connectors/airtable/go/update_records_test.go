@@ -51,6 +51,27 @@ func TestUpdateRecordsSelectsNotFoundForAMissingRecord(t *testing.T) {
 	requireSecretSafeFailure(t, result.Failure)
 }
 
+func TestWritesRetryAStatusThatDoesNotProveARefusal(t *testing.T) {
+	for _, status := range []int{http.StatusConflict, http.StatusNotImplemented, http.StatusFound, http.StatusTeapot} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			provider := newRecordingAirtable(t, func(response http.ResponseWriter, _ recordedRequest) {
+				writeJSON(t, response, status, `{"error":{"type":"UNKNOWN","message":"`+providerMessageSentinel+`"}}`)
+			})
+			client := newTestClient(t, provider.URL, airtable.Config{})
+			_, err := sdkgo.RunMutation(newStepDexContext("update-unknown"), client.UpdateRecords(), airtableConnection, airtable.UpdateRecordsInput{
+				BaseID: testBaseID, TableIDOrName: testTableID,
+				Records: []airtable.RecordUpdate{{ID: "recPolicyStandard", Fields: map[string]airtable.CellValue{"Status": airtable.TextCellValue("done")}}},
+			})
+			requireRetry(t, err)
+			_, err = sdkgo.RunMutation(newStepDexContext("upsert-unknown"), client.UpsertRecords(), airtableConnection, airtable.UpsertRecordsInput{
+				BaseID: testBaseID, TableIDOrName: testTableID, FieldsToMergeOn: []string{"Case ID"},
+				Records: []airtable.RecordUpsert{{Fields: map[string]airtable.CellValue{"Case ID": airtable.TextCellValue("case-1")}}},
+			})
+			requireRetry(t, err)
+		})
+	}
+}
+
 func TestUpdateRecordsRejectsUnsafeInputWithoutARequest(t *testing.T) {
 	provider := newRecordingAirtable(t, func(response http.ResponseWriter, _ recordedRequest) {
 		writeJSON(t, response, http.StatusOK, `{}`)

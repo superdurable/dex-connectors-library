@@ -1,8 +1,8 @@
 # Calendly Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/calendly/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/calendly/go@v0.24.1`.
 
-The TypeScript package `@superdurable/connector-calendly` v0.2.0 implements all six operations and, from 0.2.0, the `inviteeEventReceived` Trigger at parity with Go. Its [runnable scheduled-event Flow](typescript/examples/scheduled-event/README.md) reads one event through a Dex Worker and Client, and its [invitee-recorder example](typescript/examples/invitee-recorder/README.md) starts one Flow per signed booking. See the [TypeScript package README](typescript/README.md) for setup and verification.
+The TypeScript package `@superdurable/connector-calendly` v0.2.1 implements all six operations and, from 0.2.0, the `inviteeEventReceived` Trigger at parity with Go. Its [runnable scheduled-event Flow](typescript/examples/scheduled-event/README.md) reads one event through a Dex Worker and Client, and its [invitee-recorder example](typescript/examples/invitee-recorder/README.md) starts one Flow per signed booking. See the [TypeScript package README](typescript/README.md) for setup and verification.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/calendly`.
 
@@ -96,9 +96,9 @@ accepted provider call and verify the next attempt:
 
 | Mutation | Durability | Why a repeat is safe | Observed after a repeated Execute |
 | --- | --- | --- | --- |
-| `cancelScheduledEvent` | async | Calendly answers `403` for an event that is already canceled. A `403` reads the event back; a canceled event selects `canceled` with `alreadyCanceled`, whatever the message. A lost answer or a `5xx` returns Retry. | two POSTs, `canceled` | Go, TypeScript, Python |
-| `createWebhookSubscription` | async | It lists the scope's subscriptions before creating, reuses one with the same callback URL, and treats Calendly's documented `409` as "list again". | two lists, one create, one subscription | Go, TypeScript, Python |
-| `createSchedulingLink` | sync | The single-dispatch fence checkpoints its claim before POST. A `429`, `503`, or traced connection failure before a socket is obtained permits only the next attempt to resend. An accepted response saves its booking URL, but a later replay or lost answer selects `uncertain` because Calendly offers no link read-back. | one POST for a slow provider; two for a `503` then success | Go, TypeScript, Python |
+| `cancelScheduledEvent` | async, `repeatOnUnknown: safe` | Calendly answers `403` for an event that is already canceled. A `403` reads the event back; a canceled event selects `canceled` with `alreadyCanceled`, whatever the message. A lost, malformed, or oversized answer, a `5xx`, or any status other than `400`, `401`, `403`, `404`, `411`, `413`, `414`, `415`, or `422` returns Retry. | two POSTs, `canceled` | Go, TypeScript, Python |
+| `createWebhookSubscription` | async, `repeatOnUnknown: safe` | It lists the scope's subscriptions before creating, reuses one with the same callback URL, and treats Calendly's documented `409` as "list again". A lost, malformed, or oversized POST answer, or a status that is not a definite refusal, returns Retry. | two lists, one create, one subscription | Go, TypeScript, Python |
+| `createSchedulingLink` | sync, `limited` with `maxSends: 3` | The single-dispatch fence checkpoints its claim before POST and counts every possible send. A `429`, `503`, or traced connection failure before a socket is obtained records `canResend` and retries. A lost answer, `5xx`, `409`, or other status that is not a definite refusal returns Retry while possible sends stay below the Step's send cap, and selects `uncertain` at the cap; a resend can create a second link. An accepted response saves its booking URL, which a later attempt returns as `created` without posting again. A definite refusal of the first send records `canResend` and selects `providerRejected`; after an earlier possible send it selects `uncertain`. | one POST for a slow provider; two for a `503` or `500` then success | Go, TypeScript, Python |
 
 The fence requires sync durability; applications must not override this Step to
 async. Its request deadline remains inside the Execute attempt with time to
@@ -108,7 +108,7 @@ attempt budget available. It never repeats a `401` after token refresh. The
 list `POST /scheduling_links`; they do not document a write idempotency key or
 a single-use-link lookup. Whether Calendly can identify an accepted link after
 its response is lost remains unverified against a real provider account, so
-the connector fails closed in that case. `cancelScheduledEvent` selects `providerRejected` for
+the connector resends only below the send cap in that case. `cancelScheduledEvent` selects `providerRejected` for
 an active event Calendly refuses, with `CONFLICT` once the event has started.
 `createWebhookSubscription` selects `conflictingSubscription` when Calendly
 answers `409` for a callback URL that another scope or user owns.
@@ -250,4 +250,4 @@ an accepted provider call.
 
 ## Python
 
-The Python `dex-connector-calendly` package v0.2.0 implements the six Calendly operations with generated OAuth wiring and, from 0.2.0, the `inviteeEventReceived` Trigger at parity with Go. Its [runnable scheduled event lookup](python/examples/scheduled_event/README.md) reads one event, and its [invitee recorder](python/examples/invitee_recorder/README.md) starts one Flow per signed booking. Both Python examples use the static `calendly-scheduling` connection name. See the [Python package README](python/README.md).
+The Python `dex-connector-calendly` package v0.2.1 implements the six Calendly operations with generated OAuth wiring and, from 0.2.0, the `inviteeEventReceived` Trigger at parity with Go. Its [runnable scheduled event lookup](python/examples/scheduled_event/README.md) reads one event, and its [invitee recorder](python/examples/invitee_recorder/README.md) starts one Flow per signed booking. Both Python examples use the static `calendly-scheduling` connection name. See the [Python package README](python/README.md).

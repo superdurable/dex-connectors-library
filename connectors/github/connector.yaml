@@ -6,12 +6,12 @@ metadata:
   description: Read an authenticated GitHub profile, verified primary email, bounded public repositories, releases, and repository changes, and list, create, close, reopen, relabel, and comment on repository issues.
   company: GitHub
   categories: [developer-tools]
-  version: v0.25.0
+  version: v0.25.1
 spec:
   provider: github
   languages:
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: '@superdurable/connector-github'
       operations: [getAuthenticatedProfile, listPublicRepositories, listMergedPullRequests, listPullRequestFiles, listReleases, listCommits, listIssues, createIssue, setIssueState, replaceIssueLabels, createIssueComment]
       triggers: []

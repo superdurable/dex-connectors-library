@@ -6,16 +6,16 @@ metadata:
   description: List, read, idempotently upsert, and update typed Airtable records, and start Flows when records are created or changed, with base, table, and field pickers.
   company: Airtable
   categories: [productivity, databases-storage]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: airtable
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       operations: [listRecords, getRecord, upsertRecords, updateRecords]
       triggers: [recordChanged]
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       operations: [listRecords, getRecord, upsertRecords, updateRecords]
       triggers: [recordChanged]
   codegen:
@@ -211,6 +211,8 @@ spec:
         executeMethodTimeout: 30s
         # Without a unique merge key, concurrent duplicate upserts could both create; sync never overlaps attempts.
         durability: sync
+        # A repeated upsert matches the records an earlier attempt created by their merge fields and updates them.
+        repeatOnUnknown: safe
       mocks:
         - name: loggedApprovedRefund
           branch: upserted
@@ -243,6 +245,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # A repeated update sets the same absolute field values on the same record IDs.
+        repeatOnUnknown: safe
         # Airtable asks a rate-limited client to wait 30 seconds, so the window fits several such waits.
       mocks:
         - name: stampedStandardPolicy

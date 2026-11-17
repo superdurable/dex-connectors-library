@@ -145,6 +145,26 @@ func TestCreateWebhookSubscriptionReportsAConflictOutsideTheListedScopeWithoutRe
 	require.Len(t, fake.requestsTo(http.MethodGet, "/webhook_subscriptions"), 2)
 }
 
+func TestCreateWebhookSubscriptionRetriesAPostAnswerThatDoesNotProveTheOutcome(t *testing.T) {
+	for name, reply := range map[string]http.HandlerFunc{
+		"malformed 2xx": respondJSON(http.StatusCreated, `{"resource":`),
+		"408":           respondJSON(http.StatusRequestTimeout, providerError("Timeout", "slow")),
+	} {
+		t.Run(name, func(t *testing.T) {
+			fake := newFakeCalendly(t, map[string]http.HandlerFunc{
+				"GET /users/me":               currentUserRoute(),
+				"GET /webhook_subscriptions":  respondJSON(http.StatusOK, `{"collection":[],"pagination":{"next_page_token":null}}`),
+				"POST /webhook_subscriptions": reply,
+			})
+			client := newTestClient(t, fake.redirectingClient(), personalAccessTokenCredentials(sentinelSigningKey), calendly.Config{})
+			_, err := sdkgo.RunMutation(newStepContext("subscribe"), client.CreateWebhookSubscription(), testConnection,
+				calendly.CreateWebhookSubscriptionInput{CallbackURL: testCallbackURL})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "the retry lists subscriptions and reuses one the POST created")
+		})
+	}
+}
+
 func TestCreateWebhookSubscriptionReportsADisabledOrNarrowerSubscriptionAsConflicting(t *testing.T) {
 	for _, test := range []struct {
 		name   string

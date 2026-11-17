@@ -176,6 +176,8 @@ type providerOutcome struct {
 	retryAfter     time.Duration
 	providerErrors []ProviderError
 	apiUsage       string
+	// statusCode is the HTTP status of a classified failed answer, or zero.
+	statusCode int
 }
 
 // operationBranches names the branch each failure route selects for one operation.
@@ -301,6 +303,7 @@ func (client *Client) send(
 		return response, nil
 	}
 	outcome := client.classifyFailedResponse(branches, response)
+	outcome.statusCode = response.status
 	return response, &outcome
 }
 
@@ -484,11 +487,24 @@ func mutationAttemptFromOutcome[T any](
 	value T,
 ) sdkgo.MutationAttempt[T] {
 	branch := branches.branch(outcome.route)
-	if branch == "" {
+	// Both writes are repeat-safe, so a status that does not prove a refusal, such as 409, is retried.
+	isUnknownStatus := outcome.statusCode != 0 && !isDefiniteRefusalStatus(outcome.statusCode)
+	if branch == "" || isUnknownStatus {
 		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter)
 	}
 	failure := outcome.failure
 	return sdkgo.NewMutationBranch(branch, value, &failure, client.receipt(call, "", outcome.apiUsage))
+}
+
+// isDefiniteRefusalStatus reports a status that proves Salesforce refused a write.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func validateResolvedCredentials(credentials Credentials) error {

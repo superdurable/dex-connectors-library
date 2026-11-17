@@ -27,6 +27,16 @@ it('routes revoked connection credentials to providerRejected before HTTP', asyn
   expect(requestCount).toBe(0);
 });
 
+it.each([409, 501, 302, 418])('retries a write answered with HTTP %i, which does not prove a refusal', async status => {
+  const client = new AirtableClient({}, { resolve: async () => ({ personalAccessToken: new SecretString('patTESTtoken.0123456789abcdef') }) }, {
+    send: async () => ({ status, headers: {}, body: Buffer.from('{"error":{"type":"UNKNOWN"}}', 'utf8') }),
+  });
+  const update = await client.updateRecords().invoke(call, { ...input, records: [{ id: 'recPolicyStandard', fields: { Status: 'done' } }] });
+  expect(update.kind).toBe('retry');
+  const upsert = await client.upsertRecords().invoke(call, { ...input, fieldsToMergeOn: ['Case ID'], records: [{ fields: { 'Case ID': 'case-1' } }] });
+  expect(upsert.kind).toBe('retry');
+});
+
 it('escapes text filters in the provider request without sending the token in the body', async () => {
   let requestBody: Record<string, unknown> | undefined;
   const client = new AirtableClient({}, { resolve: async () => ({ personalAccessToken: new SecretString('patTESTtoken.0123456789abcdef') }) }, {

@@ -117,7 +117,7 @@ export const UpsertObjectBranchMultipleMatches = UpsertObjectBranch.MultipleMatc
 export const UpsertObjectBranchProviderRejected = UpsertObjectBranch.ProviderRejected;
 /** Pipedrive returned an invalid or oversized search page or updated record. */
 export const UpsertObjectBranchInvalidResponse = UpsertObjectBranch.InvalidResponse;
-/** A create sent in this or an earlier attempt was not confirmed, and identity read-back finds no record or cannot complete; the record may exist, so the connector does not create it again. */
+/** Creates sent up to the Step's send cap were not confirmed, or Pipedrive refused a create after an earlier possible one, and identity read-back finds no record or cannot complete; the record may exist, so the connector does not create it again. */
 export const UpsertObjectBranchUncertain = UpsertObjectBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpsertObjectBranchDefect = UpsertObjectBranch.Defect;
@@ -129,10 +129,12 @@ export const UpsertObjectDefinition: MutationDefinition = {
     { id: "multipleMatches", description: "More than one record carries the identity value, so the connector changed nothing; the Result lists their IDs.", optional: true },
     { id: "providerRejected", description: "Pipedrive conclusively rejected the search or the write, such as an invalid field value, a revoked token, or a missing scope; nothing was created.", optional: true },
     { id: "invalidResponse", description: "Pipedrive returned an invalid or oversized search page or updated record.", optional: true },
-    { id: "uncertain", description: "A create sent in this or an earlier attempt was not confirmed, and identity read-back finds no record or cannot complete; the record may exist, so the connector does not create it again.", optional: true },
+    { id: "uncertain", description: "Creates sent up to the Step's send cap were not confirmed, or Pipedrive refused a create after an earlier possible one, and identity read-back finds no record or cannot complete; the record may exist, so the connector does not create it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for upsertObject. */
 export const UpsertObjectMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -148,7 +150,7 @@ export const CreateObjectBranch = {
 export const CreateObjectBranchCreated = CreateObjectBranch.Created;
 /** Pipedrive conclusively rejected the create, such as a missing title or name, an unknown stage or owner, or a revoked token; nothing was created. */
 export const CreateObjectBranchProviderRejected = CreateObjectBranch.ProviderRejected;
-/** The create was sent but its outcome cannot be confirmed, so the record may exist; the connector never sends it again. */
+/** Creates whose outcome is unknown, such as a 5xx or lost response, were sent up to the Step's send cap, or Pipedrive accepted a create without a usable record, so the record may exist; the connector does not send it again. */
 export const CreateObjectBranchUncertain = CreateObjectBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateObjectBranchDefect = CreateObjectBranch.Defect;
@@ -158,10 +160,12 @@ export const CreateObjectDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "Pipedrive created the record and returned it." },
     { id: "providerRejected", description: "Pipedrive conclusively rejected the create, such as a missing title or name, an unknown stage or owner, or a revoked token; nothing was created.", optional: true },
-    { id: "uncertain", description: "The create was sent but its outcome cannot be confirmed, so the record may exist; the connector never sends it again.", optional: true },
+    { id: "uncertain", description: "Creates whose outcome is unknown, such as a 5xx or lost response, were sent up to the Step's send cap, or Pipedrive accepted a create without a usable record, so the record may exist; the connector does not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for createObject. */
 export const CreateObjectMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -195,6 +199,7 @@ export const UpdateObjectDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updateObject. */
 export const UpdateObjectMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

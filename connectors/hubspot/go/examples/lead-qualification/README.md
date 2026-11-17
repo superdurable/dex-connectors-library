@@ -45,7 +45,7 @@ change.
 
 ## Release baseline
 
-- HubSpot Connector `v0.25.0`
+- HubSpot Connector `v0.25.1`
 - dexcli `cli-v1.1.0` or a later stable release
 
 ## 1. Prepare a clean local test project
@@ -60,12 +60,12 @@ cd hubspot-lead-qualification-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/hubspot/go/v0.25.0/connectors/hubspot/go/examples/lead-qualification/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/hubspot/go/v0.25.1/connectors/hubspot/go/examples/lead-qualification/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/hubspot-lead-qualification-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/hubspot/go@v0.25.0
+go get github.com/superdurable/dex-connectors-library/connectors/hubspot/go@v0.25.1
 go mod tidy
 ```
 
@@ -138,7 +138,7 @@ connection.
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/hubspot/go/examples/lead-qualification@v0.25.0
+  github.com/superdurable/dex-connectors-library/connectors/hubspot/go/examples/lead-qualification@v0.25.1
 ```
 
 Set
@@ -189,8 +189,8 @@ expired OAuth connection that refreshes before the first call, and retried
 writes. When HubSpot accepts an upsert or update but its answer is lost,
 Dex retries it; the test proves one contact and the configured stage remain.
 
-Before `v0.25.0` is published, build a local release artifact with
+Before `v0.25.1` is published, build a local release artifact with
 `go run ./cmd/connectorctl release-artifact` from the repository root and pass
 its directory to `dexcli dev --connector-release-override hubspot=DIRECTORY`.
-The test project must still resolve `connectors/hubspot/go@v0.25.0` without a
+The test project must still resolve `connectors/hubspot/go@v0.25.1` without a
 `replace`, as the compatibility gate does with a local module proxy.

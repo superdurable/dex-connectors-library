@@ -91,7 +91,8 @@ func (operation ReplaceIssueLabelsOperation) Invoke(call sdkgo.Call, input Repla
 		return sdkgo.NewMutationRetry[ReplacedIssueLabels](providerFailure(replaceIssueLabelsOperationID, sdkgo.FailureTransport, "GitHub issue labels update did not complete"), 0)
 	}
 	if terminal := operation.client.classify(replaceIssueLabelsOperationID, response, issueLabelsResponseBranches()); terminal != nil {
-		if terminal.isRetryable {
+		// The absolute replacement is repeat-safe, so a status that does not prove a refusal, such as 410, retries.
+		if terminal.isRetryable || !isDefiniteRefusalStatus(response.statusCode) {
 			return sdkgo.NewMutationRetry[ReplacedIssueLabels](terminal.failure, terminal.delay)
 		}
 		if terminal.branch == ReplaceIssueLabelsBranchProviderRejected {

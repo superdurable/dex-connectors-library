@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
     default_connector_step_execute_retry_policy,
@@ -88,7 +89,7 @@ UPSERT_OBJECT_DEFINITION = MutationDefinition(
         BranchDefinition(MULTIPLE_MATCHES, "More than one record carries the identity value, so the connector changed nothing; the Result lists their IDs.", True),
         BranchDefinition(PROVIDER_REJECTED, "Pipedrive conclusively rejected the search or the write, such as an invalid field value, a revoked token, or a missing scope; nothing was created.", True),
         BranchDefinition(INVALID_RESPONSE, "Pipedrive returned an invalid or oversized search page or updated record.", True),
-        BranchDefinition(UNCERTAIN, "A create sent in this or an earlier attempt was not confirmed, and identity read-back finds no record or cannot complete; the record may exist, so the connector does not create it again.", True),
+        BranchDefinition(UNCERTAIN, "Creates sent up to the Step's send cap were not confirmed, or Pipedrive refused a create after an earlier possible one, and identity read-back finds no record or cannot complete; the record may exist, so the connector does not create it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -96,6 +97,8 @@ UPSERT_OBJECT_DEFINITION = MutationDefinition(
         1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 5, timedelta(seconds=120)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 CREATE_OBJECT_DEFINITION = MutationDefinition(
@@ -103,7 +106,7 @@ CREATE_OBJECT_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Pipedrive created the record and returned it.", False),
         BranchDefinition(PROVIDER_REJECTED, "Pipedrive conclusively rejected the create, such as a missing title or name, an unknown stage or owner, or a revoked token; nothing was created.", True),
-        BranchDefinition(UNCERTAIN, "The create was sent but its outcome cannot be confirmed, so the record may exist; the connector never sends it again.", True),
+        BranchDefinition(UNCERTAIN, "Creates whose outcome is unknown, such as a 5xx or lost response, were sent up to the Step's send cap, or Pipedrive accepted a create without a usable record, so the record may exist; the connector does not send it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -111,6 +114,8 @@ CREATE_OBJECT_DEFINITION = MutationDefinition(
         1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 5, timedelta(seconds=120)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 UPDATE_OBJECT_DEFINITION = MutationDefinition(
@@ -127,4 +132,5 @@ UPDATE_OBJECT_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )

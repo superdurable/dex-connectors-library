@@ -74,7 +74,7 @@ func TestFencedCreatesClassifyRejectedOAuthRefresh(t *testing.T) {
 					}
 				}
 				require.Equal(t, 1, posts)
-				require.Len(t, ctx.Heartbeats(), 1, "the claim cannot authorize a resend")
+				require.Len(t, ctx.Heartbeats(), 2, "the claim, then canResend for the definite 401 refusal")
 			})
 		}
 	}

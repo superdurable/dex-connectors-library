@@ -312,6 +312,22 @@ func (client *Client) classifyFailureStatus(response bambooHRResponse, credentia
 	}
 }
 
+// isDefiniteRefusalStatus reports a status that proves BambooHR refused a write; any other
+// failure status leaves the write's outcome unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
+
+// isDocumentedConflictStatus reports BambooHR's documented business conflict: it answers 409
+// only for an email another employee already holds.
+func isDocumentedConflictStatus(status int) bool { return status == http.StatusConflict }
+
 func rejectionFailureKind(status int) sdkgo.FailureKind {
 	switch status {
 	case http.StatusUnauthorized:

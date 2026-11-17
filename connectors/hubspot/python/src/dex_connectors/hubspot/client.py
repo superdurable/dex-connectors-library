@@ -335,9 +335,16 @@ def classify_response(operation: str, response: Exchange, now: datetime) -> Exch
         )
     if status == 404:
         return classified("notFound", FailureKind.NOT_FOUND, "HubSpot found no such record" + detail)
-    if status == 409:
+    if status == 409 and category in ("CONFLICT", "OBJECT_ALREADY_EXISTS"):
         return classified(
             "conflict", FailureKind.CONFLICT, "HubSpot reported a conflict with another record" + detail
+        )
+    if status == 409:
+        # A write answered with a bare 409 has an unknown outcome and is retried.
+        return classified(
+            "rejected",
+            FailureKind.CONFLICT,
+            "HubSpot answered HTTP 409 without a documented conflict category" + detail,
         )
     if status in (400, 422) or category == "VALIDATION_ERROR":
         return classified(

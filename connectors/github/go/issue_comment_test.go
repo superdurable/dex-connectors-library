@@ -135,7 +135,6 @@ func TestCreateIssueCommentClassifiesConclusiveRejectionsAndInput(t *testing.T) 
 	}{
 		{behavior: comment403, branch: github.CreateIssueCommentBranchInsufficientScope, kind: sdkgo.FailureAuthorization},
 		{behavior: comment404, branch: github.CreateIssueCommentBranchNotFound, kind: sdkgo.FailureNotFound},
-		{behavior: comment410, branch: github.CreateIssueCommentBranchProviderRejected, kind: sdkgo.FailureProviderRejection},
 		{behavior: comment422, branch: github.CreateIssueCommentBranchProviderRejected, kind: sdkgo.FailureValidation},
 	} {
 		t.Run(string(test.behavior), func(t *testing.T) {

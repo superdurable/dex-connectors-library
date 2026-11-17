@@ -265,13 +265,13 @@ func TestUpsertObjectResendsOnceAfterAConflict(t *testing.T) {
 		wantRequests int
 	}{
 		{name: "a concurrent create is followed by an update", conflicts: 1, wantBranch: hubspot.UpsertObjectBranchUpserted, wantRequests: 2},
-		{name: "a lasting conflict selects conflict", conflicts: 2, wantBranch: hubspot.UpsertObjectBranchConflict, wantRequests: 2},
+		{name: "a lasting batch conflict selects conflict", conflicts: 2, wantBranch: hubspot.UpsertObjectBranchConflict, wantRequests: 2},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			var provider *recordingHubSpot
 			provider = newRecordingHubSpot(t, func(response http.ResponseWriter, _ recordedRequest) {
 				if len(provider.recordedRequests()) <= test.conflicts {
-					writeJSON(t, response, http.StatusConflict, `{"category":"CONFLICT","message":"`+providerMessageSentinel+`"}`)
+					writeJSON(t, response, http.StatusMultiStatus, `{"status":"COMPLETE","results":[],"numErrors":1,"errors":[{"status":"409","category":"CONFLICT","message":"`+providerMessageSentinel+`"}]}`)
 					return
 				}
 				writeJSON(t, response, http.StatusOK, `{"status":"COMPLETE","results":[{"id":"501","new":false,"properties":{"email":"ada@example.com"}}]}`)
@@ -291,6 +291,38 @@ func TestUpsertObjectResendsOnceAfterAConflict(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestUpsertObjectSelectsConflictForALastingDocumentedConflict(t *testing.T) {
+	provider := newRecordingHubSpot(t, func(response http.ResponseWriter, _ recordedRequest) {
+		writeJSON(t, response, http.StatusConflict, `{"category":"CONFLICT","message":"`+providerMessageSentinel+`"}`)
+	})
+	client := newStaticTokenClient(t, provider.URL, hubspot.Config{})
+	result, err := sdkgo.RunMutation(newStepDexContext("upsert-http-conflict"), client.UpsertObject(), hubspotConnection, hubspot.UpsertObjectInput{
+		ObjectType: hubspot.ObjectTypeContacts, IDProperty: "email", IDValue: "ada@example.com",
+	})
+	require.NoError(t, err, "a documented CONFLICT is a definite business outcome")
+	require.Equal(t, hubspot.UpsertObjectBranchConflict, result.Branch)
+	require.Equal(t, sdkgo.FailureConflict, result.Failure.Kind)
+	require.NotContains(t, result.Failure.Message, providerMessageSentinel)
+	require.Len(t, provider.recordedRequests(), 2, "the upsert resends once inside the attempt")
+}
+
+func TestWritesRetryABare409WithoutADocumentedConflictCategory(t *testing.T) {
+	provider := newRecordingHubSpot(t, func(response http.ResponseWriter, _ recordedRequest) {
+		writeJSON(t, response, http.StatusConflict, `{}`)
+	})
+	client := newStaticTokenClient(t, provider.URL, hubspot.Config{})
+	_, err := sdkgo.RunMutation(newStepDexContext("upsert-bare-409"), client.UpsertObject(), hubspotConnection, hubspot.UpsertObjectInput{
+		ObjectType: hubspot.ObjectTypeContacts, IDProperty: "email", IDValue: "ada@example.com",
+	})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "a bare 409 does not prove a refusal, and the upsert is repeat-safe")
+	require.Len(t, provider.recordedRequests(), 1, "only a documented conflict resends inside the attempt")
+	_, err = sdkgo.RunMutation(newStepDexContext("update-bare-409"), client.UpdateObject(), hubspotConnection, hubspot.UpdateObjectInput{
+		ObjectType: hubspot.ObjectTypeContacts, ObjectID: "501", Properties: map[string]string{"email": "ada@example.com"},
+	})
+	require.ErrorAs(t, err, &retry, "a bare 409 does not prove a refusal, and the update is repeat-safe")
 }
 
 func TestUpsertObjectClassifiesBatchErrorsAndMalformedResults(t *testing.T) {
@@ -389,13 +421,32 @@ func TestUpdateObjectPatchesPropertiesAndClassifiesConflictAndNotFound(t *testin
 	require.Equal(t, "/crm/objects/2026-09/deals/9001", requests[0].path)
 	require.JSONEq(t, `{"properties":{"dealstage":"qualifiedtobuy"}}`, string(requests[0].body))
 
-	for objectID, wantBranch := range map[string]sdkgo.BranchID{"404": hubspot.UpdateObjectBranchNotFound, "409": hubspot.UpdateObjectBranchConflict} {
-		result, err := sdkgo.RunMutation(newStepDexContext("update-"+objectID), client.UpdateObject(), hubspotConnection, hubspot.UpdateObjectInput{
-			ObjectType: hubspot.ObjectTypeContacts, ObjectID: objectID, Properties: map[string]string{"email": "taken@example.com"},
+	missing, err := sdkgo.RunMutation(newStepDexContext("update-404"), client.UpdateObject(), hubspotConnection, hubspot.UpdateObjectInput{
+		ObjectType: hubspot.ObjectTypeContacts, ObjectID: "404", Properties: map[string]string{"email": "taken@example.com"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, hubspot.UpdateObjectBranchNotFound, missing.Branch)
+	require.NotContains(t, missing.Failure.Message, providerMessageSentinel)
+
+	conflict, err := sdkgo.RunMutation(newStepDexContext("update-409"), client.UpdateObject(), hubspotConnection, hubspot.UpdateObjectInput{
+		ObjectType: hubspot.ObjectTypeContacts, ObjectID: "409", Properties: map[string]string{"email": "taken@example.com"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, hubspot.UpdateObjectBranchConflict, conflict.Branch)
+	require.NotContains(t, conflict.Failure.Message, providerMessageSentinel)
+}
+
+func TestUpdateObjectRetriesAStatusThatDoesNotProveARefusal(t *testing.T) {
+	for _, status := range []int{http.StatusNotImplemented, http.StatusFound, http.StatusTeapot} {
+		provider := newRecordingHubSpot(t, func(response http.ResponseWriter, _ recordedRequest) {
+			writeJSON(t, response, status, `{"category":"UNKNOWN"}`)
 		})
-		require.NoError(t, err)
-		require.Equal(t, wantBranch, result.Branch)
-		require.NotContains(t, result.Failure.Message, providerMessageSentinel)
+		client := newStaticTokenClient(t, provider.URL, hubspot.Config{})
+		_, err := sdkgo.RunMutation(newStepDexContext("update-unknown"), client.UpdateObject(), hubspotConnection, hubspot.UpdateObjectInput{
+			ObjectType: hubspot.ObjectTypeDeals, ObjectID: "9001", Properties: map[string]string{"dealstage": "qualifiedtobuy"},
+		})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "HTTP %d does not prove a refusal, and the update is repeat-safe", status)
 	}
 }
 

@@ -109,7 +109,8 @@ func (CreateWebhookSubscriptionOperation) IdempotencyKey(callID sdkgo.CallID, _ 
 
 // Invoke lists the scope's subscriptions and reuses one whose callback URL matches. Otherwise it posts
 // POST /webhook_subscriptions; a 409 lists again and reuses the subscription another attempt created. A
-// lost answer or a 5xx returns Retry, because the retry's list finds a subscription the lost request made.
+// lost, malformed, or oversized answer, a 5xx, or any status other than a definite refusal returns Retry,
+// because the retry's list finds a subscription the lost request made.
 // A personal access token connection registers its webhook_signing_key; an OAuth app's key is Calendly's.
 func (operation CreateWebhookSubscriptionOperation) Invoke(call sdkgo.Call, input CreateWebhookSubscriptionInput) sdkgo.MutationAttempt[WebhookSubscription] {
 	operationID := CreateWebhookSubscriptionDefinition.Operation.OperationID
@@ -164,6 +165,11 @@ func (operation CreateWebhookSubscriptionOperation) Invoke(call sdkgo.Call, inpu
 				"Calendly already has a subscription for this callback URL in another scope or for another user; delete it or use another URL"),
 			client.calendlyReceipt(""))
 	}
+	if isUnknownWebhookCreateOutcome(response, err) {
+		// The POST may have created the subscription; the retry's list reuses it.
+		return sdkgo.NewMutationRetry[WebhookSubscription](calendlyFailure(operationID, sdkgo.FailureAvailability,
+			"Calendly's answer does not show whether the subscription was created; the retry lists subscriptions before creating one"), 0)
+	}
 	if attempt, isTerminal := operation.attemptForFailedExchange(response, err); isTerminal {
 		return attempt
 	}
@@ -176,8 +182,8 @@ func (operation CreateWebhookSubscriptionOperation) Invoke(call sdkgo.Call, inpu
 		subscription, err = decoded.Resource.convert()
 	}
 	if err != nil || subscription.CallbackURL != request.callbackURL {
-		return sdkgo.NewMutationBranch(CreateWebhookSubscriptionBranchInvalidResponse, WebhookSubscription{},
-			calendlyFailurePointer(operationID, sdkgo.FailureProtocol, errCalendlyResponseMalformed.Error()), client.calendlyReceipt(""))
+		return sdkgo.NewMutationRetry[WebhookSubscription](calendlyFailure(operationID, sdkgo.FailureProtocol,
+			"Calendly's subscription answer is malformed; the retry lists subscriptions before creating one"), 0)
 	}
 	subscription.WasCreated = true
 	return sdkgo.NewMutationBranch(CreateWebhookSubscriptionBranchSubscribed, subscription, nil, client.calendlyReceipt(subscription.URI))
@@ -252,6 +258,17 @@ func (operation CreateWebhookSubscriptionOperation) attemptForExistingSubscripti
 }
 
 // attemptForFailedExchange returns false for a 2xx; a lost answer retries, as the next list finds a create.
+// isUnknownWebhookCreateOutcome reports an oversized or malformed answer, or a 3xx or 4xx status
+// other than 429 or a definite refusal, after the subscription POST.
+func isUnknownWebhookCreateOutcome(response calendlyResponse, err error) bool {
+	if err != nil {
+		return errors.Is(err, errCalendlyResponseTooLarge) || errors.Is(err, errCalendlyResponseMalformed)
+	}
+	status := response.statusCode
+	// A 429 or 5xx keeps the classified Retry and its delay.
+	return (status < 200 || status >= 300) && status != http.StatusTooManyRequests && status < 500 && !isDefiniteRefusalStatus(status)
+}
+
 func (operation CreateWebhookSubscriptionOperation) attemptForFailedExchange(
 	response calendlyResponse, err error,
 ) (sdkgo.MutationAttempt[WebhookSubscription], bool) {

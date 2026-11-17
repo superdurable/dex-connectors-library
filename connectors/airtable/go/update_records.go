@@ -92,7 +92,7 @@ func (operation UpdateRecordsOperation) Invoke(call sdkgo.Call, input UpdateReco
 		method: http.MethodPatch, path: recordPath(input.BaseID, input.TableIDOrName), baseID: input.BaseID, body: encoded,
 	}, objectID)
 	if outcome != nil {
-		return mutationAttemptForOutcome[UpdatedRecords](*outcome, updateRecordsBranches)
+		return mutationAttemptForOutcome[UpdatedRecords](*outcome, response, updateRecordsBranches)
 	}
 	receipt := operation.client.receipt(call, objectID)
 	recordIDs := make([]string, 0, len(input.Records))

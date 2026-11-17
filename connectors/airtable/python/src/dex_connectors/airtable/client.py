@@ -117,6 +117,8 @@ _MAXIMUM_PACING_WAIT_SECONDS = 2.0
 _RATE_LIMIT_COOLDOWN_SECONDS = 30.0
 _PRUNED_PACER_ENTRY_THRESHOLD = 256
 _ITERATOR_UNAVAILABLE_ERROR_TYPE = "LIST_RECORDS_ITERATOR_NOT_AVAILABLE"
+# Statuses that prove Airtable refused a write; any other failure leaves the write unknown.
+_DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
 _PARTIAL_SUCCESS_REASONS = ("attachmentsFailedUploading", "attachmentUploadRateIsTooHigh")
 _ERROR_TYPE = re.compile(r"[A-Z][A-Z0-9_]{1,63}")
 _BASE_ID = re.compile(r"app[0-9A-Za-z]{14}")
@@ -140,6 +142,7 @@ class _Outcome:
     failure: Failure
     retry_after_seconds: float = 0
     receipt: Receipt = Receipt()
+    status: int = 0
 
     def branch(self, not_found: str, offset_expired: str, invalid_response: str) -> str:
         if self.disposition is _Disposition.NOT_FOUND:
@@ -159,7 +162,13 @@ class _Outcome:
         return QueryAttempt.branch_result(branch, empty, self.receipt, self.failure)
 
     def as_mutation(self, empty: Output, not_found: str = "") -> MutationAttempt[Output]:
-        if self.disposition is _Disposition.RETRY:
+        # Both writes are repeat-safe, so a status that does not prove a refusal is retried.
+        is_unknown_status = (
+            self.status != 0
+            and not 200 <= self.status < 300
+            and self.status not in _DEFINITE_REFUSAL_STATUSES
+        )
+        if self.disposition is _Disposition.RETRY or is_unknown_status:
             return MutationAttempt.retry(self.failure, self.retry_after_seconds)
         branch = self.branch(not_found, "", INVALID_RESPONSE)
         return MutationAttempt.branch_result(branch, empty, self.receipt, self.failure)
@@ -320,6 +329,7 @@ class Client:
                         "Airtable response exceeds the configured size limit",
                     ),
                     receipt=receipt,
+                    status=response.status_code,
                 )
             except ProviderTransportError:
                 return _transport_outcome(operation, receipt)
@@ -329,7 +339,9 @@ class Client:
             if status == 429:
                 self.pacer.hold_after_rate_limit(base_id)
             outcome = _classify_error_response(operation, status, response.headers, response_body)
-            return _Outcome(outcome.disposition, outcome.failure, outcome.retry_after_seconds, receipt)
+            return _Outcome(
+                outcome.disposition, outcome.failure, outcome.retry_after_seconds, receipt, status
+            )
         finally:
             await response.aclose()
 

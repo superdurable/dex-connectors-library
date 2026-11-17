@@ -190,6 +190,7 @@ def new_upsert_object_step(
     defect: dex.StepTarget[MutationResult[UpsertedObject]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UpsertedObject]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UpsertObjectInput, UpsertedObject]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Pipedrive Step connection name must match its connection reference")
@@ -225,6 +226,7 @@ def new_upsert_object_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -244,6 +246,7 @@ def new_create_object_step(
     defect: dex.StepTarget[MutationResult[CRMObject]] | None = None,
     result_attribute: dex.Attribute[MutationResult[CRMObject]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, CreateObjectInput, CRMObject]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Pipedrive Step connection name must match its connection reference")
@@ -275,6 +278,7 @@ def new_create_object_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 

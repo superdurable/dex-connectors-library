@@ -297,7 +297,7 @@ func CancelScheduledEventProviderRejected(value calendly.ScheduledEventCancellat
 	return connectormock.Branch(calendly.CancelScheduledEventBranchProviderRejected, value, failure)
 }
 
-// CancelScheduledEventInvalidResponse selects the invalidResponse branch: Calendly returned a malformed or oversized response.
+// CancelScheduledEventInvalidResponse selects the invalidResponse branch: Calendly returned a malformed or oversized scheduled event when the connector read it back after a 403.
 func CancelScheduledEventInvalidResponse(value calendly.ScheduledEventCancellation, failure *sdkgo.Failure) connectormock.Case[calendly.ScheduledEventCancellation] {
 	return connectormock.Branch(calendly.CancelScheduledEventBranchInvalidResponse, value, failure)
 }
@@ -346,7 +346,7 @@ func CreateSchedulingLinkCreated(value calendly.SchedulingLink, failure *sdkgo.F
 	return connectormock.Branch(calendly.CreateSchedulingLinkBranchCreated, value, failure)
 }
 
-// CreateSchedulingLinkProviderRejected selects the providerRejected branch: Calendly conclusively rejected the request, such as an event type the token cannot use.
+// CreateSchedulingLinkProviderRejected selects the providerRejected branch: Calendly conclusively rejected the first send with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an event type the token cannot use.
 func CreateSchedulingLinkProviderRejected(value calendly.SchedulingLink, failure *sdkgo.Failure) connectormock.Case[calendly.SchedulingLink] {
 	return connectormock.Branch(calendly.CreateSchedulingLinkBranchProviderRejected, value, failure)
 }
@@ -398,7 +398,7 @@ func CreateWebhookSubscriptionProviderRejected(value calendly.WebhookSubscriptio
 	return connectormock.Branch(calendly.CreateWebhookSubscriptionBranchProviderRejected, value, failure)
 }
 
-// CreateWebhookSubscriptionInvalidResponse selects the invalidResponse branch: Calendly returned a malformed or oversized response.
+// CreateWebhookSubscriptionInvalidResponse selects the invalidResponse branch: Calendly returned a malformed or oversized user or subscription list before the connector created anything.
 func CreateWebhookSubscriptionInvalidResponse(value calendly.WebhookSubscription, failure *sdkgo.Failure) connectormock.Case[calendly.WebhookSubscription] {
 	return connectormock.Branch(calendly.CreateWebhookSubscriptionBranchInvalidResponse, value, failure)
 }

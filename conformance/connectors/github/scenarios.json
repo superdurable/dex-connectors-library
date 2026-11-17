@@ -7922,8 +7922,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "owner": "octocat",
@@ -7998,8 +7997,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "owner": "octocat",
@@ -8074,8 +8072,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "owner": "octocat",
@@ -8150,8 +8147,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "owner": "octocat",
@@ -8975,13 +8971,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
+        "branch": "",
         "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "number": 42
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -9958,14 +9951,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
+        "branch": "",
         "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "labels": [],
-          "number": 42
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -11143,8 +11132,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "9bc2d1bf-1428-51fb-9f62-d2b8d282138c",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "issueNumber": 42
@@ -11204,8 +11192,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "9bc2d1bf-1428-51fb-9f62-d2b8d282138c",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "issueNumber": 42
@@ -11265,8 +11252,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "9bc2d1bf-1428-51fb-9f62-d2b8d282138c",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "issueNumber": 42
@@ -11318,22 +11304,41 @@
             ]
           },
           "status": 410
+        },
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "9bc2d1bf-1428-51fb-9f62-d2b8d282138c",
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "issueNumber": 42
-        },
-        "requestCount": 1,
-        "retry": false,
+        "requestCount": 2,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -11387,8 +11392,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "9bc2d1bf-1428-51fb-9f62-d2b8d282138c",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "issueNumber": 42

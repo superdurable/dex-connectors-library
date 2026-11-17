@@ -477,14 +477,15 @@ func TestCreateIssueClassifiesConclusiveRejections(t *testing.T) {
 	}{
 		{behavior: answer403, branch: github.CreateIssueBranchInsufficientScope, kind: sdkgo.FailureAuthorization},
 		{behavior: answer404, branch: github.CreateIssueBranchNotFound, kind: sdkgo.FailureNotFound},
-		{behavior: answer410, branch: github.CreateIssueBranchProviderRejected, kind: sdkgo.FailureProviderRejection},
 		{behavior: answer422, branch: github.CreateIssueBranchProviderRejected, kind: sdkgo.FailureValidation},
 	} {
 		t.Run(string(test.behavior), func(t *testing.T) {
 			provider := newIssueProvider(t, test.behavior)
 			client := newIssueClient(t, provider.URL, github.RepositoryAuthMethodID)
-			result, err := sdkgo.RunMutation(singledispatchtest.NewContext("issues-flow", "rejected"), client.CreateIssue(), githubConnection, bugReportInput())
+			ctx := singledispatchtest.NewContext("issues-flow", "rejected")
+			result, err := sdkgo.RunMutation(ctx, client.CreateIssue(), githubConnection, bugReportInput())
 			require.NoError(t, err)
+			require.Equal(t, singledispatch.StateCanResend, lastMarker(t, ctx).State, "a definite refusal records canResend")
 			require.Equal(t, test.branch, result.Branch)
 			require.Equal(t, test.kind, result.Failure.Kind)
 			require.NotContains(t, result.Failure.Message, providerBodySentinel)
@@ -543,16 +544,25 @@ func TestCreateIssueSelectsUncertainWhenReadBackCannotVerify(t *testing.T) {
 	require.Equal(t, 1, provider.count("POST"), "a repository the connection can no longer read is not written")
 }
 
-func TestCreateIssueFailsClosedOnAForeignCheckpoint(t *testing.T) {
+func TestCreateIssueRetriesWithoutSendingOnAForeignCheckpoint(t *testing.T) {
 	provider := newIssueProvider(t)
 	client := newIssueClient(t, provider.URL, github.RepositoryAuthMethodID)
 	ctx := singledispatchtest.NewContext("issues-flow", "foreign")
 	require.NoError(t, ctx.SetPersistedCheckpoint(singledispatch.Marker{CallID: "another-call", Attempt: 1, State: singledispatch.StateNotSent}))
 	ctx.AdvanceAttempt()
-	result, err := sdkgo.RunMutation(ctx, client.CreateIssue(), githubConnection, bugReportInput())
-	require.NoError(t, err)
-	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+	_, err := sdkgo.RunMutation(ctx, client.CreateIssue(), githubConnection, bugReportInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "FailClosed never selects a terminal branch")
 	require.Zero(t, provider.count("POST")+provider.count("GET"))
+}
+
+func TestCreateIssueTreatsAnUnlistedStatusAsUnknown(t *testing.T) {
+	provider := newIssueProvider(t, answer410)
+	client := newIssueClient(t, provider.URL, github.RepositoryAuthMethodID)
+	_, err := sdkgo.RunMutation(singledispatchtest.NewContext("issues-flow", "gone"), client.CreateIssue(), githubConnection, bugReportInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "a 410 does not prove a refusal, so the send is reconciled and resent below the cap")
+	require.Equal(t, 1, provider.count("POST"))
 }
 
 func TestCreateIssueValidatesInputBeforeProviderAccess(t *testing.T) {

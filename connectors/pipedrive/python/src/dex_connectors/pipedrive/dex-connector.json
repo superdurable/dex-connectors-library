@@ -1,10 +1,10 @@
 {
   "connectorId": "pipedrive",
-  "releaseTag": "connectors/pipedrive/go/v0.24.0",
+  "releaseTag": "connectors/pipedrive/go/v0.24.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-pipedrive",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {
@@ -313,7 +313,7 @@
       "kind": "mutation",
       "operationId": "upsertObject",
       "inputType": "UpsertObjectInput",
-      "description": "Create or update one Pipedrive person identified by email, or one organization identified by name. Pipedrive has no idempotency key, so sync durability lets the shared single-dispatch fence persist a claim before a create; a later attempt searches the identity again and updates the record it finds or reports uncertain, and a missing or stale claim fails closed while identity read-back checks for a previously created record.",
+      "description": "Create or update one Pipedrive person identified by email, or one organization identified by name. Pipedrive has no idempotency key, so sync durability lets the shared single-dispatch fence persist a claim before a create; a later attempt searches the identity again and updates the record it finds, creates again while possible sends stay below the Step's send cap, or reports uncertain at the cap.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -397,7 +397,7 @@
       "kind": "mutation",
       "operationId": "createObject",
       "inputType": "CreateObjectInput",
-      "description": "Create one Pipedrive person, organization, or deal. Pipedrive has no idempotency key, so sync durability persists the shared single-dispatch fence claim across retries; a later attempt may resend after a definite refusal or proven unsent request, read back a known ID, or report uncertain.",
+      "description": "Create one Pipedrive person, organization, or deal. Pipedrive has no idempotency key, so sync durability persists the shared single-dispatch fence claim across retries; an unknown outcome is resent while possible sends stay below the Step's send cap, a known ID is read back, and the cap reports uncertain.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",

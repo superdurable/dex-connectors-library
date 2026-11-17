@@ -38,6 +38,8 @@ export interface ExchangeFailure {
   retryAfterMs: number;
   /** Provider receipt. */
   receipt: ReceiptDraft;
+  /** HTTP status of the provider answer; undefined for a batch error or when no answer arrived. */
+  status?: number;
 }
 
 /** Successful response or classified failure. */
@@ -112,11 +114,11 @@ export class HubSpotClient {
       }
     } catch (error) {
       const receipt = this.receipt(call, error instanceof BodyTooLargeError && error.headers ? { status: error.status ?? 0, headers: error.headers, body: new Uint8Array() } : undefined, objectId);
-      if (error instanceof BodyTooLargeError) return { outcome: this.failure('invalidResponse', operation, 'RESPONSE_TOO_LARGE', 'HubSpot response exceeds the configured size limit', receipt) };
+      if (error instanceof BodyTooLargeError) return { outcome: { ...this.failure('invalidResponse', operation, 'RESPONSE_TOO_LARGE', 'HubSpot response exceeds the configured size limit', receipt), ...(error.status !== undefined ? { status: error.status } : {}) } };
       return { outcome: this.failure('retry', operation, 'TRANSPORT', 'HubSpot did not return a complete response', receipt) };
     }
     if (response.status >= 200 && response.status < 300) return { response };
-    return { outcome: this.classify(operation, response, this.receipt(call, response, objectId)) };
+    return { outcome: { ...this.classify(operation, response, this.receipt(call, response, objectId)), status: response.status } };
   }
 
   private validateCredentials(credentials: Credentials): void {
@@ -147,7 +149,9 @@ export class HubSpotClient {
     if (status === 403 && errorBody.category === 'MISSING_SCOPES') return this.failure('rejected', operation, 'AUTHORIZATION', `HubSpot access token lacks a required scope${detail}`, receipt);
     if (status === 403) return this.failure('rejected', operation, 'AUTHORIZATION', `HubSpot denied access to the record${detail}`, receipt);
     if (status === 404) return this.failure('notFound', operation, 'NOT_FOUND', `HubSpot found no such record${detail}`, receipt);
-    if (status === 409) return this.failure('conflict', operation, 'CONFLICT', `HubSpot reported a conflict with another record${detail}`, receipt);
+    if (status === 409 && (errorBody.category === 'CONFLICT' || errorBody.category === 'OBJECT_ALREADY_EXISTS')) return this.failure('conflict', operation, 'CONFLICT', `HubSpot reported a conflict with another record${detail}`, receipt);
+    // A write answered with a bare 409 has an unknown outcome and is retried.
+    if (status === 409) return this.failure('rejected', operation, 'CONFLICT', `HubSpot answered HTTP 409 without a documented conflict category${detail}`, receipt);
     if (status === 400 || status === 422 || errorBody.category === 'VALIDATION_ERROR') return this.failure('rejected', operation, 'VALIDATION', `HubSpot rejected the request as invalid${detail}`, receipt);
     if (status >= 300 && status < 400) return this.failure('rejected', operation, 'PROTOCOL', `HubSpot redirected the request (HTTP ${status})`, receipt);
     return this.failure('rejected', operation, 'PROVIDER_REJECTION', `HubSpot rejected the request (HTTP ${status})${detail}`, receipt);

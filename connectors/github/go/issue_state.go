@@ -108,7 +108,8 @@ func (operation SetIssueStateOperation) Invoke(call sdkgo.Call, input SetIssueSt
 		return sdkgo.NewMutationRetry[UpdatedIssueState](providerFailure(setIssueStateOperationID, sdkgo.FailureTransport, "GitHub issue state update did not complete"), 0)
 	}
 	if terminal := operation.client.classify(setIssueStateOperationID, response, issueStateResponseBranches()); terminal != nil {
-		if terminal.isRetryable {
+		// The absolute state is repeat-safe, so a status that does not prove a refusal, such as 410, retries.
+		if terminal.isRetryable || !isDefiniteRefusalStatus(response.statusCode) {
 			return sdkgo.NewMutationRetry[UpdatedIssueState](terminal.failure, terminal.delay)
 		}
 		if terminal.branch == SetIssueStateBranchProviderRejected {

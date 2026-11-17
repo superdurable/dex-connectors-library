@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { isIP } from 'node:net';
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { newFence, CheckpointError, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
 import type { PipedriveClient, PipedriveExchange, PipedriveSession } from './client.js';
 import { CreateObjectDefinition, GetObjectDefinition, ListObjectsDefinition, SearchObjectsDefinition, UpdateObjectDefinition, UpsertObjectDefinition } from './generated/definitions.js';
@@ -84,6 +84,8 @@ export class UpdateObjectOperation implements Mutation<UpdateObjectInput, CRMObj
     const started = await this.client.startSession(call, 'updateObject');
     if (started.kind !== 'resolved') return sessionMutation(started, 'providerRejected', zeroObject);
     const result = await this.client.exchange(call, 'updateObject', started.session, 'PATCH', `/api/v2/${input.objectType}/${input.objectId}`, undefined, body);
+    // The PATCH is repeat-safe, so a status that does not prove a refusal is retried.
+    if (isUnknownWriteOutcome(result)) return newMutationRetry(result.failure!, result.retryAfterMs);
     const failed = failedMutation(this.client, call, result, zeroObject, true, input.objectId, true);
     if (failed) return failed;
     try { return newMutationBranch('updated', decodeMatchingRecord(input.objectType, input.objectId, result), this.client.receipt(call, result.response, input.objectId)); }
@@ -96,14 +98,17 @@ export class CreateObjectOperation implements Mutation<CreateObjectInput, CRMObj
   /** Bind a provider client. */ constructor(private readonly client: PipedriveClient) {}
   /** Return the manifest definition. */ definition() { return CreateObjectDefinition; }
   /** Correlate the fence to one Call. */ idempotencyKey(callId: string): string { return callId; }
-  /** Fence, send, and read back a prior accepted create when needed. */
+  /** Fence and send, resending an unknown outcome only below the send cap, or read back a saved ID. */
   async invoke(call: Call, input: CreateObjectInput): Promise<MutationAttempt<CRMObject>> {
+    const operationMaxSends = definitionMaxSends(CreateObjectDefinition);
     let fence: ReturnType<typeof newFence>;
-    try { fence = newFence(call, 30_000); } catch { return newMutationBranch('defect', zeroObject, {}, this.client.failure('createObject', 'LOCAL_DEFECT', 'single-dispatch fence could not be built')); }
+    try { fence = newFence(call, 30_000, { maxSends: operationMaxSends }); } catch { return newMutationBranch('defect', zeroObject, {}, this.client.failure('createObject', 'LOCAL_DEFECT', 'single-dispatch fence could not be built')); }
     const decision = fence.decide();
-    if (decision.kind !== 'sendAllowed') {
-      const id = decision.kind === 'readBackRequired' ? decision.marker?.providerId : undefined;
-      if (!id || decision.marker?.callId !== call.id) return newMutationUncertain(zeroObject, this.client.failure('createObject', 'TRANSPORT', 'an earlier create may have reached Pipedrive and cannot be confirmed'), this.client.receipt(call));
+    if (decision.kind === 'failClosed') return fenceRetry(this.client, 'createObject');
+    // Pipedrive returns an ID only for a record it created, so a saved ID is read back, never resent.
+    const id = decision.kind !== 'sendAllowed' && decision.marker?.callId === call.id ? decision.marker.providerId : undefined;
+    if (!id && decision.kind === 'readBackRequired') return newMutationUncertain(zeroObject, this.client.failure('createObject', 'TRANSPORT', 'earlier creates may have reached Pipedrive up to the send cap and cannot be confirmed'), this.client.receipt(call));
+    if (id) {
       const started = await this.client.startSession(call, 'createObject');
       if (started.kind !== 'resolved') return started.kind === 'retry' ? newMutationRetry(started.failure) : newMutationUncertain(zeroObject, started.failure, this.client.receipt(call, undefined, id));
       const read = await this.client.exchange(call, 'createObject', started.session, 'GET', `/api/v2/${input.objectType}/${id}`);
@@ -112,19 +117,24 @@ export class CreateObjectOperation implements Mutation<CreateObjectInput, CRMObj
       try { return newMutationBranch('created', decodeMatchingRecord(input.objectType, id, read), this.client.receipt(call, read.response, id)); }
       catch { return newMutationUncertain(zeroObject, this.client.failure('createObject', 'PROTOCOL', 'Pipedrive returned an invalid record'), this.client.receipt(call, read.response, id)); }
     }
+    const priorSendUpperBound = decision.priorSendUpperBound ?? 0;
+    const canResendUnknownOutcome = priorSendUpperBound + 1 < effectiveMaxSends(call, operationMaxSends);
+    const hasPossibleEarlierSend = priorSendUpperBound > 0;
     let body: Record<string, unknown>;
     try { requireObjectType(input.objectType); body = writeBody(input.fields, input.customFields, true, input.objectType); }
     catch (error) { return defectMutation(this.client, 'createObject', zeroObject, error); }
     const started = await this.client.startSession(call, 'createObject');
     if (started.kind !== 'resolved') {
-      try { await fence.recordNotSent(); } catch { return fenceRetry(this.client, 'createObject'); }
+      // A pre-send Retry after an earlier possible send records nothing, so the next attempt counts it.
+      if (decision.kind === 'sendAllowed') { try { await fence.recordNotSent(); } catch { return fenceRetry(this.client, 'createObject'); } }
+      if (hasPossibleEarlierSend && started.kind !== 'retry') return newMutationUncertain(zeroObject, started.failure, this.client.receipt(call));
       return sessionMutation(started, 'providerRejected', zeroObject);
     }
     let result: PipedriveExchange;
     try { result = await fence.dispatch(signal => this.client.exchange(call, 'createObject', started.session, 'POST', `/api/v2/${input.objectType}`, undefined, body, signal, true)); }
     catch (error) {
       if (error instanceof CheckpointError || error instanceof InsufficientTimeError) return fenceRetry(this.client, 'createObject');
-      return newMutationUncertain(zeroObject, this.client.failure('createObject', 'TRANSPORT', 'create dispatch could not be confirmed'), {});
+      return resendOrSelectUncertainCreate(canResendUnknownOutcome, this.client.failure('createObject', 'TRANSPORT', 'create dispatch could not be confirmed'), {});
     }
     const receipt = this.client.receipt(call, result.response);
     if (result.response?.status === 401 && started.session.credentials.authMethodId === 'pipedrive-oauth' && await this.client.refreshAfterRejection(call, started.session)) {
@@ -135,8 +145,17 @@ export class CreateObjectOperation implements Mutation<CreateObjectInput, CRMObj
       try { await fence.recordCanResend(); } catch { return fenceRetry(this.client, 'createObject'); }
       return newMutationRetry(result.failure!, result.retryAfterMs);
     }
-    if (result.kind === 'unavailable' || result.kind === 'invalid') return newMutationUncertain(zeroObject, result.failure!, receipt);
-    if (result.kind !== 'success') return newMutationBranch(result.kind === 'defect' ? 'defect' : 'providerRejected', zeroObject, receipt, result.failure);
+    // Pipedrive accepted this POST, so a resend would duplicate the record.
+    if (result.kind === 'invalid' || (result.kind !== 'success' && isAcceptedStatus(result))) return newMutationUncertain(zeroObject, result.failure!, receipt);
+    if (result.kind === 'defect' && !hasPossibleEarlierSend) return newMutationBranch('defect', zeroObject, receipt, result.failure);
+    if ((result.kind === 'rejected' || result.kind === 'notFound') && isDefiniteWriteRefusal(result)) {
+      // An earlier send may have created the record, so a refusal of this resend proves nothing.
+      if (hasPossibleEarlierSend) return newMutationUncertain(zeroObject, result.failure!, receipt);
+      try { await fence.recordCanResend(); } catch { return fenceRetry(this.client, 'createObject'); }
+      return newMutationBranch('providerRejected', zeroObject, receipt, result.failure);
+    }
+    // A timeout, 5xx, 408, 409, 402, redirect, or other status leaves the outcome unknown.
+    if (result.kind !== 'success') return resendOrSelectUncertainCreate(canResendUnknownOutcome, result.failure!, receipt, result.retryAfterMs);
     let object: CRMObject;
     try { object = decodeRecordBody(input.objectType, result.response!); }
     catch { return newMutationUncertain(zeroObject, this.client.failure('createObject', 'PROTOCOL', 'Pipedrive accepted the create but returned an invalid record'), receipt); }
@@ -150,19 +169,22 @@ export class UpsertObjectOperation implements Mutation<UpsertObjectInput, Upsert
   /** Bind a provider client. */ constructor(private readonly client: PipedriveClient) {}
   /** Return the manifest definition. */ definition() { return UpsertObjectDefinition; }
   /** Correlate the fence to one Call. */ idempotencyKey(callId: string): string { return callId; }
-  /** Search, update, or fence a create. */
+  /** Search, update, or fence a create; create again only while possible sends stay below the send cap. */
   async invoke(call: Call, input: UpsertObjectInput): Promise<MutationAttempt<UpsertedObject>> {
     let fence: ReturnType<typeof newFence>;
-    try { fence = newFence(call, 30_000); } catch { return newMutationBranch('defect', zeroUpsert, {}, this.client.failure('upsertObject', 'LOCAL_DEFECT', 'single-dispatch fence could not be built')); }
+    try { fence = newFence(call, 30_000, { maxSends: definitionMaxSends(UpsertObjectDefinition) }); } catch { return newMutationBranch('defect', zeroUpsert, {}, this.client.failure('upsertObject', 'LOCAL_DEFECT', 'single-dispatch fence could not be built')); }
     const decision = fence.decide();
-    if (decision.kind === 'failClosed') return uncertainUpsert(this.client, call, this.client.failure('upsertObject', 'TRANSPORT', 'create checkpoint could not be read'));
+    if (decision.kind === 'failClosed') return fenceRetry(this.client, 'upsertObject');
     let createBody: Record<string, unknown>; let updateBody: Record<string, unknown>; let identityField: string;
     try { ({ createBody, updateBody, identityField } = upsertBodies(input)); }
     catch (error) { return defectMutation(this.client, 'upsertObject', zeroUpsert, error); }
-    const earlierCreate = decision.kind === 'readBackRequired';
+    // A canResend marker allows a send but keeps counting earlier unknown sends.
+    const earlierCreate = decision.kind !== 'sendAllowed' || (decision.priorSendUpperBound ?? 0) > 0;
+    const canCreate = decision.kind !== 'readBackRequired';
     const started = await this.client.startSession(call, 'upsertObject');
     if (started.kind !== 'resolved') {
-      if (!earlierCreate) { try { await fence.recordNotSent(); } catch { return fenceRetry(this.client, 'upsertObject'); } return sessionMutation(started, 'providerRejected', zeroUpsert); }
+      if (decision.kind === 'sendAllowed') { try { await fence.recordNotSent(); } catch { return fenceRetry(this.client, 'upsertObject'); } }
+      if (!earlierCreate) return sessionMutation(started, 'providerRejected', zeroUpsert);
       return started.kind === 'retry' ? newMutationRetry(started.failure) : uncertainUpsert(this.client, call, started.failure, decision.marker?.providerId);
     }
     const session = started.session;
@@ -178,15 +200,17 @@ export class UpsertObjectOperation implements Mutation<UpsertObjectInput, Upsert
     const matches = await this.findMatches(call, session, input, identityField);
     if (matches.result.kind !== 'success') {
       if (earlierCreate && !isRetryable(matches.result)) return uncertainUpsert(this.client, call, matches.result.failure!, '', matches.result);
-      if (!earlierCreate && isRetryable(matches.result)) { try { await fence.recordNotSent(); } catch { return fenceRetry(this.client, 'upsertObject'); } }
+      if (decision.kind === 'sendAllowed' && isRetryable(matches.result)) { try { await fence.recordNotSent(); } catch { return fenceRetry(this.client, 'upsertObject'); } }
       return failedMutation(this.client, call, matches.result, zeroUpsert, true) ?? newMutationRetry(matches.result.failure!);
     }
     if (matches.ids.length > 1 || matches.hasMore) return newMutationBranch('multipleMatches', { ...zeroUpsert, matchingIds: matches.ids }, this.client.receipt(call, matches.result.response), this.client.failure('upsertObject', 'CONFLICT', `${Math.max(matches.ids.length, 2)} or more Pipedrive ${input.objectType} carry the identity value, so nothing was written`));
     if (matches.ids.length === 1) return this.updateMatch(call, session, input.objectType, matches.ids[0]!, updateBody, earlierCreate, fence);
-    if (earlierCreate) return uncertainUpsert(this.client, call, this.client.failure('upsertObject', 'TRANSPORT', 'Pipedrive search finds no record with the identity value'));
+    if (!canCreate) return uncertainUpsert(this.client, call, this.client.failure('upsertObject', 'TRANSPORT', 'creates reached the send cap, and Pipedrive search finds no record with the identity value'));
+    // Search can lag behind a create, so a resend after a miss may duplicate the record; the send cap bounds that.
     let result: PipedriveExchange;
     try { result = await fence.dispatch(signal => this.client.exchange(call, 'upsertObject', session, 'POST', `/api/v2/${input.objectType}`, undefined, createBody, signal, true)); }
-    catch (error) { return error instanceof CheckpointError || error instanceof InsufficientTimeError ? fenceRetry(this.client, 'upsertObject') : uncertainUpsert(this.client, call, this.client.failure('upsertObject', 'TRANSPORT', 'create dispatch could not be confirmed')); }
+    // The next attempt searches the identity before it creates again.
+    catch (error) { return error instanceof CheckpointError || error instanceof InsufficientTimeError ? fenceRetry(this.client, 'upsertObject') : newMutationRetry(this.client.failure('upsertObject', 'TRANSPORT', 'create dispatch could not be confirmed')); }
     if (result.response?.status === 401 && session.credentials.authMethodId === 'pipedrive-oauth' && await this.client.refreshAfterRejection(call, session)) {
       try { await fence.recordCanResend(); } catch { return fenceRetry(this.client, 'upsertObject'); }
       return newMutationRetry(result.failure!);
@@ -195,9 +219,14 @@ export class UpsertObjectOperation implements Mutation<UpsertObjectInput, Upsert
       try { await fence.recordCanResend(); } catch { return fenceRetry(this.client, 'upsertObject'); }
       return newMutationRetry(result.failure!, result.retryAfterMs);
     }
-    if (result.kind === 'unavailable') return newMutationRetry(result.failure!, result.retryAfterMs);
-    if (result.kind === 'invalid') return this.readBackAcceptedCreate(call, session, input, identityField, fence, result);
-    if (result.kind !== 'success') return newMutationBranch(result.kind === 'defect' ? 'defect' : 'providerRejected', zeroUpsert, this.client.receipt(call, result.response), result.failure);
+    if (result.kind === 'invalid' || (result.kind === 'unavailable' && isAcceptedStatus(result))) return this.readBackAcceptedCreate(call, session, input, identityField, fence, result);
+    if (result.kind === 'unavailable' || isUnknownWriteOutcome(result)) return newMutationRetry(result.failure!, result.retryAfterMs);
+    if (result.kind !== 'success') {
+      // An earlier send may have created the record, so a refusal of this resend proves nothing.
+      if (earlierCreate) return uncertainUpsert(this.client, call, result.failure!, '', result);
+      if (result.kind !== 'defect') { try { await fence.recordCanResend(); } catch { return fenceRetry(this.client, 'upsertObject'); } }
+      return newMutationBranch(result.kind === 'defect' ? 'defect' : 'providerRejected', zeroUpsert, this.client.receipt(call, result.response), result.failure);
+    }
     try {
       const object = decodeRecordBody(input.objectType, result.response!);
       try { await fence.recordProviderId(object.id); } catch { /* Accepted result remains known without the extra identity checkpoint. */ }
@@ -219,8 +248,11 @@ export class UpsertObjectOperation implements Mutation<UpsertObjectInput, Upsert
   private async updateMatch(call: Call, session: PipedriveSession, objectType: string, objectId: string, body: Record<string, unknown>, earlierCreate: boolean, fence: ReturnType<typeof newFence>): Promise<MutationAttempt<UpsertedObject>> {
     const result = await this.client.exchange(call, 'upsertObject', session, Object.keys(body).length ? 'PATCH' : 'GET', `/api/v2/${objectType}/${objectId}`, undefined, Object.keys(body).length ? body : undefined);
     if (result.kind !== 'success') {
-      if (earlierCreate && !isRetryable(result)) return uncertainUpsert(this.client, call, result.failure!, objectId, result);
-      if (!earlierCreate && isRetryable(result)) { try { await fence.recordNotSent(); } catch { return fenceRetry(this.client, 'upsertObject'); } }
+      // The PATCH is repeat-safe, so a status that does not prove a refusal is retried.
+      const isRetryableWrite = isRetryable(result) || (Object.keys(body).length > 0 && isUnknownWriteOutcome(result));
+      if (earlierCreate && !isRetryableWrite) return uncertainUpsert(this.client, call, result.failure!, objectId, result);
+      if (!earlierCreate && isRetryableWrite) { try { await fence.recordNotSent(); } catch { return fenceRetry(this.client, 'upsertObject'); } }
+      if (isRetryableWrite) return newMutationRetry(result.failure!, result.retryAfterMs);
       return failedMutation(this.client, call, result, zeroUpsert, true, objectId) ?? newMutationRetry(result.failure!);
     }
     try { return newMutationBranch('upserted', { object: decodeMatchingRecord(objectType, objectId, result), created: false }, this.client.receipt(call, result.response, objectId)); }
@@ -244,6 +276,20 @@ export class UpsertObjectOperation implements Mutation<UpsertObjectInput, Upsert
 }
 
 function isRetryable(result: PipedriveExchange): boolean { return result.kind === 'notSent' || result.kind === 'rateLimited' || result.kind === 'unavailable'; }
+/** Statuses that prove Pipedrive refused a write; any other rejection leaves the write unknown. */
+const definiteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+/** Report a definite refusal; the daily token budget 429 refuses before Pipedrive acts. */
+function isDefiniteWriteRefusal(result: PipedriveExchange): boolean { return result.failure?.kind === 'QUOTA_EXHAUSTED' || definiteRefusalStatuses.has(result.response?.status ?? 0); }
+/** Report a write rejection, such as 402, a redirect, or an unlisted 4xx, that proves nothing. */
+function isUnknownWriteOutcome(result: PipedriveExchange): boolean { return (result.kind === 'rejected' || result.kind === 'notFound') && !isDefiniteWriteRefusal(result); }
+function isAcceptedStatus(result: PipedriveExchange): boolean { const status = result.response?.status ?? 0; return status >= 200 && status < 300; }
+/** Retry a possibly sent POST while the send cap allows another send. */
+function resendOrSelectUncertainCreate(canResendUnknownOutcome: boolean, failure: Failure, receipt: ReturnType<PipedriveClient['receipt']>, retryAfterMs = 0): MutationAttempt<CRMObject> {
+  // The claim stays the last marker, so the next attempt counts this send.
+  return canResendUnknownOutcome ? newMutationRetry(failure, retryAfterMs) : newMutationUncertain(zeroObject, failure, receipt);
+}
+/** Return the send cap the SDK fence applies to this Call. */
+function effectiveMaxSends(call: Call, operationMaxSends: number): number { return operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1; }
 function defectQuery<Output>(client: PipedriveClient, operation: string, zero: Output, error: unknown): QueryAttempt<Output> { return newQueryBranch('defect', zero, {}, client.failure(operation, 'VALIDATION', error instanceof Error ? error.message : 'invalid input')); }
 function defectMutation<Output>(client: PipedriveClient, operation: string, zero: Output, error: unknown): MutationAttempt<Output> { return newMutationBranch('defect', zero, {}, client.failure(operation, 'VALIDATION', error instanceof Error ? error.message : 'invalid input')); }
 function sessionQuery<Output>(result: Exclude<Awaited<ReturnType<PipedriveClient['startSession']>>, { kind: 'resolved' }>, rejected: string, zero: Output): QueryAttempt<Output> { return result.kind === 'retry' ? newQueryRetry(result.failure) : newQueryBranch(result.kind === 'defect' ? 'defect' : rejected, zero, {}, result.failure); }

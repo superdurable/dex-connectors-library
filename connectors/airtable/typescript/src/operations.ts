@@ -114,8 +114,13 @@ function queryOutcome<T>(outcome: ExchangeFailure, zero: T, rejectedBranch: stri
   return newQueryBranch(branch, zero, outcome.receipt, outcome.failure);
 }
 
+/** Statuses that prove Airtable refused a write; any other failure leaves the write unknown. */
+const definiteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
 function mutationOutcome<T>(outcome: ExchangeFailure, zero: T, rejectedBranch: string, notFoundBranch = rejectedBranch): MutationAttempt<T> {
-  if (outcome.disposition === 'retry') return newMutationRetry(outcome.failure, outcome.retryAfterMs);
+  // Both writes are repeat-safe, so a status that does not prove a refusal is retried.
+  const isUnknownStatus = outcome.status !== undefined && (outcome.status < 200 || outcome.status >= 300) && !definiteRefusalStatuses.has(outcome.status);
+  if (outcome.disposition === 'retry' || isUnknownStatus) return newMutationRetry(outcome.failure, outcome.retryAfterMs);
   const branch = outcome.disposition === 'notFound' ? notFoundBranch : outcome.disposition === 'rejected' || outcome.disposition === 'offsetExpired' ? rejectedBranch : outcome.disposition;
   return newMutationBranch(branch, zero, outcome.receipt, outcome.failure);
 }

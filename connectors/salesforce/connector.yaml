@@ -6,17 +6,17 @@ metadata:
   description: Query Salesforce CRM records with typed SOQL bind values, read one record, create or update a record by external ID without duplicates on retry, update a record by ID, and start Flows when records of one object are created or modified.
   company: Salesforce
   categories: [crm-sales]
-  version: v0.25.0
+  version: v0.25.1
 spec:
   provider: salesforce
   languages:
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: "@superdurable/connector-salesforce"
       operations: [queryRecords, getRecord, upsertRecordByExternalId, updateRecord]
       triggers: [recordModifiedPolled]
     python:
-      version: v0.2.0
+      version: v0.2.1
       package: dex-connector-salesforce
       operations: [queryRecords, getRecord, upsertRecordByExternalId, updateRecord]
       triggers: [recordModifiedPolled]

@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-hubspot",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "HubSpot CRM operations and record change Triggers for Dex Flows",
   "repository": {
     "type": "git",
