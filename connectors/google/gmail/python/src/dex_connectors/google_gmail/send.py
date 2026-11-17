@@ -76,6 +76,8 @@ class _SendOutcome:
 
 _SEND = _SendOutcome("sendMessage", "send", "Gmail rejected the message")
 _REPLY = _SendOutcome("replyToMessage", "reply", "Gmail rejected the reply")
+# Statuses that prove Gmail refused the POST before processing it.
+_REFUSED_BEFORE_PROCESSING_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
 
 
 class _SendBudget:
@@ -159,6 +161,15 @@ def _status_kind(status: int) -> FailureKind:
     }.get(status, FailureKind.PROVIDER_REJECTION)
 
 
+def _has_accepted_message_id(body: bytes) -> bool:
+    """Report a refusal body that still names a Gmail message, which contradicts the status."""
+    try:
+        decoded = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return False
+    return isinstance(decoded, dict) and isinstance(decoded.get("id"), str) and bool(decoded["id"])
+
+
 def _raw_message_size(payload: bytes) -> int:
     encoded = json.loads(payload)["raw"]
     return len(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
@@ -211,13 +222,7 @@ class SendService:
             if _raw_message_size(payload) > self._provider.max_message_bytes:
                 raise ValueError("message exceeds configured size limit")
         except ValueError as error:
-            return _branch(
-                execution,
-                _SEND,
-                "defect",
-                FailureKind.VALIDATION,
-                str(error),
-            )
+            return await self._defect_before_any_send(execution, _SEND, FailureKind.VALIDATION, str(error))
         outgoing = _OutgoingMessage(payload, recipients, message_id_address)
         if fence_result == DecisionKind.READ_BACK_REQUIRED:
             return await self._read_back_only(execution, budget, credential, _SEND, outgoing)
@@ -251,8 +256,8 @@ class SendService:
         except Exception as error:
             return await self._unavailable_credentials(execution, _REPLY, error)
         if not input.message_id.strip() or not input.text_body.strip():
-            return _branch(
-                execution, _REPLY, "defect", FailureKind.VALIDATION, "message ID and text body are required"
+            return await self._defect_before_any_send(
+                execution, _REPLY, FailureKind.VALIDATION, "message ID and text body are required"
             )
         if execution.attempt > 1 or fence_result == DecisionKind.READ_BACK_REQUIRED:
             try:
@@ -388,11 +393,8 @@ class SendService:
             if _raw_message_size(payload) > self._provider.max_message_bytes:
                 raise ValueError("reply exceeds configured size limit")
         except ValueError:
-            return _branch(
-                execution,
-                _REPLY,
-                "defect",
-                FailureKind.VALIDATION,
+            return await self._defect_before_any_send(
+                execution, _REPLY, FailureKind.VALIDATION,
                 "reply could not be encoded within the configured limit",
             )
         outgoing = _OutgoingMessage(
@@ -407,9 +409,10 @@ class SendService:
             return DecisionKind.SEND_ALLOWED
         decision = await execution.fence.decide()
         if decision.kind == DecisionKind.FAIL_CLOSED:
-            return _branch(
-                execution, outcome, "defect", FailureKind.LOCAL_DEFECT,
-                decision.error,
+            # An unreadable or untrusted checkpoint may hide an earlier send, so the outcome repeats.
+            return _retry(
+                outcome, FailureKind.LOCAL_DEFECT,
+                f"{decision.error}; an earlier send may still be delivered",
             )
         # A saved provider ID proves Gmail accepted an earlier send, so it is never resent.
         if (
@@ -424,21 +427,35 @@ class SendService:
     ) -> MutationAttempt[SendMessageOutput]:
         """Classify a credential failure before any send in this attempt.
 
-        After an earlier possible send, a transient failure returns Retry
-        without notSent, so later attempts still read back. Reauthorization,
-        invalid material, and a clean first attempt select defect.
+        After an earlier possible send, any failure, even one that needs
+        reconnection, returns Retry without notSent, so later attempts still
+        read back. Only a clean first attempt selects defect.
         """
-        is_permanent = isinstance(error, (ReauthorizationRequiredError, GmailCredentialMaterialError))
-        if not is_permanent and execution.fence is not None and (
-            await execution.fence.decide()
-        ).prior_send_upper_bound > 0:
+        if await self._is_earlier_send_possible(execution):
+            is_permanent = isinstance(error, (ReauthorizationRequiredError, GmailCredentialMaterialError))
+            reason = "need reconnection" if is_permanent else "are temporarily unavailable"
             return _retry(
                 outcome, FailureKind.AUTHENTICATION,
-                "Gmail credentials are temporarily unavailable; an earlier send may still be delivered",
+                f"Gmail credentials {reason}; an earlier send may still be delivered",
             )
         return _branch(
             execution, outcome, "defect", FailureKind.AUTHENTICATION, "connection credentials are unavailable"
         )
+
+    async def _defect_before_any_send(
+        self, execution: SendExecution, outcome: _SendOutcome, kind: FailureKind, message: str
+    ) -> MutationAttempt[SendMessageOutput]:
+        """Select defect only when no earlier attempt may have sent.
+
+        Otherwise that send may still be delivered, so Retry keeps the claim
+        and later attempts read back.
+        """
+        if await self._is_earlier_send_possible(execution):
+            return _retry(outcome, kind, f"{message}; an earlier send may still be delivered")
+        return _branch(execution, outcome, "defect", kind, message)
+
+    async def _is_earlier_send_possible(self, execution: SendExecution) -> bool:
+        return execution.fence is not None and (await execution.fence.decide()).prior_send_upper_bound > 0
 
     async def _reject_unless_earlier_send_is_unconfirmed(
         self,
@@ -459,6 +476,37 @@ class SendService:
         ).prior_send_upper_bound > 0:
             return _retry(outcome, kind, f"{message}; an earlier send may still be delivered")
         return _branch(execution, outcome, branch, kind, message, receipt)
+
+    async def _reject_refused_send(
+        self,
+        execution: SendExecution,
+        outcome: _SendOutcome,
+        is_definite_refusal: bool,
+        kind: FailureKind,
+        message: str,
+        receipt: Receipt,
+    ) -> MutationAttempt[SendMessageOutput]:
+        """Classify a definite Gmail refusal of this attempt's POST.
+
+        With no earlier possible send, canResend proves nothing was sent, so
+        agent hosts report failure instead of an unknown outcome. Only a
+        status in ``_REFUSED_BEFORE_PROCESSING_STATUSES`` with a readable body
+        naming no message proves that. Any other refusal, such as 408 or 409,
+        leaves the outcome unknown: Retry keeps the claim, so the next attempt
+        reads back Sent Mail before any resend.
+        """
+        if not is_definite_refusal:
+            return _retry(outcome, kind, f"{message}; Gmail may still have processed the request")
+        if execution.fence is not None and (
+            await execution.fence.decide()
+        ).prior_send_upper_bound == 0:
+            try:
+                await execution.fence.record_can_resend()
+            except Exception:  # noqa: BLE001
+                pass  # A failed checkpoint leaves the claim, so the outcome stays unknown.
+        return await self._reject_unless_earlier_send_is_unconfirmed(
+            execution, outcome, "providerRejected", kind, message, receipt
+        )
 
     async def _record_not_sent(self, execution: SendExecution) -> None:
         if execution.fence is not None and (
@@ -627,10 +675,15 @@ class SendService:
                     found = None
                 if found:
                     return await self._sent(execution, budget, credential, outcome, message, found, receipt)
-            return await self._reject_unless_earlier_send_is_unconfirmed(
+            is_definite_refusal = (
+                status in _REFUSED_BEFORE_PROCESSING_STATUSES
+                and response is not None
+                and not _has_accepted_message_id(response.body)
+            )
+            return await self._reject_refused_send(
                 execution,
                 outcome,
-                "providerRejected",
+                is_definite_refusal,
                 _status_kind(status),
                 outcome.rejection_message,
                 receipt,
