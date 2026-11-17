@@ -15,11 +15,13 @@ const (
 	// FlowType is the stable example Flow identity.
 	FlowType = "BrazeProfileInspection"
 	// ConnectionName is the static Dex Web connection used by this example.
-	ConnectionName    = "braze"
-	operationStepType = "CallGetUserProfile"
+	ConnectionName        = "braze"
+	operationStepType     = "CallGetUserProfile"
+	listCampaignsStepType = "CallListCampaigns"
 )
 
 var profileAttribute = dex.DefineAttribute[braze.UserProfile]("braze-profile")
+var externalIDAttribute = dex.DefineAttribute[string]("braze-external-id")
 
 // Flow runs GetUserProfile once and completes with its typed output.
 type Flow struct {
@@ -33,12 +35,20 @@ func NewFlow(connection braze.Connection) *Flow { return &Flow{connection: conne
 func (*Flow) GetFlowType() string { return FlowType }
 
 func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{profileAttribute}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{profileAttribute, externalIDAttribute}}
 }
 
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(startRequest{}),
+		dex.DefineStep(braze.NewListCampaignsStep(braze.ListCampaignsStepConfig[braze.GetUserProfileInput]{
+			StepType: listCampaignsStepType, ConnectionName: ConnectionName,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Braze", Explanation: "List campaign identities from Braze."},
+			Connection:          flow.connection,
+			MapToOperationInput: func(braze.GetUserProfileInput) braze.ListCampaignsInput { return braze.ListCampaignsInput{Page: 0} },
+			Listed:              sdkgo.GoTo(continueAfterCampaigns{}),
+		})),
+		dex.DefineStep(continueAfterCampaigns{}),
 		dex.DefineStep(braze.NewGetUserProfileStep(braze.GetUserProfileStepConfig[braze.GetUserProfileInput]{
 			StepType: operationStepType, ConnectionName: ConnectionName,
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Braze", Explanation: "Read a profile from Braze."},
@@ -97,8 +107,25 @@ func (startRequest) GetStepType() string { return "StartGetUserProfile" }
 func (startRequest) WaitFor(dex.Context, braze.GetUserProfileInput) (*dex.Wait, error) {
 	return dex.SkipWaitImmediately(), nil
 }
-func (startRequest) Execute(_ dex.Context, input braze.GetUserProfileInput) (*dex.StepDecision, error) {
-	return dex.GoTo(sdkgo.StepRef[braze.GetUserProfileInput](operationStepType), input), nil
+func (startRequest) Execute(ctx dex.Context, input braze.GetUserProfileInput) (*dex.StepDecision, error) {
+	if err := externalIDAttribute.Set(ctx, input.ExternalID); err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[braze.GetUserProfileInput](listCampaignsStepType), input), nil
+}
+
+// dex:group group-id:provider group-label:"Braze"
+// dex:explanation text:"Continue to profile lookup after campaign discovery."
+type continueAfterCampaigns struct {
+	dex.StepDefaultsNoWaitFor[braze.ListCampaignsResult]
+}
+
+func (continueAfterCampaigns) Execute(ctx dex.Context, _ braze.ListCampaignsResult) (*dex.StepDecision, error) {
+	externalID, err := externalIDAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[braze.GetUserProfileInput](operationStepType), braze.GetUserProfileInput{ExternalID: externalID}), nil
 }
 
 // dex:group group-id:result group-label:"Result"

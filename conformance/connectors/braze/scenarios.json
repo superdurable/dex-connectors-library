@@ -377,6 +377,1483 @@
       },
       "name": "getUserProfile-transportFailure",
       "operation": "getUserProfile"
+    },
+    {
+      "callId": "57929502-202e-5eb7-83a6-de0b7334237f",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"success\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/track",
+          "requestBody": {
+            "attributes": [
+              {
+                "email": "reader@example.com",
+                "external_id": "sample-user-1",
+                "first_name": "Avery",
+                "last_name": "Reader"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "accepted",
+        "failureKind": "",
+        "output": {
+          "externalId": "sample-user-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "57929502-202e-5eb7-83a6-de0b7334237f",
+      "input": {
+        "email": "reader@example.com",
+        "externalId": "sample-user-1",
+        "firstName": "Avery",
+        "lastName": "Reader"
+      },
+      "name": "updateUserProfile-success",
+      "operation": "updateUserProfile"
+    },
+    {
+      "callId": "57929502-202e-5eb7-83a6-de0b7334237f",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/track",
+          "requestBody": {
+            "attributes": [
+              {
+                "email": "reader@example.com",
+                "external_id": "sample-user-1",
+                "first_name": "Avery",
+                "last_name": "Reader"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "externalId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "57929502-202e-5eb7-83a6-de0b7334237f",
+      "input": {
+        "email": "reader@example.com",
+        "externalId": "sample-user-1",
+        "firstName": "Avery",
+        "lastName": "Reader"
+      },
+      "name": "updateUserProfile-providerRejected",
+      "operation": "updateUserProfile"
+    },
+    {
+      "callId": "57929502-202e-5eb7-83a6-de0b7334237f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/track",
+          "requestBody": {
+            "attributes": [
+              {
+                "email": "reader@example.com",
+                "external_id": "sample-user-1",
+                "first_name": "Avery",
+                "last_name": "Reader"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "externalId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "57929502-202e-5eb7-83a6-de0b7334237f",
+      "input": {
+        "email": "reader@example.com",
+        "externalId": "sample-user-1",
+        "firstName": "Avery",
+        "lastName": "Reader"
+      },
+      "name": "updateUserProfile-invalidResponse",
+      "operation": "updateUserProfile"
+    },
+    {
+      "callId": "57929502-202e-5eb7-83a6-de0b7334237f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "externalId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "57929502-202e-5eb7-83a6-de0b7334237f",
+      "input": {
+        "externalId": ""
+      },
+      "name": "updateUserProfile-defect",
+      "operation": "updateUserProfile"
+    },
+    {
+      "callId": "57929502-202e-5eb7-83a6-de0b7334237f",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/track",
+          "requestBody": {
+            "attributes": [
+              {
+                "email": "reader@example.com",
+                "external_id": "sample-user-1",
+                "first_name": "Avery",
+                "last_name": "Reader"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "57929502-202e-5eb7-83a6-de0b7334237f",
+      "input": {
+        "email": "reader@example.com",
+        "externalId": "sample-user-1",
+        "firstName": "Avery",
+        "lastName": "Reader"
+      },
+      "name": "updateUserProfile-rateLimit",
+      "operation": "updateUserProfile"
+    },
+    {
+      "callId": "57929502-202e-5eb7-83a6-de0b7334237f",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/track",
+          "requestBody": {
+            "attributes": [
+              {
+                "email": "reader@example.com",
+                "external_id": "sample-user-1",
+                "first_name": "Avery",
+                "last_name": "Reader"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "57929502-202e-5eb7-83a6-de0b7334237f",
+      "input": {
+        "email": "reader@example.com",
+        "externalId": "sample-user-1",
+        "firstName": "Avery",
+        "lastName": "Reader"
+      },
+      "name": "updateUserProfile-serverUnavailable",
+      "operation": "updateUserProfile"
+    },
+    {
+      "callId": "57929502-202e-5eb7-83a6-de0b7334237f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/track",
+          "requestBody": {
+            "attributes": [
+              {
+                "email": "reader@example.com",
+                "external_id": "sample-user-1",
+                "first_name": "Avery",
+                "last_name": "Reader"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "57929502-202e-5eb7-83a6-de0b7334237f",
+      "input": {
+        "email": "reader@example.com",
+        "externalId": "sample-user-1",
+        "firstName": "Avery",
+        "lastName": "Reader"
+      },
+      "name": "updateUserProfile-transportFailure",
+      "operation": "updateUserProfile"
+    },
+    {
+      "callId": "a9b011b2-3c32-51ba-8ccd-0a9812103989",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"success\",\"deleted\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/delete",
+          "requestBody": {
+            "external_ids": [
+              "sample-user-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": 1,
+          "externalId": "sample-user-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9b011b2-3c32-51ba-8ccd-0a9812103989",
+      "input": {
+        "externalId": "sample-user-1"
+      },
+      "name": "deleteUserProfile-success",
+      "operation": "deleteUserProfile"
+    },
+    {
+      "callId": "a9b011b2-3c32-51ba-8ccd-0a9812103989",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/delete",
+          "requestBody": {
+            "external_ids": [
+              "sample-user-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": 0,
+          "externalId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9b011b2-3c32-51ba-8ccd-0a9812103989",
+      "input": {
+        "externalId": "sample-user-1"
+      },
+      "name": "deleteUserProfile-providerRejected",
+      "operation": "deleteUserProfile"
+    },
+    {
+      "callId": "a9b011b2-3c32-51ba-8ccd-0a9812103989",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/delete",
+          "requestBody": {
+            "external_ids": [
+              "sample-user-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": 0,
+          "externalId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9b011b2-3c32-51ba-8ccd-0a9812103989",
+      "input": {
+        "externalId": "sample-user-1"
+      },
+      "name": "deleteUserProfile-invalidResponse",
+      "operation": "deleteUserProfile"
+    },
+    {
+      "callId": "a9b011b2-3c32-51ba-8ccd-0a9812103989",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": 0,
+          "externalId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9b011b2-3c32-51ba-8ccd-0a9812103989",
+      "input": {
+        "externalId": ""
+      },
+      "name": "deleteUserProfile-defect",
+      "operation": "deleteUserProfile"
+    },
+    {
+      "callId": "a9b011b2-3c32-51ba-8ccd-0a9812103989",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/delete",
+          "requestBody": {
+            "external_ids": [
+              "sample-user-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9b011b2-3c32-51ba-8ccd-0a9812103989",
+      "input": {
+        "externalId": "sample-user-1"
+      },
+      "name": "deleteUserProfile-rateLimit",
+      "operation": "deleteUserProfile"
+    },
+    {
+      "callId": "a9b011b2-3c32-51ba-8ccd-0a9812103989",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/delete",
+          "requestBody": {
+            "external_ids": [
+              "sample-user-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9b011b2-3c32-51ba-8ccd-0a9812103989",
+      "input": {
+        "externalId": "sample-user-1"
+      },
+      "name": "deleteUserProfile-serverUnavailable",
+      "operation": "deleteUserProfile"
+    },
+    {
+      "callId": "a9b011b2-3c32-51ba-8ccd-0a9812103989",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/delete",
+          "requestBody": {
+            "external_ids": [
+              "sample-user-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9b011b2-3c32-51ba-8ccd-0a9812103989",
+      "input": {
+        "externalId": "sample-user-1"
+      },
+      "name": "deleteUserProfile-transportFailure",
+      "operation": "deleteUserProfile"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000015",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"success\",\"campaigns\":[{\"id\":\"sample-campaign-1\",\"name\":\"Sample campaign\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/list",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "campaigns": [
+            {
+              "id": "sample-campaign-1",
+              "name": "Sample campaign"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listCampaigns-success",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000016",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/list",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "campaigns": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listCampaigns-providerRejected",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000017",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/list",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "campaigns": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listCampaigns-invalidResponse",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000018",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "campaigns": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1
+      },
+      "name": "listCampaigns-defect",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000019",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/list",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listCampaigns-rateLimit",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000020",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/list",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listCampaigns-serverUnavailable",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000021",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/list",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listCampaigns-transportFailure",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000022",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"success\",\"canvases\":[{\"id\":\"sample-canvas-1\",\"name\":\"Sample Canvas\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/canvas/list",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "canvases": [
+            {
+              "id": "sample-canvas-1",
+              "name": "Sample Canvas"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listCanvases-success",
+      "operation": "listCanvases"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000023",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/canvas/list",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "canvases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listCanvases-providerRejected",
+      "operation": "listCanvases"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000024",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/canvas/list",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "canvases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listCanvases-invalidResponse",
+      "operation": "listCanvases"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000025",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "canvases": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1
+      },
+      "name": "listCanvases-defect",
+      "operation": "listCanvases"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000026",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/canvas/list",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listCanvases-rateLimit",
+      "operation": "listCanvases"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000027",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/canvas/list",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listCanvases-serverUnavailable",
+      "operation": "listCanvases"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000028",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/canvas/list",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listCanvases-transportFailure",
+      "operation": "listCanvases"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000029",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"success\",\"segments\":[{\"id\":\"sample-segment-1\",\"name\":\"Sample segment\",\"analytics_tracking_enabled\":true}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/segments/list",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "segments": [
+            {
+              "analyticsTrackingEnabled": true,
+              "id": "sample-segment-1",
+              "name": "Sample segment"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listSegments-success",
+      "operation": "listSegments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000030",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/segments/list",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "segments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listSegments-providerRejected",
+      "operation": "listSegments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000031",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/segments/list",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "segments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listSegments-invalidResponse",
+      "operation": "listSegments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000032",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "segments": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1
+      },
+      "name": "listSegments-defect",
+      "operation": "listSegments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000033",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/segments/list",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listSegments-rateLimit",
+      "operation": "listSegments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000034",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/segments/list",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listSegments-serverUnavailable",
+      "operation": "listSegments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000035",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/segments/list",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listSegments-transportFailure",
+      "operation": "listSegments"
     }
   ],
   "schemaVersion": 1

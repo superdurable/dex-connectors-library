@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret REST API key from Braze Dashboard > Settings > APIs and Identifiers > API Keys. Create or select a key with users.export.ids permission, copy its value into this secret field; blank prevents calls. Dex sends it only as a Bearer token. */
+  /** Secret REST API key from Braze Dashboard > Settings > APIs and Identifiers > API Keys. Select permissions users.export.ids, users.track, users.delete, campaigns.list, canvas.list, and segments.list for the operations you use; blank prevents calls. Dex sends it only as a Bearer token. */
   restApiKey: SecretString;
 }
 

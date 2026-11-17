@@ -17,8 +17,13 @@ import (
 
 // Mock is a scripted braze connection. Script each operation through its accessor.
 type Mock struct {
-	connection     braze.Connection
-	getUserProfile *connectormock.Query[braze.GetUserProfileInput, braze.UserProfile]
+	connection        braze.Connection
+	updateUserProfile *connectormock.Mutation[braze.UpdateUserProfileInput, braze.UserWriteResult]
+	deleteUserProfile *connectormock.Mutation[braze.DeleteUserProfileInput, braze.UserDeleteResult]
+	listCampaigns     *connectormock.Query[braze.ListCampaignsInput, braze.CampaignsList]
+	listCanvases      *connectormock.Query[braze.ListCanvasesInput, braze.CanvasesList]
+	listSegments      *connectormock.Query[braze.ListSegmentsInput, braze.SegmentsList]
+	getUserProfile    *connectormock.Query[braze.GetUserProfileInput, braze.UserProfile]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +31,18 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getUserProfile: connectormock.NewQuery[braze.GetUserProfileInput, braze.UserProfile](t, braze.GetUserProfileDefinition),
+		updateUserProfile: connectormock.NewMutation[braze.UpdateUserProfileInput, braze.UserWriteResult](t, braze.UpdateUserProfileDefinition),
+		deleteUserProfile: connectormock.NewMutation[braze.DeleteUserProfileInput, braze.UserDeleteResult](t, braze.DeleteUserProfileDefinition),
+		listCampaigns:     connectormock.NewQuery[braze.ListCampaignsInput, braze.CampaignsList](t, braze.ListCampaignsDefinition),
+		listCanvases:      connectormock.NewQuery[braze.ListCanvasesInput, braze.CanvasesList](t, braze.ListCanvasesDefinition),
+		listSegments:      connectormock.NewQuery[braze.ListSegmentsInput, braze.SegmentsList](t, braze.ListSegmentsDefinition),
+		getUserProfile:    connectormock.NewQuery[braze.GetUserProfileInput, braze.UserProfile](t, braze.GetUserProfileDefinition),
 	}
+	mock.updateUserProfile.Default(UpdateUserProfileDefault())
+	mock.deleteUserProfile.Default(DeleteUserProfileDefault())
+	mock.listCampaigns.Default(ListCampaignsDefault())
+	mock.listCanvases.Default(ListCanvasesDefault())
+	mock.listSegments.Default(ListSegmentsDefault())
 	mock.getUserProfile.Default(GetUserProfileDefault())
 	connection, err := braze.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "braze", Name: connectionName})
 	if err != nil {
@@ -40,6 +55,31 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() braze.Connection { return mock.connection }
 
+// UpdateUserProfile returns the updateUserProfile script.
+func (mock *Mock) UpdateUserProfile() *connectormock.Mutation[braze.UpdateUserProfileInput, braze.UserWriteResult] {
+	return mock.updateUserProfile
+}
+
+// DeleteUserProfile returns the deleteUserProfile script.
+func (mock *Mock) DeleteUserProfile() *connectormock.Mutation[braze.DeleteUserProfileInput, braze.UserDeleteResult] {
+	return mock.deleteUserProfile
+}
+
+// ListCampaigns returns the listCampaigns script.
+func (mock *Mock) ListCampaigns() *connectormock.Query[braze.ListCampaignsInput, braze.CampaignsList] {
+	return mock.listCampaigns
+}
+
+// ListCanvases returns the listCanvases script.
+func (mock *Mock) ListCanvases() *connectormock.Query[braze.ListCanvasesInput, braze.CanvasesList] {
+	return mock.listCanvases
+}
+
+// ListSegments returns the listSegments script.
+func (mock *Mock) ListSegments() *connectormock.Query[braze.ListSegmentsInput, braze.SegmentsList] {
+	return mock.listSegments
+}
+
 // GetUserProfile returns the getUserProfile script.
 func (mock *Mock) GetUserProfile() *connectormock.Query[braze.GetUserProfileInput, braze.UserProfile] {
 	return mock.getUserProfile
@@ -47,9 +87,200 @@ func (mock *Mock) GetUserProfile() *connectormock.Query[braze.GetUserProfileInpu
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) UpdateUserProfile() sdkgo.Mutation[braze.UpdateUserProfileInput, braze.UserWriteResult] {
+	return operations.mock.updateUserProfile
+}
+func (operations mockOperations) DeleteUserProfile() sdkgo.Mutation[braze.DeleteUserProfileInput, braze.UserDeleteResult] {
+	return operations.mock.deleteUserProfile
+}
+func (operations mockOperations) ListCampaigns() sdkgo.Query[braze.ListCampaignsInput, braze.CampaignsList] {
+	return operations.mock.listCampaigns
+}
+func (operations mockOperations) ListCanvases() sdkgo.Query[braze.ListCanvasesInput, braze.CanvasesList] {
+	return operations.mock.listCanvases
+}
+func (operations mockOperations) ListSegments() sdkgo.Query[braze.ListSegmentsInput, braze.SegmentsList] {
+	return operations.mock.listSegments
+}
 func (operations mockOperations) GetUserProfile() sdkgo.Query[braze.GetUserProfileInput, braze.UserProfile] {
 	return operations.mock.getUserProfile
 }
+
+// UpdateUserProfileAccepted selects the accepted branch: Braze queued the profile update.
+func UpdateUserProfileAccepted(value braze.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[braze.UserWriteResult] {
+	return connectormock.Branch(braze.UpdateUserProfileBranchAccepted, value, failure)
+}
+
+// UpdateUserProfileProviderRejected selects the providerRejected branch: Braze conclusively rejected the update.
+func UpdateUserProfileProviderRejected(value braze.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[braze.UserWriteResult] {
+	return connectormock.Branch(braze.UpdateUserProfileBranchProviderRejected, value, failure)
+}
+
+// UpdateUserProfileInvalidResponse selects the invalidResponse branch: Braze returned malformed or oversized JSON.
+func UpdateUserProfileInvalidResponse(value braze.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[braze.UserWriteResult] {
+	return connectormock.Branch(braze.UpdateUserProfileBranchInvalidResponse, value, failure)
+}
+
+// UpdateUserProfileDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateUserProfileDefect(value braze.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[braze.UserWriteResult] {
+	return connectormock.Branch(braze.UpdateUserProfileBranchDefect, value, failure)
+}
+
+// UpdateUserProfileRetry asks Dex to retry the updateUserProfile Step, after the delay when it is positive.
+func UpdateUserProfileRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braze.UserWriteResult] {
+	return connectormock.Retry[braze.UserWriteResult](failure, after)
+}
+
+// UpdateUserProfileAcceptedDefault is the manifest mock acceptedDefault: Braze queued the profile update.
+func UpdateUserProfileAcceptedDefault() connectormock.Case[braze.UserWriteResult] {
+	value := connectormock.MustDecodeOutput[braze.UserWriteResult](`{"externalId":"sample-user-1"}`)
+	return connectormock.Branch(braze.UpdateUserProfileBranchAccepted, value, nil)
+}
+
+// UpdateUserProfileDefault is the manifest default, acceptedDefault, which New installs.
+func UpdateUserProfileDefault() connectormock.Case[braze.UserWriteResult] {
+	return UpdateUserProfileAcceptedDefault()
+}
+
+// DeleteUserProfileDeleted selects the deleted branch: Braze queued the user deletion.
+func DeleteUserProfileDeleted(value braze.UserDeleteResult, failure *sdkgo.Failure) connectormock.Case[braze.UserDeleteResult] {
+	return connectormock.Branch(braze.DeleteUserProfileBranchDeleted, value, failure)
+}
+
+// DeleteUserProfileProviderRejected selects the providerRejected branch: Braze conclusively rejected the deletion.
+func DeleteUserProfileProviderRejected(value braze.UserDeleteResult, failure *sdkgo.Failure) connectormock.Case[braze.UserDeleteResult] {
+	return connectormock.Branch(braze.DeleteUserProfileBranchProviderRejected, value, failure)
+}
+
+// DeleteUserProfileInvalidResponse selects the invalidResponse branch: Braze returned malformed or oversized JSON.
+func DeleteUserProfileInvalidResponse(value braze.UserDeleteResult, failure *sdkgo.Failure) connectormock.Case[braze.UserDeleteResult] {
+	return connectormock.Branch(braze.DeleteUserProfileBranchInvalidResponse, value, failure)
+}
+
+// DeleteUserProfileDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteUserProfileDefect(value braze.UserDeleteResult, failure *sdkgo.Failure) connectormock.Case[braze.UserDeleteResult] {
+	return connectormock.Branch(braze.DeleteUserProfileBranchDefect, value, failure)
+}
+
+// DeleteUserProfileRetry asks Dex to retry the deleteUserProfile Step, after the delay when it is positive.
+func DeleteUserProfileRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braze.UserDeleteResult] {
+	return connectormock.Retry[braze.UserDeleteResult](failure, after)
+}
+
+// DeleteUserProfileDeletedDefault is the manifest mock deletedDefault: Braze queued the deletion.
+func DeleteUserProfileDeletedDefault() connectormock.Case[braze.UserDeleteResult] {
+	value := connectormock.MustDecodeOutput[braze.UserDeleteResult](`{"externalId":"sample-user-1","deleted":1}`)
+	return connectormock.Branch(braze.DeleteUserProfileBranchDeleted, value, nil)
+}
+
+// DeleteUserProfileDefault is the manifest default, deletedDefault, which New installs.
+func DeleteUserProfileDefault() connectormock.Case[braze.UserDeleteResult] {
+	return DeleteUserProfileDeletedDefault()
+}
+
+// ListCampaignsListed selects the listed branch: Braze returned campaign identities.
+func ListCampaignsListed(value braze.CampaignsList, failure *sdkgo.Failure) connectormock.Case[braze.CampaignsList] {
+	return connectormock.Branch(braze.ListCampaignsBranchListed, value, failure)
+}
+
+// ListCampaignsProviderRejected selects the providerRejected branch: Braze conclusively rejected the request.
+func ListCampaignsProviderRejected(value braze.CampaignsList, failure *sdkgo.Failure) connectormock.Case[braze.CampaignsList] {
+	return connectormock.Branch(braze.ListCampaignsBranchProviderRejected, value, failure)
+}
+
+// ListCampaignsInvalidResponse selects the invalidResponse branch: Braze returned malformed or oversized JSON.
+func ListCampaignsInvalidResponse(value braze.CampaignsList, failure *sdkgo.Failure) connectormock.Case[braze.CampaignsList] {
+	return connectormock.Branch(braze.ListCampaignsBranchInvalidResponse, value, failure)
+}
+
+// ListCampaignsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListCampaignsDefect(value braze.CampaignsList, failure *sdkgo.Failure) connectormock.Case[braze.CampaignsList] {
+	return connectormock.Branch(braze.ListCampaignsBranchDefect, value, failure)
+}
+
+// ListCampaignsRetry asks Dex to retry the listCampaigns Step, after the delay when it is positive.
+func ListCampaignsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braze.CampaignsList] {
+	return connectormock.Retry[braze.CampaignsList](failure, after)
+}
+
+// ListCampaignsListedDefault is the manifest mock listedDefault: A sample campaign page is returned.
+func ListCampaignsListedDefault() connectormock.Case[braze.CampaignsList] {
+	value := connectormock.MustDecodeOutput[braze.CampaignsList](`{"campaigns":[{"id":"sample-campaign-1","name":"Sample campaign"}]}`)
+	return connectormock.Branch(braze.ListCampaignsBranchListed, value, nil)
+}
+
+// ListCampaignsDefault is the manifest default, listedDefault, which New installs.
+func ListCampaignsDefault() connectormock.Case[braze.CampaignsList] {
+	return ListCampaignsListedDefault()
+}
+
+// ListCanvasesListed selects the listed branch: Braze returned Canvas identities.
+func ListCanvasesListed(value braze.CanvasesList, failure *sdkgo.Failure) connectormock.Case[braze.CanvasesList] {
+	return connectormock.Branch(braze.ListCanvasesBranchListed, value, failure)
+}
+
+// ListCanvasesProviderRejected selects the providerRejected branch: Braze conclusively rejected the request.
+func ListCanvasesProviderRejected(value braze.CanvasesList, failure *sdkgo.Failure) connectormock.Case[braze.CanvasesList] {
+	return connectormock.Branch(braze.ListCanvasesBranchProviderRejected, value, failure)
+}
+
+// ListCanvasesInvalidResponse selects the invalidResponse branch: Braze returned malformed or oversized JSON.
+func ListCanvasesInvalidResponse(value braze.CanvasesList, failure *sdkgo.Failure) connectormock.Case[braze.CanvasesList] {
+	return connectormock.Branch(braze.ListCanvasesBranchInvalidResponse, value, failure)
+}
+
+// ListCanvasesDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListCanvasesDefect(value braze.CanvasesList, failure *sdkgo.Failure) connectormock.Case[braze.CanvasesList] {
+	return connectormock.Branch(braze.ListCanvasesBranchDefect, value, failure)
+}
+
+// ListCanvasesRetry asks Dex to retry the listCanvases Step, after the delay when it is positive.
+func ListCanvasesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braze.CanvasesList] {
+	return connectormock.Retry[braze.CanvasesList](failure, after)
+}
+
+// ListCanvasesListedDefault is the manifest mock listedDefault: A sample Canvas page is returned.
+func ListCanvasesListedDefault() connectormock.Case[braze.CanvasesList] {
+	value := connectormock.MustDecodeOutput[braze.CanvasesList](`{"canvases":[{"id":"sample-canvas-1","name":"Sample Canvas"}]}`)
+	return connectormock.Branch(braze.ListCanvasesBranchListed, value, nil)
+}
+
+// ListCanvasesDefault is the manifest default, listedDefault, which New installs.
+func ListCanvasesDefault() connectormock.Case[braze.CanvasesList] { return ListCanvasesListedDefault() }
+
+// ListSegmentsListed selects the listed branch: Braze returned segment identities.
+func ListSegmentsListed(value braze.SegmentsList, failure *sdkgo.Failure) connectormock.Case[braze.SegmentsList] {
+	return connectormock.Branch(braze.ListSegmentsBranchListed, value, failure)
+}
+
+// ListSegmentsProviderRejected selects the providerRejected branch: Braze conclusively rejected the request.
+func ListSegmentsProviderRejected(value braze.SegmentsList, failure *sdkgo.Failure) connectormock.Case[braze.SegmentsList] {
+	return connectormock.Branch(braze.ListSegmentsBranchProviderRejected, value, failure)
+}
+
+// ListSegmentsInvalidResponse selects the invalidResponse branch: Braze returned malformed or oversized JSON.
+func ListSegmentsInvalidResponse(value braze.SegmentsList, failure *sdkgo.Failure) connectormock.Case[braze.SegmentsList] {
+	return connectormock.Branch(braze.ListSegmentsBranchInvalidResponse, value, failure)
+}
+
+// ListSegmentsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListSegmentsDefect(value braze.SegmentsList, failure *sdkgo.Failure) connectormock.Case[braze.SegmentsList] {
+	return connectormock.Branch(braze.ListSegmentsBranchDefect, value, failure)
+}
+
+// ListSegmentsRetry asks Dex to retry the listSegments Step, after the delay when it is positive.
+func ListSegmentsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braze.SegmentsList] {
+	return connectormock.Retry[braze.SegmentsList](failure, after)
+}
+
+// ListSegmentsListedDefault is the manifest mock listedDefault: A sample segment page is returned.
+func ListSegmentsListedDefault() connectormock.Case[braze.SegmentsList] {
+	value := connectormock.MustDecodeOutput[braze.SegmentsList](`{"segments":[{"id":"sample-segment-1","name":"Sample segment","analyticsTrackingEnabled":true}]}`)
+	return connectormock.Branch(braze.ListSegmentsBranchListed, value, nil)
+}
+
+// ListSegmentsDefault is the manifest default, listedDefault, which New installs.
+func ListSegmentsDefault() connectormock.Case[braze.SegmentsList] { return ListSegmentsListedDefault() }
 
 // GetUserProfileFound selects the found branch: Braze returned the user profile.
 func GetUserProfileFound(value braze.UserProfile, failure *sdkgo.Failure) connectormock.Case[braze.UserProfile] {

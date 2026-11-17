@@ -56,4 +56,5 @@ func TestProfileInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, "sample-user-1", output.ExternalID)
 	require.Len(t, mock.GetUserProfile().Calls(), 1)
+	require.Len(t, mock.ListCampaigns().Calls(), 1)
 }

@@ -1,6 +1,6 @@
 # Braze profile inspection Flow
 
-This runnable Flow calls `getUserProfile` with the static `braze` connection. It saves the selected profile fields in an Attribute and exposes them through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+This runnable Flow calls `listCampaigns` and then `getUserProfile` with the static `braze` connection. It saves the selected profile fields in an Attribute and exposes them through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
