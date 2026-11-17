@@ -1,6 +1,6 @@
 # ClickUp TypeScript connector
 
-`@superdurable/connector-clickup` provides all seven ClickUp task operations to Dex TypeScript Flows: `searchTasks`, `getTask`, `createTask`, `updateTask`, `updateTaskTags`, `addComment`, and `findMemberByEmail`. The `taskEvent` webhook Trigger remains Go only. Operation specific Step factories, model validators, connection contracts, and mock cases are generated from the [manifest](../connector.yaml) and Go model types.
+`@superdurable/connector-clickup` provides seven ClickUp task operations and the signed `taskEvent` webhook Trigger to Dex TypeScript Flows. Operation specific Step factories, model validators, connection contracts, and mock cases are generated from the [manifest](../connector.yaml) and Go model types. The [task event example](examples/task-event/) mounts the durable Trigger endpoint and starts a real Flow for each status change.
 
 ## Connect
 
@@ -27,4 +27,4 @@ npm ci
 npm run check
 ```
 
-Run `npm run test:integration` against a local `dexcli dev` with `DEX_FLOW_SERVICE_ADDRESS` set. The integration test runs the example through a real Dex Worker and Client against a local HTTP fixture. The Go recorded conformance suite checks 82 scenarios covering each operation's branches, retries, transport failure, request shape, idempotency key, unsafe tag paths, input validation, and uncertain read back. Live ClickUp authorization and provider behavior have not been verified.
+Run `npm run test:integration` against a local `dexcli dev` with `DEX_FLOW_SERVICE_ADDRESS` set. The integration tests run the operation example and signed Trigger example through a real Dex Worker and Client. The Go recorded conformance suite checks 82 provider operation scenarios. Live ClickUp authorization, provider operations, and webhook delivery have not been verified.

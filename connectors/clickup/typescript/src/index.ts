@@ -9,3 +9,4 @@ export type { Operations } from './generated/connection.js';
 export * from './project.js';
 export * from './client.js';
 export * from './operations.js';
+export * from './trigger.js';
