@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
     default_connector_step_execute_retry_policy,
@@ -68,34 +69,38 @@ SEND_MESSAGE_DEFINITION = MutationDefinition(
     OperationRef(CONNECTOR_ID, SEND_MESSAGE_OPERATION_ID),
     (
         BranchDefinition(SENT, "The SMTP server accepted the message for delivery.", False),
-        BranchDefinition(PROVIDER_REJECTED, "The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, so nothing was sent.", True),
-        BranchDefinition(UNCERTAIN, "The message was submitted but the server's answer was lost, so it may have been sent; the connector never submits it again.", True),
+        BranchDefinition(PROVIDER_REJECTED, "The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, and no earlier attempt may have submitted it, so nothing was sent.", True),
+        BranchDefinition(UNCERTAIN, "Submissions may have been sent as often as the send cap allows, but the server's answer to the last one was lost or a later attempt could not settle it; the connector does not submit it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
         timedelta(seconds=150),
         1,
         heartbeat_timeout=timedelta(seconds=150),
-        execute_retry=RetryPolicy(timedelta(seconds=2), 2, timedelta(seconds=60), 5, timedelta(seconds=600)),
+        execute_retry=RetryPolicy(timedelta(seconds=2), 2, timedelta(seconds=60), 10, timedelta(seconds=600)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 REPLY_TO_MESSAGE_DEFINITION = MutationDefinition(
     OperationRef(CONNECTOR_ID, REPLY_TO_MESSAGE_OPERATION_ID),
     (
         BranchDefinition(SENT, "The SMTP server accepted the reply for delivery.", False),
-        BranchDefinition(NOT_FOUND, "The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, so nothing was sent.", True),
-        BranchDefinition(PROVIDER_REJECTED, "The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, so nothing was sent.", True),
-        BranchDefinition(INVALID_RESPONSE, "The source message has no usable reply address or could not be parsed, so nothing was sent.", True),
-        BranchDefinition(UNCERTAIN, "The reply was submitted but the server's answer was lost, so it may have been sent; the connector never submits it again.", True),
+        BranchDefinition(NOT_FOUND, "The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, and no earlier attempt may have submitted the reply, so nothing was sent.", True),
+        BranchDefinition(PROVIDER_REJECTED, "The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, and no earlier attempt may have submitted it, so nothing was sent.", True),
+        BranchDefinition(INVALID_RESPONSE, "The source message has no usable reply address or could not be parsed, and no earlier attempt may have submitted the reply, so nothing was sent.", True),
+        BranchDefinition(UNCERTAIN, "Submissions may have been sent as often as the send cap allows, but the server's answer to the last one was lost or a later attempt could not settle it; the connector does not submit the reply again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
         timedelta(seconds=150),
         1,
         heartbeat_timeout=timedelta(seconds=150),
-        execute_retry=RetryPolicy(timedelta(seconds=2), 2, timedelta(seconds=60), 5, timedelta(seconds=600)),
+        execute_retry=RetryPolicy(timedelta(seconds=2), 2, timedelta(seconds=60), 10, timedelta(seconds=600)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 MOVE_MESSAGE_DEFINITION = MutationDefinition(
@@ -111,6 +116,7 @@ MOVE_MESSAGE_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 SET_FLAGS_DEFINITION = MutationDefinition(
@@ -126,4 +132,5 @@ SET_FLAGS_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )

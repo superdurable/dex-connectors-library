@@ -407,15 +407,17 @@ var SendMessageDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendMessage"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendMessageBranchSent, Description: "The SMTP server accepted the message for delivery."},
-		{ID: SendMessageBranchProviderRejected, Description: "The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, so nothing was sent.", Optional: true},
-		{ID: SendMessageBranchUncertain, Description: "The message was submitted but the server's answer was lost, so it may have been sent; the connector never submits it again.", Optional: true},
+		{ID: SendMessageBranchProviderRejected, Description: "The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, and no earlier attempt may have submitted it, so nothing was sent.", Optional: true},
+		{ID: SendMessageBranchUncertain, Description: "Submissions may have been sent as often as the send cap allows, but the server's answer to the last one was lost or a later attempt could not settle it; the connector does not submit it again.", Optional: true},
 		{ID: SendMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(150000000000), HeartbeatTimeout: time.Duration(150000000000),
-		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 5, TotalDuration: time.Duration(600000000000)},
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 10, TotalDuration: time.Duration(600000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type SendMessageResult = sdkgo.MutationResult[SentMessage]
@@ -435,6 +437,8 @@ type SendMessageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[SendMessageResult]                   `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.MutationStep[IN, SendMessageInput, SentMessage] {
@@ -466,6 +470,7 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.Mutation
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -480,17 +485,19 @@ var ReplyToMessageDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "replyToMessage"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: ReplyToMessageBranchSent, Description: "The SMTP server accepted the reply for delivery."},
-		{ID: ReplyToMessageBranchNotFound, Description: "The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, so nothing was sent.", Optional: true},
-		{ID: ReplyToMessageBranchProviderRejected, Description: "The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, so nothing was sent.", Optional: true},
-		{ID: ReplyToMessageBranchInvalidResponse, Description: "The source message has no usable reply address or could not be parsed, so nothing was sent.", Optional: true},
-		{ID: ReplyToMessageBranchUncertain, Description: "The reply was submitted but the server's answer was lost, so it may have been sent; the connector never submits it again.", Optional: true},
+		{ID: ReplyToMessageBranchNotFound, Description: "The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, and no earlier attempt may have submitted the reply, so nothing was sent.", Optional: true},
+		{ID: ReplyToMessageBranchProviderRejected, Description: "The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, and no earlier attempt may have submitted it, so nothing was sent.", Optional: true},
+		{ID: ReplyToMessageBranchInvalidResponse, Description: "The source message has no usable reply address or could not be parsed, and no earlier attempt may have submitted the reply, so nothing was sent.", Optional: true},
+		{ID: ReplyToMessageBranchUncertain, Description: "Submissions may have been sent as often as the send cap allows, but the server's answer to the last one was lost or a later attempt could not settle it; the connector does not submit the reply again.", Optional: true},
 		{ID: ReplyToMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(150000000000), HeartbeatTimeout: time.Duration(150000000000),
-		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 5, TotalDuration: time.Duration(600000000000)},
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 10, TotalDuration: time.Duration(600000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type ReplyToMessageResult = sdkgo.MutationResult[SentMessage]
@@ -512,6 +519,8 @@ type ReplyToMessageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[ReplyToMessageResult]                `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewReplyToMessageStep[IN any](config ReplyToMessageStepConfig[IN]) sdkgo.MutationStep[IN, ReplyToMessageInput, SentMessage] {
@@ -549,6 +558,7 @@ func NewReplyToMessageStep[IN any](config ReplyToMessageStepConfig[IN]) sdkgo.Mu
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -570,6 +580,7 @@ var MoveMessageDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type MoveMessageResult = sdkgo.MutationResult[MovedMessage]
@@ -641,6 +652,7 @@ var SetFlagsDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type SetFlagsResult = sdkgo.MutationResult[MessageFlags]

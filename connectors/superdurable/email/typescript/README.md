@@ -1,6 +1,6 @@
 # Email connector for TypeScript
 
-This package binds the six Email IMAP and SMTP operations to Dex TypeScript Steps. It uses verified TLS for every connection, resolves the app password for every invocation, and keeps connection settings and credentials out of Flow input and state. SMTP sends use a Dex heartbeat marker before submission. A refusal before DATA clears the marker so Dex can retry; a later attempt that sees a retained marker reports an uncertain outcome rather than sending a duplicate.
+This package binds the six Email IMAP and SMTP operations to Dex TypeScript Steps. It uses verified TLS for every connection, resolves the app password for every invocation, and keeps connection settings and credentials out of Flow input and state. SMTP sends count their submissions in a Dex heartbeat checkpoint, as the Go connector does. A provable refusal is not counted and is retried; an answer lost after the final dot is resubmitted, with the same Message-ID, while fewer than `maxSends` (3) submissions may have been accepted, and is reported as uncertain at the cap.
 
 Install the package with `npm install @superdurable/connector-superdurable-email @superdurable/dex`. The checked-in [send-message example](examples/send-message/README.md) uses the static `email` connection name and the generated `newSendMessageStep` factory. The package also exports generated Step factories, typed models, branch constants, and scripted mocks for `searchMessages`, `getMessage`, `sendMessage`, `replyToMessage`, `moveMessage`, and `setFlags`.
 

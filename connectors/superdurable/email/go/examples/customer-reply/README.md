@@ -26,9 +26,10 @@ This example answers one customer by email in a Flow started from Dex Web
 8. A customer without a message gets one new message from
    `SendNewCustomerMessage`, which calls `email.NewSendMessageStep`.
 
-Only `sent` is wired for the reply and new message. An `uncertain` submission
-fails the Flow without resending; the operator can inspect the Sent mailbox
-or recipient before taking further action. Other optional branches also fail
+Only `sent` is wired for the reply and new message. A submission whose answer
+was lost is sent again, with the same Message-ID, up to three times; an
+`uncertain` submission at that cap fails the Flow without resending, and the
+operator can inspect the Sent mailbox or recipient before taking further action. Other optional branches also fail
 the Flow, including a refused login, rejected recipient, missing message, or
 local defect.
 
@@ -58,7 +59,7 @@ cd "$(git rev-parse --show-toplevel)"
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/superdurable/email/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/superdurable/email/go \
-  --version v0.23.0 --tag connectors/superdurable/email/go/v0.23.0 \
+  --version v0.23.1 --tag connectors/superdurable/email/go/v0.23.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/email-reply/release/connector-release.json \
   --digest-output /tmp/email-reply/release/connector-release.json.sha256
@@ -128,10 +129,12 @@ the Flow on a real Worker against the in-process IMAP and SMTP servers in
 - a reply and a new message each produce one submission;
 - a move whose answer IMAP drops after applying it is confirmed by read-back,
   and the message is archived once;
-- an answer lost after the final dot fails the Flow through the unwired
-  `uncertain` branch and is never resubmitted;
+- an answer lost after the final dot is resubmitted once with the same
+  Message-ID, and the Flow completes;
+- answers lost after the final dot of three submissions fail the Flow through
+  the unwired `uncertain` branch without a fourth submission;
 - a Worker lost while the server holds the final dot is replaced, and the new
-  attempt finds the submission checkpoint and submits nothing;
+  attempt counts that submission and sends the reply once more;
 - a 451 refusal is retried and the reply is submitted once;
 - a rejected recipient fails the Flow through the unwired `providerRejected`
   branch without the server's text;
