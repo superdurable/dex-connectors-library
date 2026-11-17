@@ -76,6 +76,8 @@ export interface CreateTicketStepConfig<StepInput, OperationInput = CreateTicket
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
+  /** Kept for compatibility and never selected: an invalid or oversized answer is an unknown outcome that repeats the identical keyed request. */
+  invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
   /** Accepted for compatibility; ignored because the operation is safe to repeat. */
@@ -85,11 +87,12 @@ export interface CreateTicketStepConfig<StepInput, OperationInput = CreateTicket
 /** Build the createTicket Step from a named connection. */
 export function newCreateTicketStep<StepInput, OperationInput = CreateTicketInput, OperationOutput = CreateTicketOutput>(configuration: CreateTicketStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
-  const { connection, connectionName, created, providerRejected, defect, maxSends, ...stepConfiguration } = configuration;
+  const { connection, connectionName, created, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.createTicket(), connection: connection.reference, branches: [
     goToBranch("created", created),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
     ...(defect ? [goToBranch("defect", defect)] : []),
   ] });
 }

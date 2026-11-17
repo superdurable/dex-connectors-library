@@ -101,6 +101,11 @@ def create_ticket_provider_rejected(value: CreateTicketOutput, failure: Failure 
 
 setattr(create_ticket_provider_rejected, '__module__', "dex_connectors.zendesk_support.supportmock")
 
+def create_ticket_invalid_response(value: CreateTicketOutput, failure: Failure | None = None) -> Case[CreateTicketOutput]:
+    return Case.branch_result(INVALID_RESPONSE, value, failure)
+
+setattr(create_ticket_invalid_response, '__module__', "dex_connectors.zendesk_support.supportmock")
+
 def create_ticket_defect(value: CreateTicketOutput, failure: Failure | None = None) -> Case[CreateTicketOutput]:
     return Case.branch_result(DEFECT, value, failure)
 
@@ -226,6 +231,7 @@ __all__ = [
     "get_ticket_access_denied",
     "create_ticket_created",
     "create_ticket_provider_rejected",
+    "create_ticket_invalid_response",
     "create_ticket_defect",
     "create_ticket_retry",
     "create_ticket_opened_customer_issue",

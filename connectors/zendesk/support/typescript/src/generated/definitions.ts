@@ -75,12 +75,15 @@ export const GetTicketMetadata = { kind: "query", idempotency: "none", authoriza
 export const CreateTicketBranch = {
   Created: "created",
   ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
   Defect: "defect",
 } as const;
 /** The ticket exists; a repeated attempt returns the ticket the first attempt created. */
 export const CreateTicketBranchCreated = CreateTicketBranch.Created;
 /** Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created. */
 export const CreateTicketBranchProviderRejected = CreateTicketBranch.ProviderRejected;
+/** Kept for compatibility and never selected: an invalid or oversized answer is an unknown outcome that repeats the identical keyed request. */
+export const CreateTicketBranchInvalidResponse = CreateTicketBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateTicketBranchDefect = CreateTicketBranch.Defect;
 /** Manifest definition for createTicket. */
@@ -89,6 +92,7 @@ export const CreateTicketDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "The ticket exists; a repeated attempt returns the ticket the first attempt created." },
     { id: "providerRejected", description: "Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and never selected: an invalid or oversized answer is an unknown outcome that repeats the identical keyed request.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

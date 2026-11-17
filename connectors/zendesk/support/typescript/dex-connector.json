@@ -1,10 +1,10 @@
 {
   "connectorId": "zendesk-support",
-  "releaseTag": "connectors/zendesk/support/go/v0.25.0",
+  "releaseTag": "connectors/zendesk/support/go/v0.24.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-zendesk-support",
-    "version": "0.3.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -171,6 +171,11 @@
         {
           "id": "providerRejected",
           "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
           "optional": true
         },
         {

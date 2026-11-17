@@ -6,17 +6,17 @@ metadata:
   description: Search, read, create, and update Zendesk Support tickets, with duplicate-safe ticket creation and follow-up comments, and receive each created, updated, or deleted ticket.
   company: Zendesk
   categories: [customer-support]
-  version: v0.25.0
+  version: v0.24.1
 spec:
   provider: zendesk
   languages:
     python:
-      version: v0.3.0
+      version: v0.2.1
       package: dex-connector-zendesk-support
       operations: [searchTickets, getTicket, createTicket, updateTicket]
       triggers: [ticketChanged]
     typescript:
-      version: v0.3.0
+      version: v0.2.1
       package: "@superdurable/connector-zendesk-support"
       operations: [searchTickets, getTicket, createTicket, updateTicket]
       triggers: [ticketChanged]
@@ -143,6 +143,7 @@ spec:
       branches:
         - {id: created, goName: Created, description: "The ticket exists; a repeated attempt returns the ticket the first attempt created."}
         - {id: providerRejected, goName: ProviderRejected, description: "Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and never selected: an invalid or oversized answer is an unknown outcome that repeats the identical keyed request.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s

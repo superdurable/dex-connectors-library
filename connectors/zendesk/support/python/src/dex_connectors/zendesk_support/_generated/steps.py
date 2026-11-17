@@ -134,6 +134,7 @@ def new_create_ticket_step(
     map_to_operation_input: Callable[[StepInput], CreateTicketInput],
     created: dex.StepTarget[MutationResult[CreateTicketOutput]],
     provider_rejected: dex.StepTarget[MutationResult[CreateTicketOutput]] | None = None,
+    invalid_response: dex.StepTarget[MutationResult[CreateTicketOutput]] | None = None,
     defect: dex.StepTarget[MutationResult[CreateTicketOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[CreateTicketOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
@@ -155,6 +156,8 @@ def new_create_ticket_step(
     }
     if provider_rejected is not None:
         branches["providerRejected"] = provider_rejected
+    if invalid_response is not None:
+        branches["invalidResponse"] = invalid_response
     if defect is not None:
         branches["defect"] = defect
     return MutationStep(

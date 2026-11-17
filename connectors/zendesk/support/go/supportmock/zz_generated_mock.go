@@ -194,6 +194,11 @@ func CreateTicketProviderRejected(value support.CreateTicketOutput, failure *sdk
 	return connectormock.Branch(support.CreateTicketBranchProviderRejected, value, failure)
 }
 
+// CreateTicketInvalidResponse selects the invalidResponse branch: Kept for compatibility and never selected: an invalid or oversized answer is an unknown outcome that repeats the identical keyed request.
+func CreateTicketInvalidResponse(value support.CreateTicketOutput, failure *sdkgo.Failure) connectormock.Case[support.CreateTicketOutput] {
+	return connectormock.Branch(support.CreateTicketBranchInvalidResponse, value, failure)
+}
+
 // CreateTicketDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
 func CreateTicketDefect(value support.CreateTicketOutput, failure *sdkgo.Failure) connectormock.Case[support.CreateTicketOutput] {
 	return connectormock.Branch(support.CreateTicketBranchDefect, value, failure)

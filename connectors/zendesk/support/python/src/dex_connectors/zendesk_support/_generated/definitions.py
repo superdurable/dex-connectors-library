@@ -70,6 +70,7 @@ CREATE_TICKET_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "The ticket exists; a repeated attempt returns the ticket the first attempt created.", False),
         BranchDefinition(PROVIDER_REJECTED, "Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and never selected: an invalid or oversized answer is an unknown outcome that repeats the identical keyed request.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

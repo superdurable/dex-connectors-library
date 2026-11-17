@@ -127,6 +127,8 @@ export function getTicketAccessDenied(): Case<TicketDetails> {
 export function createTicketCreated(value: CreateTicketOutput, failure?: Failure): Case<CreateTicketOutput> { return branchCase("created", value, failure); }
 /** Script the providerRejected branch. */
 export function createTicketProviderRejected(value: CreateTicketOutput, failure?: Failure): Case<CreateTicketOutput> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function createTicketInvalidResponse(value: CreateTicketOutput, failure?: Failure): Case<CreateTicketOutput> { return branchCase("invalidResponse", value, failure); }
 /** Script the defect branch. */
 export function createTicketDefect(value: CreateTicketOutput, failure?: Failure): Case<CreateTicketOutput> { return branchCase("defect", value, failure); }
 /** Script a safe retry of createTicket. */

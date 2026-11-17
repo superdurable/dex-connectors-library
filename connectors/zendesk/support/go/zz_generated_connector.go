@@ -390,6 +390,7 @@ func NewGetTicketStep[IN any](config GetTicketStepConfig[IN]) sdkgo.QueryStep[IN
 
 const CreateTicketBranchCreated sdkgo.BranchID = "created"
 const CreateTicketBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateTicketBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const CreateTicketBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var CreateTicketDefinition = sdkgo.MutationDefinition{
@@ -397,6 +398,7 @@ var CreateTicketDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateTicketBranchCreated, Description: "The ticket exists; a repeated attempt returns the ticket the first attempt created."},
 		{ID: CreateTicketBranchProviderRejected, Description: "Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created.", Optional: true},
+		{ID: CreateTicketBranchInvalidResponse, Description: "Kept for compatibility and never selected: an invalid or oversized answer is an unknown outcome that repeats the identical keyed request.", Optional: true},
 		{ID: CreateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -420,6 +422,7 @@ type CreateTicketStepConfig[IN any] struct {
 	MapToOperationInput               func(IN) CreateTicketInput                               `connector:"mapToOperationInput"`
 	Created                           sdkgo.Target[CreateTicketResult]                         `connector:"branch=created"`
 	ProviderRejected                  sdkgo.Target[CreateTicketResult]                         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreateTicketResult]                         `connector:"branch=invalidResponse,optional"`
 	Defect                            sdkgo.Target[CreateTicketResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateTicketOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
@@ -439,12 +442,15 @@ func NewCreateTicketStep[IN any](config CreateTicketStepConfig[IN]) sdkgo.Mutati
 		Operation: config.Connection.operations.CreateTicket(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateTicketResult] {
-			branches := make([]sdkgo.BranchTarget[CreateTicketResult], 0, 3)
+			branches := make([]sdkgo.BranchTarget[CreateTicketResult], 0, 4)
 			if config.Created.HasStep() {
 				branches = append(branches, config.Created.BranchTarget(CreateTicketBranchCreated))
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(CreateTicketBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateTicketBranchInvalidResponse))
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(CreateTicketBranchDefect))

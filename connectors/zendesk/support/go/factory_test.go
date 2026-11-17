@@ -78,8 +78,8 @@ func TestDefinitionsDeclareOptionalBranchesAndDurability(t *testing.T) {
 		branchOptionality(support.SearchTicketsDefinition.Branches))
 	require.Equal(t, map[sdkgo.BranchID]bool{"found": false, "notFound": true, "providerRejected": true, "invalidResponse": true, "defect": true},
 		branchOptionality(support.GetTicketDefinition.Branches))
-	require.Equal(t, map[sdkgo.BranchID]bool{"created": false, "providerRejected": true, "defect": true},
-		branchOptionality(support.CreateTicketDefinition.Branches), "the Idempotency-Key makes every unknown outcome retryable, so there is no uncertain or invalidResponse branch")
+	require.Equal(t, map[sdkgo.BranchID]bool{"created": false, "providerRejected": true, "invalidResponse": true, "defect": true},
+		branchOptionality(support.CreateTicketDefinition.Branches), "the Idempotency-Key makes every unknown outcome retryable; invalidResponse stays declared for compatibility")
 	require.Equal(t, sdkgo.RepeatOnUnknownSafe, support.CreateTicketDefinition.RepeatOnUnknown)
 	require.Equal(t, map[sdkgo.BranchID]bool{"updated": false, "notFound": true, "conflict": true, "providerRejected": true, "invalidResponse": true, "uncertain": true, "defect": true},
 		branchOptionality(support.UpdateTicketDefinition.Branches))
