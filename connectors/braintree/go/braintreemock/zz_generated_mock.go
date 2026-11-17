@@ -18,6 +18,12 @@ import (
 // Mock is a scripted braintree connection. Script each operation through its accessor.
 type Mock struct {
 	connection                     braintree.Connection
+	getDispute                     *connectormock.Query[braintree.GetDisputeInput, braintree.DisputeProfile]
+	searchDisputes                 *connectormock.Query[braintree.SearchDisputesInput, braintree.DisputesPage]
+	acceptDispute                  *connectormock.Mutation[braintree.GetDisputeInput, braintree.DisputeProfile]
+	createDisputeTextEvidence      *connectormock.Mutation[braintree.CreateDisputeTextEvidenceInput, braintree.DisputeTextEvidenceProfile]
+	deleteDisputeEvidence          *connectormock.Mutation[braintree.DeleteDisputeEvidenceInput, braintree.DisputeEvidenceDeleteResult]
+	finalizeDispute                *connectormock.Mutation[braintree.GetDisputeInput, braintree.DisputeProfile]
 	searchTransactions             *connectormock.Query[braintree.SearchTransactionsInput, braintree.TransactionsPage]
 	chargePaymentMethod            *connectormock.Mutation[braintree.ChargePaymentMethodInput, braintree.TransactionProfile]
 	captureTransaction             *connectormock.Mutation[braintree.CaptureTransactionInput, braintree.TransactionProfile]
@@ -42,6 +48,12 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		getDispute:                     connectormock.NewQuery[braintree.GetDisputeInput, braintree.DisputeProfile](t, braintree.GetDisputeDefinition),
+		searchDisputes:                 connectormock.NewQuery[braintree.SearchDisputesInput, braintree.DisputesPage](t, braintree.SearchDisputesDefinition),
+		acceptDispute:                  connectormock.NewMutation[braintree.GetDisputeInput, braintree.DisputeProfile](t, braintree.AcceptDisputeDefinition),
+		createDisputeTextEvidence:      connectormock.NewMutation[braintree.CreateDisputeTextEvidenceInput, braintree.DisputeTextEvidenceProfile](t, braintree.CreateDisputeTextEvidenceDefinition),
+		deleteDisputeEvidence:          connectormock.NewMutation[braintree.DeleteDisputeEvidenceInput, braintree.DisputeEvidenceDeleteResult](t, braintree.DeleteDisputeEvidenceDefinition),
+		finalizeDispute:                connectormock.NewMutation[braintree.GetDisputeInput, braintree.DisputeProfile](t, braintree.FinalizeDisputeDefinition),
 		searchTransactions:             connectormock.NewQuery[braintree.SearchTransactionsInput, braintree.TransactionsPage](t, braintree.SearchTransactionsDefinition),
 		chargePaymentMethod:            connectormock.NewMutation[braintree.ChargePaymentMethodInput, braintree.TransactionProfile](t, braintree.ChargePaymentMethodDefinition),
 		captureTransaction:             connectormock.NewMutation[braintree.CaptureTransactionInput, braintree.TransactionProfile](t, braintree.CaptureTransactionDefinition),
@@ -60,6 +72,12 @@ func New(t testing.TB, connectionName string) *Mock {
 		getRefund:                      connectormock.NewQuery[braintree.GetRefundInput, braintree.RefundProfile](t, braintree.GetRefundDefinition),
 		getTransaction:                 connectormock.NewQuery[braintree.GetTransactionInput, braintree.TransactionProfile](t, braintree.GetTransactionDefinition),
 	}
+	mock.getDispute.Default(GetDisputeDefault())
+	mock.searchDisputes.Default(SearchDisputesDefault())
+	mock.acceptDispute.Default(AcceptDisputeDefault())
+	mock.createDisputeTextEvidence.Default(CreateDisputeTextEvidenceDefault())
+	mock.deleteDisputeEvidence.Default(DeleteDisputeEvidenceDefault())
+	mock.finalizeDispute.Default(FinalizeDisputeDefault())
 	mock.searchTransactions.Default(SearchTransactionsDefault())
 	mock.chargePaymentMethod.Default(ChargePaymentMethodDefault())
 	mock.captureTransaction.Default(CaptureTransactionDefault())
@@ -87,6 +105,36 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() braintree.Connection { return mock.connection }
+
+// GetDispute returns the getDispute script.
+func (mock *Mock) GetDispute() *connectormock.Query[braintree.GetDisputeInput, braintree.DisputeProfile] {
+	return mock.getDispute
+}
+
+// SearchDisputes returns the searchDisputes script.
+func (mock *Mock) SearchDisputes() *connectormock.Query[braintree.SearchDisputesInput, braintree.DisputesPage] {
+	return mock.searchDisputes
+}
+
+// AcceptDispute returns the acceptDispute script.
+func (mock *Mock) AcceptDispute() *connectormock.Mutation[braintree.GetDisputeInput, braintree.DisputeProfile] {
+	return mock.acceptDispute
+}
+
+// CreateDisputeTextEvidence returns the createDisputeTextEvidence script.
+func (mock *Mock) CreateDisputeTextEvidence() *connectormock.Mutation[braintree.CreateDisputeTextEvidenceInput, braintree.DisputeTextEvidenceProfile] {
+	return mock.createDisputeTextEvidence
+}
+
+// DeleteDisputeEvidence returns the deleteDisputeEvidence script.
+func (mock *Mock) DeleteDisputeEvidence() *connectormock.Mutation[braintree.DeleteDisputeEvidenceInput, braintree.DisputeEvidenceDeleteResult] {
+	return mock.deleteDisputeEvidence
+}
+
+// FinalizeDispute returns the finalizeDispute script.
+func (mock *Mock) FinalizeDispute() *connectormock.Mutation[braintree.GetDisputeInput, braintree.DisputeProfile] {
+	return mock.finalizeDispute
+}
 
 // SearchTransactions returns the searchTransactions script.
 func (mock *Mock) SearchTransactions() *connectormock.Query[braintree.SearchTransactionsInput, braintree.TransactionsPage] {
@@ -175,6 +223,24 @@ func (mock *Mock) GetTransaction() *connectormock.Query[braintree.GetTransaction
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetDispute() sdkgo.Query[braintree.GetDisputeInput, braintree.DisputeProfile] {
+	return operations.mock.getDispute
+}
+func (operations mockOperations) SearchDisputes() sdkgo.Query[braintree.SearchDisputesInput, braintree.DisputesPage] {
+	return operations.mock.searchDisputes
+}
+func (operations mockOperations) AcceptDispute() sdkgo.Mutation[braintree.GetDisputeInput, braintree.DisputeProfile] {
+	return operations.mock.acceptDispute
+}
+func (operations mockOperations) CreateDisputeTextEvidence() sdkgo.Mutation[braintree.CreateDisputeTextEvidenceInput, braintree.DisputeTextEvidenceProfile] {
+	return operations.mock.createDisputeTextEvidence
+}
+func (operations mockOperations) DeleteDisputeEvidence() sdkgo.Mutation[braintree.DeleteDisputeEvidenceInput, braintree.DisputeEvidenceDeleteResult] {
+	return operations.mock.deleteDisputeEvidence
+}
+func (operations mockOperations) FinalizeDispute() sdkgo.Mutation[braintree.GetDisputeInput, braintree.DisputeProfile] {
+	return operations.mock.finalizeDispute
+}
 func (operations mockOperations) SearchTransactions() sdkgo.Query[braintree.SearchTransactionsInput, braintree.TransactionsPage] {
 	return operations.mock.searchTransactions
 }
@@ -225,6 +291,252 @@ func (operations mockOperations) GetRefund() sdkgo.Query[braintree.GetRefundInpu
 }
 func (operations mockOperations) GetTransaction() sdkgo.Query[braintree.GetTransactionInput, braintree.TransactionProfile] {
 	return operations.mock.getTransaction
+}
+
+// GetDisputeFound selects the found branch: Braintree returned the requested result.
+func GetDisputeFound(value braintree.DisputeProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeProfile] {
+	return connectormock.Branch(braintree.GetDisputeBranchFound, value, failure)
+}
+
+// GetDisputeNotFound selects the notFound branch: The dispute or evidence was not found.
+func GetDisputeNotFound(value braintree.DisputeProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeProfile] {
+	return connectormock.Branch(braintree.GetDisputeBranchNotFound, value, failure)
+}
+
+// GetDisputeProviderRejected selects the providerRejected branch: Braintree definitively rejected the request.
+func GetDisputeProviderRejected(value braintree.DisputeProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeProfile] {
+	return connectormock.Branch(braintree.GetDisputeBranchProviderRejected, value, failure)
+}
+
+// GetDisputeInvalidResponse selects the invalidResponse branch: Braintree returned invalid dispute JSON.
+func GetDisputeInvalidResponse(value braintree.DisputeProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeProfile] {
+	return connectormock.Branch(braintree.GetDisputeBranchInvalidResponse, value, failure)
+}
+
+// GetDisputeDefect selects the defect branch: Input or credentials are invalid.
+func GetDisputeDefect(value braintree.DisputeProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeProfile] {
+	return connectormock.Branch(braintree.GetDisputeBranchDefect, value, failure)
+}
+
+// GetDisputeRetry asks Dex to retry the getDispute Step, after the delay when it is positive.
+func GetDisputeRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.DisputeProfile] {
+	return connectormock.Retry[braintree.DisputeProfile](failure, after)
+}
+
+// GetDisputeFoundDefault is the manifest mock foundDefault: One sample dispute result is returned.
+func GetDisputeFoundDefault() connectormock.Case[braintree.DisputeProfile] {
+	value := connectormock.MustDecodeOutput[braintree.DisputeProfile](`{"id":"dispute-1","status":"OPEN"}`)
+	return connectormock.Branch(braintree.GetDisputeBranchFound, value, nil)
+}
+
+// GetDisputeDefault is the manifest default, foundDefault, which New installs.
+func GetDisputeDefault() connectormock.Case[braintree.DisputeProfile] {
+	return GetDisputeFoundDefault()
+}
+
+// SearchDisputesSearched selects the searched branch: Braintree returned the requested result.
+func SearchDisputesSearched(value braintree.DisputesPage, failure *sdkgo.Failure) connectormock.Case[braintree.DisputesPage] {
+	return connectormock.Branch(braintree.SearchDisputesBranchSearched, value, failure)
+}
+
+// SearchDisputesNotFound selects the notFound branch: The dispute or evidence was not found.
+func SearchDisputesNotFound(value braintree.DisputesPage, failure *sdkgo.Failure) connectormock.Case[braintree.DisputesPage] {
+	return connectormock.Branch(braintree.SearchDisputesBranchNotFound, value, failure)
+}
+
+// SearchDisputesProviderRejected selects the providerRejected branch: Braintree definitively rejected the request.
+func SearchDisputesProviderRejected(value braintree.DisputesPage, failure *sdkgo.Failure) connectormock.Case[braintree.DisputesPage] {
+	return connectormock.Branch(braintree.SearchDisputesBranchProviderRejected, value, failure)
+}
+
+// SearchDisputesInvalidResponse selects the invalidResponse branch: Braintree returned invalid dispute JSON.
+func SearchDisputesInvalidResponse(value braintree.DisputesPage, failure *sdkgo.Failure) connectormock.Case[braintree.DisputesPage] {
+	return connectormock.Branch(braintree.SearchDisputesBranchInvalidResponse, value, failure)
+}
+
+// SearchDisputesDefect selects the defect branch: Input or credentials are invalid.
+func SearchDisputesDefect(value braintree.DisputesPage, failure *sdkgo.Failure) connectormock.Case[braintree.DisputesPage] {
+	return connectormock.Branch(braintree.SearchDisputesBranchDefect, value, failure)
+}
+
+// SearchDisputesRetry asks Dex to retry the searchDisputes Step, after the delay when it is positive.
+func SearchDisputesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.DisputesPage] {
+	return connectormock.Retry[braintree.DisputesPage](failure, after)
+}
+
+// SearchDisputesSearchedDefault is the manifest mock searchedDefault: One sample dispute result is returned.
+func SearchDisputesSearchedDefault() connectormock.Case[braintree.DisputesPage] {
+	value := connectormock.MustDecodeOutput[braintree.DisputesPage](`{"disputes":[{"id":"dispute-1","status":"OPEN"}],"hasNextPage":false}`)
+	return connectormock.Branch(braintree.SearchDisputesBranchSearched, value, nil)
+}
+
+// SearchDisputesDefault is the manifest default, searchedDefault, which New installs.
+func SearchDisputesDefault() connectormock.Case[braintree.DisputesPage] {
+	return SearchDisputesSearchedDefault()
+}
+
+// AcceptDisputeAccepted selects the accepted branch: Braintree returned the requested result.
+func AcceptDisputeAccepted(value braintree.DisputeProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeProfile] {
+	return connectormock.Branch(braintree.AcceptDisputeBranchAccepted, value, failure)
+}
+
+// AcceptDisputeNotFound selects the notFound branch: The dispute or evidence was not found.
+func AcceptDisputeNotFound(value braintree.DisputeProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeProfile] {
+	return connectormock.Branch(braintree.AcceptDisputeBranchNotFound, value, failure)
+}
+
+// AcceptDisputeProviderRejected selects the providerRejected branch: Braintree definitively rejected the request.
+func AcceptDisputeProviderRejected(value braintree.DisputeProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeProfile] {
+	return connectormock.Branch(braintree.AcceptDisputeBranchProviderRejected, value, failure)
+}
+
+// AcceptDisputeDefect selects the defect branch: Input or credentials are invalid.
+func AcceptDisputeDefect(value braintree.DisputeProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeProfile] {
+	return connectormock.Branch(braintree.AcceptDisputeBranchDefect, value, failure)
+}
+
+// AcceptDisputeUncertain returns an uncertain acceptDispute outcome.
+func AcceptDisputeUncertain(value braintree.DisputeProfile, failure sdkgo.Failure) connectormock.Case[braintree.DisputeProfile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// AcceptDisputeRetry asks Dex to retry the acceptDispute Step, after the delay when it is positive.
+func AcceptDisputeRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.DisputeProfile] {
+	return connectormock.Retry[braintree.DisputeProfile](failure, after)
+}
+
+// AcceptDisputeAcceptedDefault is the manifest mock acceptedDefault: One sample dispute result is returned.
+func AcceptDisputeAcceptedDefault() connectormock.Case[braintree.DisputeProfile] {
+	value := connectormock.MustDecodeOutput[braintree.DisputeProfile](`{"id":"dispute-1","status":"ACCEPTED"}`)
+	return connectormock.Branch(braintree.AcceptDisputeBranchAccepted, value, nil)
+}
+
+// AcceptDisputeDefault is the manifest default, acceptedDefault, which New installs.
+func AcceptDisputeDefault() connectormock.Case[braintree.DisputeProfile] {
+	return AcceptDisputeAcceptedDefault()
+}
+
+// CreateDisputeTextEvidenceCreated selects the created branch: Braintree returned the requested result.
+func CreateDisputeTextEvidenceCreated(value braintree.DisputeTextEvidenceProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeTextEvidenceProfile] {
+	return connectormock.Branch(braintree.CreateDisputeTextEvidenceBranchCreated, value, failure)
+}
+
+// CreateDisputeTextEvidenceNotFound selects the notFound branch: The dispute or evidence was not found.
+func CreateDisputeTextEvidenceNotFound(value braintree.DisputeTextEvidenceProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeTextEvidenceProfile] {
+	return connectormock.Branch(braintree.CreateDisputeTextEvidenceBranchNotFound, value, failure)
+}
+
+// CreateDisputeTextEvidenceProviderRejected selects the providerRejected branch: Braintree definitively rejected the request.
+func CreateDisputeTextEvidenceProviderRejected(value braintree.DisputeTextEvidenceProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeTextEvidenceProfile] {
+	return connectormock.Branch(braintree.CreateDisputeTextEvidenceBranchProviderRejected, value, failure)
+}
+
+// CreateDisputeTextEvidenceDefect selects the defect branch: Input or credentials are invalid.
+func CreateDisputeTextEvidenceDefect(value braintree.DisputeTextEvidenceProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeTextEvidenceProfile] {
+	return connectormock.Branch(braintree.CreateDisputeTextEvidenceBranchDefect, value, failure)
+}
+
+// CreateDisputeTextEvidenceUncertain returns an uncertain createDisputeTextEvidence outcome.
+func CreateDisputeTextEvidenceUncertain(value braintree.DisputeTextEvidenceProfile, failure sdkgo.Failure) connectormock.Case[braintree.DisputeTextEvidenceProfile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateDisputeTextEvidenceRetry asks Dex to retry the createDisputeTextEvidence Step, after the delay when it is positive.
+func CreateDisputeTextEvidenceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.DisputeTextEvidenceProfile] {
+	return connectormock.Retry[braintree.DisputeTextEvidenceProfile](failure, after)
+}
+
+// CreateDisputeTextEvidenceCreatedDefault is the manifest mock createdDefault: One sample dispute result is returned.
+func CreateDisputeTextEvidenceCreatedDefault() connectormock.Case[braintree.DisputeTextEvidenceProfile] {
+	value := connectormock.MustDecodeOutput[braintree.DisputeTextEvidenceProfile](`{"id":"evidence-1","category":"GENERAL","content":"Shipment proof"}`)
+	return connectormock.Branch(braintree.CreateDisputeTextEvidenceBranchCreated, value, nil)
+}
+
+// CreateDisputeTextEvidenceDefault is the manifest default, createdDefault, which New installs.
+func CreateDisputeTextEvidenceDefault() connectormock.Case[braintree.DisputeTextEvidenceProfile] {
+	return CreateDisputeTextEvidenceCreatedDefault()
+}
+
+// DeleteDisputeEvidenceDeleted selects the deleted branch: Braintree returned the requested result.
+func DeleteDisputeEvidenceDeleted(value braintree.DisputeEvidenceDeleteResult, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeEvidenceDeleteResult] {
+	return connectormock.Branch(braintree.DeleteDisputeEvidenceBranchDeleted, value, failure)
+}
+
+// DeleteDisputeEvidenceNotFound selects the notFound branch: The dispute or evidence was not found.
+func DeleteDisputeEvidenceNotFound(value braintree.DisputeEvidenceDeleteResult, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeEvidenceDeleteResult] {
+	return connectormock.Branch(braintree.DeleteDisputeEvidenceBranchNotFound, value, failure)
+}
+
+// DeleteDisputeEvidenceProviderRejected selects the providerRejected branch: Braintree definitively rejected the request.
+func DeleteDisputeEvidenceProviderRejected(value braintree.DisputeEvidenceDeleteResult, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeEvidenceDeleteResult] {
+	return connectormock.Branch(braintree.DeleteDisputeEvidenceBranchProviderRejected, value, failure)
+}
+
+// DeleteDisputeEvidenceInvalidResponse selects the invalidResponse branch: Braintree returned invalid dispute JSON.
+func DeleteDisputeEvidenceInvalidResponse(value braintree.DisputeEvidenceDeleteResult, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeEvidenceDeleteResult] {
+	return connectormock.Branch(braintree.DeleteDisputeEvidenceBranchInvalidResponse, value, failure)
+}
+
+// DeleteDisputeEvidenceDefect selects the defect branch: Input or credentials are invalid.
+func DeleteDisputeEvidenceDefect(value braintree.DisputeEvidenceDeleteResult, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeEvidenceDeleteResult] {
+	return connectormock.Branch(braintree.DeleteDisputeEvidenceBranchDefect, value, failure)
+}
+
+// DeleteDisputeEvidenceRetry asks Dex to retry the deleteDisputeEvidence Step, after the delay when it is positive.
+func DeleteDisputeEvidenceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.DisputeEvidenceDeleteResult] {
+	return connectormock.Retry[braintree.DisputeEvidenceDeleteResult](failure, after)
+}
+
+// DeleteDisputeEvidenceDeletedDefault is the manifest mock deletedDefault: One sample dispute result is returned.
+func DeleteDisputeEvidenceDeletedDefault() connectormock.Case[braintree.DisputeEvidenceDeleteResult] {
+	value := connectormock.MustDecodeOutput[braintree.DisputeEvidenceDeleteResult](`{"disputeId":"dispute-1","evidenceId":"evidence-1","deleted":true}`)
+	return connectormock.Branch(braintree.DeleteDisputeEvidenceBranchDeleted, value, nil)
+}
+
+// DeleteDisputeEvidenceDefault is the manifest default, deletedDefault, which New installs.
+func DeleteDisputeEvidenceDefault() connectormock.Case[braintree.DisputeEvidenceDeleteResult] {
+	return DeleteDisputeEvidenceDeletedDefault()
+}
+
+// FinalizeDisputeFinalized selects the finalized branch: Braintree returned the requested result.
+func FinalizeDisputeFinalized(value braintree.DisputeProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeProfile] {
+	return connectormock.Branch(braintree.FinalizeDisputeBranchFinalized, value, failure)
+}
+
+// FinalizeDisputeNotFound selects the notFound branch: The dispute or evidence was not found.
+func FinalizeDisputeNotFound(value braintree.DisputeProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeProfile] {
+	return connectormock.Branch(braintree.FinalizeDisputeBranchNotFound, value, failure)
+}
+
+// FinalizeDisputeProviderRejected selects the providerRejected branch: Braintree definitively rejected the request.
+func FinalizeDisputeProviderRejected(value braintree.DisputeProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeProfile] {
+	return connectormock.Branch(braintree.FinalizeDisputeBranchProviderRejected, value, failure)
+}
+
+// FinalizeDisputeDefect selects the defect branch: Input or credentials are invalid.
+func FinalizeDisputeDefect(value braintree.DisputeProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeProfile] {
+	return connectormock.Branch(braintree.FinalizeDisputeBranchDefect, value, failure)
+}
+
+// FinalizeDisputeUncertain returns an uncertain finalizeDispute outcome.
+func FinalizeDisputeUncertain(value braintree.DisputeProfile, failure sdkgo.Failure) connectormock.Case[braintree.DisputeProfile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// FinalizeDisputeRetry asks Dex to retry the finalizeDispute Step, after the delay when it is positive.
+func FinalizeDisputeRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.DisputeProfile] {
+	return connectormock.Retry[braintree.DisputeProfile](failure, after)
+}
+
+// FinalizeDisputeFinalizedDefault is the manifest mock finalizedDefault: One sample dispute result is returned.
+func FinalizeDisputeFinalizedDefault() connectormock.Case[braintree.DisputeProfile] {
+	value := connectormock.MustDecodeOutput[braintree.DisputeProfile](`{"id":"dispute-1","status":"DISPUTED"}`)
+	return connectormock.Branch(braintree.FinalizeDisputeBranchFinalized, value, nil)
+}
+
+// FinalizeDisputeDefault is the manifest default, finalizedDefault, which New installs.
+func FinalizeDisputeDefault() connectormock.Case[braintree.DisputeProfile] {
+	return FinalizeDisputeFinalizedDefault()
 }
 
 // SearchTransactionsSearched selects the searched branch: Braintree returned the requested result.

@@ -7964,6 +7964,2890 @@
       ],
       "name": "refundTransaction-serverFailureThenSuccess",
       "operation": "refundTransaction"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"node\":{\"__typename\":\"Dispute\",\"id\":\"dispute-1\",\"status\":\"OPEN\",\"replyByDate\":\"2026-12-01\",\"evidence\":[{\"id\":\"evidence-1\",\"category\":\"GENERAL\",\"content\":\"Shipment proof\"}]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query GetDispute($id: ID!) { node(id: $id) { __typename ... on Dispute { id status replyByDate evidence { id category ... on DisputeTextEvidence { content } } } } }",
+            "variables": {
+              "id": "dispute-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "evidence": [
+            {
+              "category": "GENERAL",
+              "content": "Shipment proof",
+              "id": "evidence-1"
+            }
+          ],
+          "id": "dispute-1",
+          "replyByDate": "2026-12-01",
+          "status": "OPEN"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "getDispute-success",
+      "operation": "getDispute"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"VALIDATION\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query GetDispute($id: ID!) { node(id: $id) { __typename ... on Dispute { id status replyByDate evidence { id category ... on DisputeTextEvidence { content } } } } }",
+            "variables": {
+              "id": "dispute-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "getDispute-providerRejected",
+      "operation": "getDispute"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"NOT_FOUND\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query GetDispute($id: ID!) { node(id: $id) { __typename ... on Dispute { id status replyByDate evidence { id category ... on DisputeTextEvidence { content } } } } }",
+            "variables": {
+              "id": "dispute-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "getDispute-notFound",
+      "operation": "getDispute"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query GetDispute($id: ID!) { node(id: $id) { __typename ... on Dispute { id status replyByDate evidence { id category ... on DisputeTextEvidence { content } } } } }",
+            "variables": {
+              "id": "dispute-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "getDispute-final429",
+      "operation": "getDispute"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query GetDispute($id: ID!) { node(id: $id) { __typename ... on Dispute { id status replyByDate evidence { id category ... on DisputeTextEvidence { content } } } } }",
+            "variables": {
+              "id": "dispute-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "getDispute-final503",
+      "operation": "getDispute"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query GetDispute($id: ID!) { node(id: $id) { __typename ... on Dispute { id status replyByDate evidence { id category ... on DisputeTextEvidence { content } } } } }",
+            "variables": {
+              "id": "dispute-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "getDispute-transportFailure",
+      "operation": "getDispute"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query GetDispute($id: ID!) { node(id: $id) { __typename ... on Dispute { id status replyByDate evidence { id category ... on DisputeTextEvidence { content } } } } }",
+            "variables": {
+              "id": "dispute-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "getDispute-invalidResponse",
+      "operation": "getDispute"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "disputeId": ""
+      },
+      "name": "getDispute-defect",
+      "operation": "getDispute"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"disputes\":{\"edges\":[{\"node\":{\"id\":\"dispute-1\",\"status\":\"OPEN\",\"replyByDate\":\"2026-12-01\"}}],\"pageInfo\":{\"hasNextPage\":false,\"endCursor\":\"cursor-1\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query SearchDisputes($input: DisputeSearchInput!, $first: Int!, $after: String) { disputes(input: $input, first: $first, after: $after) { edges { node { id status replyByDate } } pageInfo { hasNextPage endCursor } } }",
+            "variables": {
+              "after": "cursor-0",
+              "first": 2,
+              "input": {
+                "id": {
+                  "is": "dispute-1"
+                },
+                "status": {
+                  "is": "OPEN"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "disputes": [
+            {
+              "id": "dispute-1",
+              "replyByDate": "2026-12-01",
+              "status": "OPEN"
+            }
+          ],
+          "endCursor": "cursor-1",
+          "hasNextPage": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-0",
+        "disputeId": "dispute-1",
+        "first": 2,
+        "status": "OPEN"
+      },
+      "name": "searchDisputes-success",
+      "operation": "searchDisputes"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"VALIDATION\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query SearchDisputes($input: DisputeSearchInput!, $first: Int!, $after: String) { disputes(input: $input, first: $first, after: $after) { edges { node { id status replyByDate } } pageInfo { hasNextPage endCursor } } }",
+            "variables": {
+              "after": "cursor-0",
+              "first": 2,
+              "input": {
+                "id": {
+                  "is": "dispute-1"
+                },
+                "status": {
+                  "is": "OPEN"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "disputes": [],
+          "hasNextPage": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-0",
+        "disputeId": "dispute-1",
+        "first": 2,
+        "status": "OPEN"
+      },
+      "name": "searchDisputes-providerRejected",
+      "operation": "searchDisputes"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"NOT_FOUND\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query SearchDisputes($input: DisputeSearchInput!, $first: Int!, $after: String) { disputes(input: $input, first: $first, after: $after) { edges { node { id status replyByDate } } pageInfo { hasNextPage endCursor } } }",
+            "variables": {
+              "after": "cursor-0",
+              "first": 2,
+              "input": {
+                "id": {
+                  "is": "dispute-1"
+                },
+                "status": {
+                  "is": "OPEN"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "disputes": [],
+          "hasNextPage": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-0",
+        "disputeId": "dispute-1",
+        "first": 2,
+        "status": "OPEN"
+      },
+      "name": "searchDisputes-notFound",
+      "operation": "searchDisputes"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query SearchDisputes($input: DisputeSearchInput!, $first: Int!, $after: String) { disputes(input: $input, first: $first, after: $after) { edges { node { id status replyByDate } } pageInfo { hasNextPage endCursor } } }",
+            "variables": {
+              "after": "cursor-0",
+              "first": 2,
+              "input": {
+                "id": {
+                  "is": "dispute-1"
+                },
+                "status": {
+                  "is": "OPEN"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-0",
+        "disputeId": "dispute-1",
+        "first": 2,
+        "status": "OPEN"
+      },
+      "name": "searchDisputes-final429",
+      "operation": "searchDisputes"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query SearchDisputes($input: DisputeSearchInput!, $first: Int!, $after: String) { disputes(input: $input, first: $first, after: $after) { edges { node { id status replyByDate } } pageInfo { hasNextPage endCursor } } }",
+            "variables": {
+              "after": "cursor-0",
+              "first": 2,
+              "input": {
+                "id": {
+                  "is": "dispute-1"
+                },
+                "status": {
+                  "is": "OPEN"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-0",
+        "disputeId": "dispute-1",
+        "first": 2,
+        "status": "OPEN"
+      },
+      "name": "searchDisputes-final503",
+      "operation": "searchDisputes"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query SearchDisputes($input: DisputeSearchInput!, $first: Int!, $after: String) { disputes(input: $input, first: $first, after: $after) { edges { node { id status replyByDate } } pageInfo { hasNextPage endCursor } } }",
+            "variables": {
+              "after": "cursor-0",
+              "first": 2,
+              "input": {
+                "id": {
+                  "is": "dispute-1"
+                },
+                "status": {
+                  "is": "OPEN"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-0",
+        "disputeId": "dispute-1",
+        "first": 2,
+        "status": "OPEN"
+      },
+      "name": "searchDisputes-transportFailure",
+      "operation": "searchDisputes"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query SearchDisputes($input: DisputeSearchInput!, $first: Int!, $after: String) { disputes(input: $input, first: $first, after: $after) { edges { node { id status replyByDate } } pageInfo { hasNextPage endCursor } } }",
+            "variables": {
+              "after": "cursor-0",
+              "first": 2,
+              "input": {
+                "id": {
+                  "is": "dispute-1"
+                },
+                "status": {
+                  "is": "OPEN"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "disputes": [],
+          "hasNextPage": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-0",
+        "disputeId": "dispute-1",
+        "first": 2,
+        "status": "OPEN"
+      },
+      "name": "searchDisputes-invalidResponse",
+      "operation": "searchDisputes"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "disputes": [],
+          "hasNextPage": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-0",
+        "disputeId": "",
+        "first": 2,
+        "status": ""
+      },
+      "name": "searchDisputes-defect",
+      "operation": "searchDisputes"
+    },
+    {
+      "callId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"acceptDispute\":{\"dispute\":{\"id\":\"dispute-1\",\"status\":\"ACCEPTED\",\"replyByDate\":\"2026-12-01\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation AcceptDispute($input: AcceptDisputeInput!) { acceptDispute(input: $input) { dispute { id status replyByDate } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "accepted",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "dispute-1",
+          "replyByDate": "2026-12-01",
+          "status": "ACCEPTED"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "acceptDispute-success",
+      "operation": "acceptDispute"
+    },
+    {
+      "callId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"VALIDATION\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation AcceptDispute($input: AcceptDisputeInput!) { acceptDispute(input: $input) { dispute { id status replyByDate } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "acceptDispute-providerRejected",
+      "operation": "acceptDispute"
+    },
+    {
+      "callId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"NOT_FOUND\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation AcceptDispute($input: AcceptDisputeInput!) { acceptDispute(input: $input) { dispute { id status replyByDate } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "acceptDispute-notFound",
+      "operation": "acceptDispute"
+    },
+    {
+      "callId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation AcceptDispute($input: AcceptDisputeInput!) { acceptDispute(input: $input) { dispute { id status replyByDate } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "acceptDispute-final429",
+      "operation": "acceptDispute"
+    },
+    {
+      "callId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation AcceptDispute($input: AcceptDisputeInput!) { acceptDispute(input: $input) { dispute { id status replyByDate } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "acceptDispute-final503",
+      "operation": "acceptDispute"
+    },
+    {
+      "callId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation AcceptDispute($input: AcceptDisputeInput!) { acceptDispute(input: $input) { dispute { id status replyByDate } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "acceptDispute-transportFailure",
+      "operation": "acceptDispute"
+    },
+    {
+      "callId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation AcceptDispute($input: AcceptDisputeInput!) { acceptDispute(input: $input) { dispute { id status replyByDate } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "acceptDispute-invalidResponse",
+      "operation": "acceptDispute"
+    },
+    {
+      "callId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "input": {
+        "disputeId": ""
+      },
+      "name": "acceptDispute-defect",
+      "operation": "acceptDispute"
+    },
+    {
+      "callId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"node\":{\"__typename\":\"Dispute\",\"id\":\"dispute-1\",\"status\":\"OPEN\",\"replyByDate\":\"2026-12-01\",\"evidence\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query GetDispute($id: ID!) { node(id: $id) { __typename ... on Dispute { id status replyByDate evidence { id category ... on DisputeTextEvidence { content } } } } }",
+            "variables": {
+              "id": "dispute-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "acceptDispute-uncertain",
+      "operation": "acceptDispute",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"node\":{\"__typename\":\"Dispute\",\"id\":\"dispute-1\",\"status\":\"ACCEPTED\",\"replyByDate\":\"2026-12-01\",\"evidence\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query GetDispute($id: ID!) { node(id: $id) { __typename ... on Dispute { id status replyByDate evidence { id category ... on DisputeTextEvidence { content } } } } }",
+            "variables": {
+              "id": "dispute-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "accepted",
+        "failureKind": "",
+        "output": {
+          "id": "dispute-1",
+          "replyByDate": "2026-12-01",
+          "status": "ACCEPTED"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "acceptDispute-readBackConfirmed",
+      "operation": "acceptDispute",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "c28d09a4-6c5e-5032-a199-748242bd3c12",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"createDisputeTextEvidence\":{\"evidence\":{\"id\":\"evidence-1\",\"category\":\"GENERAL\",\"content\":\"Shipment proof\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CreateDisputeTextEvidence($input: CreateDisputeTextEvidenceInput!) { createDisputeTextEvidence(input: $input) { evidence { id category content } } }",
+            "variables": {
+              "input": {
+                "category": "GENERAL",
+                "clientMutationId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+                "content": "Shipment proof",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "category": "GENERAL",
+          "content": "Shipment proof",
+          "id": "evidence-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "input": {
+        "category": "GENERAL",
+        "content": "Shipment proof",
+        "disputeId": "dispute-1"
+      },
+      "name": "createDisputeTextEvidence-success",
+      "operation": "createDisputeTextEvidence"
+    },
+    {
+      "callId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"VALIDATION\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CreateDisputeTextEvidence($input: CreateDisputeTextEvidenceInput!) { createDisputeTextEvidence(input: $input) { evidence { id category content } } }",
+            "variables": {
+              "input": {
+                "category": "GENERAL",
+                "clientMutationId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+                "content": "Shipment proof",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "input": {
+        "category": "GENERAL",
+        "content": "Shipment proof",
+        "disputeId": "dispute-1"
+      },
+      "name": "createDisputeTextEvidence-providerRejected",
+      "operation": "createDisputeTextEvidence"
+    },
+    {
+      "callId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"NOT_FOUND\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CreateDisputeTextEvidence($input: CreateDisputeTextEvidenceInput!) { createDisputeTextEvidence(input: $input) { evidence { id category content } } }",
+            "variables": {
+              "input": {
+                "category": "GENERAL",
+                "clientMutationId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+                "content": "Shipment proof",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "input": {
+        "category": "GENERAL",
+        "content": "Shipment proof",
+        "disputeId": "dispute-1"
+      },
+      "name": "createDisputeTextEvidence-notFound",
+      "operation": "createDisputeTextEvidence"
+    },
+    {
+      "callId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CreateDisputeTextEvidence($input: CreateDisputeTextEvidenceInput!) { createDisputeTextEvidence(input: $input) { evidence { id category content } } }",
+            "variables": {
+              "input": {
+                "category": "GENERAL",
+                "clientMutationId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+                "content": "Shipment proof",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "input": {
+        "category": "GENERAL",
+        "content": "Shipment proof",
+        "disputeId": "dispute-1"
+      },
+      "name": "createDisputeTextEvidence-final429",
+      "operation": "createDisputeTextEvidence"
+    },
+    {
+      "callId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CreateDisputeTextEvidence($input: CreateDisputeTextEvidenceInput!) { createDisputeTextEvidence(input: $input) { evidence { id category content } } }",
+            "variables": {
+              "input": {
+                "category": "GENERAL",
+                "clientMutationId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+                "content": "Shipment proof",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "input": {
+        "category": "GENERAL",
+        "content": "Shipment proof",
+        "disputeId": "dispute-1"
+      },
+      "name": "createDisputeTextEvidence-final503",
+      "operation": "createDisputeTextEvidence"
+    },
+    {
+      "callId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CreateDisputeTextEvidence($input: CreateDisputeTextEvidenceInput!) { createDisputeTextEvidence(input: $input) { evidence { id category content } } }",
+            "variables": {
+              "input": {
+                "category": "GENERAL",
+                "clientMutationId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+                "content": "Shipment proof",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "input": {
+        "category": "GENERAL",
+        "content": "Shipment proof",
+        "disputeId": "dispute-1"
+      },
+      "name": "createDisputeTextEvidence-transportFailure",
+      "operation": "createDisputeTextEvidence"
+    },
+    {
+      "callId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CreateDisputeTextEvidence($input: CreateDisputeTextEvidenceInput!) { createDisputeTextEvidence(input: $input) { evidence { id category content } } }",
+            "variables": {
+              "input": {
+                "category": "GENERAL",
+                "clientMutationId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+                "content": "Shipment proof",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "input": {
+        "category": "GENERAL",
+        "content": "Shipment proof",
+        "disputeId": "dispute-1"
+      },
+      "name": "createDisputeTextEvidence-invalidResponse",
+      "operation": "createDisputeTextEvidence"
+    },
+    {
+      "callId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "input": {
+        "category": "GENERAL",
+        "content": "Shipment proof",
+        "disputeId": ""
+      },
+      "name": "createDisputeTextEvidence-defect",
+      "operation": "createDisputeTextEvidence"
+    },
+    {
+      "callId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"node\":{\"__typename\":\"Dispute\",\"id\":\"dispute-1\",\"status\":\"OPEN\",\"replyByDate\":\"2026-12-01\",\"evidence\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query GetDispute($id: ID!) { node(id: $id) { __typename ... on Dispute { id status replyByDate evidence { id category ... on DisputeTextEvidence { content } } } } }",
+            "variables": {
+              "id": "dispute-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "input": {
+        "category": "GENERAL",
+        "content": "Shipment proof",
+        "disputeId": "dispute-1"
+      },
+      "name": "createDisputeTextEvidence-uncertain",
+      "operation": "createDisputeTextEvidence",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"node\":{\"__typename\":\"Dispute\",\"id\":\"dispute-1\",\"status\":\"OPEN\",\"replyByDate\":\"2026-12-01\",\"evidence\":[{\"id\":\"evidence-1\",\"category\":\"GENERAL\",\"content\":\"Shipment proof\"}]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query GetDispute($id: ID!) { node(id: $id) { __typename ... on Dispute { id status replyByDate evidence { id category ... on DisputeTextEvidence { content } } } } }",
+            "variables": {
+              "id": "dispute-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "category": "GENERAL",
+          "content": "Shipment proof",
+          "id": "evidence-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+      "input": {
+        "category": "GENERAL",
+        "content": "Shipment proof",
+        "disputeId": "dispute-1"
+      },
+      "name": "createDisputeTextEvidence-readBackConfirmed",
+      "operation": "createDisputeTextEvidence",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "5928050b-f0e4-5686-8d9c-3f949a04e215",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "dacd367d-7cce-594b-8453-a1fac2667183",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"deleteDisputeEvidence\":{\"clientMutationId\":\"done\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeleteDisputeEvidence($input: DeleteDisputeEvidenceInput!) { deleteDisputeEvidence(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "dacd367d-7cce-594b-8453-a1fac2667183",
+                "disputeId": "dispute-1",
+                "evidenceId": "evidence-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "disputeId": "dispute-1",
+          "evidenceId": "evidence-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dacd367d-7cce-594b-8453-a1fac2667183",
+      "input": {
+        "disputeId": "dispute-1",
+        "evidenceId": "evidence-1"
+      },
+      "name": "deleteDisputeEvidence-success",
+      "operation": "deleteDisputeEvidence"
+    },
+    {
+      "callId": "dacd367d-7cce-594b-8453-a1fac2667183",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"VALIDATION\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeleteDisputeEvidence($input: DeleteDisputeEvidenceInput!) { deleteDisputeEvidence(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "dacd367d-7cce-594b-8453-a1fac2667183",
+                "disputeId": "dispute-1",
+                "evidenceId": "evidence-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "disputeId": "",
+          "evidenceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dacd367d-7cce-594b-8453-a1fac2667183",
+      "input": {
+        "disputeId": "dispute-1",
+        "evidenceId": "evidence-1"
+      },
+      "name": "deleteDisputeEvidence-providerRejected",
+      "operation": "deleteDisputeEvidence"
+    },
+    {
+      "callId": "dacd367d-7cce-594b-8453-a1fac2667183",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"NOT_FOUND\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeleteDisputeEvidence($input: DeleteDisputeEvidenceInput!) { deleteDisputeEvidence(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "dacd367d-7cce-594b-8453-a1fac2667183",
+                "disputeId": "dispute-1",
+                "evidenceId": "evidence-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "disputeId": "",
+          "evidenceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dacd367d-7cce-594b-8453-a1fac2667183",
+      "input": {
+        "disputeId": "dispute-1",
+        "evidenceId": "evidence-1"
+      },
+      "name": "deleteDisputeEvidence-notFound",
+      "operation": "deleteDisputeEvidence"
+    },
+    {
+      "callId": "dacd367d-7cce-594b-8453-a1fac2667183",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeleteDisputeEvidence($input: DeleteDisputeEvidenceInput!) { deleteDisputeEvidence(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "dacd367d-7cce-594b-8453-a1fac2667183",
+                "disputeId": "dispute-1",
+                "evidenceId": "evidence-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dacd367d-7cce-594b-8453-a1fac2667183",
+      "input": {
+        "disputeId": "dispute-1",
+        "evidenceId": "evidence-1"
+      },
+      "name": "deleteDisputeEvidence-final429",
+      "operation": "deleteDisputeEvidence"
+    },
+    {
+      "callId": "dacd367d-7cce-594b-8453-a1fac2667183",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeleteDisputeEvidence($input: DeleteDisputeEvidenceInput!) { deleteDisputeEvidence(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "dacd367d-7cce-594b-8453-a1fac2667183",
+                "disputeId": "dispute-1",
+                "evidenceId": "evidence-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dacd367d-7cce-594b-8453-a1fac2667183",
+      "input": {
+        "disputeId": "dispute-1",
+        "evidenceId": "evidence-1"
+      },
+      "name": "deleteDisputeEvidence-final503",
+      "operation": "deleteDisputeEvidence"
+    },
+    {
+      "callId": "dacd367d-7cce-594b-8453-a1fac2667183",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeleteDisputeEvidence($input: DeleteDisputeEvidenceInput!) { deleteDisputeEvidence(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "dacd367d-7cce-594b-8453-a1fac2667183",
+                "disputeId": "dispute-1",
+                "evidenceId": "evidence-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dacd367d-7cce-594b-8453-a1fac2667183",
+      "input": {
+        "disputeId": "dispute-1",
+        "evidenceId": "evidence-1"
+      },
+      "name": "deleteDisputeEvidence-transportFailure",
+      "operation": "deleteDisputeEvidence"
+    },
+    {
+      "callId": "dacd367d-7cce-594b-8453-a1fac2667183",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeleteDisputeEvidence($input: DeleteDisputeEvidenceInput!) { deleteDisputeEvidence(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "dacd367d-7cce-594b-8453-a1fac2667183",
+                "disputeId": "dispute-1",
+                "evidenceId": "evidence-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false,
+          "disputeId": "",
+          "evidenceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dacd367d-7cce-594b-8453-a1fac2667183",
+      "input": {
+        "disputeId": "dispute-1",
+        "evidenceId": "evidence-1"
+      },
+      "name": "deleteDisputeEvidence-invalidResponse",
+      "operation": "deleteDisputeEvidence"
+    },
+    {
+      "callId": "dacd367d-7cce-594b-8453-a1fac2667183",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "disputeId": "",
+          "evidenceId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dacd367d-7cce-594b-8453-a1fac2667183",
+      "input": {
+        "disputeId": "",
+        "evidenceId": "evidence-1"
+      },
+      "name": "deleteDisputeEvidence-defect",
+      "operation": "deleteDisputeEvidence"
+    },
+    {
+      "callId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"finalizeDispute\":{\"dispute\":{\"id\":\"dispute-1\",\"status\":\"DISPUTED\",\"replyByDate\":\"2026-12-01\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation FinalizeDispute($input: FinalizeDisputeInput!) { finalizeDispute(input: $input) { dispute { id status replyByDate } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "finalized",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "dispute-1",
+          "replyByDate": "2026-12-01",
+          "status": "DISPUTED"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "finalizeDispute-success",
+      "operation": "finalizeDispute"
+    },
+    {
+      "callId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"VALIDATION\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation FinalizeDispute($input: FinalizeDisputeInput!) { finalizeDispute(input: $input) { dispute { id status replyByDate } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "finalizeDispute-providerRejected",
+      "operation": "finalizeDispute"
+    },
+    {
+      "callId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"NOT_FOUND\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation FinalizeDispute($input: FinalizeDisputeInput!) { finalizeDispute(input: $input) { dispute { id status replyByDate } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "finalizeDispute-notFound",
+      "operation": "finalizeDispute"
+    },
+    {
+      "callId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation FinalizeDispute($input: FinalizeDisputeInput!) { finalizeDispute(input: $input) { dispute { id status replyByDate } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "finalizeDispute-final429",
+      "operation": "finalizeDispute"
+    },
+    {
+      "callId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation FinalizeDispute($input: FinalizeDisputeInput!) { finalizeDispute(input: $input) { dispute { id status replyByDate } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "finalizeDispute-final503",
+      "operation": "finalizeDispute"
+    },
+    {
+      "callId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation FinalizeDispute($input: FinalizeDisputeInput!) { finalizeDispute(input: $input) { dispute { id status replyByDate } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "finalizeDispute-transportFailure",
+      "operation": "finalizeDispute"
+    },
+    {
+      "callId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation FinalizeDispute($input: FinalizeDisputeInput!) { finalizeDispute(input: $input) { dispute { id status replyByDate } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+                "disputeId": "dispute-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "finalizeDispute-invalidResponse",
+      "operation": "finalizeDispute"
+    },
+    {
+      "callId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "input": {
+        "disputeId": ""
+      },
+      "name": "finalizeDispute-defect",
+      "operation": "finalizeDispute"
+    },
+    {
+      "callId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"node\":{\"__typename\":\"Dispute\",\"id\":\"dispute-1\",\"status\":\"OPEN\",\"replyByDate\":\"2026-12-01\",\"evidence\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query GetDispute($id: ID!) { node(id: $id) { __typename ... on Dispute { id status replyByDate evidence { id category ... on DisputeTextEvidence { content } } } } }",
+            "variables": {
+              "id": "dispute-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "finalizeDispute-uncertain",
+      "operation": "finalizeDispute",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"node\":{\"__typename\":\"Dispute\",\"id\":\"dispute-1\",\"status\":\"DISPUTED\",\"replyByDate\":\"2026-12-01\",\"evidence\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query GetDispute($id: ID!) { node(id: $id) { __typename ... on Dispute { id status replyByDate evidence { id category ... on DisputeTextEvidence { content } } } } }",
+            "variables": {
+              "id": "dispute-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "finalized",
+        "failureKind": "",
+        "output": {
+          "id": "dispute-1",
+          "replyByDate": "2026-12-01",
+          "status": "DISPUTED"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+      "input": {
+        "disputeId": "dispute-1"
+      },
+      "name": "finalizeDispute-readBackConfirmed",
+      "operation": "finalizeDispute",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "bded7597-b001-5f3b-a874-f2276ab13f6b",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

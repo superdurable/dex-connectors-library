@@ -16,6 +16,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getDispute/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.DisputeProfile](`{"id":"dispute-1","status":"OPEN"}`)
+			return err
+		}},
+		{name: "searchDisputes/searchedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.DisputesPage](`{"disputes":[{"id":"dispute-1","status":"OPEN"}],"hasNextPage":false}`)
+			return err
+		}},
+		{name: "acceptDispute/acceptedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.DisputeProfile](`{"id":"dispute-1","status":"ACCEPTED"}`)
+			return err
+		}},
+		{name: "createDisputeTextEvidence/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.DisputeTextEvidenceProfile](`{"id":"evidence-1","category":"GENERAL","content":"Shipment proof"}`)
+			return err
+		}},
+		{name: "deleteDisputeEvidence/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.DisputeEvidenceDeleteResult](`{"disputeId":"dispute-1","evidenceId":"evidence-1","deleted":true}`)
+			return err
+		}},
+		{name: "finalizeDispute/finalizedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.DisputeProfile](`{"id":"dispute-1","status":"DISPUTED"}`)
+			return err
+		}},
 		{name: "searchTransactions/searchedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[braintree.TransactionsPage](`{"transactions":[{"id":"txn-1","status":"SETTLED"}],"hasNextPage":false}`)
 			return err
@@ -94,6 +118,24 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetDispute().Definition().Operation.OperationID != "getDispute" {
+		t.Errorf("getDispute mock has another definition")
+	}
+	if mock.SearchDisputes().Definition().Operation.OperationID != "searchDisputes" {
+		t.Errorf("searchDisputes mock has another definition")
+	}
+	if mock.AcceptDispute().Definition().Operation.OperationID != "acceptDispute" {
+		t.Errorf("acceptDispute mock has another definition")
+	}
+	if mock.CreateDisputeTextEvidence().Definition().Operation.OperationID != "createDisputeTextEvidence" {
+		t.Errorf("createDisputeTextEvidence mock has another definition")
+	}
+	if mock.DeleteDisputeEvidence().Definition().Operation.OperationID != "deleteDisputeEvidence" {
+		t.Errorf("deleteDisputeEvidence mock has another definition")
+	}
+	if mock.FinalizeDispute().Definition().Operation.OperationID != "finalizeDispute" {
+		t.Errorf("finalizeDispute mock has another definition")
+	}
 	if mock.SearchTransactions().Definition().Operation.OperationID != "searchTransactions" {
 		t.Errorf("searchTransactions mock has another definition")
 	}

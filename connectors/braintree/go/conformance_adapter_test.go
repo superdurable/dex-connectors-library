@@ -57,5 +57,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"captureTransaction":             newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.CaptureTransaction(), reference, scenario.CallID),
 		"voidTransaction":                newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.VoidTransaction(), reference, scenario.CallID),
 		"refundTransaction":              newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.RefundTransaction(), reference, scenario.CallID),
+		"getDispute":                     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetDispute(), reference),
+		"searchDisputes":                 newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.SearchDisputes(), reference),
+		"acceptDispute":                  newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.AcceptDispute(), reference, scenario.CallID),
+		"createDisputeTextEvidence":      newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.CreateDisputeTextEvidence(), reference, scenario.CallID),
+		"deleteDisputeEvidence":          newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteDisputeEvidence(), reference, scenario.CallID),
+		"finalizeDispute":                newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.FinalizeDispute(), reference, scenario.CallID),
 	}}
 }
