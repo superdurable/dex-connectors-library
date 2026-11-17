@@ -266,6 +266,9 @@ func (request boxLimitedCreate) invoke() sdkgo.MutationAttempt[CreatedBoxItem] {
 		if state == boxReadBackMatched {
 			return sdkgo.NewMutationBranch(request.created, confirmed, nil, sdkgo.Receipt{})
 		}
+		if state == boxReadBackRetry || (state == boxReadBackAbsent && canResendUnknown) {
+			return request.retry(sdkgo.FailureAvailability, "accepted Box create could not be confirmed", 0)
+		}
 		return request.uncertain("Box accepted create without a confirmable ID")
 	}
 	return sdkgo.NewMutationBranch(request.created, value, nil, sdkgo.Receipt{})
