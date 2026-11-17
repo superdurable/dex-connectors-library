@@ -22,7 +22,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		OAuthClientID: "synthetic-client-id", OAuthClientSecret: sdkgo.NewSecretString("synthetic-client-secret"),
 		AccessToken: sdkgo.NewSecretString("test-basecamp-token"), RefreshToken: sdkgo.NewSecretString("synthetic-refresh-token"),
 	}
-	config := Config{BaseURL: endpoint}
+	config := Config{BaseURL: endpoint, APIBaseURL: endpoint}
 	if strings.HasPrefix(scenario.Name, "listAccounts-oversized") {
 		config.MaxResponseBytes = 16
 	}
@@ -30,5 +30,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"listAccounts": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListAccounts(), reference),
+		"listProjects": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListProjects(), reference),
+		"getProject":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetProject(), reference),
+		"listTodos":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTodos(), reference),
+		"getTodo":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTodo(), reference),
 	}}
 }

@@ -28,6 +28,7 @@ func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{ht
 // Client holds immutable Basecamp settings and resolves OAuth credentials per call.
 type Client struct {
 	baseURL          string
+	apiBaseURL       string
 	maxResponseBytes int64
 	credentials      CredentialSource
 	refreshDriver    *CredentialRefreshDriver
@@ -47,7 +48,11 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("Basecamp API URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	apiBaseURL, err := providerhttp.ValidateBaseURL(config.APIBaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("Basecamp 3 API URL: %w", err)
+	}
+	client := &Client{baseURL: baseURL, apiBaseURL: apiBaseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Basecamp client option is required")
@@ -70,6 +75,14 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {
+	return client.getURL(call, client.baseURL+path)
+}
+
+func (client *Client) getAccountResource(call sdkgo.Call, accountID string, path string) providerResponse {
+	return client.getURL(call, client.apiBaseURL+"/"+accountID+path)
+}
+
+func (client *Client) getURL(call sdkgo.Call, requestURL string) providerResponse {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	if sdkgo.IsReauthorizationRequired(err) {
 		return providerResponse{err: errCredential}
@@ -84,7 +97,7 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(accessToken) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, requestURL, nil)
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}

@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: basecamp
   displayName: Basecamp
-  description: Discover Basecamp accounts accessible to an authorized identity.
+  description: Read Basecamp accounts, projects, and to-dos.
   company: Basecamp
   categories: [project-management]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: basecamp
   languages:
@@ -29,6 +29,11 @@ spec:
         type: url
         description: Basecamp authorization API HTTPS origin. Blank uses the displayed provider endpoint; override only for a trusted test gateway.
         default: https://launchpad.37signals.com
+      - name: apiBaseUrl
+        goName: APIBaseURL
+        type: url
+        description: Basecamp 3 API HTTPS origin. Blank uses the displayed provider endpoint; override only for a trusted test gateway.
+        default: https://3.basecampapi.com
       - name: timeout
         goName: Timeout
         type: duration
@@ -70,7 +75,7 @@ spec:
         - Sign in at https://launchpad.37signals.com/integrations and register or select an integration for the Basecamp account you will read.
         - Register the exact OAuth Redirect URL displayed by Dex Web. Dex requests read scope; Launchpad uses account consent and may ignore that scope parameter.
         - Copy the Client ID and secret into Dex Web and authorize an identity with access to the desired accounts. Dex stores access and refresh tokens; do not paste them into fields.
-        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. The Query returns only Basecamp account IDs and names.
+        - Leave baseUrl, apiBaseUrl, timeout, and maxResponseBytes blank for their displayed defaults. First list accounts, then use an account ID to read projects and to-dos.
     oauth2:
       authorizationEndpoint: https://launchpad.37signals.com/authorization/new
       tokenEndpoint: https://launchpad.37signals.com/authorization/token
@@ -88,6 +93,88 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: listProjects
+      goName: ListProjects
+      inputType: ListProjectsInput
+      outputType: ProjectsPage
+      kind: query
+      description: List active projects visible in one Basecamp account.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Basecamp returned the projects.}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Basecamp returned malformed or oversized project JSON., optional: true}
+        - {id: defect, goName: Defect, description: Account ID or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One project is visible.
+          output: {projects: [{id: '123', name: Example Project}]}
+    - name: getProject
+      goName: GetProject
+      inputType: GetProjectInput
+      outputType: Project
+      kind: query
+      description: Read one Basecamp project.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Basecamp returned the project.}
+        - {id: notFound, goName: NotFound, description: The project does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Basecamp returned malformed or oversized project JSON., optional: true}
+        - {id: defect, goName: Defect, description: IDs or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One project exists.
+          output: {id: '123', name: Example Project}
+    - name: listTodos
+      goName: ListTodos
+      inputType: ListTodosInput
+      outputType: TodosPage
+      kind: query
+      description: List to-dos in a Basecamp to-do list.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Basecamp returned the to-dos.}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Basecamp returned malformed or oversized to-do JSON., optional: true}
+        - {id: defect, goName: Defect, description: IDs or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One to-do is visible.
+          output: {todos: [{id: '456', content: Example task, completed: false}]}
+    - name: getTodo
+      goName: GetTodo
+      inputType: GetTodoInput
+      outputType: Todo
+      kind: query
+      description: Read one Basecamp to-do.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Basecamp returned the to-do.}
+        - {id: notFound, goName: NotFound, description: The to-do does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Basecamp returned malformed or oversized to-do JSON., optional: true}
+        - {id: defect, goName: Defect, description: IDs or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One to-do exists.
+          output: {id: '456', content: Example task, completed: false}
     - name: listAccounts
       goName: ListAccounts
       inputType: ListAccountsInput

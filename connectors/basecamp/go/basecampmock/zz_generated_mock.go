@@ -18,6 +18,10 @@ import (
 // Mock is a scripted basecamp connection. Script each operation through its accessor.
 type Mock struct {
 	connection   basecamp.Connection
+	listProjects *connectormock.Query[basecamp.ListProjectsInput, basecamp.ProjectsPage]
+	getProject   *connectormock.Query[basecamp.GetProjectInput, basecamp.Project]
+	listTodos    *connectormock.Query[basecamp.ListTodosInput, basecamp.TodosPage]
+	getTodo      *connectormock.Query[basecamp.GetTodoInput, basecamp.Todo]
 	listAccounts *connectormock.Query[basecamp.ListAccountsInput, basecamp.AccountsPage]
 }
 
@@ -26,8 +30,16 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listProjects: connectormock.NewQuery[basecamp.ListProjectsInput, basecamp.ProjectsPage](t, basecamp.ListProjectsDefinition),
+		getProject:   connectormock.NewQuery[basecamp.GetProjectInput, basecamp.Project](t, basecamp.GetProjectDefinition),
+		listTodos:    connectormock.NewQuery[basecamp.ListTodosInput, basecamp.TodosPage](t, basecamp.ListTodosDefinition),
+		getTodo:      connectormock.NewQuery[basecamp.GetTodoInput, basecamp.Todo](t, basecamp.GetTodoDefinition),
 		listAccounts: connectormock.NewQuery[basecamp.ListAccountsInput, basecamp.AccountsPage](t, basecamp.ListAccountsDefinition),
 	}
+	mock.listProjects.Default(ListProjectsDefault())
+	mock.getProject.Default(GetProjectDefault())
+	mock.listTodos.Default(ListTodosDefault())
+	mock.getTodo.Default(GetTodoDefault())
 	mock.listAccounts.Default(ListAccountsDefault())
 	connection, err := basecamp.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "basecamp", Name: connectionName})
 	if err != nil {
@@ -40,6 +52,26 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() basecamp.Connection { return mock.connection }
 
+// ListProjects returns the listProjects script.
+func (mock *Mock) ListProjects() *connectormock.Query[basecamp.ListProjectsInput, basecamp.ProjectsPage] {
+	return mock.listProjects
+}
+
+// GetProject returns the getProject script.
+func (mock *Mock) GetProject() *connectormock.Query[basecamp.GetProjectInput, basecamp.Project] {
+	return mock.getProject
+}
+
+// ListTodos returns the listTodos script.
+func (mock *Mock) ListTodos() *connectormock.Query[basecamp.ListTodosInput, basecamp.TodosPage] {
+	return mock.listTodos
+}
+
+// GetTodo returns the getTodo script.
+func (mock *Mock) GetTodo() *connectormock.Query[basecamp.GetTodoInput, basecamp.Todo] {
+	return mock.getTodo
+}
+
 // ListAccounts returns the listAccounts script.
 func (mock *Mock) ListAccounts() *connectormock.Query[basecamp.ListAccountsInput, basecamp.AccountsPage] {
 	return mock.listAccounts
@@ -47,9 +79,169 @@ func (mock *Mock) ListAccounts() *connectormock.Query[basecamp.ListAccountsInput
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListProjects() sdkgo.Query[basecamp.ListProjectsInput, basecamp.ProjectsPage] {
+	return operations.mock.listProjects
+}
+func (operations mockOperations) GetProject() sdkgo.Query[basecamp.GetProjectInput, basecamp.Project] {
+	return operations.mock.getProject
+}
+func (operations mockOperations) ListTodos() sdkgo.Query[basecamp.ListTodosInput, basecamp.TodosPage] {
+	return operations.mock.listTodos
+}
+func (operations mockOperations) GetTodo() sdkgo.Query[basecamp.GetTodoInput, basecamp.Todo] {
+	return operations.mock.getTodo
+}
 func (operations mockOperations) ListAccounts() sdkgo.Query[basecamp.ListAccountsInput, basecamp.AccountsPage] {
 	return operations.mock.listAccounts
 }
+
+// ListProjectsListed selects the listed branch: Basecamp returned the projects.
+func ListProjectsListed(value basecamp.ProjectsPage, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectsPage] {
+	return connectormock.Branch(basecamp.ListProjectsBranchListed, value, failure)
+}
+
+// ListProjectsProviderRejected selects the providerRejected branch: Basecamp conclusively rejected the read.
+func ListProjectsProviderRejected(value basecamp.ProjectsPage, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectsPage] {
+	return connectormock.Branch(basecamp.ListProjectsBranchProviderRejected, value, failure)
+}
+
+// ListProjectsInvalidResponse selects the invalidResponse branch: Basecamp returned malformed or oversized project JSON.
+func ListProjectsInvalidResponse(value basecamp.ProjectsPage, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectsPage] {
+	return connectormock.Branch(basecamp.ListProjectsBranchInvalidResponse, value, failure)
+}
+
+// ListProjectsDefect selects the defect branch: Account ID or connection credentials are invalid.
+func ListProjectsDefect(value basecamp.ProjectsPage, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectsPage] {
+	return connectormock.Branch(basecamp.ListProjectsBranchDefect, value, failure)
+}
+
+// ListProjectsRetry asks Dex to retry the listProjects Step, after the delay when it is positive.
+func ListProjectsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.ProjectsPage] {
+	return connectormock.Retry[basecamp.ProjectsPage](failure, after)
+}
+
+// ListProjectsListedDefault is the manifest mock listedDefault: One project is visible.
+func ListProjectsListedDefault() connectormock.Case[basecamp.ProjectsPage] {
+	value := connectormock.MustDecodeOutput[basecamp.ProjectsPage](`{"projects":[{"id":"123","name":"Example Project"}]}`)
+	return connectormock.Branch(basecamp.ListProjectsBranchListed, value, nil)
+}
+
+// ListProjectsDefault is the manifest default, listedDefault, which New installs.
+func ListProjectsDefault() connectormock.Case[basecamp.ProjectsPage] {
+	return ListProjectsListedDefault()
+}
+
+// GetProjectFound selects the found branch: Basecamp returned the project.
+func GetProjectFound(value basecamp.Project, failure *sdkgo.Failure) connectormock.Case[basecamp.Project] {
+	return connectormock.Branch(basecamp.GetProjectBranchFound, value, failure)
+}
+
+// GetProjectNotFound selects the notFound branch: The project does not exist.
+func GetProjectNotFound(value basecamp.Project, failure *sdkgo.Failure) connectormock.Case[basecamp.Project] {
+	return connectormock.Branch(basecamp.GetProjectBranchNotFound, value, failure)
+}
+
+// GetProjectProviderRejected selects the providerRejected branch: Basecamp conclusively rejected the read.
+func GetProjectProviderRejected(value basecamp.Project, failure *sdkgo.Failure) connectormock.Case[basecamp.Project] {
+	return connectormock.Branch(basecamp.GetProjectBranchProviderRejected, value, failure)
+}
+
+// GetProjectInvalidResponse selects the invalidResponse branch: Basecamp returned malformed or oversized project JSON.
+func GetProjectInvalidResponse(value basecamp.Project, failure *sdkgo.Failure) connectormock.Case[basecamp.Project] {
+	return connectormock.Branch(basecamp.GetProjectBranchInvalidResponse, value, failure)
+}
+
+// GetProjectDefect selects the defect branch: IDs or connection credentials are invalid.
+func GetProjectDefect(value basecamp.Project, failure *sdkgo.Failure) connectormock.Case[basecamp.Project] {
+	return connectormock.Branch(basecamp.GetProjectBranchDefect, value, failure)
+}
+
+// GetProjectRetry asks Dex to retry the getProject Step, after the delay when it is positive.
+func GetProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.Project] {
+	return connectormock.Retry[basecamp.Project](failure, after)
+}
+
+// GetProjectFoundDefault is the manifest mock foundDefault: One project exists.
+func GetProjectFoundDefault() connectormock.Case[basecamp.Project] {
+	value := connectormock.MustDecodeOutput[basecamp.Project](`{"id":"123","name":"Example Project"}`)
+	return connectormock.Branch(basecamp.GetProjectBranchFound, value, nil)
+}
+
+// GetProjectDefault is the manifest default, foundDefault, which New installs.
+func GetProjectDefault() connectormock.Case[basecamp.Project] { return GetProjectFoundDefault() }
+
+// ListTodosListed selects the listed branch: Basecamp returned the to-dos.
+func ListTodosListed(value basecamp.TodosPage, failure *sdkgo.Failure) connectormock.Case[basecamp.TodosPage] {
+	return connectormock.Branch(basecamp.ListTodosBranchListed, value, failure)
+}
+
+// ListTodosProviderRejected selects the providerRejected branch: Basecamp conclusively rejected the read.
+func ListTodosProviderRejected(value basecamp.TodosPage, failure *sdkgo.Failure) connectormock.Case[basecamp.TodosPage] {
+	return connectormock.Branch(basecamp.ListTodosBranchProviderRejected, value, failure)
+}
+
+// ListTodosInvalidResponse selects the invalidResponse branch: Basecamp returned malformed or oversized to-do JSON.
+func ListTodosInvalidResponse(value basecamp.TodosPage, failure *sdkgo.Failure) connectormock.Case[basecamp.TodosPage] {
+	return connectormock.Branch(basecamp.ListTodosBranchInvalidResponse, value, failure)
+}
+
+// ListTodosDefect selects the defect branch: IDs or connection credentials are invalid.
+func ListTodosDefect(value basecamp.TodosPage, failure *sdkgo.Failure) connectormock.Case[basecamp.TodosPage] {
+	return connectormock.Branch(basecamp.ListTodosBranchDefect, value, failure)
+}
+
+// ListTodosRetry asks Dex to retry the listTodos Step, after the delay when it is positive.
+func ListTodosRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.TodosPage] {
+	return connectormock.Retry[basecamp.TodosPage](failure, after)
+}
+
+// ListTodosListedDefault is the manifest mock listedDefault: One to-do is visible.
+func ListTodosListedDefault() connectormock.Case[basecamp.TodosPage] {
+	value := connectormock.MustDecodeOutput[basecamp.TodosPage](`{"todos":[{"id":"456","content":"Example task","completed":false}]}`)
+	return connectormock.Branch(basecamp.ListTodosBranchListed, value, nil)
+}
+
+// ListTodosDefault is the manifest default, listedDefault, which New installs.
+func ListTodosDefault() connectormock.Case[basecamp.TodosPage] { return ListTodosListedDefault() }
+
+// GetTodoFound selects the found branch: Basecamp returned the to-do.
+func GetTodoFound(value basecamp.Todo, failure *sdkgo.Failure) connectormock.Case[basecamp.Todo] {
+	return connectormock.Branch(basecamp.GetTodoBranchFound, value, failure)
+}
+
+// GetTodoNotFound selects the notFound branch: The to-do does not exist.
+func GetTodoNotFound(value basecamp.Todo, failure *sdkgo.Failure) connectormock.Case[basecamp.Todo] {
+	return connectormock.Branch(basecamp.GetTodoBranchNotFound, value, failure)
+}
+
+// GetTodoProviderRejected selects the providerRejected branch: Basecamp conclusively rejected the read.
+func GetTodoProviderRejected(value basecamp.Todo, failure *sdkgo.Failure) connectormock.Case[basecamp.Todo] {
+	return connectormock.Branch(basecamp.GetTodoBranchProviderRejected, value, failure)
+}
+
+// GetTodoInvalidResponse selects the invalidResponse branch: Basecamp returned malformed or oversized to-do JSON.
+func GetTodoInvalidResponse(value basecamp.Todo, failure *sdkgo.Failure) connectormock.Case[basecamp.Todo] {
+	return connectormock.Branch(basecamp.GetTodoBranchInvalidResponse, value, failure)
+}
+
+// GetTodoDefect selects the defect branch: IDs or connection credentials are invalid.
+func GetTodoDefect(value basecamp.Todo, failure *sdkgo.Failure) connectormock.Case[basecamp.Todo] {
+	return connectormock.Branch(basecamp.GetTodoBranchDefect, value, failure)
+}
+
+// GetTodoRetry asks Dex to retry the getTodo Step, after the delay when it is positive.
+func GetTodoRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.Todo] {
+	return connectormock.Retry[basecamp.Todo](failure, after)
+}
+
+// GetTodoFoundDefault is the manifest mock foundDefault: One to-do exists.
+func GetTodoFoundDefault() connectormock.Case[basecamp.Todo] {
+	value := connectormock.MustDecodeOutput[basecamp.Todo](`{"id":"456","content":"Example task","completed":false}`)
+	return connectormock.Branch(basecamp.GetTodoBranchFound, value, nil)
+}
+
+// GetTodoDefault is the manifest default, foundDefault, which New installs.
+func GetTodoDefault() connectormock.Case[basecamp.Todo] { return GetTodoFoundDefault() }
 
 // ListAccountsListed selects the listed branch: Basecamp returned accessible account identities.
 func ListAccountsListed(value basecamp.AccountsPage, failure *sdkgo.Failure) connectormock.Case[basecamp.AccountsPage] {

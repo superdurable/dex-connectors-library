@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listProjects/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ProjectsPage](`{"projects":[{"id":"123","name":"Example Project"}]}`)
+			return err
+		}},
+		{name: "getProject/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Project](`{"id":"123","name":"Example Project"}`)
+			return err
+		}},
+		{name: "listTodos/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodosPage](`{"todos":[{"id":"456","content":"Example task","completed":false}]}`)
+			return err
+		}},
+		{name: "getTodo/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Todo](`{"id":"456","content":"Example task","completed":false}`)
+			return err
+		}},
 		{name: "listAccounts/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[basecamp.AccountsPage](`{"accounts":[{"id":"99999999","company":"Example Company"}],"offset":0,"limit":100,"total":1}`)
 			return err
@@ -30,6 +46,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListProjects().Definition().Operation.OperationID != "listProjects" {
+		t.Errorf("listProjects mock has another definition")
+	}
+	if mock.GetProject().Definition().Operation.OperationID != "getProject" {
+		t.Errorf("getProject mock has another definition")
+	}
+	if mock.ListTodos().Definition().Operation.OperationID != "listTodos" {
+		t.Errorf("listTodos mock has another definition")
+	}
+	if mock.GetTodo().Definition().Operation.OperationID != "getTodo" {
+		t.Errorf("getTodo mock has another definition")
+	}
 	if mock.ListAccounts().Definition().Operation.OperationID != "listAccounts" {
 		t.Errorf("listAccounts mock has another definition")
 	}
