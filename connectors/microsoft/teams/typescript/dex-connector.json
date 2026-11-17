@@ -1,10 +1,10 @@
 {
   "connectorId": "microsoft-teams",
-  "releaseTag": "connectors/microsoft/teams/go/v0.24.0",
+  "releaseTag": "connectors/microsoft/teams/go/v0.24.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-microsoft-teams",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {
@@ -88,7 +88,7 @@
       "kind": "mutation",
       "operationId": "postChannelMessage",
       "inputType": "PostChannelMessageInput",
-      "description": "Post one top-level message, with an optional subject, to a channel as the signed-in user. Graph has no idempotency key, so a sync single-dispatch fence checkpoints the send across retries; an unconfirmed send is read back without another post.",
+      "description": "Post one top-level message, with an optional subject, to a channel as the signed-in user. Graph has no idempotency key, so a sync single-dispatch fence counts possible sends across retries; an unconfirmed send is read back first and resent only when absent and below the send cap.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -168,7 +168,7 @@
       "kind": "mutation",
       "operationId": "postThreadReply",
       "inputType": "PostThreadReplyInput",
-      "description": "Reply once to an existing channel message's thread as the signed-in user. Graph has no idempotency key, so a sync single-dispatch fence checkpoints the send across retries; an unconfirmed reply is read back without another post.",
+      "description": "Reply once to an existing channel message's thread as the signed-in user. Graph has no idempotency key, so a sync single-dispatch fence counts possible sends across retries; an unconfirmed reply is read back first and resent only when absent and below the send cap.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -249,7 +249,7 @@
       "kind": "mutation",
       "operationId": "postChatMessage",
       "inputType": "PostChatMessageInput",
-      "description": "Send one message to an existing one-on-one, group, or meeting chat as the signed-in user. A sync single-dispatch fence prevents a duplicate across retries; the connection cannot read chat messages, so an unconfirmed send selects uncertain.",
+      "description": "Send one message to an existing one-on-one, group, or meeting chat as the signed-in user. A sync single-dispatch fence counts possible sends across retries; the connection cannot read chat messages, so an unconfirmed send is resent until the send cap and then selects uncertain.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

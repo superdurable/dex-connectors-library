@@ -3,21 +3,21 @@ kind: Connector
 metadata:
   name: microsoft-teams
   displayName: Microsoft Teams
-  description: Post Microsoft Teams channel messages, thread replies, and chat messages as the signed-in user, each at most once per Step execution, and read a channel message's replies so a Flow can wait for a person's answer.
+  description: Post Microsoft Teams channel messages, thread replies, and chat messages as the signed-in user, resending an unconfirmed post only up to the send cap, and read a channel message's replies so a Flow can wait for a person's answer.
   company: Microsoft
   categories: [communication]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: microsoft
   languages:
     typescript:
       package: '@superdurable/connector-microsoft-teams'
-      version: v0.1.0
+      version: v0.1.1
       operations: [listThreadReplies, postChannelMessage, postThreadReply, postChatMessage]
       triggers: []
     python:
       package: dex-connector-microsoft-teams
-      version: v0.1.0
+      version: v0.1.1
       timestampFormat: rfc3339Nano
       operations: [listThreadReplies, postChannelMessage, postThreadReply, postChatMessage]
       triggers: []
@@ -196,13 +196,13 @@ spec:
       inputType: PostChannelMessageInput
       outputType: PostMessageOutput
       kind: mutation
-      description: "Post one top-level message, with an optional subject, to a channel as the signed-in user. Graph has no idempotency key, so a sync single-dispatch fence checkpoints the send across retries; an unconfirmed send is read back without another post."
+      description: "Post one top-level message, with an optional subject, to a channel as the signed-in user. Graph has no idempotency key, so a sync single-dispatch fence counts possible sends across retries; an unconfirmed send is read back first and resent only when absent and below the send cap."
       idempotency: required
       authorization: required
       branches: &channelPostBranches
         - {id: sent, goName: Sent, description: "Teams stored the message, including one an earlier attempt of this Step execution sent and the read-back found."}
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the message, such as an unknown or archived channel, a non-member account, or invalid HTML; nothing was posted.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "An attempt sent the message and neither its response nor a read-back confirms it; it is never sent again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The message may have been sent, and neither a response nor a read-back confirmed it before the send cap was reached or several matching messages were found.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       # Sync: Graph has no idempotency key and an async backup attempt cannot see the dispatch checkpoint.
       execution:
@@ -225,7 +225,7 @@ spec:
       inputType: PostThreadReplyInput
       outputType: PostMessageOutput
       kind: mutation
-      description: "Reply once to an existing channel message's thread as the signed-in user. Graph has no idempotency key, so a sync single-dispatch fence checkpoints the send across retries; an unconfirmed reply is read back without another post."
+      description: "Reply once to an existing channel message's thread as the signed-in user. Graph has no idempotency key, so a sync single-dispatch fence counts possible sends across retries; an unconfirmed reply is read back first and resent only when absent and below the send cap."
       idempotency: required
       authorization: required
       branches: *channelPostBranches
@@ -249,19 +249,19 @@ spec:
       inputType: PostChatMessageInput
       outputType: PostMessageOutput
       kind: mutation
-      description: "Send one message to an existing one-on-one, group, or meeting chat as the signed-in user. A sync single-dispatch fence prevents a duplicate across retries; the connection cannot read chat messages, so an unconfirmed send selects uncertain."
+      description: "Send one message to an existing one-on-one, group, or meeting chat as the signed-in user. A sync single-dispatch fence counts possible sends across retries; the connection cannot read chat messages, so an unconfirmed send is resent until the send cap and then selects uncertain."
       idempotency: required
       authorization: required
       branches:
         - {id: sent, goName: Sent, description: Teams stored the message in the chat.}
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the message, such as an unknown chat, an account that left it, or invalid HTML; nothing was sent.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "An attempt sent the message and its response does not confirm it; the connection cannot read chats, so it is never sent again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The message may have been sent, and no response confirmed it before the send cap was reached; the connection cannot read chats to check.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Graph has no chat-message deduplication key or permitted read-back, so bound retries of the unconfirmed write."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Graph has no chat-message deduplication key or permitted read-back, so bound retries of the unconfirmed write alongside the send cap."}}
       mocks:
         - name: incidentEscalation
           branch: sent

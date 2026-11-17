@@ -34,24 +34,26 @@ func TestPostChatMessageSendsToTheChat(t *testing.T) {
 	require.JSONEq(t, `{"importance":"urgent","body":{"contentType":"text","content":"`+testEscalation+`"}}`, provider.request(0).body)
 }
 
-func TestUnconfirmedChatMessageIsUncertainWithoutAReadOrResend(t *testing.T) {
+func TestUnconfirmedChatMessageIsResentWithoutAReadUntilTheCap(t *testing.T) {
 	provider := newRecordingGraph(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		<-request.Context().Done()
 	})
 	client := newTeamsClient(t, provider.endpoint(), teams.WithHTTPClient(&http.Client{Timeout: 200 * time.Millisecond}))
 	dexContext := newTestDexContext("chat-timeout")
 
-	result, err := sdkgo.RunMutation(dexContext, client.PostChatMessage(), teamsConnection, validChatMessageInput())
-	require.NoError(t, err)
+	result := runPostUntilTerminal(t, func() (sdkgo.MutationResult[teams.PostMessageOutput], error) {
+		return sdkgo.RunMutation(dexContext, client.PostChatMessage(), teamsConnection, validChatMessageInput())
+	}, dexContext.advanceAttempt)
 	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
 	require.Equal(t, teams.PostMessageOutput{ChatID: testChatID}, result.Value)
+	require.Equal(t, 3, provider.requestCount())
 
 	dexContext.advanceAttempt()
-	result, err = sdkgo.RunMutation(dexContext, client.PostChatMessage(), teamsConnection, validChatMessageInput())
+	result, err := sdkgo.RunMutation(dexContext, client.PostChatMessage(), teamsConnection, validChatMessageInput())
 	require.NoError(t, err)
-	require.Equal(t, sdkgo.UncertainBranchID, result.Branch, "a later attempt of the same Step execution never sends")
+	require.Equal(t, sdkgo.UncertainBranchID, result.Branch, "an attempt at the send cap never sends")
 	require.Contains(t, result.Failure.Message, "cannot read it back")
-	require.Equal(t, 1, provider.requestCount())
+	require.Equal(t, 3, provider.requestCount())
 }
 
 func TestPostChatMessageRejectsAChannelIDAsAChat(t *testing.T) {

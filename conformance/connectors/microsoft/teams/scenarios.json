@@ -424,6 +424,7 @@
           "attempt": 1,
           "callId": "45fd2a34-2416-5b75-85e1-efc416dbcd13",
           "providerId": "1616989510410",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -495,7 +496,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "45fd2a34-2416-5b75-85e1-efc416dbcd13",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "channelId": "19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2",
@@ -576,10 +577,11 @@
       "name": "postChannelMessage-uncertain-read-back",
       "operation": "postChannelMessage",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "value": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "45fd2a34-2416-5b75-85e1-efc416dbcd13",
+          "sendCount": 3,
           "state": "claimed"
         }
       }
@@ -903,6 +905,7 @@
           "attempt": 1,
           "callId": "1330b9c5-6046-52b6-879b-f259f587209a",
           "providerId": "1616989510410",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -974,7 +977,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "1330b9c5-6046-52b6-879b-f259f587209a",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "channelId": "19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2",
@@ -1057,10 +1060,11 @@
       "name": "postThreadReply-uncertain-read-back",
       "operation": "postThreadReply",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "value": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "1330b9c5-6046-52b6-879b-f259f587209a",
+          "sendCount": 3,
           "state": "claimed"
         }
       }
@@ -1383,6 +1387,7 @@
           "attempt": 1,
           "callId": "5e6668c4-480b-5669-8d64-f6d68d79ef40",
           "providerId": "1616989510410",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -1450,7 +1455,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "5e6668c4-480b-5669-8d64-f6d68d79ef40",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "chatId": "19:meeting_MjdhNjM4YzUtYzExZi00@thread.v2",
@@ -1474,8 +1479,63 @@
       "operation": "postChatMessage"
     },
     {
+      "attempts": 3,
       "callId": "5e6668c4-480b-5669-8d64-f6d68d79ef40",
       "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chats/19:meeting_MjdhNjM4YzUtYzExZi00@thread.v2/messages",
+          "requestBody": {
+            "body": {
+              "content": "Hello Teams",
+              "contentType": "text"
+            },
+            "importance": "normal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer teams-access-token"
+            ],
+            "Client-Request-Id": [
+              "5e6668c4-480b-5669-8d64-f6d68d79ef40"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chats/19:meeting_MjdhNjM4YzUtYzExZi00@thread.v2/messages",
+          "requestBody": {
+            "body": {
+              "content": "Hello Teams",
+              "contentType": "text"
+            },
+            "importance": "normal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer teams-access-token"
+            ],
+            "Client-Request-Id": [
+              "5e6668c4-480b-5669-8d64-f6d68d79ef40"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
         {
           "keyMode": "absent",
           "method": "POST",
@@ -1508,8 +1568,9 @@
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "5e6668c4-480b-5669-8d64-f6d68d79ef40",
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
@@ -1517,7 +1578,7 @@
           "createdAt": "0001-01-01T00:00:00Z",
           "sender": {}
         },
-        "requestCount": 1,
+        "requestCount": 3,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -1530,6 +1591,30 @@
         "contentType": "text",
         "importance": "normal"
       },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "5e6668c4-480b-5669-8d64-f6d68d79ef40",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "5e6668c4-480b-5669-8d64-f6d68d79ef40",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
       "name": "postChatMessage-uncertain",
       "operation": "postChatMessage"
     },
@@ -1560,10 +1645,366 @@
       "name": "postChatMessage-earlier-uncertain",
       "operation": "postChatMessage",
       "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "5e6668c4-480b-5669-8d64-f6d68d79ef40",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "5e6668c4-480b-5669-8d64-f6d68d79ef40",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-10-01T09:30:00Z",
+      "idempotencyKey": "5e6668c4-480b-5669-8d64-f6d68d79ef40",
+      "input": {
+        "chatId": "19:meeting_MjdhNjM4YzUtYzExZi00@thread.v2",
+        "content": "Hello Teams",
+        "contentType": "text",
+        "importance": "normal"
+      },
+      "name": "postChatMessage-invalid-checkpoint-retries",
+      "operation": "postChatMessage",
+      "priorHeartbeat": {
         "attempt": 1,
         "value": {
           "attempt": 1,
           "callId": "5e6668c4-480b-5669-8d64-f6d68d79ef40",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "attempts": 2,
+      "callId": "5e6668c4-480b-5669-8d64-f6d68d79ef40",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"InternalServerError\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chats/19:meeting_MjdhNjM4YzUtYzExZi00@thread.v2/messages",
+          "requestBody": {
+            "body": {
+              "content": "Hello Teams",
+              "contentType": "text"
+            },
+            "importance": "normal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer teams-access-token"
+            ],
+            "Client-Request-Id": [
+              "5e6668c4-480b-5669-8d64-f6d68d79ef40"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"id\":\"1616989510410\",\"replyToId\":null,\"messageType\":\"message\",\"createdDateTime\":\"2026-10-01T09:30:01Z\",\"lastEditedDateTime\":null,\"deletedDateTime\":null,\"subject\":null,\"importance\":\"normal\",\"webUrl\":\"https://teams.microsoft.com/l/message/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/1616989510410\",\"from\":{\"user\":{\"id\":\"8ea0e38b-efb3-4757-924a-5f94061cf8c2\",\"displayName\":\"Robin Kline\"}},\"body\":{\"contentType\":\"text\",\"content\":\"Hello Teams\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chats/19:meeting_MjdhNjM4YzUtYzExZi00@thread.v2/messages",
+          "requestBody": {
+            "body": {
+              "content": "Hello Teams",
+              "contentType": "text"
+            },
+            "importance": "normal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer teams-access-token"
+            ],
+            "Client-Request-Id": [
+              "5e6668c4-480b-5669-8d64-f6d68d79ef40"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "5e6668c4-480b-5669-8d64-f6d68d79ef40",
+          "providerId": "1616989510410",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "chatId": "19:meeting_MjdhNjM4YzUtYzExZi00@thread.v2",
+          "createdAt": "2026-10-01T09:30:01Z",
+          "messageId": "1616989510410",
+          "sender": {
+            "displayName": "Robin Kline",
+            "userId": "8ea0e38b-efb3-4757-924a-5f94061cf8c2"
+          },
+          "webUrl": "https://teams.microsoft.com/l/message/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/1616989510410"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-10-01T09:30:00Z",
+      "idempotencyKey": "5e6668c4-480b-5669-8d64-f6d68d79ef40",
+      "input": {
+        "chatId": "19:meeting_MjdhNjM4YzUtYzExZi00@thread.v2",
+        "content": "Hello Teams",
+        "contentType": "text",
+        "importance": "normal"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "5e6668c4-480b-5669-8d64-f6d68d79ef40",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "postChatMessage-resend-after-unknown-outcome",
+      "operation": "postChatMessage"
+    },
+    {
+      "attempts": 2,
+      "callId": "5e6668c4-480b-5669-8d64-f6d68d79ef40",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"InternalServerError\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chats/19:meeting_MjdhNjM4YzUtYzExZi00@thread.v2/messages",
+          "requestBody": {
+            "body": {
+              "content": "Hello Teams",
+              "contentType": "text"
+            },
+            "importance": "normal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer teams-access-token"
+            ],
+            "Client-Request-Id": [
+              "5e6668c4-480b-5669-8d64-f6d68d79ef40"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"error\":{\"code\":\"Forbidden\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chats/19:meeting_MjdhNjM4YzUtYzExZi00@thread.v2/messages",
+          "requestBody": {
+            "body": {
+              "content": "Hello Teams",
+              "contentType": "text"
+            },
+            "importance": "normal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer teams-access-token"
+            ],
+            "Client-Request-Id": [
+              "5e6668c4-480b-5669-8d64-f6d68d79ef40"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "5e6668c4-480b-5669-8d64-f6d68d79ef40",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "chatId": "19:meeting_MjdhNjM4YzUtYzExZi00@thread.v2",
+          "createdAt": "0001-01-01T00:00:00Z",
+          "sender": {}
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "fixedClock": "2026-10-01T09:30:00Z",
+      "idempotencyKey": "5e6668c4-480b-5669-8d64-f6d68d79ef40",
+      "input": {
+        "chatId": "19:meeting_MjdhNjM4YzUtYzExZi00@thread.v2",
+        "content": "Hello Teams",
+        "contentType": "text",
+        "importance": "normal"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "5e6668c4-480b-5669-8d64-f6d68d79ef40",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "postChatMessage-refusal-after-unknown-outcome-uncertain",
+      "operation": "postChatMessage"
+    },
+    {
+      "callId": "45fd2a34-2416-5b75-85e1-efc416dbcd13",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/teams/fbe2bf47-16c8-47cf-b4a5-4b9b187c508b/channels/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/messages",
+          "query": {
+            "$top": [
+              "50"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer teams-access-token"
+            ],
+            "Client-Request-Id": [
+              "45fd2a34-2416-5b75-85e1-efc416dbcd13"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"1616989510410\",\"replyToId\":null,\"messageType\":\"message\",\"createdDateTime\":\"2026-10-01T09:30:01Z\",\"lastEditedDateTime\":null,\"deletedDateTime\":null,\"subject\":\"Incident\",\"importance\":\"normal\",\"webUrl\":\"https://teams.microsoft.com/l/message/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/1616989510410\",\"from\":{\"user\":{\"id\":\"8ea0e38b-efb3-4757-924a-5f94061cf8c2\",\"displayName\":\"Robin Kline\"}},\"body\":{\"contentType\":\"text\",\"content\":\"Hello Teams\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/teams/fbe2bf47-16c8-47cf-b4a5-4b9b187c508b/channels/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/messages",
+          "requestBody": {
+            "body": {
+              "content": "Hello Teams",
+              "contentType": "text"
+            },
+            "importance": "normal",
+            "subject": "Incident"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer teams-access-token"
+            ],
+            "Client-Request-Id": [
+              "45fd2a34-2416-5b75-85e1-efc416dbcd13"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "45fd2a34-2416-5b75-85e1-efc416dbcd13",
+          "providerId": "1616989510410",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "channelId": "19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2",
+          "createdAt": "2026-10-01T09:30:01Z",
+          "messageId": "1616989510410",
+          "sender": {
+            "displayName": "Robin Kline",
+            "userId": "8ea0e38b-efb3-4757-924a-5f94061cf8c2"
+          },
+          "teamId": "fbe2bf47-16c8-47cf-b4a5-4b9b187c508b",
+          "webUrl": "https://teams.microsoft.com/l/message/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/1616989510410"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-10-01T09:30:00Z",
+      "idempotencyKey": "45fd2a34-2416-5b75-85e1-efc416dbcd13",
+      "input": {
+        "channelId": "19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2",
+        "content": "Hello Teams",
+        "contentType": "text",
+        "importance": "normal",
+        "subject": "Incident",
+        "teamId": "fbe2bf47-16c8-47cf-b4a5-4b9b187c508b"
+      },
+      "name": "postChannelMessage-resend-after-read-back-miss",
+      "operation": "postChannelMessage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "45fd2a34-2416-5b75-85e1-efc416dbcd13",
+          "sendCount": 1,
           "state": "claimed"
         }
       }

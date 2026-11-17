@@ -7,10 +7,10 @@
 //
 // Microsoft Graph accepts no idempotency key or client-supplied message ID
 // for chatMessage, so every post runs with sync Execute durability and records
-// a Dex heartbeat claim through the shared single-dispatch fence. A retry
-// sends only after the immediately preceding attempt proved the write was not
-// applied. Otherwise a channel post or thread reply reads back; an unconfirmed
-// chat message selects uncertain.
+// a Dex heartbeat claim through the shared single-dispatch fence. An unknown
+// outcome is resent while possible sends stay below the send cap; a channel
+// post or thread reply is read back first. At the cap an unconfirmed post
+// selects uncertain.
 //
 // Graph allows application permissions for channel posts only for message
 // migration, so the connector posts as the signed-in user.
@@ -150,9 +150,9 @@ const (
 	writeAccepted writeOutcome = iota + 1
 	// writeNotApplied is a 429 or an undispatched request: Graph cannot have stored the message.
 	writeNotApplied
-	// writeRejected is a conclusive 4xx: Graph refused before storing anything.
+	// writeRejected is a conclusive 400, 401, 403, 404, 411, 413, 414, 415, or 422: Graph refused before storing anything.
 	writeRejected
-	// writeAmbiguous may have been stored: a lost response, 3xx, 408, 5xx, or an unusable 2xx body.
+	// writeAmbiguous may have been stored: a lost response, 3xx, 408, 409, another 4xx, 5xx, or an unusable 2xx body.
 	writeAmbiguous
 	writeDefect
 )
@@ -480,13 +480,15 @@ func statusFailureKind(statusCode int) sdkgo.FailureKind {
 
 func isSuccessStatus(statusCode int) bool { return statusCode >= 200 && statusCode < 300 }
 
-// isConclusiveRejectionStatus reports a 4xx other than 408, 409 and 429, or a 501: Graph refused before storing anything.
+// isConclusiveRejectionStatus reports a status that proves Graph refused the write; any other status is unknown.
 func isConclusiveRejectionStatus(statusCode int) bool {
-	if statusCode == http.StatusNotImplemented {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
 		return true
 	}
-	return statusCode >= 400 && statusCode < 500 && statusCode != http.StatusRequestTimeout &&
-		statusCode != http.StatusConflict && statusCode != http.StatusTooManyRequests
+	return false
 }
 
 // isSafeProviderToken accepts a bounded printable ASCII value such as a request ID.
