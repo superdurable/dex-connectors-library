@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: brevo
   displayName: Brevo
-  description: Create, update, delete, and discover contacts, attributes, and senders.
+  description: Manage contacts, attributes, and senders, and send transactional emails.
   company: Brevo
   categories: [marketing]
   version: v0.3.0
@@ -275,6 +275,46 @@ spec:
           default: true
           description: Sample deleted sender.
           output: {id: 1}
+    - name: sendEmail
+      goName: SendEmail
+      inputType: SendEmailInput
+      outputType: EmailSendResult
+      kind: mutation
+      description: Send one transactional email with inline text or HTML content.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Brevo accepted the transactional email.}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the email., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The email may have been sent after the send cap., optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Sample transactional email send.
+          output: {messageId: '<sample@relay.example>'}
+    - name: sendTemplateEmail
+      goName: SendTemplateEmail
+      inputType: SendTemplateEmailInput
+      outputType: EmailSendResult
+      kind: mutation
+      description: Send one transactional email from a configured Brevo template.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Brevo accepted the template email.}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the email., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The email may have been sent after the send cap., optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Sample template email send.
+          output: {messageId: '<sample-template@relay.example>'}
     - name: createOrUpdateContact
       goName: CreateOrUpdateContact
       inputType: CreateOrUpdateContactInput

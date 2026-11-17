@@ -29,6 +29,8 @@ type Mock struct {
 	createSender          *connectormock.Mutation[brevo.CreateSenderInput, brevo.SenderChangeResult]
 	updateSender          *connectormock.Mutation[brevo.UpdateSenderInput, brevo.SenderChangeResult]
 	deleteSender          *connectormock.Mutation[brevo.DeleteSenderInput, brevo.SenderChangeResult]
+	sendEmail             *connectormock.Mutation[brevo.SendEmailInput, brevo.EmailSendResult]
+	sendTemplateEmail     *connectormock.Mutation[brevo.SendTemplateEmailInput, brevo.EmailSendResult]
 	createOrUpdateContact *connectormock.Mutation[brevo.CreateOrUpdateContactInput, brevo.ContactWriteResult]
 	getContact            *connectormock.Query[brevo.GetContactInput, brevo.Contact]
 }
@@ -49,6 +51,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		createSender:          connectormock.NewMutation[brevo.CreateSenderInput, brevo.SenderChangeResult](t, brevo.CreateSenderDefinition),
 		updateSender:          connectormock.NewMutation[brevo.UpdateSenderInput, brevo.SenderChangeResult](t, brevo.UpdateSenderDefinition),
 		deleteSender:          connectormock.NewMutation[brevo.DeleteSenderInput, brevo.SenderChangeResult](t, brevo.DeleteSenderDefinition),
+		sendEmail:             connectormock.NewMutation[brevo.SendEmailInput, brevo.EmailSendResult](t, brevo.SendEmailDefinition),
+		sendTemplateEmail:     connectormock.NewMutation[brevo.SendTemplateEmailInput, brevo.EmailSendResult](t, brevo.SendTemplateEmailDefinition),
 		createOrUpdateContact: connectormock.NewMutation[brevo.CreateOrUpdateContactInput, brevo.ContactWriteResult](t, brevo.CreateOrUpdateContactDefinition),
 		getContact:            connectormock.NewQuery[brevo.GetContactInput, brevo.Contact](t, brevo.GetContactDefinition),
 	}
@@ -63,6 +67,8 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createSender.Default(CreateSenderDefault())
 	mock.updateSender.Default(UpdateSenderDefault())
 	mock.deleteSender.Default(DeleteSenderDefault())
+	mock.sendEmail.Default(SendEmailDefault())
+	mock.sendTemplateEmail.Default(SendTemplateEmailDefault())
 	mock.createOrUpdateContact.Default(CreateOrUpdateContactDefault())
 	mock.getContact.Default(GetContactDefault())
 	connection, err := brevo.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "brevo", Name: connectionName})
@@ -131,6 +137,16 @@ func (mock *Mock) DeleteSender() *connectormock.Mutation[brevo.DeleteSenderInput
 	return mock.deleteSender
 }
 
+// SendEmail returns the sendEmail script.
+func (mock *Mock) SendEmail() *connectormock.Mutation[brevo.SendEmailInput, brevo.EmailSendResult] {
+	return mock.sendEmail
+}
+
+// SendTemplateEmail returns the sendTemplateEmail script.
+func (mock *Mock) SendTemplateEmail() *connectormock.Mutation[brevo.SendTemplateEmailInput, brevo.EmailSendResult] {
+	return mock.sendTemplateEmail
+}
+
 // CreateOrUpdateContact returns the createOrUpdateContact script.
 func (mock *Mock) CreateOrUpdateContact() *connectormock.Mutation[brevo.CreateOrUpdateContactInput, brevo.ContactWriteResult] {
 	return mock.createOrUpdateContact
@@ -175,6 +191,12 @@ func (operations mockOperations) UpdateSender() sdkgo.Mutation[brevo.UpdateSende
 }
 func (operations mockOperations) DeleteSender() sdkgo.Mutation[brevo.DeleteSenderInput, brevo.SenderChangeResult] {
 	return operations.mock.deleteSender
+}
+func (operations mockOperations) SendEmail() sdkgo.Mutation[brevo.SendEmailInput, brevo.EmailSendResult] {
+	return operations.mock.sendEmail
+}
+func (operations mockOperations) SendTemplateEmail() sdkgo.Mutation[brevo.SendTemplateEmailInput, brevo.EmailSendResult] {
+	return operations.mock.sendTemplateEmail
 }
 func (operations mockOperations) CreateOrUpdateContact() sdkgo.Mutation[brevo.CreateOrUpdateContactInput, brevo.ContactWriteResult] {
 	return operations.mock.createOrUpdateContact
@@ -573,6 +595,76 @@ func DeleteSenderDeletedDefault() connectormock.Case[brevo.SenderChangeResult] {
 // DeleteSenderDefault is the manifest default, deletedDefault, which New installs.
 func DeleteSenderDefault() connectormock.Case[brevo.SenderChangeResult] {
 	return DeleteSenderDeletedDefault()
+}
+
+// SendEmailSent selects the sent branch: Brevo accepted the transactional email.
+func SendEmailSent(value brevo.EmailSendResult, failure *sdkgo.Failure) connectormock.Case[brevo.EmailSendResult] {
+	return connectormock.Branch(brevo.SendEmailBranchSent, value, failure)
+}
+
+// SendEmailProviderRejected selects the providerRejected branch: Brevo conclusively rejected the email.
+func SendEmailProviderRejected(value brevo.EmailSendResult, failure *sdkgo.Failure) connectormock.Case[brevo.EmailSendResult] {
+	return connectormock.Branch(brevo.SendEmailBranchProviderRejected, value, failure)
+}
+
+// SendEmailDefect selects the defect branch: Local input or credentials are invalid.
+func SendEmailDefect(value brevo.EmailSendResult, failure *sdkgo.Failure) connectormock.Case[brevo.EmailSendResult] {
+	return connectormock.Branch(brevo.SendEmailBranchDefect, value, failure)
+}
+
+// SendEmailUncertain returns an uncertain sendEmail outcome.
+func SendEmailUncertain(value brevo.EmailSendResult, failure sdkgo.Failure) connectormock.Case[brevo.EmailSendResult] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendEmailRetry asks Dex to retry the sendEmail Step, after the delay when it is positive.
+func SendEmailRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[brevo.EmailSendResult] {
+	return connectormock.Retry[brevo.EmailSendResult](failure, after)
+}
+
+// SendEmailSentDefault is the manifest mock sentDefault: Sample transactional email send.
+func SendEmailSentDefault() connectormock.Case[brevo.EmailSendResult] {
+	value := connectormock.MustDecodeOutput[brevo.EmailSendResult](`{"messageId":"\u003csample@relay.example\u003e"}`)
+	return connectormock.Branch(brevo.SendEmailBranchSent, value, nil)
+}
+
+// SendEmailDefault is the manifest default, sentDefault, which New installs.
+func SendEmailDefault() connectormock.Case[brevo.EmailSendResult] { return SendEmailSentDefault() }
+
+// SendTemplateEmailSent selects the sent branch: Brevo accepted the template email.
+func SendTemplateEmailSent(value brevo.EmailSendResult, failure *sdkgo.Failure) connectormock.Case[brevo.EmailSendResult] {
+	return connectormock.Branch(brevo.SendTemplateEmailBranchSent, value, failure)
+}
+
+// SendTemplateEmailProviderRejected selects the providerRejected branch: Brevo conclusively rejected the email.
+func SendTemplateEmailProviderRejected(value brevo.EmailSendResult, failure *sdkgo.Failure) connectormock.Case[brevo.EmailSendResult] {
+	return connectormock.Branch(brevo.SendTemplateEmailBranchProviderRejected, value, failure)
+}
+
+// SendTemplateEmailDefect selects the defect branch: Local input or credentials are invalid.
+func SendTemplateEmailDefect(value brevo.EmailSendResult, failure *sdkgo.Failure) connectormock.Case[brevo.EmailSendResult] {
+	return connectormock.Branch(brevo.SendTemplateEmailBranchDefect, value, failure)
+}
+
+// SendTemplateEmailUncertain returns an uncertain sendTemplateEmail outcome.
+func SendTemplateEmailUncertain(value brevo.EmailSendResult, failure sdkgo.Failure) connectormock.Case[brevo.EmailSendResult] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendTemplateEmailRetry asks Dex to retry the sendTemplateEmail Step, after the delay when it is positive.
+func SendTemplateEmailRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[brevo.EmailSendResult] {
+	return connectormock.Retry[brevo.EmailSendResult](failure, after)
+}
+
+// SendTemplateEmailSentDefault is the manifest mock sentDefault: Sample template email send.
+func SendTemplateEmailSentDefault() connectormock.Case[brevo.EmailSendResult] {
+	value := connectormock.MustDecodeOutput[brevo.EmailSendResult](`{"messageId":"\u003csample-template@relay.example\u003e"}`)
+	return connectormock.Branch(brevo.SendTemplateEmailBranchSent, value, nil)
+}
+
+// SendTemplateEmailDefault is the manifest default, sentDefault, which New installs.
+func SendTemplateEmailDefault() connectormock.Case[brevo.EmailSendResult] {
+	return SendTemplateEmailSentDefault()
 }
 
 // CreateOrUpdateContactSaved selects the saved branch: Brevo created or updated the contact.

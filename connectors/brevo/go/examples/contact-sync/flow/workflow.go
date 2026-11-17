@@ -17,16 +17,20 @@ const (
 	// FlowType is the stable Dex Flow identity.
 	FlowType = "BrevoContactSync"
 	// ConnectionName is the static Dex Web connection used by the Flow.
-	ConnectionName          = "brevo"
-	upsertStepType          = "UpsertBrevoContact"
-	listAttributesStepType  = "ListBrevoAttributes"
-	updateSenderStepType    = "UpdateBrevoSender"
-	updateAttributeStepType = "UpdateBrevoAttribute"
+	ConnectionName            = "brevo"
+	upsertStepType            = "UpsertBrevoContact"
+	listAttributesStepType    = "ListBrevoAttributes"
+	updateSenderStepType      = "UpdateBrevoSender"
+	updateAttributeStepType   = "UpdateBrevoAttribute"
+	sendEmailStepType         = "SendBrevoEmail"
+	sendTemplateEmailStepType = "SendBrevoTemplateEmail"
 )
 
 var outcomeAttribute = dex.DefineAttribute[brevo.ContactWriteResult]("brevo-contact-sync-outcome")
 var senderUpdateAttribute = dex.DefineAttribute[brevo.UpdateSenderInput]("brevo-sender-update")
 var attributeUpdateAttribute = dex.DefineAttribute[brevo.UpdateAttributeInput]("brevo-attribute-update")
+var inlineEmailAttribute = dex.DefineAttribute[brevo.SendEmailInput]("brevo-inline-email")
+var templateEmailAttribute = dex.DefineAttribute[brevo.SendTemplateEmailInput]("brevo-template-email")
 
 // Request is the Dex Web Start Flow input.
 type Request struct {
@@ -42,6 +46,18 @@ type Request struct {
 	AttributeName string `json:"attributeName,omitempty"`
 	// AttributeOptions replaces every option when AttributeName is supplied.
 	AttributeOptions []string `json:"attributeOptions,omitempty"`
+	// EmailSenderAddress optionally enables an inline email to this contact.
+	EmailSenderAddress string `json:"emailSenderAddress,omitempty"`
+	// EmailSenderName is the inline email's sender display name.
+	EmailSenderName string `json:"emailSenderName,omitempty"`
+	// EmailSubject is the inline email subject.
+	EmailSubject string `json:"emailSubject,omitempty"`
+	// EmailText is the inline email body.
+	EmailText string `json:"emailText,omitempty"`
+	// EmailTemplateID optionally selects a configured transactional template instead.
+	EmailTemplateID int64 `json:"emailTemplateId,omitempty"`
+	// EmailTemplateParams supplies values for the selected template.
+	EmailTemplateParams map[string]string `json:"emailTemplateParams,omitempty"`
 }
 
 // Flow creates or updates one Brevo contact.
@@ -56,7 +72,7 @@ func NewFlow(connection brevo.Connection) *Flow { return &Flow{connection: conne
 func (*Flow) GetFlowType() string { return FlowType }
 
 func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{outcomeAttribute, senderUpdateAttribute, attributeUpdateAttribute}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{outcomeAttribute, senderUpdateAttribute, attributeUpdateAttribute, inlineEmailAttribute, templateEmailAttribute}}
 }
 
 func (flow *Flow) GetSteps() []dex.StepDef {
@@ -90,6 +106,21 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Updated:             sdkgo.GoTo(completeAfterAttribute{}),
 		})),
 		dex.DefineStep(completeAfterAttribute{}),
+		dex.DefineStep(finishOptionalWork{}),
+		dex.DefineStep(brevo.NewSendEmailStep(brevo.SendEmailStepConfig[brevo.SendEmailInput]{
+			StepType: sendEmailStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "contact-sync", GroupLabel: "Contact sync", Explanation: "Send the requested inline transactional email through Brevo."},
+			MapToOperationInput: func(input brevo.SendEmailInput) brevo.SendEmailInput { return input },
+			Sent:                sdkgo.GoTo(completeAfterEmail{}),
+		})),
+		dex.DefineStep(completeAfterEmail{}),
+		dex.DefineStep(brevo.NewSendTemplateEmailStep(brevo.SendTemplateEmailStepConfig[brevo.SendTemplateEmailInput]{
+			StepType: sendTemplateEmailStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "contact-sync", GroupLabel: "Contact sync", Explanation: "Send the selected transactional template through Brevo."},
+			MapToOperationInput: func(input brevo.SendTemplateEmailInput) brevo.SendTemplateEmailInput { return input },
+			Sent:                sdkgo.GoTo(completeAfterTemplateEmail{}),
+		})),
+		dex.DefineStep(completeAfterTemplateEmail{}),
 	}
 }
 
@@ -146,7 +177,10 @@ func (start) Execute(ctx dex.Context, request Request) (*dex.StepDecision, error
 	request.FirstName = strings.TrimSpace(request.FirstName)
 	request.SenderName = strings.TrimSpace(request.SenderName)
 	request.AttributeName = strings.TrimSpace(request.AttributeName)
-	if request.Email == "" || request.FirstName == "" || request.SenderID < 0 || (request.SenderID > 0 && request.SenderName == "") || (request.AttributeName != "" && len(request.AttributeOptions) == 0) || (request.AttributeName == "" && len(request.AttributeOptions) > 0) {
+	request.EmailSenderAddress = strings.TrimSpace(request.EmailSenderAddress)
+	request.EmailSenderName = strings.TrimSpace(request.EmailSenderName)
+	request.EmailSubject = strings.TrimSpace(request.EmailSubject)
+	if request.Email == "" || request.FirstName == "" || request.SenderID < 0 || (request.SenderID > 0 && request.SenderName == "") || (request.AttributeName != "" && len(request.AttributeOptions) == 0) || (request.AttributeName == "" && len(request.AttributeOptions) > 0) || request.EmailTemplateID < 0 || (request.EmailTemplateID > 0 && request.EmailSubject != "") || (request.EmailTemplateID == 0 && len(request.EmailTemplateParams) > 0) || (request.EmailSubject != "" && (request.EmailSenderAddress == "" || request.EmailSenderName == "" || request.EmailText == "")) {
 		return dex.ForceFail("email and firstName are required"), nil
 	}
 	if request.SenderID > 0 {
@@ -156,6 +190,15 @@ func (start) Execute(ctx dex.Context, request Request) (*dex.StepDecision, error
 	}
 	if request.AttributeName != "" {
 		if err := attributeUpdateAttribute.Set(ctx, brevo.UpdateAttributeInput{Category: "normal", Name: request.AttributeName, Options: request.AttributeOptions}); err != nil {
+			return nil, err
+		}
+	}
+	if request.EmailTemplateID > 0 {
+		if err := templateEmailAttribute.Set(ctx, brevo.SendTemplateEmailInput{TemplateID: request.EmailTemplateID, ToEmail: request.Email, Params: request.EmailTemplateParams}); err != nil {
+			return nil, err
+		}
+	} else if request.EmailSubject != "" {
+		if err := inlineEmailAttribute.Set(ctx, brevo.SendEmailInput{SenderEmail: request.EmailSenderAddress, SenderName: request.EmailSenderName, ToEmail: request.Email, Subject: request.EmailSubject, TextContent: request.EmailText}); err != nil {
 			return nil, err
 		}
 	}
@@ -198,11 +241,7 @@ func (completeAfterAttributes) Execute(ctx dex.Context, _ brevo.ListAttributesRe
 	if !errors.As(err, &missing) {
 		return nil, err
 	}
-	outcome, err := outcomeAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
+	return dex.GoTo(finishOptionalWork{}, dex.None(nil)), nil
 }
 
 // dex:group group-id:contact-sync group-label:"Contact sync"
@@ -220,11 +259,7 @@ func (completeAfterSender) Execute(ctx dex.Context, _ brevo.UpdateSenderResult) 
 	if !errors.As(err, &missing) {
 		return nil, err
 	}
-	outcome, err := outcomeAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
+	return dex.GoTo(finishOptionalWork{}, dex.None(nil)), nil
 }
 
 // dex:group group-id:contact-sync group-label:"Contact sync"
@@ -234,6 +269,59 @@ type completeAfterAttribute struct {
 }
 
 func (completeAfterAttribute) Execute(ctx dex.Context, _ brevo.UpdateAttributeResult) (*dex.StepDecision, error) {
+	return dex.GoTo(finishOptionalWork{}, dex.None(nil)), nil
+}
+
+// dex:group group-id:contact-sync group-label:"Contact sync"
+// dex:explanation text:"Send the requested email or complete the contact sync."
+type finishOptionalWork struct {
+	dex.StepDefaultsNoWaitFor[dex.None]
+}
+
+func (finishOptionalWork) Execute(ctx dex.Context, _ dex.None) (*dex.StepDecision, error) {
+	var missing *dex.AttributeNotFoundError
+	template, err := templateEmailAttribute.Get(ctx)
+	if err == nil {
+		return dex.GoTo(sdkgo.StepRef[brevo.SendTemplateEmailInput](sendTemplateEmailStepType), template), nil
+	}
+	if !errors.As(err, &missing) {
+		return nil, err
+	}
+	inline, err := inlineEmailAttribute.Get(ctx)
+	if err == nil {
+		return dex.GoTo(sdkgo.StepRef[brevo.SendEmailInput](sendEmailStepType), inline), nil
+	}
+	if !errors.As(err, &missing) {
+		return nil, err
+	}
+	outcome, err := outcomeAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// dex:group group-id:contact-sync group-label:"Contact sync"
+// dex:explanation text:"Complete after Brevo accepts the inline email."
+type completeAfterEmail struct {
+	dex.StepDefaultsNoWaitFor[brevo.SendEmailResult]
+}
+
+func (completeAfterEmail) Execute(ctx dex.Context, _ brevo.SendEmailResult) (*dex.StepDecision, error) {
+	outcome, err := outcomeAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// dex:group group-id:contact-sync group-label:"Contact sync"
+// dex:explanation text:"Complete after Brevo accepts the template email."
+type completeAfterTemplateEmail struct {
+	dex.StepDefaultsNoWaitFor[brevo.SendTemplateEmailResult]
+}
+
+func (completeAfterTemplateEmail) Execute(ctx dex.Context, _ brevo.SendTemplateEmailResult) (*dex.StepDecision, error) {
 	outcome, err := outcomeAttribute.Get(ctx)
 	if err != nil {
 		return nil, err

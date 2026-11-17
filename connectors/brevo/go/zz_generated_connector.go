@@ -51,6 +51,8 @@ type Operations interface {
 	CreateSender() sdkgo.Mutation[CreateSenderInput, SenderChangeResult]
 	UpdateSender() sdkgo.Mutation[UpdateSenderInput, SenderChangeResult]
 	DeleteSender() sdkgo.Mutation[DeleteSenderInput, SenderChangeResult]
+	SendEmail() sdkgo.Mutation[SendEmailInput, EmailSendResult]
+	SendTemplateEmail() sdkgo.Mutation[SendTemplateEmailInput, EmailSendResult]
 	CreateOrUpdateContact() sdkgo.Mutation[CreateOrUpdateContactInput, ContactWriteResult]
 	GetContact() sdkgo.Query[GetContactInput, Contact]
 }
@@ -89,6 +91,12 @@ func (operations clientOperations) UpdateSender() sdkgo.Mutation[UpdateSenderInp
 }
 func (operations clientOperations) DeleteSender() sdkgo.Mutation[DeleteSenderInput, SenderChangeResult] {
 	return operations.client.DeleteSender()
+}
+func (operations clientOperations) SendEmail() sdkgo.Mutation[SendEmailInput, EmailSendResult] {
+	return operations.client.SendEmail()
+}
+func (operations clientOperations) SendTemplateEmail() sdkgo.Mutation[SendTemplateEmailInput, EmailSendResult] {
+	return operations.client.SendTemplateEmail()
 }
 func (operations clientOperations) CreateOrUpdateContact() sdkgo.Mutation[CreateOrUpdateContactInput, ContactWriteResult] {
 	return operations.client.CreateOrUpdateContact()
@@ -1028,6 +1036,158 @@ func NewDeleteSenderStep[IN any](config DeleteSenderStepConfig[IN]) sdkgo.Mutati
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SendEmailBranchSent sdkgo.BranchID = "sent"
+const SendEmailBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendEmailBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const SendEmailBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var SendEmailDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendEmail"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendEmailBranchSent, Description: "Brevo accepted the transactional email."},
+		{ID: SendEmailBranchProviderRejected, Description: "Brevo conclusively rejected the email.", Optional: true},
+		{ID: SendEmailBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: SendEmailBranchUncertain, Description: "The email may have been sent after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendEmailResult = sdkgo.MutationResult[EmailSendResult]
+
+type SendEmailStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=brevo"`
+	operationID                       struct{}                                              `connector:"operationId=sendEmail"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendEmailInput                               `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendEmailResult]                         `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendEmailResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[SendEmailResult]                         `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[SendEmailResult]                         `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EmailSendResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendEmailStep[IN any](config SendEmailStepConfig[IN]) sdkgo.MutationStep[IN, SendEmailInput, EmailSendResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("brevo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendEmailInput, EmailSendResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendEmail(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendEmailResult] {
+			branches := make([]sdkgo.BranchTarget[SendEmailResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendEmailBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendEmailBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendEmailBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendEmailBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const SendTemplateEmailBranchSent sdkgo.BranchID = "sent"
+const SendTemplateEmailBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendTemplateEmailBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const SendTemplateEmailBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var SendTemplateEmailDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendTemplateEmail"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendTemplateEmailBranchSent, Description: "Brevo accepted the template email."},
+		{ID: SendTemplateEmailBranchProviderRejected, Description: "Brevo conclusively rejected the email.", Optional: true},
+		{ID: SendTemplateEmailBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: SendTemplateEmailBranchUncertain, Description: "The email may have been sent after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendTemplateEmailResult = sdkgo.MutationResult[EmailSendResult]
+
+type SendTemplateEmailStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=brevo"`
+	operationID                       struct{}                                              `connector:"operationId=sendTemplateEmail"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendTemplateEmailInput                       `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendTemplateEmailResult]                 `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendTemplateEmailResult]                 `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[SendTemplateEmailResult]                 `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[SendTemplateEmailResult]                 `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EmailSendResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendTemplateEmailStep[IN any](config SendTemplateEmailStepConfig[IN]) sdkgo.MutationStep[IN, SendTemplateEmailInput, EmailSendResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("brevo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendTemplateEmailInput, EmailSendResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendTemplateEmail(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendTemplateEmailResult] {
+			branches := make([]sdkgo.BranchTarget[SendTemplateEmailResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendTemplateEmailBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendTemplateEmailBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendTemplateEmailBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendTemplateEmailBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 

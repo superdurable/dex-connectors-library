@@ -74,5 +74,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"createSender":          newConformanceMutationInvocation(t, scenario.Input, context, client.CreateSender(), testConnection, scenario.CallID),
 		"updateSender":          newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.UpdateSender(), testConnection, scenario.CallID),
 		"deleteSender":          newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.DeleteSender(), testConnection, scenario.CallID),
+		"sendEmail":             newConformanceMutationInvocation(t, scenario.Input, context, client.SendEmail(), testConnection, scenario.CallID),
+		"sendTemplateEmail":     newConformanceMutationInvocation(t, scenario.Input, context, client.SendTemplateEmail(), testConnection, scenario.CallID),
 	}}
 }

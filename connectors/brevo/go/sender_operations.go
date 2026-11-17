@@ -102,6 +102,11 @@ func (operation CreateSenderOperation) Invoke(call sdkgo.Call, input CreateSende
 		return brevoMutationBranch(CreateSenderBranchDefect, SenderChangeResult{}, name, sdkgo.FailureLocalDefect, "sender dispatch fence could not be constructed")
 	}
 	decision := fence.Decide()
+	if decision.Kind == singledispatch.ReadBackRequired || decision.Kind == singledispatch.ReadBackThenResendAllowed {
+		if senderID := operation.findCreatedSender(call, input.Email, input.Name); senderID > 0 {
+			return sdkgo.NewMutationBranch(CreateSenderBranchCreated, SenderChangeResult{ID: senderID}, nil, sdkgo.Receipt{})
+		}
+	}
 	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(SenderChangeResult{}, *brevoFailure(name, sdkgo.FailureTransport, "an earlier sender may have been created"), sdkgo.Receipt{})
 	}
@@ -141,6 +146,35 @@ func (operation CreateSenderOperation) Invoke(call sdkgo.Call, input CreateSende
 		return sdkgo.NewMutationUncertain(SenderChangeResult{}, *brevoFailure(name, sdkgo.FailureProtocol, "Brevo created a sender but its ID could not be confirmed"), sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(CreateSenderBranchCreated, result, nil, sdkgo.Receipt{})
+}
+
+func (operation CreateSenderOperation) findCreatedSender(call sdkgo.Call, email, name string) int64 {
+	request, failure := operation.client.newRequest(call, http.MethodGet, "/senders", nil, "createSender")
+	if failure != nil {
+		return 0
+	}
+	response, err := operation.client.httpClient.Do(request)
+	if err != nil {
+		return 0
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode != http.StatusOK {
+		return 0
+	}
+	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+	if err != nil {
+		return 0
+	}
+	var listing SendersList
+	if json.Unmarshal(body, &listing) != nil {
+		return 0
+	}
+	for _, sender := range listing.Senders {
+		if sender.ID > 0 && sender.Email == email && sender.Name == name {
+			return sender.ID
+		}
+	}
+	return 0
 }
 
 // Invoke sets the sender's display name to an absolute value.

@@ -1,6 +1,6 @@
 # Brevo contact sync example
 
-This runnable Flow accepts an email and first name in Dex Web Start Flow, validates them, calls `brevo.NewCreateOrUpdateContactStep`, then lists contact attribute definitions. If `senderId` and `senderName` are supplied, it calls `brevo.NewUpdateSenderStep`. If `attributeName` and `attributeOptions` are supplied, it calls `brevo.NewUpdateAttributeStep` to replace all options of an existing normal multiple-choice attribute. The happy branches complete with the contact confirmation. Other branches remain unwired and fail the Flow. `ConnectionName` is statically `brevo`. Dex Web summary and display views show the completed provider outcome.
+This runnable Flow accepts an email and first name in Dex Web Start Flow, validates them, calls `brevo.NewCreateOrUpdateContactStep`, then lists contact attribute definitions. If `senderId` and `senderName` are supplied, it calls `brevo.NewUpdateSenderStep`. If `attributeName` and `attributeOptions` are supplied, it calls `brevo.NewUpdateAttributeStep` to replace all options of an existing normal multiple-choice attribute. Optional email fields call `brevo.NewSendEmailStep` or `brevo.NewSendTemplateEmailStep`. The happy branches complete with the contact confirmation. Other branches remain unwired and fail the Flow. `ConnectionName` is statically `brevo`. Dex Web summary and display views show the completed provider outcome.
 
 ## Generate strict FDG 2.0
 
@@ -47,6 +47,8 @@ Use a real email address and a contact you are allowed to create or update when 
 To update a sender as part of the same Flow, add `senderId` as a positive numeric ID from `listSenders` and `senderName` as its new display name. Leave both absent to skip the sender update.
 
 To update an attribute, add an uppercase `attributeName` from `listAttributes` and a nonempty array of `attributeOptions` strings, each at most 200 characters. The options replace the complete existing set. Leave both absent to skip the attribute update.
+
+To send an inline email, add `emailSenderAddress` and `emailSenderName` for a verified Brevo sender, `emailSubject`, and `emailText`. To send a configured template instead, sign in at [Brevo](https://app.brevo.com), open **Transactional > Templates**, create or select an active template, and enter the numeric ID shown after `#` as `emailTemplateId`; optional `emailTemplateParams` supplies string variable values. Both send to the contact's `email`. Leave all email fields absent to skip sending. Do not combine inline and template fields.
 
 ## Tests
 

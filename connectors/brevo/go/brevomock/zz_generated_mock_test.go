@@ -51,6 +51,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		{name: "createSender/createdDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[brevo.SenderChangeResult](`{"id":1}`); return err }},
 		{name: "updateSender/updatedDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[brevo.SenderChangeResult](`{"id":1}`); return err }},
 		{name: "deleteSender/deletedDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[brevo.SenderChangeResult](`{"id":1}`); return err }},
+		{name: "sendEmail/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.EmailSendResult](`{"messageId":"\u003csample@relay.example\u003e"}`)
+			return err
+		}},
+		{name: "sendTemplateEmail/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.EmailSendResult](`{"messageId":"\u003csample-template@relay.example\u003e"}`)
+			return err
+		}},
 		{name: "createOrUpdateContact/savedDefaultContact/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[brevo.ContactWriteResult](`{"id":21,"email":"member@meridian.example","created":true}`)
 			return err
@@ -101,6 +109,12 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteSender().Definition().Operation.OperationID != "deleteSender" {
 		t.Errorf("deleteSender mock has another definition")
+	}
+	if mock.SendEmail().Definition().Operation.OperationID != "sendEmail" {
+		t.Errorf("sendEmail mock has another definition")
+	}
+	if mock.SendTemplateEmail().Definition().Operation.OperationID != "sendTemplateEmail" {
+		t.Errorf("sendTemplateEmail mock has another definition")
 	}
 	if mock.CreateOrUpdateContact().Definition().Operation.OperationID != "createOrUpdateContact" {
 		t.Errorf("createOrUpdateContact mock has another definition")

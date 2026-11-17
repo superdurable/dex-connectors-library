@@ -146,6 +146,11 @@ func (operation CreateAttributeOperation) Invoke(call sdkgo.Call, input CreateAt
 		return brevoMutationBranch(CreateAttributeBranchDefect, AttributeChangeResult{}, name, sdkgo.FailureLocalDefect, "attribute dispatch fence could not be constructed")
 	}
 	decision := fence.Decide()
+	if decision.Kind == singledispatch.ReadBackRequired || decision.Kind == singledispatch.ReadBackThenResendAllowed {
+		if operation.attributeExists(call, input.Category, input.Name) {
+			return sdkgo.NewMutationBranch(CreateAttributeBranchCreated, AttributeChangeResult{Category: input.Category, Name: input.Name}, nil, sdkgo.Receipt{})
+		}
+	}
 	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(AttributeChangeResult{}, *brevoFailure(name, sdkgo.FailureTransport, "an earlier attribute may have been created"), sdkgo.Receipt{})
 	}
@@ -181,6 +186,35 @@ func (operation CreateAttributeOperation) Invoke(call sdkgo.Call, input CreateAt
 		return brevoMutationBranch(CreateAttributeBranchProviderRejected, AttributeChangeResult{}, name, failureKind(response.StatusCode), "Brevo rejected HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	return sdkgo.NewMutationBranch(CreateAttributeBranchCreated, AttributeChangeResult{Category: input.Category, Name: input.Name}, nil, sdkgo.Receipt{})
+}
+
+func (operation CreateAttributeOperation) attributeExists(call sdkgo.Call, category, name string) bool {
+	request, failure := operation.client.newRequest(call, http.MethodGet, "/contacts/attributes", nil, "createAttribute")
+	if failure != nil {
+		return false
+	}
+	response, err := operation.client.httpClient.Do(request)
+	if err != nil {
+		return false
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode != http.StatusOK {
+		return false
+	}
+	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+	if err != nil {
+		return false
+	}
+	var listing AttributesList
+	if json.Unmarshal(body, &listing) != nil {
+		return false
+	}
+	for _, attribute := range listing.Attributes {
+		if attribute.Category == category && attribute.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 // Invoke replaces a supported attribute's choices or formula.
