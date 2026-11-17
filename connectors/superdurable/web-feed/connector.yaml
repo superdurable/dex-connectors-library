@@ -1,0 +1,391 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: web-feed
+  displayName: Web Feeds
+  description: "Read public RSS, Atom, and JSON feeds with conditional GET, find the feeds a site advertises, read sitemaps with path and date filters, read one page's head metadata, and read one article page's readable text, for any public HTTPS site without credentials."
+  company: Super Durable
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: web-feed
+  languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-web-feed'
+      operations: [readFeed, discoverFeeds, readSitemap, readPageMetadata, readPage]
+      triggers: []
+  codegen:
+    go:
+      package: webfeed
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: "Maximum duration of one HTTP request, from connecting to reading the last byte, as a Go duration of at least one second, such as 10s or 1m. Each redirect hop is a separate request, and the Step's 30-second Execute timeout bounds them all. Blank uses the displayed default; raise it only for a slow site that a poll must still read."
+        default: 15s
+      - name: maxDocumentBytes
+        goName: MaxDocumentBytes
+        type: integer
+        description: "Largest feed, sitemap, or page, in bytes after decompression, that readFeed, readSitemap, and readPage accept, as a positive integer; a larger document selects invalidResponse instead of being parsed. Blank uses the displayed default, which fits typical full-content feeds and article pages; raise it only for a sitemap, feed, or page that is known to be larger."
+        default: 10485760
+      - name: maxPageBytes
+        goName: MaxPageBytes
+        type: integer
+        description: "Number of bytes of an HTML page that discoverFeeds and readPageMetadata read, as a positive integer. They read only that prefix and report isTruncated when the page is longer, because head metadata comes first. Blank uses the displayed default; raise it only for a site whose head or JSON-LD sits beyond it."
+        default: 1048576
+      - name: userAgent
+        goName: UserAgent
+        type: string
+        description: "User-Agent header sent with every request, as printable ASCII of at most 256 characters. Site operators read it in their logs, so a deployment may add its own product name or contact URL; never include personal data or a secret. Blank uses the displayed default, which names this connector and its directory page."
+        default: "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+  auth:
+    type: none
+    connectionKind: none
+    fields: []
+  operations:
+    - name: readFeed
+      goName: ReadFeed
+      inputType: ReadFeedInput
+      outputType: Feed
+      kind: query
+      description: "Read one RSS 2.0, RSS 1.0 (RDF), Atom 1.0, or JSON Feed 1.x document and return its title, site link, and a bounded list of items with stable IDs, absolute links, RFC 3339 timestamps, plain-text summaries, authors, and categories. Pass the previous etag and lastModified to make a conditional GET that selects notModified when the feed is unchanged."
+      idempotency: none
+      authorization: none
+      agent:
+        exposed: true
+        # A read changes nothing. Every optional branch is a definite outcome the model can act on: notModified
+        # by reading again without validators, invalidResponse by finding the feed with discover_feeds.
+        branches: {notModified: rejected, notFound: rejected, providerRejected: rejected, unreachable: rejected, invalidResponse: rejected, defect: rejected}
+        description: "Read the newest items of one RSS, Atom, or JSON Feed, such as a blog's feed.xml. Supply the feed url; optionally limit from 1 through 200 (default 50) and maxSummaryCharacters from 1 through 4000 (default 500). Returns the feed title and site link and, for each item in feed order (usually newest first), its ID, title, absolute link, publication and update times in UTC, a plain-text summary, authors, and categories. When you only know a site or blog page URL, find its feed first with the Web Feeds discover_feeds tool. Pass etag and lastModified only to repeat an earlier read of the same feed; an unchanged feed then returns no items."
+      branches:
+        - {id: read, goName: Read, description: "The feed was downloaded and parsed; the result holds its items and the validators for the next conditional GET."}
+        - {id: notModified, goName: NotModified, description: "The site answered 304 Not Modified to the conditional GET; the result holds only the refreshed validators and no items.", optional: true}
+        - {id: notFound, goName: NotFound, description: "The site answered 404 Not Found or 410 Gone for the feed URL or its redirect target.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The site refused the request with another 4xx status, such as 401, 403, or 451; nothing was parsed.", optional: true}
+        - {id: unreachable, goName: Unreachable, description: "The host does not exist, resolves to a private, loopback, or link-local address the connector never connects to, or presents a certificate that fails TLS verification; nothing was read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The response is not a supported feed: an HTML page, an unsupported media type, malformed XML or JSON, a document larger than maxDocumentBytes, or a broken or overlong redirect chain.", optional: true}
+        - {id: defect, goName: Defect, description: "The input is invalid, such as a URL that is not absolute http or https, carries user information, or names a port for plain http; nothing was sent.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: engineeringBlog
+          branch: read
+          description: An Atom engineering blog with two posts, newest first, and validators for the next poll.
+          default: true
+          output:
+            format: atom
+            title: Example Engineering Blog
+            siteUrl: "https://blog.example.com/"
+            description: Notes from the example engineering team.
+            updatedAt: "2026-11-10T09:30:00Z"
+            finalUrl: "https://blog.example.com/feed.xml"
+            etag: "\"6f1e-5c2a\""
+            lastModified: "Tue, 10 Nov 2026 09:30:00 GMT"
+            fetchedAt: "2026-11-10T10:00:00Z"
+            items:
+              - id: "tag:blog.example.com,2026:post-42"
+                title: Faster builds with a shared cache
+                link: "https://blog.example.com/posts/faster-builds"
+                publishedAt: "2026-11-10T09:30:00Z"
+                updatedAt: "2026-11-10T09:30:00Z"
+                summary: How the team cut clean build times in half by sharing one remote cache.
+                authors: [Avery Chen]
+                categories: [builds, tooling]
+              - id: "tag:blog.example.com,2026:post-41"
+                title: Notes from the release retrospective
+                link: "https://blog.example.com/posts/release-retrospective"
+                publishedAt: "2026-11-03T15:00:00Z"
+                summary: What went well in the last release and what the team will change next time.
+                authors: [Jordan Lee]
+                categories: [process]
+            itemCount: 2
+            hasMore: false
+        - name: unchanged
+          branch: notModified
+          description: The site answers 304 to a conditional GET with the stored etag.
+          output:
+            finalUrl: "https://blog.example.com/feed.xml"
+            etag: "\"6f1e-5c2a\""
+            lastModified: "Tue, 10 Nov 2026 09:30:00 GMT"
+            fetchedAt: "2026-11-10T11:00:00Z"
+            items: []
+            itemCount: 0
+            hasMore: false
+        - name: removed
+          branch: notFound
+          description: The feed URL answers 410 Gone because the blog moved.
+          failure: {kind: NOT_FOUND, message: "The site answered 410 Gone for the feed URL."}
+        - name: forbidden
+          branch: providerRejected
+          description: The site's bot protection answers 403 Forbidden.
+          failure: {kind: PROVIDER_REJECTION, message: "The site refused the feed request with HTTP 403."}
+        - name: hostMissing
+          branch: unreachable
+          description: The feed's host name no longer exists in DNS.
+          failure: {kind: TRANSPORT, message: "The feed host does not exist."}
+        - name: servesHTML
+          branch: invalidResponse
+          description: The URL serves an HTML page instead of a feed.
+          failure: {kind: PROTOCOL, message: "The URL serves an HTML page, not a feed; find its feeds with discoverFeeds."}
+    - name: discoverFeeds
+      goName: DiscoverFeeds
+      inputType: DiscoverFeedsInput
+      outputType: DiscoveredFeeds
+      kind: query
+      description: "Read one HTML page, such as a site's home page or blog index, and return the RSS, Atom, and JSON feeds its link rel=alternate elements advertise, resolved to absolute URLs in page order. An empty list means the page advertises no feed."
+      idempotency: none
+      authorization: none
+      agent:
+        exposed: true
+        # A read changes nothing. Each optional branch is definite; invalidResponse means the URL is not an HTML page.
+        branches: {notFound: rejected, providerRejected: rejected, unreachable: rejected, invalidResponse: rejected, defect: rejected}
+        description: "List the RSS, Atom, and JSON feeds that one web page advertises, such as a blog's home page or index. Supply the page url. Returns each feed's absolute URL, title, and media type in page order; read a feed with the Web Feeds read_feed tool. An empty list means the page advertises no feed: look for the site's pages in its sitemap, usually /sitemap.xml at the site's root, with the Web Feeds read_sitemap tool."
+      branches:
+        - {id: discovered, goName: Discovered, description: "The page was read; the result lists every advertised feed, possibly none."}
+        - {id: notFound, goName: NotFound, description: "The site answered 404 Not Found or 410 Gone for the page URL or its redirect target.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The site refused the request with another 4xx status, such as 401, 403, or 451; nothing was parsed.", optional: true}
+        - {id: unreachable, goName: Unreachable, description: "The host does not exist, resolves to a private, loopback, or link-local address the connector never connects to, or presents a certificate that fails TLS verification; nothing was read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The response is not an HTML page or has a broken or overlong redirect chain.", optional: true}
+        - {id: defect, goName: Defect, description: "The input is invalid, such as a URL that is not absolute http or https, carries user information, or names a port for plain http; nothing was sent.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: blogHomePage
+          branch: discovered
+          description: A blog home page that advertises an Atom feed and a JSON feed.
+          default: true
+          output:
+            finalUrl: "https://blog.example.com/"
+            pageTitle: Example Engineering Blog
+            feeds:
+              - {url: "https://blog.example.com/feed.xml", title: Example Engineering Blog, mediaType: application/atom+xml}
+              - {url: "https://blog.example.com/feed.json", title: Example Engineering Blog (JSON), mediaType: application/feed+json}
+            isTruncated: false
+            fetchedAt: "2026-11-10T10:00:00Z"
+        - name: missing
+          branch: notFound
+          description: The page URL answers 404 Not Found.
+          failure: {kind: NOT_FOUND, message: "The site answered 404 Not Found for the page URL."}
+        - name: forbidden
+          branch: providerRejected
+          description: The site's bot protection answers 403 Forbidden.
+          failure: {kind: PROVIDER_REJECTION, message: "The site refused the page request with HTTP 403."}
+        - name: privateAddress
+          branch: unreachable
+          description: The page's host resolves to a private network address.
+          failure: {kind: VALIDATION, message: "The URL resolves to an address the connector will not connect to: only public addresses are allowed."}
+        - name: servesPDF
+          branch: invalidResponse
+          description: The URL serves a PDF instead of an HTML page.
+          failure: {kind: PROTOCOL, message: "The URL serves application/pdf, not an HTML page."}
+    - name: readSitemap
+      goName: ReadSitemap
+      inputType: ReadSitemapInput
+      outputType: Sitemap
+      kind: query
+      description: "Read one XML sitemap, plain or gzip-compressed. For a urlset, return the page URLs whose path starts with pathPrefix and whose lastmod is after lastModifiedAfter, newest first; for a sitemap index, return its child sitemaps. Pass the previous etag and lastModified to make a conditional GET that selects notModified when the sitemap is unchanged."
+      idempotency: none
+      authorization: none
+      agent:
+        exposed: true
+        # A read changes nothing. Every optional branch is a definite outcome the model can act on: notModified
+        # by reading again without validators, invalidResponse by trying another sitemap URL.
+        branches: {notModified: rejected, notFound: rejected, providerRejected: rejected, unreachable: rejected, invalidResponse: rejected, defect: rejected}
+        description: "Read one XML sitemap, such as https://www.example.com/sitemap.xml, to find a site's pages and when they changed, for example on a site that publishes no feed. Supply url; optionally pathPrefix starting with a slash, such as /blog/, to keep only pages under that path, lastModifiedAfter as an RFC 3339 time to keep only pages changed later, and limit from 1 through 2000 (default 200). Returns matching page URLs newest first with their lastmod dates. A sitemap index returns its child sitemaps instead; read the relevant child, such as one whose URL names posts, with this tool. Read a page's title and dates with the Web Feeds read_page_metadata tool. Pass etag and lastModified only to repeat an earlier read of the same sitemap."
+      branches:
+        - {id: read, goName: Read, description: "The sitemap was downloaded and parsed; the result holds the matching entries or child sitemaps and the validators for the next conditional GET."}
+        - {id: notModified, goName: NotModified, description: "The site answered 304 Not Modified to the conditional GET; the result holds only the refreshed validators.", optional: true}
+        - {id: notFound, goName: NotFound, description: "The site answered 404 Not Found or 410 Gone for the sitemap URL or its redirect target.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The site refused the request with another 4xx status, such as 401, 403, or 451; nothing was parsed.", optional: true}
+        - {id: unreachable, goName: Unreachable, description: "The host does not exist, resolves to a private, loopback, or link-local address the connector never connects to, or presents a certificate that fails TLS verification; nothing was read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The response is not a sitemap: an unsupported media type, malformed XML or gzip, a root other than urlset or sitemapindex, a document larger than maxDocumentBytes, or a broken or overlong redirect chain.", optional: true}
+        - {id: defect, goName: Defect, description: "The input is invalid, such as a URL that is not absolute http or https, a pathPrefix that does not start with a slash, or a limit out of range; nothing was sent.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: blogPosts
+          branch: read
+          description: A urlset filtered to /blog/ that holds two posts newest first, with a third, older post on the site.
+          default: true
+          output:
+            kind: urlset
+            finalUrl: "https://www.example.com/sitemap.xml"
+            entries:
+              - {url: "https://www.example.com/blog/spring-release-notes", lastModifiedAt: "2026-11-09T18:00:00Z"}
+              - {url: "https://www.example.com/blog/designing-for-retries", lastModifiedAt: "2026-11-02T08:15:00Z"}
+            sitemaps: []
+            totalEntryCount: 41
+            matchedEntryCount: 2
+            hasMore: false
+            etag: "W/\"a41-17f\""
+            fetchedAt: "2026-11-10T10:00:00Z"
+        - name: unchanged
+          branch: notModified
+          description: The site answers 304 to a conditional GET with the stored etag.
+          output:
+            finalUrl: "https://www.example.com/sitemap.xml"
+            entries: []
+            sitemaps: []
+            totalEntryCount: 0
+            matchedEntryCount: 0
+            hasMore: false
+            etag: "W/\"a41-17f\""
+            fetchedAt: "2026-11-10T11:00:00Z"
+        - name: missing
+          branch: notFound
+          description: The site publishes no sitemap at the URL and answers 404.
+          failure: {kind: NOT_FOUND, message: "The site answered 404 Not Found for the sitemap URL."}
+        - name: forbidden
+          branch: providerRejected
+          description: The site's bot protection answers 403 Forbidden.
+          failure: {kind: PROVIDER_REJECTION, message: "The site refused the sitemap request with HTTP 403."}
+        - name: hostMissing
+          branch: unreachable
+          description: The sitemap's host name no longer exists in DNS.
+          failure: {kind: TRANSPORT, message: "The sitemap host does not exist."}
+        - name: servesHTML
+          branch: invalidResponse
+          description: The URL serves an HTML error page instead of a sitemap.
+          failure: {kind: PROTOCOL, message: "The URL serves text/html, not a sitemap."}
+    - name: readPageMetadata
+      goName: ReadPageMetadata
+      inputType: ReadPageMetadataInput
+      outputType: PageMetadata
+      kind: query
+      description: "Read the head of one HTML article page and return its title, meta description, canonical URL, Open Graph title, description, and image, article published and modified times, and JSON-LD headline and dates. Only the first maxPageBytes of the page are read."
+      idempotency: none
+      authorization: none
+      agent:
+        exposed: true
+        # A read changes nothing. Each optional branch is definite; invalidResponse means the URL is not an HTML page.
+        branches: {notFound: rejected, providerRejected: rejected, unreachable: rejected, invalidResponse: rejected, defect: rejected}
+        description: "Read the head metadata of one web page, such as a blog post URL: its title, meta description, canonical URL, Open Graph title, description, image, type, and site name, article publication and modification times, and the JSON-LD headline and dates. Supply the page url. Returns publishedAt and modifiedAt as the best available times in UTC. It does not return the page's body text."
+      branches:
+        - {id: read, goName: Read, description: "The page was read; every metadata field the page declares is set and the others are empty."}
+        - {id: notFound, goName: NotFound, description: "The site answered 404 Not Found or 410 Gone for the page URL or its redirect target.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The site refused the request with another 4xx status, such as 401, 403, or 451; nothing was parsed.", optional: true}
+        - {id: unreachable, goName: Unreachable, description: "The host does not exist, resolves to a private, loopback, or link-local address the connector never connects to, or presents a certificate that fails TLS verification; nothing was read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The response is not an HTML page or has a broken or overlong redirect chain.", optional: true}
+        - {id: defect, goName: Defect, description: "The input is invalid, such as a URL that is not absolute http or https, carries user information, or names a port for plain http; nothing was sent.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: blogPostPage
+          branch: read
+          description: A blog post page with Open Graph, article times, and a BlogPosting JSON-LD block.
+          default: true
+          output:
+            finalUrl: "https://www.example.com/blog/spring-release-notes"
+            title: Spring release notes | Example
+            description: Everything the team released this spring, in one place.
+            canonicalUrl: "https://www.example.com/blog/spring-release-notes"
+            openGraph:
+              title: Spring release notes
+              description: Everything the team released this spring.
+              imageUrl: "https://www.example.com/images/spring-release.png"
+              type: article
+              siteName: Example
+            articlePublishedAt: "2026-11-09T17:00:00Z"
+            articleModifiedAt: "2026-11-09T18:00:00Z"
+            structuredData:
+              type: BlogPosting
+              headline: Spring release notes
+              datePublished: "2026-11-09T17:00:00Z"
+              dateModified: "2026-11-09T18:00:00Z"
+            publishedAt: "2026-11-09T17:00:00Z"
+            modifiedAt: "2026-11-09T18:00:00Z"
+            isTruncated: false
+            fetchedAt: "2026-11-10T10:00:00Z"
+        - name: unpublished
+          branch: notFound
+          description: The post was unpublished and its URL answers 404.
+          failure: {kind: NOT_FOUND, message: "The site answered 404 Not Found for the page URL."}
+        - name: forbidden
+          branch: providerRejected
+          description: The site's bot protection answers 403 Forbidden.
+          failure: {kind: PROVIDER_REJECTION, message: "The site refused the page request with HTTP 403."}
+        - name: expiredCertificate
+          branch: unreachable
+          description: The site presents an expired TLS certificate.
+          failure: {kind: TRANSPORT, message: "The site's TLS certificate failed verification."}
+        - name: servesImage
+          branch: invalidResponse
+          description: The URL serves an image instead of an HTML page.
+          failure: {kind: PROTOCOL, message: "The URL serves image/png, not an HTML page."}
+    - name: readPage
+      goName: ReadPage
+      inputType: ReadPageInput
+      outputType: Page
+      kind: query
+      description: "Read one public article or blog post page and return its readable text with its title, description, site name, publication time, and canonical URL. The text comes from the page's largest article element, else its largest main element, else its body, without scripts, styles, navigation, headers, footers, and asides, with one blank line between paragraphs. A plain-text page is returned as it is. Pass the previous etag and lastModified to make a conditional GET that selects notModified when the page is unchanged."
+      idempotency: none
+      authorization: none
+      agent:
+        exposed: true
+        # A read changes nothing. Every optional branch is a definite outcome the model can act on: notModified
+        # by reading again without validators, invalidResponse by reading the URL with another tool.
+        branches: {notModified: rejected, notFound: rejected, providerRejected: rejected, unreachable: rejected, invalidResponse: rejected, defect: rejected}
+        description: "Read the readable text of one web page, such as a blog post or news article URL, without its navigation, headers, footers, scripts, and styles. Supply the page url; optionally maxTextCharacters from 1 through 100000 (default 20000). Returns the text with a blank line between paragraphs, isTextTruncated when it was cut, and the page title, description, site name, publication time in UTC, and canonical URL. Use the Web Feeds read_page_metadata tool when only the title and dates are needed. Pass etag and lastModified only to repeat an earlier read of the same page; an unchanged page then returns no text."
+      branches:
+        - {id: read, goName: Read, description: "The page was downloaded and its readable text extracted; the result holds the text, the page metadata, and the validators for the next conditional GET."}
+        - {id: notModified, goName: NotModified, description: "The site answered 304 Not Modified to the conditional GET; the result holds only the refreshed validators and no text.", optional: true}
+        - {id: notFound, goName: NotFound, description: "The site answered 404 Not Found or 410 Gone for the page URL or its redirect target.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The site refused the request with another 4xx status, such as 401, 403, or 451; nothing was parsed.", optional: true}
+        - {id: unreachable, goName: Unreachable, description: "The host does not exist, resolves to a private, loopback, or link-local address the connector never connects to, or presents a certificate that fails TLS verification; nothing was read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The response is not an HTML or plain-text page: another media type, a page larger than maxDocumentBytes, or a broken or overlong redirect chain.", optional: true}
+        - {id: defect, goName: Defect, description: "The input is invalid, such as a URL that is not absolute http or https, carries user information, or names a port for plain http, or a maxTextCharacters out of range; nothing was sent.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: blogPostText
+          branch: read
+          description: A blog post page whose article holds three paragraphs, with Open Graph and article times.
+          default: true
+          output:
+            finalUrl: "https://www.example.com/blog/spring-release-notes"
+            statusCode: 200
+            contentType: text/html
+            title: Spring release notes | Example
+            description: Everything the team released this spring, in one place.
+            siteName: Example
+            canonicalUrl: "https://www.example.com/blog/spring-release-notes"
+            publishedAt: "2026-11-09T17:00:00Z"
+            text: "Spring release notes\n\nThis spring the team released faster builds, a new dashboard, and clearer error messages.\n\nBuilds now share one remote cache, so a clean build takes half as long.\n\nThe dashboard shows every run on one page, with filters for status and owner."
+            isTextTruncated: false
+            etag: "\"3b-9f2c\""
+            lastModified: "Mon, 09 Nov 2026 18:00:00 GMT"
+            fetchedAt: "2026-11-10T10:00:00Z"
+        - name: unchanged
+          branch: notModified
+          description: The site answers 304 to a conditional GET with the stored etag.
+          output:
+            finalUrl: "https://www.example.com/blog/spring-release-notes"
+            statusCode: 304
+            text: ""
+            isTextTruncated: false
+            etag: "\"3b-9f2c\""
+            lastModified: "Mon, 09 Nov 2026 18:00:00 GMT"
+            fetchedAt: "2026-11-10T11:00:00Z"
+        - name: unpublished
+          branch: notFound
+          description: The post was unpublished and its URL answers 404.
+          failure: {kind: NOT_FOUND, message: "The site answered 404 Not Found for the page URL."}
+        - name: forbidden
+          branch: providerRejected
+          description: The site's bot protection answers 403 Forbidden.
+          failure: {kind: PROVIDER_REJECTION, message: "The site refused the page request with HTTP 403."}
+        - name: hostMissing
+          branch: unreachable
+          description: The page's host name no longer exists in DNS.
+          failure: {kind: TRANSPORT, message: "The page host does not exist."}
+        - name: servesPDF
+          branch: invalidResponse
+          description: The URL serves a PDF instead of an HTML or plain-text page.
+          failure: {kind: PROTOCOL, message: "The URL serves application/pdf, not an HTML or plain-text page."}
