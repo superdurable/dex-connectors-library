@@ -109,6 +109,31 @@ func TestBucketCreationLimitsUnknownSends(t *testing.T) {
 	require.EqualValues(t, 3, sends.Load())
 }
 
+func TestBucketCreationFirstConflictDoesNotClaimExistingBucket(t *testing.T) {
+	var postCount atomic.Int32
+	var getCount atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			postCount.Add(1)
+			w.WriteHeader(http.StatusConflict)
+		case http.MethodGet:
+			getCount.Add(1)
+			_, err := w.Write([]byte(`{"name":"report-bucket","location":"US","projectNumber":"123456789"}`))
+			require.NoError(t, err)
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	result, err := sdkgo.RunMutation(singledispatchtest.NewContext("bucket-existing-flow", "create-step"), client.CreateBucket(), testConnection, CreateBucketInput{ProjectNumber: "123456789", Name: "report-bucket", Location: "US"})
+	require.NoError(t, err)
+	require.Equal(t, CreateBucketBranchNameTaken, result.Branch)
+	require.EqualValues(t, 1, postCount.Load())
+	require.Zero(t, getCount.Load())
+}
+
 func TestBucketBranchesAndRetries(t *testing.T) {
 	var status atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

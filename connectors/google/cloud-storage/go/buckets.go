@@ -259,6 +259,9 @@ func (operation CreateBucketOperation) Invoke(call sdkgo.Call, input CreateBucke
 		return bucketMutationRetry("createBucket", sdkgo.FailureRateLimit, "Google deferred bucket creation", response.retryAfter)
 	}
 	if response.status == http.StatusConflict && response.err == nil {
+		if decision.MaximumPriorSends == 0 {
+			return bucketMutationBranch("createBucket", "nameTaken", Bucket{}, sdkgo.FailureProviderRejection, "bucket name is already in use")
+		}
 		bucket, isConfirmed, isInconclusive := operation.readBackCreatedBucket(call, input)
 		if isConfirmed {
 			return sdkgo.NewMutationBranch(CreateBucketBranchCreated, bucket, nil, sdkgo.Receipt{})
@@ -389,4 +392,3 @@ func bucketDeleteRetry(kind sdkgo.FailureKind, message string, delay time.Durati
 	failure := sdkgo.Failure{Kind: kind, Provider: "google-cloud-storage", Operation: "deleteBucket", Message: message}
 	return sdkgo.NewMutationRetry[DeletedBucket](failure, delay)
 }
-

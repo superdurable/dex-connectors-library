@@ -2143,25 +2143,6 @@
             ]
           },
           "status": 409
-        },
-        {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/storage/v1/b/report-bucket",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer test-storage-token"
-            ],
-            "User-Agent": [
-              "Dex Connector (https://superdurable.io)"
-            ]
-          },
-          "status": 404
         }
       ],
       "expected": {
@@ -2177,7 +2158,7 @@
           "location": "",
           "name": ""
         },
-        "requestCount": 2,
+        "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
@@ -2188,7 +2169,7 @@
         "name": "report-bucket",
         "projectNumber": "123456789"
       },
-      "name": "createBucket-nameTaken",
+      "name": "createBucket-firstConflictExistingBucket",
       "operation": "createBucket"
     },
     {
