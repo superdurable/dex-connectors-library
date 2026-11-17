@@ -14,6 +14,11 @@ spec:
       version: v0.1.0
       operations: [queryOrderStatus]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-dada"
+      operations: [queryOrderStatus]
+      triggers: []
   codegen:
     go:
       package: dada
