@@ -1,0 +1,60 @@
+{
+  "connectorId": "dataeyes",
+  "releaseTag": "connectors/dataeyes/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-dataeyes",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_read_web_page_step",
+      "kind": "query",
+      "operationId": "readWebPage",
+      "inputType": "ReadWebPageInput",
+      "description": "Read one public HTTPS page and return its title and Markdown content.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ReadWebPageInput identifies one public HTTPS page.",
+        "properties": {
+          "url": {
+            "description": "URL is a public HTTPS page with a domain name and no query, fragment, or user info.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
