@@ -324,6 +324,17 @@ unknown outcomes can repeat safely. The runnable
 [`update-inbox-thread` example](go/examples/update-inbox-thread/README.md)
 verifies one write through a real Dex Worker and generated provider mock.
 
+## Inbox drafts
+
+`ListInboxDrafts` and `GetInboxDraft` expose metadata without message bodies
+or attachments. `CreateInboxDraft` and `SendInboxDraft` use Resend's
+24-hour idempotency key and safe retry tier. Absolute `UpdateInboxDraft`
+fields and `DeleteInboxDraft` are also safe to repeat. Attachment upload is
+outside this JSON example because it requires binary content or remote URL
+retrieval. The runnable
+[`create-inbox-draft` example](go/examples/create-inbox-draft/README.md)
+verifies draft creation through a real Dex Worker and generated provider mock.
+
 ## Mocks
 
 `resendmock.New(t, "mock")` binds the default manifest answers and the

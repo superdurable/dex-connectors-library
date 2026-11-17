@@ -48652,6 +48652,2489 @@
       },
       "name": "listInboxThreadEmails-before",
       "operation": "listInboxThreadEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"object\":\"inbox_draft\",\"id\":\"draft-1\",\"type\":\"reply\",\"to\":[\"customer@example.test\"],\"cc\":[],\"bcc\":[],\"subject\":\"Re: Hello\",\"html\":\"\u003cp\u003eReply\u003c/p\u003e\",\"text\":\"Reply\",\"thread_id\":\"thread-1\",\"reply_to_email_id\":\"email-1\",\"email_id\":null,\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-01T00:00:00Z\",\"attachments\":[]}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/drafts",
+          "query": {
+            "after": [
+              "draft-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "created_at": "2026-01-01T00:00:00Z",
+              "id": "draft-1",
+              "reply_to_email_id": "email-1",
+              "subject": "Re: Hello",
+              "thread_id": "thread-1",
+              "to": [
+                "customer@example.test"
+              ],
+              "type": "reply",
+              "updated_at": "2026-01-01T00:00:00Z"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "draft-0",
+        "inboxId": "inbox-1",
+        "limit": 2
+      },
+      "name": "listInboxDrafts-success",
+      "operation": "listInboxDrafts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/drafts",
+          "query": {
+            "after": [
+              "draft-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "draft-0",
+        "inboxId": "inbox-1",
+        "limit": 2
+      },
+      "name": "listInboxDrafts-rejected",
+      "operation": "listInboxDrafts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"object\":\"inbox_draft\",\"id\":\"draft-1\",\"type\":\"reply\",\"to\":[\"customer@example.test\"],\"cc\":[],\"bcc\":[],\"subject\":\"Re: Hello\",\"html\":\"\u003cp\u003eReply\u003c/p\u003e\",\"text\":\"Reply\",\"thread_id\":\"thread-1\",\"reply_to_email_id\":\"email-1\",\"email_id\":null,\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-01T00:00:00Z\",\"attachments\":[]}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/drafts",
+          "query": {
+            "after": [
+              "draft-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "created_at": "2026-01-01T00:00:00Z",
+              "id": "draft-1",
+              "reply_to_email_id": "email-1",
+              "subject": "Re: Hello",
+              "thread_id": "thread-1",
+              "to": [
+                "customer@example.test"
+              ],
+              "type": "reply",
+              "updated_at": "2026-01-01T00:00:00Z"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "draft-0",
+        "inboxId": "inbox-1",
+        "limit": 2
+      },
+      "name": "listInboxDrafts-invalid",
+      "operation": "listInboxDrafts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "draft-0",
+        "inboxId": "",
+        "limit": 2
+      },
+      "name": "listInboxDrafts-defect",
+      "operation": "listInboxDrafts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/drafts",
+          "query": {
+            "after": [
+              "draft-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "draft-0",
+        "inboxId": "inbox-1",
+        "limit": 2
+      },
+      "name": "listInboxDrafts-rate",
+      "operation": "listInboxDrafts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/drafts",
+          "query": {
+            "after": [
+              "draft-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "draft-0",
+        "inboxId": "inbox-1",
+        "limit": 2
+      },
+      "name": "listInboxDrafts-server",
+      "operation": "listInboxDrafts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/drafts",
+          "query": {
+            "after": [
+              "draft-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "draft-0",
+        "inboxId": "inbox-1",
+        "limit": 2
+      },
+      "name": "listInboxDrafts-transport",
+      "operation": "listInboxDrafts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/drafts",
+          "query": {
+            "after": [
+              "draft-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "draft-0",
+        "inboxId": "inbox-1",
+        "limit": 2
+      },
+      "name": "listInboxDrafts-missing",
+      "operation": "listInboxDrafts"
+    },
+    {
+      "callId": "1be023a4-7e7b-5b56-8077-672195ec9151",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"inbox_draft\",\"id\":\"draft-1\"}",
+          "derivedKey": "1be023a4-7e7b-5b56-8077-672195ec9151",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/drafts",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eReply\u003c/p\u003e",
+            "reply_to_email_id": "email-1",
+            "subject": "Re: Hello",
+            "text": "Reply",
+            "thread_id": "thread-1",
+            "to": [
+              "customer@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "draft-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1be023a4-7e7b-5b56-8077-672195ec9151",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "html": "\u003cp\u003eReply\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "replyToEmailId": "email-1",
+        "subject": "Re: Hello",
+        "text": "Reply",
+        "threadId": "thread-1",
+        "to": [
+          "customer@example.test"
+        ]
+      },
+      "name": "createInboxDraft-success",
+      "operation": "createInboxDraft"
+    },
+    {
+      "callId": "1be023a4-7e7b-5b56-8077-672195ec9151",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "1be023a4-7e7b-5b56-8077-672195ec9151",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/drafts",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eReply\u003c/p\u003e",
+            "reply_to_email_id": "email-1",
+            "subject": "Re: Hello",
+            "text": "Reply",
+            "thread_id": "thread-1",
+            "to": [
+              "customer@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1be023a4-7e7b-5b56-8077-672195ec9151",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "html": "\u003cp\u003eReply\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "replyToEmailId": "email-1",
+        "subject": "Re: Hello",
+        "text": "Reply",
+        "threadId": "thread-1",
+        "to": [
+          "customer@example.test"
+        ]
+      },
+      "name": "createInboxDraft-notFound",
+      "operation": "createInboxDraft"
+    },
+    {
+      "callId": "1be023a4-7e7b-5b56-8077-672195ec9151",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "1be023a4-7e7b-5b56-8077-672195ec9151",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/drafts",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eReply\u003c/p\u003e",
+            "reply_to_email_id": "email-1",
+            "subject": "Re: Hello",
+            "text": "Reply",
+            "thread_id": "thread-1",
+            "to": [
+              "customer@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1be023a4-7e7b-5b56-8077-672195ec9151",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "html": "\u003cp\u003eReply\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "replyToEmailId": "email-1",
+        "subject": "Re: Hello",
+        "text": "Reply",
+        "threadId": "thread-1",
+        "to": [
+          "customer@example.test"
+        ]
+      },
+      "name": "createInboxDraft-providerRejected",
+      "operation": "createInboxDraft"
+    },
+    {
+      "callId": "1be023a4-7e7b-5b56-8077-672195ec9151",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"inbox_draft\",\"id\":\"draft-1\"}",
+          "derivedKey": "1be023a4-7e7b-5b56-8077-672195ec9151",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/drafts",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eReply\u003c/p\u003e",
+            "reply_to_email_id": "email-1",
+            "subject": "Re: Hello",
+            "text": "Reply",
+            "thread_id": "thread-1",
+            "to": [
+              "customer@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "draft-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1be023a4-7e7b-5b56-8077-672195ec9151",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "html": "\u003cp\u003eReply\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "replyToEmailId": "email-1",
+        "subject": "Re: Hello",
+        "text": "Reply",
+        "threadId": "thread-1",
+        "to": [
+          "customer@example.test"
+        ]
+      },
+      "name": "createInboxDraft-invalidResponse",
+      "operation": "createInboxDraft"
+    },
+    {
+      "callId": "1be023a4-7e7b-5b56-8077-672195ec9151",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1be023a4-7e7b-5b56-8077-672195ec9151",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "html": "\u003cp\u003eReply\u003c/p\u003e",
+        "inboxId": "",
+        "replyToEmailId": "email-1",
+        "subject": "Re: Hello",
+        "text": "Reply",
+        "threadId": "thread-1",
+        "to": [
+          "customer@example.test"
+        ]
+      },
+      "name": "createInboxDraft-defect",
+      "operation": "createInboxDraft"
+    },
+    {
+      "callId": "1be023a4-7e7b-5b56-8077-672195ec9151",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "1be023a4-7e7b-5b56-8077-672195ec9151",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/drafts",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eReply\u003c/p\u003e",
+            "reply_to_email_id": "email-1",
+            "subject": "Re: Hello",
+            "text": "Reply",
+            "thread_id": "thread-1",
+            "to": [
+              "customer@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1be023a4-7e7b-5b56-8077-672195ec9151",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "html": "\u003cp\u003eReply\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "replyToEmailId": "email-1",
+        "subject": "Re: Hello",
+        "text": "Reply",
+        "threadId": "thread-1",
+        "to": [
+          "customer@example.test"
+        ]
+      },
+      "name": "createInboxDraft-429",
+      "operation": "createInboxDraft"
+    },
+    {
+      "callId": "1be023a4-7e7b-5b56-8077-672195ec9151",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "1be023a4-7e7b-5b56-8077-672195ec9151",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/drafts",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eReply\u003c/p\u003e",
+            "reply_to_email_id": "email-1",
+            "subject": "Re: Hello",
+            "text": "Reply",
+            "thread_id": "thread-1",
+            "to": [
+              "customer@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1be023a4-7e7b-5b56-8077-672195ec9151",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "html": "\u003cp\u003eReply\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "replyToEmailId": "email-1",
+        "subject": "Re: Hello",
+        "text": "Reply",
+        "threadId": "thread-1",
+        "to": [
+          "customer@example.test"
+        ]
+      },
+      "name": "createInboxDraft-5xx",
+      "operation": "createInboxDraft"
+    },
+    {
+      "callId": "1be023a4-7e7b-5b56-8077-672195ec9151",
+      "exchanges": [
+        {
+          "derivedKey": "1be023a4-7e7b-5b56-8077-672195ec9151",
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/drafts",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eReply\u003c/p\u003e",
+            "reply_to_email_id": "email-1",
+            "subject": "Re: Hello",
+            "text": "Reply",
+            "thread_id": "thread-1",
+            "to": [
+              "customer@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1be023a4-7e7b-5b56-8077-672195ec9151",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "html": "\u003cp\u003eReply\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "replyToEmailId": "email-1",
+        "subject": "Re: Hello",
+        "text": "Reply",
+        "threadId": "thread-1",
+        "to": [
+          "customer@example.test"
+        ]
+      },
+      "name": "createInboxDraft-transport",
+      "operation": "createInboxDraft"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"inbox_draft\",\"id\":\"draft-1\",\"type\":\"reply\",\"to\":[\"customer@example.test\"],\"cc\":[],\"bcc\":[],\"subject\":\"Re: Hello\",\"html\":\"\u003cp\u003eReply\u003c/p\u003e\",\"text\":\"Reply\",\"thread_id\":\"thread-1\",\"reply_to_email_id\":\"email-1\",\"email_id\":null,\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-01T00:00:00Z\",\"attachments\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "created_at": "2026-01-01T00:00:00Z",
+          "id": "draft-1",
+          "reply_to_email_id": "email-1",
+          "subject": "Re: Hello",
+          "thread_id": "thread-1",
+          "to": [
+            "customer@example.test"
+          ],
+          "type": "reply",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "getInboxDraft-success",
+      "operation": "getInboxDraft"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "created_at": "",
+          "id": "",
+          "reply_to_email_id": "",
+          "subject": "",
+          "thread_id": "",
+          "to": [],
+          "type": "",
+          "updated_at": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "getInboxDraft-missing",
+      "operation": "getInboxDraft"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "created_at": "",
+          "id": "",
+          "reply_to_email_id": "",
+          "subject": "",
+          "thread_id": "",
+          "to": [],
+          "type": "",
+          "updated_at": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "getInboxDraft-rejected",
+      "operation": "getInboxDraft"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"inbox_draft\",\"id\":\"draft-1\",\"type\":\"reply\",\"to\":[\"customer@example.test\"],\"cc\":[],\"bcc\":[],\"subject\":\"Re: Hello\",\"html\":\"\u003cp\u003eReply\u003c/p\u003e\",\"text\":\"Reply\",\"thread_id\":\"thread-1\",\"reply_to_email_id\":\"email-1\",\"email_id\":null,\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-01T00:00:00Z\",\"attachments\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "created_at": "2026-01-01T00:00:00Z",
+          "id": "draft-1",
+          "reply_to_email_id": "email-1",
+          "subject": "Re: Hello",
+          "thread_id": "thread-1",
+          "to": [
+            "customer@example.test"
+          ],
+          "type": "reply",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "getInboxDraft-invalid",
+      "operation": "getInboxDraft"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "created_at": "",
+          "id": "",
+          "reply_to_email_id": "",
+          "subject": "",
+          "thread_id": "",
+          "to": [],
+          "type": "",
+          "updated_at": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": ""
+      },
+      "name": "getInboxDraft-defect",
+      "operation": "getInboxDraft"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "getInboxDraft-rate",
+      "operation": "getInboxDraft"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "getInboxDraft-server",
+      "operation": "getInboxDraft"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "getInboxDraft-transport",
+      "operation": "getInboxDraft"
+    },
+    {
+      "callId": "373bfc0a-0eb2-5510-8228-1b5443089243",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"inbox_draft\",\"id\":\"draft-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eUpdated\u003c/p\u003e",
+            "subject": "Re: Hello",
+            "text": "Updated",
+            "to": [
+              "customer@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "draft-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "373bfc0a-0eb2-5510-8228-1b5443089243",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "draftId": "draft-1",
+        "html": "\u003cp\u003eUpdated\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "subject": "Re: Hello",
+        "text": "Updated",
+        "to": [
+          "customer@example.test"
+        ]
+      },
+      "name": "updateInboxDraft-success",
+      "operation": "updateInboxDraft"
+    },
+    {
+      "callId": "373bfc0a-0eb2-5510-8228-1b5443089243",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eUpdated\u003c/p\u003e",
+            "subject": "Re: Hello",
+            "text": "Updated",
+            "to": [
+              "customer@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "373bfc0a-0eb2-5510-8228-1b5443089243",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "draftId": "draft-1",
+        "html": "\u003cp\u003eUpdated\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "subject": "Re: Hello",
+        "text": "Updated",
+        "to": [
+          "customer@example.test"
+        ]
+      },
+      "name": "updateInboxDraft-notFound",
+      "operation": "updateInboxDraft"
+    },
+    {
+      "callId": "373bfc0a-0eb2-5510-8228-1b5443089243",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eUpdated\u003c/p\u003e",
+            "subject": "Re: Hello",
+            "text": "Updated",
+            "to": [
+              "customer@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "373bfc0a-0eb2-5510-8228-1b5443089243",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "draftId": "draft-1",
+        "html": "\u003cp\u003eUpdated\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "subject": "Re: Hello",
+        "text": "Updated",
+        "to": [
+          "customer@example.test"
+        ]
+      },
+      "name": "updateInboxDraft-providerRejected",
+      "operation": "updateInboxDraft"
+    },
+    {
+      "callId": "373bfc0a-0eb2-5510-8228-1b5443089243",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"inbox_draft\",\"id\":\"draft-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eUpdated\u003c/p\u003e",
+            "subject": "Re: Hello",
+            "text": "Updated",
+            "to": [
+              "customer@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "draft-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "373bfc0a-0eb2-5510-8228-1b5443089243",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "draftId": "draft-1",
+        "html": "\u003cp\u003eUpdated\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "subject": "Re: Hello",
+        "text": "Updated",
+        "to": [
+          "customer@example.test"
+        ]
+      },
+      "name": "updateInboxDraft-invalidResponse",
+      "operation": "updateInboxDraft"
+    },
+    {
+      "callId": "373bfc0a-0eb2-5510-8228-1b5443089243",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "373bfc0a-0eb2-5510-8228-1b5443089243",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "draftId": "draft-1",
+        "html": "\u003cp\u003eUpdated\u003c/p\u003e",
+        "inboxId": "",
+        "subject": "Re: Hello",
+        "text": "Updated",
+        "to": [
+          "customer@example.test"
+        ]
+      },
+      "name": "updateInboxDraft-defect",
+      "operation": "updateInboxDraft"
+    },
+    {
+      "callId": "373bfc0a-0eb2-5510-8228-1b5443089243",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eUpdated\u003c/p\u003e",
+            "subject": "Re: Hello",
+            "text": "Updated",
+            "to": [
+              "customer@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "373bfc0a-0eb2-5510-8228-1b5443089243",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "draftId": "draft-1",
+        "html": "\u003cp\u003eUpdated\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "subject": "Re: Hello",
+        "text": "Updated",
+        "to": [
+          "customer@example.test"
+        ]
+      },
+      "name": "updateInboxDraft-429",
+      "operation": "updateInboxDraft"
+    },
+    {
+      "callId": "373bfc0a-0eb2-5510-8228-1b5443089243",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eUpdated\u003c/p\u003e",
+            "subject": "Re: Hello",
+            "text": "Updated",
+            "to": [
+              "customer@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "373bfc0a-0eb2-5510-8228-1b5443089243",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "draftId": "draft-1",
+        "html": "\u003cp\u003eUpdated\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "subject": "Re: Hello",
+        "text": "Updated",
+        "to": [
+          "customer@example.test"
+        ]
+      },
+      "name": "updateInboxDraft-5xx",
+      "operation": "updateInboxDraft"
+    },
+    {
+      "callId": "373bfc0a-0eb2-5510-8228-1b5443089243",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eUpdated\u003c/p\u003e",
+            "subject": "Re: Hello",
+            "text": "Updated",
+            "to": [
+              "customer@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "373bfc0a-0eb2-5510-8228-1b5443089243",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "draftId": "draft-1",
+        "html": "\u003cp\u003eUpdated\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "subject": "Re: Hello",
+        "text": "Updated",
+        "to": [
+          "customer@example.test"
+        ]
+      },
+      "name": "updateInboxDraft-transport",
+      "operation": "updateInboxDraft"
+    },
+    {
+      "callId": "4a47e69d-9a77-5007-a081-6ab7c48d05a3",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"inbox_draft\",\"id\":\"draft-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "draft-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a47e69d-9a77-5007-a081-6ab7c48d05a3",
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "deleteInboxDraft-success",
+      "operation": "deleteInboxDraft"
+    },
+    {
+      "callId": "4a47e69d-9a77-5007-a081-6ab7c48d05a3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a47e69d-9a77-5007-a081-6ab7c48d05a3",
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "deleteInboxDraft-notFound",
+      "operation": "deleteInboxDraft"
+    },
+    {
+      "callId": "4a47e69d-9a77-5007-a081-6ab7c48d05a3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a47e69d-9a77-5007-a081-6ab7c48d05a3",
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "deleteInboxDraft-rejected",
+      "operation": "deleteInboxDraft"
+    },
+    {
+      "callId": "4a47e69d-9a77-5007-a081-6ab7c48d05a3",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"inbox_draft\",\"id\":\"draft-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "draft-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a47e69d-9a77-5007-a081-6ab7c48d05a3",
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "deleteInboxDraft-invalid",
+      "operation": "deleteInboxDraft"
+    },
+    {
+      "callId": "4a47e69d-9a77-5007-a081-6ab7c48d05a3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a47e69d-9a77-5007-a081-6ab7c48d05a3",
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "deleteInboxDraft-429",
+      "operation": "deleteInboxDraft"
+    },
+    {
+      "callId": "4a47e69d-9a77-5007-a081-6ab7c48d05a3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a47e69d-9a77-5007-a081-6ab7c48d05a3",
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "deleteInboxDraft-5xx",
+      "operation": "deleteInboxDraft"
+    },
+    {
+      "callId": "4a47e69d-9a77-5007-a081-6ab7c48d05a3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/drafts/draft-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a47e69d-9a77-5007-a081-6ab7c48d05a3",
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "deleteInboxDraft-transport",
+      "operation": "deleteInboxDraft"
+    },
+    {
+      "callId": "4a47e69d-9a77-5007-a081-6ab7c48d05a3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a47e69d-9a77-5007-a081-6ab7c48d05a3",
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": ""
+      },
+      "name": "deleteInboxDraft-defect",
+      "operation": "deleteInboxDraft"
+    },
+    {
+      "callId": "60538231-b143-5ee7-8fcd-fd52575381fa",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"email-2\"}",
+          "derivedKey": "60538231-b143-5ee7-8fcd-fd52575381fa",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/drafts/draft-1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "id": "email-2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60538231-b143-5ee7-8fcd-fd52575381fa",
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "sendInboxDraft-success",
+      "operation": "sendInboxDraft"
+    },
+    {
+      "callId": "60538231-b143-5ee7-8fcd-fd52575381fa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "60538231-b143-5ee7-8fcd-fd52575381fa",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/drafts/draft-1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60538231-b143-5ee7-8fcd-fd52575381fa",
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "sendInboxDraft-notFound",
+      "operation": "sendInboxDraft"
+    },
+    {
+      "callId": "60538231-b143-5ee7-8fcd-fd52575381fa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "60538231-b143-5ee7-8fcd-fd52575381fa",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/drafts/draft-1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60538231-b143-5ee7-8fcd-fd52575381fa",
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "sendInboxDraft-providerRejected",
+      "operation": "sendInboxDraft"
+    },
+    {
+      "callId": "60538231-b143-5ee7-8fcd-fd52575381fa",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"email-2\"}",
+          "derivedKey": "60538231-b143-5ee7-8fcd-fd52575381fa",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/drafts/draft-1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "id": "email-2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60538231-b143-5ee7-8fcd-fd52575381fa",
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "sendInboxDraft-invalidResponse",
+      "operation": "sendInboxDraft"
+    },
+    {
+      "callId": "60538231-b143-5ee7-8fcd-fd52575381fa",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60538231-b143-5ee7-8fcd-fd52575381fa",
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": ""
+      },
+      "name": "sendInboxDraft-defect",
+      "operation": "sendInboxDraft"
+    },
+    {
+      "callId": "60538231-b143-5ee7-8fcd-fd52575381fa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "60538231-b143-5ee7-8fcd-fd52575381fa",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/drafts/draft-1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60538231-b143-5ee7-8fcd-fd52575381fa",
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "sendInboxDraft-429",
+      "operation": "sendInboxDraft"
+    },
+    {
+      "callId": "60538231-b143-5ee7-8fcd-fd52575381fa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "60538231-b143-5ee7-8fcd-fd52575381fa",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/drafts/draft-1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60538231-b143-5ee7-8fcd-fd52575381fa",
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "sendInboxDraft-5xx",
+      "operation": "sendInboxDraft"
+    },
+    {
+      "callId": "60538231-b143-5ee7-8fcd-fd52575381fa",
+      "exchanges": [
+        {
+          "derivedKey": "60538231-b143-5ee7-8fcd-fd52575381fa",
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/drafts/draft-1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60538231-b143-5ee7-8fcd-fd52575381fa",
+      "input": {
+        "draftId": "draft-1",
+        "inboxId": "inbox-1"
+      },
+      "name": "sendInboxDraft-transport",
+      "operation": "sendInboxDraft"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"object\":\"inbox_draft\",\"id\":\"draft-1\",\"type\":\"reply\",\"to\":[\"customer@example.test\"],\"cc\":[],\"bcc\":[],\"subject\":\"Re: Hello\",\"html\":\"\u003cp\u003eReply\u003c/p\u003e\",\"text\":\"Reply\",\"thread_id\":\"thread-1\",\"reply_to_email_id\":\"email-1\",\"email_id\":null,\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-01T00:00:00Z\",\"attachments\":[]}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/drafts",
+          "query": {
+            "before": [
+              "draft-2"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "created_at": "2026-01-01T00:00:00Z",
+              "id": "draft-1",
+              "reply_to_email_id": "email-1",
+              "subject": "Re: Hello",
+              "thread_id": "thread-1",
+              "to": [
+                "customer@example.test"
+              ],
+              "type": "reply",
+              "updated_at": "2026-01-01T00:00:00Z"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "before": "draft-2",
+        "inboxId": "inbox-1",
+        "limit": 2
+      },
+      "name": "listInboxDrafts-before",
+      "operation": "listInboxDrafts"
     }
   ],
   "schemaVersion": 1

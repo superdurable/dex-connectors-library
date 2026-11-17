@@ -496,6 +496,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[resend.SentInboxThreadEmail](`{"id":"email-3"}`)
 			return err
 		}},
+		{name: "listInboxDrafts/listInboxDraftsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxDraftPage](`{"data":[{"id":"draft-1","type":"standalone","subject":"Hello"}],"has_more":false}`)
+			return err
+		}},
+		{name: "createInboxDraft/createInboxDraftDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxDraftReference](`{"id":"draft-1"}`)
+			return err
+		}},
+		{name: "getInboxDraft/getInboxDraftDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxDraft](`{"id":"draft-1","type":"standalone","subject":"Hello"}`)
+			return err
+		}},
+		{name: "updateInboxDraft/updateInboxDraftDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxDraftReference](`{"id":"draft-1"}`)
+			return err
+		}},
+		{name: "deleteInboxDraft/deleteInboxDraftDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedInboxDraft](`{"id":"draft-1","deleted":true}`)
+			return err
+		}},
+		{name: "sendInboxDraft/sendInboxDraftDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SentInboxDraft](`{"id":"email-1"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -865,5 +889,23 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ForwardInboxThreadEmail().Definition().Operation.OperationID != "forwardInboxThreadEmail" {
 		t.Errorf("forwardInboxThreadEmail mock has another definition")
+	}
+	if mock.ListInboxDrafts().Definition().Operation.OperationID != "listInboxDrafts" {
+		t.Errorf("listInboxDrafts mock has another definition")
+	}
+	if mock.CreateInboxDraft().Definition().Operation.OperationID != "createInboxDraft" {
+		t.Errorf("createInboxDraft mock has another definition")
+	}
+	if mock.GetInboxDraft().Definition().Operation.OperationID != "getInboxDraft" {
+		t.Errorf("getInboxDraft mock has another definition")
+	}
+	if mock.UpdateInboxDraft().Definition().Operation.OperationID != "updateInboxDraft" {
+		t.Errorf("updateInboxDraft mock has another definition")
+	}
+	if mock.DeleteInboxDraft().Definition().Operation.OperationID != "deleteInboxDraft" {
+		t.Errorf("deleteInboxDraft mock has another definition")
+	}
+	if mock.SendInboxDraft().Definition().Operation.OperationID != "sendInboxDraft" {
+		t.Errorf("sendInboxDraft mock has another definition")
 	}
 }

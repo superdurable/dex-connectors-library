@@ -160,6 +160,12 @@ type Operations interface {
 	GetInboxThreadEmail() sdkgo.Query[GetInboxThreadEmailInput, InboxThreadEmail]
 	ReplyInboxThreadEmail() sdkgo.Mutation[ReplyInboxThreadEmailInput, SentInboxThreadEmail]
 	ForwardInboxThreadEmail() sdkgo.Mutation[ForwardInboxThreadEmailInput, SentInboxThreadEmail]
+	ListInboxDrafts() sdkgo.Query[ListInboxDraftsInput, InboxDraftPage]
+	CreateInboxDraft() sdkgo.Mutation[CreateInboxDraftInput, InboxDraftReference]
+	GetInboxDraft() sdkgo.Query[GetInboxDraftInput, InboxDraft]
+	UpdateInboxDraft() sdkgo.Mutation[UpdateInboxDraftInput, InboxDraftReference]
+	DeleteInboxDraft() sdkgo.Mutation[DeleteInboxDraftInput, DeletedInboxDraft]
+	SendInboxDraft() sdkgo.Mutation[SendInboxDraftInput, SentInboxDraft]
 }
 
 type clientOperations struct{ client *Client }
@@ -523,6 +529,24 @@ func (operations clientOperations) ReplyInboxThreadEmail() sdkgo.Mutation[ReplyI
 }
 func (operations clientOperations) ForwardInboxThreadEmail() sdkgo.Mutation[ForwardInboxThreadEmailInput, SentInboxThreadEmail] {
 	return operations.client.ForwardInboxThreadEmail()
+}
+func (operations clientOperations) ListInboxDrafts() sdkgo.Query[ListInboxDraftsInput, InboxDraftPage] {
+	return operations.client.ListInboxDrafts()
+}
+func (operations clientOperations) CreateInboxDraft() sdkgo.Mutation[CreateInboxDraftInput, InboxDraftReference] {
+	return operations.client.CreateInboxDraft()
+}
+func (operations clientOperations) GetInboxDraft() sdkgo.Query[GetInboxDraftInput, InboxDraft] {
+	return operations.client.GetInboxDraft()
+}
+func (operations clientOperations) UpdateInboxDraft() sdkgo.Mutation[UpdateInboxDraftInput, InboxDraftReference] {
+	return operations.client.UpdateInboxDraft()
+}
+func (operations clientOperations) DeleteInboxDraft() sdkgo.Mutation[DeleteInboxDraftInput, DeletedInboxDraft] {
+	return operations.client.DeleteInboxDraft()
+}
+func (operations clientOperations) SendInboxDraft() sdkgo.Mutation[SendInboxDraftInput, SentInboxDraft] {
+	return operations.client.SendInboxDraft()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -9715,6 +9739,472 @@ func NewForwardInboxThreadEmailStep[IN any](config ForwardInboxThreadEmailStepCo
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ForwardInboxThreadEmailBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListInboxDraftsBranchListed sdkgo.BranchID = "listed"
+const ListInboxDraftsBranchNotFound sdkgo.BranchID = "notFound"
+const ListInboxDraftsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListInboxDraftsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListInboxDraftsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListInboxDraftsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listInboxDrafts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListInboxDraftsBranchListed, Description: "Resend completed the draft request."},
+		{ID: ListInboxDraftsBranchNotFound, Description: "The draft resource does not exist.", Optional: true},
+		{ID: ListInboxDraftsBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: ListInboxDraftsBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: ListInboxDraftsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListInboxDraftsResult = sdkgo.QueryResult[InboxDraftPage]
+
+type ListInboxDraftsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=resend"`
+	operationID                    struct{}                                          `connector:"operationId=listInboxDrafts"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListInboxDraftsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListInboxDraftsResult]               `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListInboxDraftsResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListInboxDraftsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListInboxDraftsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListInboxDraftsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InboxDraftPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewListInboxDraftsStep[IN any](config ListInboxDraftsStepConfig[IN]) sdkgo.QueryStep[IN, ListInboxDraftsInput, InboxDraftPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListInboxDraftsInput, InboxDraftPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListInboxDrafts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListInboxDraftsResult] {
+			branches := make([]sdkgo.BranchTarget[ListInboxDraftsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListInboxDraftsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListInboxDraftsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListInboxDraftsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListInboxDraftsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListInboxDraftsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateInboxDraftBranchCreated sdkgo.BranchID = "created"
+const CreateInboxDraftBranchNotFound sdkgo.BranchID = "notFound"
+const CreateInboxDraftBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateInboxDraftBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateInboxDraftBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateInboxDraftDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createInboxDraft"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateInboxDraftBranchCreated, Description: "Resend completed the draft request."},
+		{ID: CreateInboxDraftBranchNotFound, Description: "The draft resource does not exist.", Optional: true},
+		{ID: CreateInboxDraftBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: CreateInboxDraftBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: CreateInboxDraftBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CreateInboxDraftResult = sdkgo.MutationResult[InboxDraftReference]
+
+type CreateInboxDraftStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=resend"`
+	operationID                       struct{}                                                  `connector:"operationId=createInboxDraft"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateInboxDraftInput                            `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateInboxDraftResult]                      `connector:"branch=created"`
+	NotFound                          sdkgo.Target[CreateInboxDraftResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CreateInboxDraftResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreateInboxDraftResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CreateInboxDraftResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[InboxDraftReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewCreateInboxDraftStep[IN any](config CreateInboxDraftStepConfig[IN]) sdkgo.MutationStep[IN, CreateInboxDraftInput, InboxDraftReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateInboxDraftInput, InboxDraftReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateInboxDraft(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateInboxDraftResult] {
+			branches := make([]sdkgo.BranchTarget[CreateInboxDraftResult], 0, 5)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateInboxDraftBranchCreated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CreateInboxDraftBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateInboxDraftBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateInboxDraftBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateInboxDraftBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetInboxDraftBranchFound sdkgo.BranchID = "found"
+const GetInboxDraftBranchNotFound sdkgo.BranchID = "notFound"
+const GetInboxDraftBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetInboxDraftBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetInboxDraftBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetInboxDraftDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getInboxDraft"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetInboxDraftBranchFound, Description: "Resend completed the draft request."},
+		{ID: GetInboxDraftBranchNotFound, Description: "The draft resource does not exist.", Optional: true},
+		{ID: GetInboxDraftBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: GetInboxDraftBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: GetInboxDraftBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetInboxDraftResult = sdkgo.QueryResult[InboxDraft]
+
+type GetInboxDraftStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=resend"`
+	operationID                    struct{}                                      `connector:"operationId=getInboxDraft"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetInboxDraftInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetInboxDraftResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetInboxDraftResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetInboxDraftResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetInboxDraftResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetInboxDraftResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InboxDraft]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewGetInboxDraftStep[IN any](config GetInboxDraftStepConfig[IN]) sdkgo.QueryStep[IN, GetInboxDraftInput, InboxDraft] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetInboxDraftInput, InboxDraft]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetInboxDraft(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetInboxDraftResult] {
+			branches := make([]sdkgo.BranchTarget[GetInboxDraftResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetInboxDraftBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetInboxDraftBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetInboxDraftBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetInboxDraftBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetInboxDraftBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateInboxDraftBranchUpdated sdkgo.BranchID = "updated"
+const UpdateInboxDraftBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateInboxDraftBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateInboxDraftBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateInboxDraftBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateInboxDraftDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateInboxDraft"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateInboxDraftBranchUpdated, Description: "Resend completed the draft request."},
+		{ID: UpdateInboxDraftBranchNotFound, Description: "The draft resource does not exist.", Optional: true},
+		{ID: UpdateInboxDraftBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: UpdateInboxDraftBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: UpdateInboxDraftBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateInboxDraftResult = sdkgo.MutationResult[InboxDraftReference]
+
+type UpdateInboxDraftStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=resend"`
+	operationID                       struct{}                                                  `connector:"operationId=updateInboxDraft"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateInboxDraftInput                            `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateInboxDraftResult]                      `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateInboxDraftResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateInboxDraftResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateInboxDraftResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateInboxDraftResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[InboxDraftReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateInboxDraftStep[IN any](config UpdateInboxDraftStepConfig[IN]) sdkgo.MutationStep[IN, UpdateInboxDraftInput, InboxDraftReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateInboxDraftInput, InboxDraftReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateInboxDraft(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateInboxDraftResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateInboxDraftResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateInboxDraftBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateInboxDraftBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateInboxDraftBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateInboxDraftBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateInboxDraftBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteInboxDraftBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteInboxDraftBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteInboxDraftBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteInboxDraftBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteInboxDraftBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteInboxDraftDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteInboxDraft"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteInboxDraftBranchDeleted, Description: "Resend completed the draft request."},
+		{ID: DeleteInboxDraftBranchNotFound, Description: "The draft resource does not exist.", Optional: true},
+		{ID: DeleteInboxDraftBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: DeleteInboxDraftBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: DeleteInboxDraftBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteInboxDraftResult = sdkgo.MutationResult[DeletedInboxDraft]
+
+type DeleteInboxDraftStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=resend"`
+	operationID                       struct{}                                                `connector:"operationId=deleteInboxDraft"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteInboxDraftInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteInboxDraftResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteInboxDraftResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteInboxDraftResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteInboxDraftResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteInboxDraftResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedInboxDraft]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteInboxDraftStep[IN any](config DeleteInboxDraftStepConfig[IN]) sdkgo.MutationStep[IN, DeleteInboxDraftInput, DeletedInboxDraft] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteInboxDraftInput, DeletedInboxDraft]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteInboxDraft(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteInboxDraftResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteInboxDraftResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteInboxDraftBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteInboxDraftBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteInboxDraftBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteInboxDraftBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteInboxDraftBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SendInboxDraftBranchSent sdkgo.BranchID = "sent"
+const SendInboxDraftBranchNotFound sdkgo.BranchID = "notFound"
+const SendInboxDraftBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendInboxDraftBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SendInboxDraftBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendInboxDraftDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendInboxDraft"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendInboxDraftBranchSent, Description: "Resend completed the draft request."},
+		{ID: SendInboxDraftBranchNotFound, Description: "The draft resource does not exist.", Optional: true},
+		{ID: SendInboxDraftBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: SendInboxDraftBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: SendInboxDraftBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type SendInboxDraftResult = sdkgo.MutationResult[SentInboxDraft]
+
+type SendInboxDraftStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=resend"`
+	operationID                       struct{}                                             `connector:"operationId=sendInboxDraft"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendInboxDraftInput                         `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendInboxDraftResult]                   `connector:"branch=sent"`
+	NotFound                          sdkgo.Target[SendInboxDraftResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[SendInboxDraftResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[SendInboxDraftResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[SendInboxDraftResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentInboxDraft]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewSendInboxDraftStep[IN any](config SendInboxDraftStepConfig[IN]) sdkgo.MutationStep[IN, SendInboxDraftInput, SentInboxDraft] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendInboxDraftInput, SentInboxDraft]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendInboxDraft(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendInboxDraftResult] {
+			branches := make([]sdkgo.BranchTarget[SendInboxDraftResult], 0, 5)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendInboxDraftBranchSent))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(SendInboxDraftBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendInboxDraftBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SendInboxDraftBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendInboxDraftBranchDefect))
 			}
 			return branches
 		}(),

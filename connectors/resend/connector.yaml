@@ -2114,3 +2114,105 @@ spec:
     execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: forwardInboxThreadEmailDefault, branch: sent, default: true, description: Resend completed the request., output: {"id":"email-3"}}
+  - name: listInboxDrafts
+    goName: ListInboxDrafts
+    inputType: ListInboxDraftsInput
+    outputType: InboxDraftPage
+    kind: query
+    description: ListInboxDrafts on a Resend inbox without exposing message bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the draft request.}
+    - {id: notFound, goName: NotFound, description: The draft resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listInboxDraftsDefault, branch: listed, default: true, description: Resend completed the draft request., output: {"data":[{"id":"draft-1","type":"standalone","subject":"Hello"}],"has_more":false}}
+  - name: createInboxDraft
+    goName: CreateInboxDraft
+    inputType: CreateInboxDraftInput
+    outputType: InboxDraftReference
+    kind: mutation
+    description: CreateInboxDraft on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend completed the draft request.}
+    - {id: notFound, goName: NotFound, description: The draft resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: createInboxDraftDefault, branch: created, default: true, description: Resend completed the draft request., output: {"id":"draft-1"}}
+  - name: getInboxDraft
+    goName: GetInboxDraft
+    inputType: GetInboxDraftInput
+    outputType: InboxDraft
+    kind: query
+    description: GetInboxDraft on a Resend inbox without exposing message bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the draft request.}
+    - {id: notFound, goName: NotFound, description: The draft resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getInboxDraftDefault, branch: found, default: true, description: Resend completed the draft request., output: {"id":"draft-1","type":"standalone","subject":"Hello"}}
+  - name: updateInboxDraft
+    goName: UpdateInboxDraft
+    inputType: UpdateInboxDraftInput
+    outputType: InboxDraftReference
+    kind: mutation
+    description: UpdateInboxDraft on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the draft request.}
+    - {id: notFound, goName: NotFound, description: The draft resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateInboxDraftDefault, branch: updated, default: true, description: Resend completed the draft request., output: {"id":"draft-1"}}
+  - name: deleteInboxDraft
+    goName: DeleteInboxDraft
+    inputType: DeleteInboxDraftInput
+    outputType: DeletedInboxDraft
+    kind: mutation
+    description: DeleteInboxDraft on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend completed the draft request.}
+    - {id: notFound, goName: NotFound, description: The draft resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteInboxDraftDefault, branch: deleted, default: true, description: Resend completed the draft request., output: {"id":"draft-1","deleted":true}}
+  - name: sendInboxDraft
+    goName: SendInboxDraft
+    inputType: SendInboxDraftInput
+    outputType: SentInboxDraft
+    kind: mutation
+    description: SendInboxDraft on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: sent, goName: Sent, description: Resend completed the draft request.}
+    - {id: notFound, goName: NotFound, description: The draft resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: sendInboxDraftDefault, branch: sent, default: true, description: Resend completed the draft request., output: {"id":"email-1"}}

@@ -138,6 +138,12 @@ type Mock struct {
 	getInboxThreadEmail          *connectormock.Query[resend.GetInboxThreadEmailInput, resend.InboxThreadEmail]
 	replyInboxThreadEmail        *connectormock.Mutation[resend.ReplyInboxThreadEmailInput, resend.SentInboxThreadEmail]
 	forwardInboxThreadEmail      *connectormock.Mutation[resend.ForwardInboxThreadEmailInput, resend.SentInboxThreadEmail]
+	listInboxDrafts              *connectormock.Query[resend.ListInboxDraftsInput, resend.InboxDraftPage]
+	createInboxDraft             *connectormock.Mutation[resend.CreateInboxDraftInput, resend.InboxDraftReference]
+	getInboxDraft                *connectormock.Query[resend.GetInboxDraftInput, resend.InboxDraft]
+	updateInboxDraft             *connectormock.Mutation[resend.UpdateInboxDraftInput, resend.InboxDraftReference]
+	deleteInboxDraft             *connectormock.Mutation[resend.DeleteInboxDraftInput, resend.DeletedInboxDraft]
+	sendInboxDraft               *connectormock.Mutation[resend.SendInboxDraftInput, resend.SentInboxDraft]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -265,6 +271,12 @@ func New(t testing.TB, connectionName string) *Mock {
 		getInboxThreadEmail:          connectormock.NewQuery[resend.GetInboxThreadEmailInput, resend.InboxThreadEmail](t, resend.GetInboxThreadEmailDefinition),
 		replyInboxThreadEmail:        connectormock.NewMutation[resend.ReplyInboxThreadEmailInput, resend.SentInboxThreadEmail](t, resend.ReplyInboxThreadEmailDefinition),
 		forwardInboxThreadEmail:      connectormock.NewMutation[resend.ForwardInboxThreadEmailInput, resend.SentInboxThreadEmail](t, resend.ForwardInboxThreadEmailDefinition),
+		listInboxDrafts:              connectormock.NewQuery[resend.ListInboxDraftsInput, resend.InboxDraftPage](t, resend.ListInboxDraftsDefinition),
+		createInboxDraft:             connectormock.NewMutation[resend.CreateInboxDraftInput, resend.InboxDraftReference](t, resend.CreateInboxDraftDefinition),
+		getInboxDraft:                connectormock.NewQuery[resend.GetInboxDraftInput, resend.InboxDraft](t, resend.GetInboxDraftDefinition),
+		updateInboxDraft:             connectormock.NewMutation[resend.UpdateInboxDraftInput, resend.InboxDraftReference](t, resend.UpdateInboxDraftDefinition),
+		deleteInboxDraft:             connectormock.NewMutation[resend.DeleteInboxDraftInput, resend.DeletedInboxDraft](t, resend.DeleteInboxDraftDefinition),
+		sendInboxDraft:               connectormock.NewMutation[resend.SendInboxDraftInput, resend.SentInboxDraft](t, resend.SendInboxDraftDefinition),
 	}
 	mock.createContact.Default(CreateContactDefault())
 	mock.createDomain.Default(CreateDomainDefault())
@@ -386,6 +398,12 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.getInboxThreadEmail.Default(GetInboxThreadEmailDefault())
 	mock.replyInboxThreadEmail.Default(ReplyInboxThreadEmailDefault())
 	mock.forwardInboxThreadEmail.Default(ForwardInboxThreadEmailDefault())
+	mock.listInboxDrafts.Default(ListInboxDraftsDefault())
+	mock.createInboxDraft.Default(CreateInboxDraftDefault())
+	mock.getInboxDraft.Default(GetInboxDraftDefault())
+	mock.updateInboxDraft.Default(UpdateInboxDraftDefault())
+	mock.deleteInboxDraft.Default(DeleteInboxDraftDefault())
+	mock.sendInboxDraft.Default(SendInboxDraftDefault())
 	connection, err := resend.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "resend", Name: connectionName})
 	if err != nil {
 		t.Fatalf("resend mock connection: %v", err)
@@ -997,6 +1015,36 @@ func (mock *Mock) ForwardInboxThreadEmail() *connectormock.Mutation[resend.Forwa
 	return mock.forwardInboxThreadEmail
 }
 
+// ListInboxDrafts returns the listInboxDrafts script.
+func (mock *Mock) ListInboxDrafts() *connectormock.Query[resend.ListInboxDraftsInput, resend.InboxDraftPage] {
+	return mock.listInboxDrafts
+}
+
+// CreateInboxDraft returns the createInboxDraft script.
+func (mock *Mock) CreateInboxDraft() *connectormock.Mutation[resend.CreateInboxDraftInput, resend.InboxDraftReference] {
+	return mock.createInboxDraft
+}
+
+// GetInboxDraft returns the getInboxDraft script.
+func (mock *Mock) GetInboxDraft() *connectormock.Query[resend.GetInboxDraftInput, resend.InboxDraft] {
+	return mock.getInboxDraft
+}
+
+// UpdateInboxDraft returns the updateInboxDraft script.
+func (mock *Mock) UpdateInboxDraft() *connectormock.Mutation[resend.UpdateInboxDraftInput, resend.InboxDraftReference] {
+	return mock.updateInboxDraft
+}
+
+// DeleteInboxDraft returns the deleteInboxDraft script.
+func (mock *Mock) DeleteInboxDraft() *connectormock.Mutation[resend.DeleteInboxDraftInput, resend.DeletedInboxDraft] {
+	return mock.deleteInboxDraft
+}
+
+// SendInboxDraft returns the sendInboxDraft script.
+func (mock *Mock) SendInboxDraft() *connectormock.Mutation[resend.SendInboxDraftInput, resend.SentInboxDraft] {
+	return mock.sendInboxDraft
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreateContact() sdkgo.Mutation[resend.CreateContactInput, resend.ContactReference] {
@@ -1358,6 +1406,24 @@ func (operations mockOperations) ReplyInboxThreadEmail() sdkgo.Mutation[resend.R
 }
 func (operations mockOperations) ForwardInboxThreadEmail() sdkgo.Mutation[resend.ForwardInboxThreadEmailInput, resend.SentInboxThreadEmail] {
 	return operations.mock.forwardInboxThreadEmail
+}
+func (operations mockOperations) ListInboxDrafts() sdkgo.Query[resend.ListInboxDraftsInput, resend.InboxDraftPage] {
+	return operations.mock.listInboxDrafts
+}
+func (operations mockOperations) CreateInboxDraft() sdkgo.Mutation[resend.CreateInboxDraftInput, resend.InboxDraftReference] {
+	return operations.mock.createInboxDraft
+}
+func (operations mockOperations) GetInboxDraft() sdkgo.Query[resend.GetInboxDraftInput, resend.InboxDraft] {
+	return operations.mock.getInboxDraft
+}
+func (operations mockOperations) UpdateInboxDraft() sdkgo.Mutation[resend.UpdateInboxDraftInput, resend.InboxDraftReference] {
+	return operations.mock.updateInboxDraft
+}
+func (operations mockOperations) DeleteInboxDraft() sdkgo.Mutation[resend.DeleteInboxDraftInput, resend.DeletedInboxDraft] {
+	return operations.mock.deleteInboxDraft
+}
+func (operations mockOperations) SendInboxDraft() sdkgo.Mutation[resend.SendInboxDraftInput, resend.SentInboxDraft] {
+	return operations.mock.sendInboxDraft
 }
 
 // CreateContactCreated selects the created branch: Resend created or confirmed the contact.
@@ -5976,4 +6042,250 @@ func ForwardInboxThreadEmailForwardInboxThreadEmailDefault() connectormock.Case[
 // ForwardInboxThreadEmailDefault is the manifest default, forwardInboxThreadEmailDefault, which New installs.
 func ForwardInboxThreadEmailDefault() connectormock.Case[resend.SentInboxThreadEmail] {
 	return ForwardInboxThreadEmailForwardInboxThreadEmailDefault()
+}
+
+// ListInboxDraftsListed selects the listed branch: Resend completed the draft request.
+func ListInboxDraftsListed(value resend.InboxDraftPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraftPage] {
+	return connectormock.Branch(resend.ListInboxDraftsBranchListed, value, failure)
+}
+
+// ListInboxDraftsNotFound selects the notFound branch: The draft resource does not exist.
+func ListInboxDraftsNotFound(value resend.InboxDraftPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraftPage] {
+	return connectormock.Branch(resend.ListInboxDraftsBranchNotFound, value, failure)
+}
+
+// ListInboxDraftsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListInboxDraftsProviderRejected(value resend.InboxDraftPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraftPage] {
+	return connectormock.Branch(resend.ListInboxDraftsBranchProviderRejected, value, failure)
+}
+
+// ListInboxDraftsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListInboxDraftsInvalidResponse(value resend.InboxDraftPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraftPage] {
+	return connectormock.Branch(resend.ListInboxDraftsBranchInvalidResponse, value, failure)
+}
+
+// ListInboxDraftsDefect selects the defect branch: Local input or credentials are invalid.
+func ListInboxDraftsDefect(value resend.InboxDraftPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraftPage] {
+	return connectormock.Branch(resend.ListInboxDraftsBranchDefect, value, failure)
+}
+
+// ListInboxDraftsRetry asks Dex to retry the listInboxDrafts Step, after the delay when it is positive.
+func ListInboxDraftsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.InboxDraftPage] {
+	return connectormock.Retry[resend.InboxDraftPage](failure, after)
+}
+
+// ListInboxDraftsListInboxDraftsDefault is the manifest mock listInboxDraftsDefault: Resend completed the draft request.
+func ListInboxDraftsListInboxDraftsDefault() connectormock.Case[resend.InboxDraftPage] {
+	value := connectormock.MustDecodeOutput[resend.InboxDraftPage](`{"data":[{"id":"draft-1","type":"standalone","subject":"Hello"}],"has_more":false}`)
+	return connectormock.Branch(resend.ListInboxDraftsBranchListed, value, nil)
+}
+
+// ListInboxDraftsDefault is the manifest default, listInboxDraftsDefault, which New installs.
+func ListInboxDraftsDefault() connectormock.Case[resend.InboxDraftPage] {
+	return ListInboxDraftsListInboxDraftsDefault()
+}
+
+// CreateInboxDraftCreated selects the created branch: Resend completed the draft request.
+func CreateInboxDraftCreated(value resend.InboxDraftReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraftReference] {
+	return connectormock.Branch(resend.CreateInboxDraftBranchCreated, value, failure)
+}
+
+// CreateInboxDraftNotFound selects the notFound branch: The draft resource does not exist.
+func CreateInboxDraftNotFound(value resend.InboxDraftReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraftReference] {
+	return connectormock.Branch(resend.CreateInboxDraftBranchNotFound, value, failure)
+}
+
+// CreateInboxDraftProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func CreateInboxDraftProviderRejected(value resend.InboxDraftReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraftReference] {
+	return connectormock.Branch(resend.CreateInboxDraftBranchProviderRejected, value, failure)
+}
+
+// CreateInboxDraftInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func CreateInboxDraftInvalidResponse(value resend.InboxDraftReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraftReference] {
+	return connectormock.Branch(resend.CreateInboxDraftBranchInvalidResponse, value, failure)
+}
+
+// CreateInboxDraftDefect selects the defect branch: Local input or credentials are invalid.
+func CreateInboxDraftDefect(value resend.InboxDraftReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraftReference] {
+	return connectormock.Branch(resend.CreateInboxDraftBranchDefect, value, failure)
+}
+
+// CreateInboxDraftRetry asks Dex to retry the createInboxDraft Step, after the delay when it is positive.
+func CreateInboxDraftRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.InboxDraftReference] {
+	return connectormock.Retry[resend.InboxDraftReference](failure, after)
+}
+
+// CreateInboxDraftCreateInboxDraftDefault is the manifest mock createInboxDraftDefault: Resend completed the draft request.
+func CreateInboxDraftCreateInboxDraftDefault() connectormock.Case[resend.InboxDraftReference] {
+	value := connectormock.MustDecodeOutput[resend.InboxDraftReference](`{"id":"draft-1"}`)
+	return connectormock.Branch(resend.CreateInboxDraftBranchCreated, value, nil)
+}
+
+// CreateInboxDraftDefault is the manifest default, createInboxDraftDefault, which New installs.
+func CreateInboxDraftDefault() connectormock.Case[resend.InboxDraftReference] {
+	return CreateInboxDraftCreateInboxDraftDefault()
+}
+
+// GetInboxDraftFound selects the found branch: Resend completed the draft request.
+func GetInboxDraftFound(value resend.InboxDraft, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraft] {
+	return connectormock.Branch(resend.GetInboxDraftBranchFound, value, failure)
+}
+
+// GetInboxDraftNotFound selects the notFound branch: The draft resource does not exist.
+func GetInboxDraftNotFound(value resend.InboxDraft, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraft] {
+	return connectormock.Branch(resend.GetInboxDraftBranchNotFound, value, failure)
+}
+
+// GetInboxDraftProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetInboxDraftProviderRejected(value resend.InboxDraft, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraft] {
+	return connectormock.Branch(resend.GetInboxDraftBranchProviderRejected, value, failure)
+}
+
+// GetInboxDraftInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func GetInboxDraftInvalidResponse(value resend.InboxDraft, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraft] {
+	return connectormock.Branch(resend.GetInboxDraftBranchInvalidResponse, value, failure)
+}
+
+// GetInboxDraftDefect selects the defect branch: Local input or credentials are invalid.
+func GetInboxDraftDefect(value resend.InboxDraft, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraft] {
+	return connectormock.Branch(resend.GetInboxDraftBranchDefect, value, failure)
+}
+
+// GetInboxDraftRetry asks Dex to retry the getInboxDraft Step, after the delay when it is positive.
+func GetInboxDraftRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.InboxDraft] {
+	return connectormock.Retry[resend.InboxDraft](failure, after)
+}
+
+// GetInboxDraftGetInboxDraftDefault is the manifest mock getInboxDraftDefault: Resend completed the draft request.
+func GetInboxDraftGetInboxDraftDefault() connectormock.Case[resend.InboxDraft] {
+	value := connectormock.MustDecodeOutput[resend.InboxDraft](`{"id":"draft-1","type":"standalone","subject":"Hello"}`)
+	return connectormock.Branch(resend.GetInboxDraftBranchFound, value, nil)
+}
+
+// GetInboxDraftDefault is the manifest default, getInboxDraftDefault, which New installs.
+func GetInboxDraftDefault() connectormock.Case[resend.InboxDraft] {
+	return GetInboxDraftGetInboxDraftDefault()
+}
+
+// UpdateInboxDraftUpdated selects the updated branch: Resend completed the draft request.
+func UpdateInboxDraftUpdated(value resend.InboxDraftReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraftReference] {
+	return connectormock.Branch(resend.UpdateInboxDraftBranchUpdated, value, failure)
+}
+
+// UpdateInboxDraftNotFound selects the notFound branch: The draft resource does not exist.
+func UpdateInboxDraftNotFound(value resend.InboxDraftReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraftReference] {
+	return connectormock.Branch(resend.UpdateInboxDraftBranchNotFound, value, failure)
+}
+
+// UpdateInboxDraftProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func UpdateInboxDraftProviderRejected(value resend.InboxDraftReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraftReference] {
+	return connectormock.Branch(resend.UpdateInboxDraftBranchProviderRejected, value, failure)
+}
+
+// UpdateInboxDraftInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func UpdateInboxDraftInvalidResponse(value resend.InboxDraftReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraftReference] {
+	return connectormock.Branch(resend.UpdateInboxDraftBranchInvalidResponse, value, failure)
+}
+
+// UpdateInboxDraftDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateInboxDraftDefect(value resend.InboxDraftReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxDraftReference] {
+	return connectormock.Branch(resend.UpdateInboxDraftBranchDefect, value, failure)
+}
+
+// UpdateInboxDraftRetry asks Dex to retry the updateInboxDraft Step, after the delay when it is positive.
+func UpdateInboxDraftRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.InboxDraftReference] {
+	return connectormock.Retry[resend.InboxDraftReference](failure, after)
+}
+
+// UpdateInboxDraftUpdateInboxDraftDefault is the manifest mock updateInboxDraftDefault: Resend completed the draft request.
+func UpdateInboxDraftUpdateInboxDraftDefault() connectormock.Case[resend.InboxDraftReference] {
+	value := connectormock.MustDecodeOutput[resend.InboxDraftReference](`{"id":"draft-1"}`)
+	return connectormock.Branch(resend.UpdateInboxDraftBranchUpdated, value, nil)
+}
+
+// UpdateInboxDraftDefault is the manifest default, updateInboxDraftDefault, which New installs.
+func UpdateInboxDraftDefault() connectormock.Case[resend.InboxDraftReference] {
+	return UpdateInboxDraftUpdateInboxDraftDefault()
+}
+
+// DeleteInboxDraftDeleted selects the deleted branch: Resend completed the draft request.
+func DeleteInboxDraftDeleted(value resend.DeletedInboxDraft, failure *sdkgo.Failure) connectormock.Case[resend.DeletedInboxDraft] {
+	return connectormock.Branch(resend.DeleteInboxDraftBranchDeleted, value, failure)
+}
+
+// DeleteInboxDraftNotFound selects the notFound branch: The draft resource does not exist.
+func DeleteInboxDraftNotFound(value resend.DeletedInboxDraft, failure *sdkgo.Failure) connectormock.Case[resend.DeletedInboxDraft] {
+	return connectormock.Branch(resend.DeleteInboxDraftBranchNotFound, value, failure)
+}
+
+// DeleteInboxDraftProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func DeleteInboxDraftProviderRejected(value resend.DeletedInboxDraft, failure *sdkgo.Failure) connectormock.Case[resend.DeletedInboxDraft] {
+	return connectormock.Branch(resend.DeleteInboxDraftBranchProviderRejected, value, failure)
+}
+
+// DeleteInboxDraftInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func DeleteInboxDraftInvalidResponse(value resend.DeletedInboxDraft, failure *sdkgo.Failure) connectormock.Case[resend.DeletedInboxDraft] {
+	return connectormock.Branch(resend.DeleteInboxDraftBranchInvalidResponse, value, failure)
+}
+
+// DeleteInboxDraftDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteInboxDraftDefect(value resend.DeletedInboxDraft, failure *sdkgo.Failure) connectormock.Case[resend.DeletedInboxDraft] {
+	return connectormock.Branch(resend.DeleteInboxDraftBranchDefect, value, failure)
+}
+
+// DeleteInboxDraftRetry asks Dex to retry the deleteInboxDraft Step, after the delay when it is positive.
+func DeleteInboxDraftRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.DeletedInboxDraft] {
+	return connectormock.Retry[resend.DeletedInboxDraft](failure, after)
+}
+
+// DeleteInboxDraftDeleteInboxDraftDefault is the manifest mock deleteInboxDraftDefault: Resend completed the draft request.
+func DeleteInboxDraftDeleteInboxDraftDefault() connectormock.Case[resend.DeletedInboxDraft] {
+	value := connectormock.MustDecodeOutput[resend.DeletedInboxDraft](`{"id":"draft-1","deleted":true}`)
+	return connectormock.Branch(resend.DeleteInboxDraftBranchDeleted, value, nil)
+}
+
+// DeleteInboxDraftDefault is the manifest default, deleteInboxDraftDefault, which New installs.
+func DeleteInboxDraftDefault() connectormock.Case[resend.DeletedInboxDraft] {
+	return DeleteInboxDraftDeleteInboxDraftDefault()
+}
+
+// SendInboxDraftSent selects the sent branch: Resend completed the draft request.
+func SendInboxDraftSent(value resend.SentInboxDraft, failure *sdkgo.Failure) connectormock.Case[resend.SentInboxDraft] {
+	return connectormock.Branch(resend.SendInboxDraftBranchSent, value, failure)
+}
+
+// SendInboxDraftNotFound selects the notFound branch: The draft resource does not exist.
+func SendInboxDraftNotFound(value resend.SentInboxDraft, failure *sdkgo.Failure) connectormock.Case[resend.SentInboxDraft] {
+	return connectormock.Branch(resend.SendInboxDraftBranchNotFound, value, failure)
+}
+
+// SendInboxDraftProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func SendInboxDraftProviderRejected(value resend.SentInboxDraft, failure *sdkgo.Failure) connectormock.Case[resend.SentInboxDraft] {
+	return connectormock.Branch(resend.SendInboxDraftBranchProviderRejected, value, failure)
+}
+
+// SendInboxDraftInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func SendInboxDraftInvalidResponse(value resend.SentInboxDraft, failure *sdkgo.Failure) connectormock.Case[resend.SentInboxDraft] {
+	return connectormock.Branch(resend.SendInboxDraftBranchInvalidResponse, value, failure)
+}
+
+// SendInboxDraftDefect selects the defect branch: Local input or credentials are invalid.
+func SendInboxDraftDefect(value resend.SentInboxDraft, failure *sdkgo.Failure) connectormock.Case[resend.SentInboxDraft] {
+	return connectormock.Branch(resend.SendInboxDraftBranchDefect, value, failure)
+}
+
+// SendInboxDraftRetry asks Dex to retry the sendInboxDraft Step, after the delay when it is positive.
+func SendInboxDraftRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.SentInboxDraft] {
+	return connectormock.Retry[resend.SentInboxDraft](failure, after)
+}
+
+// SendInboxDraftSendInboxDraftDefault is the manifest mock sendInboxDraftDefault: Resend completed the draft request.
+func SendInboxDraftSendInboxDraftDefault() connectormock.Case[resend.SentInboxDraft] {
+	value := connectormock.MustDecodeOutput[resend.SentInboxDraft](`{"id":"email-1"}`)
+	return connectormock.Branch(resend.SendInboxDraftBranchSent, value, nil)
+}
+
+// SendInboxDraftDefault is the manifest default, sendInboxDraftDefault, which New installs.
+func SendInboxDraftDefault() connectormock.Case[resend.SentInboxDraft] {
+	return SendInboxDraftSendInboxDraftDefault()
 }
