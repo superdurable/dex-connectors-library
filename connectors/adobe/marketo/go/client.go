@@ -5,12 +5,14 @@
 package marketo
 
 import (
+	"bytes"
 	"errors"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -75,4 +77,46 @@ func validateSubscriptionURL(raw string, suffix string) (*url.URL, error) {
 		return nil, errors.New("Marketo endpoint must be an HTTPS subscription URL ending in " + suffix)
 	}
 	return parsed, nil
+}
+
+type leadResponse struct {
+	body       []byte
+	status     int
+	retryAfter time.Duration
+	err        error
+}
+
+var errLeadReauthorization = errors.New("Marketo connection needs authorization")
+var errLeadTransport = errors.New("Marketo request failed")
+var errLeadCredentials = errors.New("Marketo credential refresh failed")
+
+func (client *Client) requestLeadAPI(call sdkgo.Call, method, path string, body []byte) leadResponse {
+	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+	if err != nil {
+		if sdkgo.IsReauthorizationRequired(err) {
+			return leadResponse{err: errLeadReauthorization}
+		}
+		return leadResponse{err: errLeadCredentials}
+	}
+	token := credentials.AccessToken.Reveal()
+	if !providerhttp.IsHeaderSafeCredential(token) {
+		return leadResponse{err: errLeadReauthorization}
+	}
+	request, err := http.NewRequestWithContext(call.Context, method, client.restEndpoint+path, bytes.NewReader(body))
+	if err != nil {
+		return leadResponse{err: errLeadTransport}
+	}
+	request.Header.Set("Accept", "application/json")
+	request.Header.Set("Authorization", "Bearer "+token)
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return leadResponse{err: errLeadTransport}
+	}
+	defer func() { _ = response.Body.Close() }()
+	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
+	responseBody, readErr := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	return leadResponse{body: responseBody, status: response.StatusCode, retryAfter: retryAfter, err: readErr}
 }

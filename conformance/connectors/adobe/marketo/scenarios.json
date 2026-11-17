@@ -557,6 +557,730 @@
       },
       "name": "getLead-transportFailure",
       "operation": "getLead"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":318581,\"firstName\":\"Sample\",\"lastName\":\"Lead\"}],\"nextPageToken\":\"page-3\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/leads.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ],
+            "filterType": [
+              "email"
+            ],
+            "filterValues": [
+              "sample@example.com"
+            ],
+            "nextPageToken": [
+              "page-2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "leads": [
+            {
+              "firstName": "Sample",
+              "id": 318581,
+              "lastName": "Lead"
+            }
+          ],
+          "nextPageToken": "page-3"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "nextPageToken": "page-2"
+      },
+      "name": "findLeadsByEmail-success",
+      "operation": "findLeadsByEmail"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/leads.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ],
+            "filterType": [
+              "email"
+            ],
+            "filterValues": [
+              "sample@example.com"
+            ],
+            "nextPageToken": [
+              "page-2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "leads": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "nextPageToken": "page-2"
+      },
+      "name": "findLeadsByEmail-providerRejected",
+      "operation": "findLeadsByEmail"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/leads.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ],
+            "filterType": [
+              "email"
+            ],
+            "filterValues": [
+              "sample@example.com"
+            ],
+            "nextPageToken": [
+              "page-2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "leads": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "nextPageToken": "page-2"
+      },
+      "name": "findLeadsByEmail-invalidResponse",
+      "operation": "findLeadsByEmail"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "leads": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "bad"
+      },
+      "name": "findLeadsByEmail-defect",
+      "operation": "findLeadsByEmail"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/leads.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ],
+            "filterType": [
+              "email"
+            ],
+            "filterValues": [
+              "sample@example.com"
+            ],
+            "nextPageToken": [
+              "page-2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "nextPageToken": "page-2"
+      },
+      "name": "findLeadsByEmail-rateLimit",
+      "operation": "findLeadsByEmail"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/leads.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ],
+            "filterType": [
+              "email"
+            ],
+            "filterValues": [
+              "sample@example.com"
+            ],
+            "nextPageToken": [
+              "page-2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "nextPageToken": "page-2"
+      },
+      "name": "findLeadsByEmail-unavailable",
+      "operation": "findLeadsByEmail"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/leads.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ],
+            "filterType": [
+              "email"
+            ],
+            "filterValues": [
+              "sample@example.com"
+            ],
+            "nextPageToken": [
+              "page-2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "nextPageToken": "page-2"
+      },
+      "name": "findLeadsByEmail-transportFailure",
+      "operation": "findLeadsByEmail"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":318581,\"status\":\"updated\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "updateOnly",
+            "input": [
+              {
+                "firstName": "Sample",
+                "id": 318581,
+                "lastName": "Lead"
+              }
+            ],
+            "lookupField": "id"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 318581,
+          "status": "updated"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "input": {
+        "firstName": "Sample",
+        "lastName": "Lead",
+        "leadId": 318581
+      },
+      "name": "updateLead-success",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "updateOnly",
+            "input": [
+              {
+                "firstName": "Sample",
+                "id": 318581,
+                "lastName": "Lead"
+              }
+            ],
+            "lookupField": "id"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "input": {
+        "firstName": "Sample",
+        "lastName": "Lead",
+        "leadId": 318581
+      },
+      "name": "updateLead-notFound",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "updateOnly",
+            "input": [
+              {
+                "firstName": "Sample",
+                "id": 318581,
+                "lastName": "Lead"
+              }
+            ],
+            "lookupField": "id"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "input": {
+        "firstName": "Sample",
+        "lastName": "Lead",
+        "leadId": 318581
+      },
+      "name": "updateLead-providerRejected",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "updateOnly",
+            "input": [
+              {
+                "firstName": "Sample",
+                "id": 318581,
+                "lastName": "Lead"
+              }
+            ],
+            "lookupField": "id"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "input": {
+        "firstName": "Sample",
+        "lastName": "Lead",
+        "leadId": 318581
+      },
+      "name": "updateLead-invalidResponse",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "input": {
+        "leadId": 0
+      },
+      "name": "updateLead-defect",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "updateOnly",
+            "input": [
+              {
+                "firstName": "Sample",
+                "id": 318581,
+                "lastName": "Lead"
+              }
+            ],
+            "lookupField": "id"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "input": {
+        "firstName": "Sample",
+        "lastName": "Lead",
+        "leadId": 318581
+      },
+      "name": "updateLead-rateLimit",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "updateOnly",
+            "input": [
+              {
+                "firstName": "Sample",
+                "id": 318581,
+                "lastName": "Lead"
+              }
+            ],
+            "lookupField": "id"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "input": {
+        "firstName": "Sample",
+        "lastName": "Lead",
+        "leadId": 318581
+      },
+      "name": "updateLead-unavailable",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "updateOnly",
+            "input": [
+              {
+                "firstName": "Sample",
+                "id": 318581,
+                "lastName": "Lead"
+              }
+            ],
+            "lookupField": "id"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "input": {
+        "firstName": "Sample",
+        "lastName": "Lead",
+        "leadId": 318581
+      },
+      "name": "updateLead-transportFailure",
+      "operation": "updateLead"
     }
   ],
   "schemaVersion": 1

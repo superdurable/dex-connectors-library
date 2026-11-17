@@ -44,12 +44,20 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	GetLead() sdkgo.Query[GetLeadInput, LeadProfile]
+	FindLeadsByEmail() sdkgo.Query[FindLeadsByEmailInput, LeadProfilesPage]
+	UpdateLead() sdkgo.Mutation[UpdateLeadInput, UpdatedLead]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) GetLead() sdkgo.Query[GetLeadInput, LeadProfile] {
 	return operations.client.GetLead()
+}
+func (operations clientOperations) FindLeadsByEmail() sdkgo.Query[FindLeadsByEmailInput, LeadProfilesPage] {
+	return operations.client.FindLeadsByEmail()
+}
+func (operations clientOperations) UpdateLead() sdkgo.Mutation[UpdateLeadInput, UpdatedLead] {
+	return operations.client.UpdateLead()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -319,6 +327,154 @@ func NewGetLeadStep[IN any](config GetLeadStepConfig[IN]) sdkgo.QueryStep[IN, Ge
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetLeadBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const FindLeadsByEmailBranchFound sdkgo.BranchID = "found"
+const FindLeadsByEmailBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const FindLeadsByEmailBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const FindLeadsByEmailBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var FindLeadsByEmailDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "findLeadsByEmail"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: FindLeadsByEmailBranchFound, Description: "Marketo returned the matching lead page."},
+		{ID: FindLeadsByEmailBranchProviderRejected, Description: "Marketo conclusively rejected the filter.", Optional: true},
+		{ID: FindLeadsByEmailBranchInvalidResponse, Description: "Marketo returned malformed or oversized JSON.", Optional: true},
+		{ID: FindLeadsByEmailBranchDefect, Description: "Local email or connection configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type FindLeadsByEmailResult = sdkgo.QueryResult[LeadProfilesPage]
+
+type FindLeadsByEmailStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=adobe-marketo"`
+	operationID                    struct{}                                            `connector:"operationId=findLeadsByEmail"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) FindLeadsByEmailInput                      `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[FindLeadsByEmailResult]                `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[FindLeadsByEmailResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[FindLeadsByEmailResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[FindLeadsByEmailResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[LeadProfilesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewFindLeadsByEmailStep[IN any](config FindLeadsByEmailStepConfig[IN]) sdkgo.QueryStep[IN, FindLeadsByEmailInput, LeadProfilesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adobe-marketo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, FindLeadsByEmailInput, LeadProfilesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.FindLeadsByEmail(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[FindLeadsByEmailResult] {
+			branches := make([]sdkgo.BranchTarget[FindLeadsByEmailResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(FindLeadsByEmailBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(FindLeadsByEmailBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(FindLeadsByEmailBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(FindLeadsByEmailBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateLeadBranchUpdated sdkgo.BranchID = "updated"
+const UpdateLeadBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateLeadBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateLeadBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateLeadBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateLeadDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateLead"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateLeadBranchUpdated, Description: "Marketo updated the selected lead."},
+		{ID: UpdateLeadBranchNotFound, Description: "Marketo found no lead for the ID.", Optional: true},
+		{ID: UpdateLeadBranchProviderRejected, Description: "Marketo conclusively rejected the update.", Optional: true},
+		{ID: UpdateLeadBranchInvalidResponse, Description: "Marketo returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateLeadBranchDefect, Description: "Local ID, name fields, or connection configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpdateLeadResult = sdkgo.MutationResult[UpdatedLead]
+
+type UpdateLeadStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=adobe-marketo"`
+	operationID                       struct{}                                          `connector:"operationId=updateLead"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateLeadInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateLeadResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateLeadResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateLeadResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateLeadResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateLeadResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedLead]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateLeadStep[IN any](config UpdateLeadStepConfig[IN]) sdkgo.MutationStep[IN, UpdateLeadInput, UpdatedLead] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adobe-marketo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateLeadInput, UpdatedLead]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateLead(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateLeadResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateLeadResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateLeadBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateLeadBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateLeadBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateLeadBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateLeadBranchDefect))
 			}
 			return branches
 		}(),

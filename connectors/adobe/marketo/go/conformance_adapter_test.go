@@ -30,5 +30,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"getLead": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetLead(), reference),
+		"findLeadsByEmail": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.FindLeadsByEmail(), reference),
+		"updateLead": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateLead(), reference, scenario.CallID),
 	}}
 }

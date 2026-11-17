@@ -17,8 +17,10 @@ import (
 
 // Mock is a scripted adobe-marketo connection. Script each operation through its accessor.
 type Mock struct {
-	connection marketo.Connection
-	getLead    *connectormock.Query[marketo.GetLeadInput, marketo.LeadProfile]
+	connection       marketo.Connection
+	getLead          *connectormock.Query[marketo.GetLeadInput, marketo.LeadProfile]
+	findLeadsByEmail *connectormock.Query[marketo.FindLeadsByEmailInput, marketo.LeadProfilesPage]
+	updateLead       *connectormock.Mutation[marketo.UpdateLeadInput, marketo.UpdatedLead]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +28,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getLead: connectormock.NewQuery[marketo.GetLeadInput, marketo.LeadProfile](t, marketo.GetLeadDefinition),
+		getLead:          connectormock.NewQuery[marketo.GetLeadInput, marketo.LeadProfile](t, marketo.GetLeadDefinition),
+		findLeadsByEmail: connectormock.NewQuery[marketo.FindLeadsByEmailInput, marketo.LeadProfilesPage](t, marketo.FindLeadsByEmailDefinition),
+		updateLead:       connectormock.NewMutation[marketo.UpdateLeadInput, marketo.UpdatedLead](t, marketo.UpdateLeadDefinition),
 	}
 	mock.getLead.Default(GetLeadDefault())
+	mock.findLeadsByEmail.Default(FindLeadsByEmailDefault())
+	mock.updateLead.Default(UpdateLeadDefault())
 	connection, err := marketo.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "adobe", Name: connectionName})
 	if err != nil {
 		t.Fatalf("adobe-marketo mock connection: %v", err)
@@ -45,10 +51,26 @@ func (mock *Mock) GetLead() *connectormock.Query[marketo.GetLeadInput, marketo.L
 	return mock.getLead
 }
 
+// FindLeadsByEmail returns the findLeadsByEmail script.
+func (mock *Mock) FindLeadsByEmail() *connectormock.Query[marketo.FindLeadsByEmailInput, marketo.LeadProfilesPage] {
+	return mock.findLeadsByEmail
+}
+
+// UpdateLead returns the updateLead script.
+func (mock *Mock) UpdateLead() *connectormock.Mutation[marketo.UpdateLeadInput, marketo.UpdatedLead] {
+	return mock.updateLead
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetLead() sdkgo.Query[marketo.GetLeadInput, marketo.LeadProfile] {
 	return operations.mock.getLead
+}
+func (operations mockOperations) FindLeadsByEmail() sdkgo.Query[marketo.FindLeadsByEmailInput, marketo.LeadProfilesPage] {
+	return operations.mock.findLeadsByEmail
+}
+func (operations mockOperations) UpdateLead() sdkgo.Mutation[marketo.UpdateLeadInput, marketo.UpdatedLead] {
+	return operations.mock.updateLead
 }
 
 // GetLeadFound selects the found branch: Marketo returned the selected lead.
@@ -89,3 +111,78 @@ func GetLeadFoundDefault() connectormock.Case[marketo.LeadProfile] {
 
 // GetLeadDefault is the manifest default, foundDefault, which New installs.
 func GetLeadDefault() connectormock.Case[marketo.LeadProfile] { return GetLeadFoundDefault() }
+
+// FindLeadsByEmailFound selects the found branch: Marketo returned the matching lead page.
+func FindLeadsByEmailFound(value marketo.LeadProfilesPage, failure *sdkgo.Failure) connectormock.Case[marketo.LeadProfilesPage] {
+	return connectormock.Branch(marketo.FindLeadsByEmailBranchFound, value, failure)
+}
+
+// FindLeadsByEmailProviderRejected selects the providerRejected branch: Marketo conclusively rejected the filter.
+func FindLeadsByEmailProviderRejected(value marketo.LeadProfilesPage, failure *sdkgo.Failure) connectormock.Case[marketo.LeadProfilesPage] {
+	return connectormock.Branch(marketo.FindLeadsByEmailBranchProviderRejected, value, failure)
+}
+
+// FindLeadsByEmailInvalidResponse selects the invalidResponse branch: Marketo returned malformed or oversized JSON.
+func FindLeadsByEmailInvalidResponse(value marketo.LeadProfilesPage, failure *sdkgo.Failure) connectormock.Case[marketo.LeadProfilesPage] {
+	return connectormock.Branch(marketo.FindLeadsByEmailBranchInvalidResponse, value, failure)
+}
+
+// FindLeadsByEmailDefect selects the defect branch: Local email or connection configuration is invalid.
+func FindLeadsByEmailDefect(value marketo.LeadProfilesPage, failure *sdkgo.Failure) connectormock.Case[marketo.LeadProfilesPage] {
+	return connectormock.Branch(marketo.FindLeadsByEmailBranchDefect, value, failure)
+}
+
+// FindLeadsByEmailRetry asks Dex to retry the findLeadsByEmail Step, after the delay when it is positive.
+func FindLeadsByEmailRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[marketo.LeadProfilesPage] {
+	return connectormock.Retry[marketo.LeadProfilesPage](failure, after)
+}
+
+// FindLeadsByEmailFoundDefault is the manifest mock foundDefault: One sample matching lead is returned.
+func FindLeadsByEmailFoundDefault() connectormock.Case[marketo.LeadProfilesPage] {
+	value := connectormock.MustDecodeOutput[marketo.LeadProfilesPage](`{"leads":[{"id":318581,"firstName":"Sample","lastName":"Lead"}],"nextPageToken":""}`)
+	return connectormock.Branch(marketo.FindLeadsByEmailBranchFound, value, nil)
+}
+
+// FindLeadsByEmailDefault is the manifest default, foundDefault, which New installs.
+func FindLeadsByEmailDefault() connectormock.Case[marketo.LeadProfilesPage] {
+	return FindLeadsByEmailFoundDefault()
+}
+
+// UpdateLeadUpdated selects the updated branch: Marketo updated the selected lead.
+func UpdateLeadUpdated(value marketo.UpdatedLead, failure *sdkgo.Failure) connectormock.Case[marketo.UpdatedLead] {
+	return connectormock.Branch(marketo.UpdateLeadBranchUpdated, value, failure)
+}
+
+// UpdateLeadNotFound selects the notFound branch: Marketo found no lead for the ID.
+func UpdateLeadNotFound(value marketo.UpdatedLead, failure *sdkgo.Failure) connectormock.Case[marketo.UpdatedLead] {
+	return connectormock.Branch(marketo.UpdateLeadBranchNotFound, value, failure)
+}
+
+// UpdateLeadProviderRejected selects the providerRejected branch: Marketo conclusively rejected the update.
+func UpdateLeadProviderRejected(value marketo.UpdatedLead, failure *sdkgo.Failure) connectormock.Case[marketo.UpdatedLead] {
+	return connectormock.Branch(marketo.UpdateLeadBranchProviderRejected, value, failure)
+}
+
+// UpdateLeadInvalidResponse selects the invalidResponse branch: Marketo returned malformed or oversized JSON.
+func UpdateLeadInvalidResponse(value marketo.UpdatedLead, failure *sdkgo.Failure) connectormock.Case[marketo.UpdatedLead] {
+	return connectormock.Branch(marketo.UpdateLeadBranchInvalidResponse, value, failure)
+}
+
+// UpdateLeadDefect selects the defect branch: Local ID, name fields, or connection configuration is invalid.
+func UpdateLeadDefect(value marketo.UpdatedLead, failure *sdkgo.Failure) connectormock.Case[marketo.UpdatedLead] {
+	return connectormock.Branch(marketo.UpdateLeadBranchDefect, value, failure)
+}
+
+// UpdateLeadRetry asks Dex to retry the updateLead Step, after the delay when it is positive.
+func UpdateLeadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[marketo.UpdatedLead] {
+	return connectormock.Retry[marketo.UpdatedLead](failure, after)
+}
+
+// UpdateLeadUpdatedDefault is the manifest mock updatedDefault: One sample lead was updated.
+func UpdateLeadUpdatedDefault() connectormock.Case[marketo.UpdatedLead] {
+	value := connectormock.MustDecodeOutput[marketo.UpdatedLead](`{"id":318581,"status":"updated"}`)
+	return connectormock.Branch(marketo.UpdateLeadBranchUpdated, value, nil)
+}
+
+// UpdateLeadDefault is the manifest default, updatedDefault, which New installs.
+func UpdateLeadDefault() connectormock.Case[marketo.UpdatedLead] { return UpdateLeadUpdatedDefault() }

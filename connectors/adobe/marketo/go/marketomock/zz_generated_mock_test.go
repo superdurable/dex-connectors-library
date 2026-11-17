@@ -20,6 +20,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[marketo.LeadProfile](`{"id":318581,"firstName":"Sample","lastName":"Lead"}`)
 			return err
 		}},
+		{name: "findLeadsByEmail/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.LeadProfilesPage](`{"leads":[{"id":318581,"firstName":"Sample","lastName":"Lead"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "updateLead/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.UpdatedLead](`{"id":318581,"status":"updated"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +40,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetLead().Definition().Operation.OperationID != "getLead" {
 		t.Errorf("getLead mock has another definition")
+	}
+	if mock.FindLeadsByEmail().Definition().Operation.OperationID != "findLeadsByEmail" {
+		t.Errorf("findLeadsByEmail mock has another definition")
+	}
+	if mock.UpdateLead().Definition().Operation.OperationID != "updateLead" {
+		t.Errorf("updateLead mock has another definition")
 	}
 }

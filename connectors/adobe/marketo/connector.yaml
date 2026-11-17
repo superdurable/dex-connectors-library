@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: adobe-marketo
   displayName: Adobe Marketo Engage
-  description: Read selected lead profile fields from a Marketo Engage subscription.
+  description: Read, find, and update selected lead profile fields in a Marketo Engage subscription.
   company: Adobe
   categories: [marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: adobe
   languages:
@@ -67,7 +67,7 @@ spec:
     guide:
       startURL: https://app.marketo.com/
       steps:
-        - Sign in to Marketo, open Admin > Users & Roles > Roles, and create an API role with Access API > Read-Only Lead. Add an API-Only user assigned this role in Admin > Users & Roles > Users. No browser redirect URI or consent screen is needed for this client credentials grant.
+        - Sign in to Marketo, open Admin > Users & Roles > Roles, and create an API role with Access API > Read-Only Lead. Grant Read-Write Lead only if using updateLead. Add an API-Only user assigned this role in Admin > Users & Roles > Users. No browser redirect URI or consent screen is needed for this client credentials grant.
         - Open Admin > Integration > LaunchPoint > New Service, choose Custom, select the API-Only user, and create the service. Open View Details to copy its Client ID and Client Secret; keep the secret in Dex Web only.
         - Open Admin > Integration > Web Services. Copy REST API > Endpoint into restEndpoint. Copy REST API > Identity and append /oauth/token into tokenEndpoint. Both HTTPS URLs must use the same subscription host ending in .mktorest.com.
         - Save the connection; Dex mints and refreshes the access token. Leave access_token, timeout, and maxResponseBytes blank. Revoke the Custom service in LaunchPoint to stop this connection.
@@ -104,3 +104,44 @@ spec:
           default: true
           description: A sample Marketo lead is returned.
           output: {id: 318581, firstName: Sample, lastName: Lead}
+    - name: findLeadsByEmail
+      goName: FindLeadsByEmail
+      inputType: FindLeadsByEmailInput
+      outputType: LeadProfilesPage
+      kind: query
+      description: Find a cursor page of leads by email, returning only IDs and names.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Marketo returned the matching lead page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Marketo conclusively rejected the filter., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Marketo returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local email or connection configuration is invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample matching lead is returned.
+          output: {leads: [{id: 318581, firstName: Sample, lastName: Lead}], nextPageToken: ''}
+    - name: updateLead
+      goName: UpdateLead
+      inputType: UpdateLeadInput
+      outputType: UpdatedLead
+      kind: mutation
+      description: Set one lead's selected names by ID using Marketo updateOnly.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Marketo updated the selected lead.}
+        - {id: notFound, goName: NotFound, description: Marketo found no lead for the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Marketo conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Marketo returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: "Local ID, name fields, or connection configuration is invalid.", optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample lead was updated.
+          output: {id: 318581, status: updated}
