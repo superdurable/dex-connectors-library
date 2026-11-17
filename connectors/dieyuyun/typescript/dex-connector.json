@@ -1,0 +1,52 @@
+{
+  "connectorId": "dieyuyun",
+  "releaseTag": "connectors/dieyuyun/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-dieyuyun",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetAccountBalanceStep",
+      "kind": "query",
+      "operationId": "getAccountBalance",
+      "inputType": "GetAccountBalanceInput",
+      "description": "Read available tenant balance in CNY yuan.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "fetched",
+          "field": "fetched",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetAccountBalanceInput has no arguments; the connection identifies the tenant.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

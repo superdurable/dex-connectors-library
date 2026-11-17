@@ -13,3 +13,7 @@ The [account balance Flow](go/examples/account-balance/) is a runnable Worker wi
 ## Python
 
 The [Python account balance Flow](python/examples/account_balance/) uses the same static connection and checks exact decimal output across a real Dex Worker and Client retry. Its package replays the Go-recorded provider scenarios. Live authorization and actual tenant balance remain unverified without a user-controlled connection.
+
+## TypeScript
+
+The [TypeScript balance Flow](typescript/examples/balance/) is a runnable Worker and Client using the same static `dieyuyun` connection. It preserves the provider decimal balance text without floating-point conversion and persists only `availableCNY`.
