@@ -6,9 +6,11 @@ This example runs a Flow from Dex Web **Start Flow**:
 2. `GetPlaylist` calls `spotify.NewGetPlaylistStep`;
 3. `ContinueAfterGetPlaylist` persists the playlist snapshot;
 4. `ListPlaylistTracks` calls `spotify.NewListPlaylistTracksStep`;
-5. `CompletePlaylistTracks` persists the returned page and completes the Flow.
+5. `CompletePlaylistTracks` persists the returned page and requests its first available album;
+6. `GetAlbum` calls `spotify.NewGetAlbumStep` for that album;
+7. `CompleteAlbumMetadata` persists its metadata and completes the Flow.
 
-The summary and display RPCs expose the request, playlist metadata, and page in Dex Web. Only the
+The summary and display RPCs expose the request, playlist and album metadata, and page in Dex Web. Only the
 `found` and `listed` branches are wired. Revoked authorization, access denial, not-found,
 provider rejection, invalid response, and defect branches fail the Flow when
 selected.

@@ -16,6 +16,34 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getAlbum/sampleAlbum/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.AlbumSummary](`{"id":"1ATL5GLyefJaxhQzSPVrLX","name":"An Album","spotifyUrl":"https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX","releaseDate":"2026-08-14","totalTracks":10,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}`)
+			return err
+		}},
+		{name: "listAlbumTracks/sampleAlbumTracks/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.AlbumTrackPage](`{"albumId":"1ATL5GLyefJaxhQzSPVrLX","tracks":[{"id":"4iV5W9uYEdYUVa79Axb7Rh","name":"A Song","spotifyUrl":"https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh","durationMilliseconds":213000,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":0,"total":3,"nextOffset":1}`)
+			return err
+		}},
+		{name: "listAlbumTracks/sampleAlbumTracks/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.AlbumTrackPage](`{"albumId":"1ATL5GLyefJaxhQzSPVrLX","tracks":[{"id":"7ouMYWpwJ422jRcDASZB7P","name":"Another Song","spotifyUrl":"https://open.spotify.com/track/7ouMYWpwJ422jRcDASZB7P","durationMilliseconds":180000,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":1,"total":3,"nextOffset":2}`)
+			return err
+		}},
+		{name: "listAlbumTracks/sampleAlbumTracks/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.AlbumTrackPage](`{"albumId":"1ATL5GLyefJaxhQzSPVrLX","tracks":[{"id":"3n3Ppam7vgaVa1iaRUc9Lp","name":"Final Song","spotifyUrl":"https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp","durationMilliseconds":200000,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":2,"total":3}`)
+			return err
+		}},
+		{name: "searchAlbums/sampleAlbumSearch/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.AlbumSummaryPage](`{"albums":[{"id":"1ATL5GLyefJaxhQzSPVrLX","name":"An Album","spotifyUrl":"https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX","releaseDate":"2026-08-14","totalTracks":10,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":0,"total":3,"nextOffset":1}`)
+			return err
+		}},
+		{name: "searchAlbums/sampleAlbumSearch/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.AlbumSummaryPage](`{"albums":[{"id":"2up3OPMp9Tb4dAKM2erWXQ","name":"Second Album","spotifyUrl":"https://open.spotify.com/album/2up3OPMp9Tb4dAKM2erWXQ","releaseDate":"2025-01-01","totalTracks":8,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":1,"total":3,"nextOffset":2}`)
+			return err
+		}},
+		{name: "searchAlbums/sampleAlbumSearch/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.AlbumSummaryPage](`{"albums":[{"id":"4aawyAB9vmqN3uQ7FjRGTy","name":"Third Album","spotifyUrl":"https://open.spotify.com/album/4aawyAB9vmqN3uQ7FjRGTy","releaseDate":"2024-01-01","totalTracks":6,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":2,"total":3}`)
+			return err
+		}},
 		{name: "listUserPlaylists/sampleUserPlaylists/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[spotify.PlaylistSummaryPage](`{"playlists":[{"id":"3cEYpjA9oz9GiPac4AsH4n","name":"Example One","ownerUserId":"sample-user","spotifyUrl":"https://open.spotify.com/playlist/3cEYpjA9oz9GiPac4AsH4n","snapshotId":"sample-snapshot-1","public":true}],"limit":1,"offset":0,"total":3,"nextOffset":1}`)
 			return err
@@ -66,6 +94,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetAlbum().Definition().Operation.OperationID != "getAlbum" {
+		t.Errorf("getAlbum mock has another definition")
+	}
+	if mock.ListAlbumTracks().Definition().Operation.OperationID != "listAlbumTracks" {
+		t.Errorf("listAlbumTracks mock has another definition")
+	}
+	if mock.SearchAlbums().Definition().Operation.OperationID != "searchAlbums" {
+		t.Errorf("searchAlbums mock has another definition")
+	}
 	if mock.ListUserPlaylists().Definition().Operation.OperationID != "listUserPlaylists" {
 		t.Errorf("listUserPlaylists mock has another definition")
 	}

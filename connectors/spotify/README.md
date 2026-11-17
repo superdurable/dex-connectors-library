@@ -15,6 +15,8 @@ hosts as a read-only tool.
 
 The Go connector reads playlist metadata with `getPlaylist`, lists the authenticated user's playlists with `listUserPlaylists`, searches playlists with `searchPlaylists`, and lists one bounded page of tracks with `listPlaylistTracks`. `getPlaylist` returns the owner ID, name, description, Spotify link, visibility, and snapshot ID. The new operations are safe Queries and use the existing `playlist-read-private` grant. `searchPlaylists` accepts a nonempty text query and an optional two-letter market. Both list operations return one page with `nextOffset` for continuation. Spotify removed listing another user's playlists from development-mode apps in February 2026.
 
+Album Queries are `getAlbum`, `listAlbumTracks`, and `searchAlbums`. They return album identity, artists, release date, track count, and attribution links; track pages contain bounded title, artist, and duration metadata. `listAlbumTracks` accepts an album ID, market, limit up to 50, and offset. `searchAlbums` accepts query text, market, limit up to 10, and offset. All three use the existing OAuth grant and repeat safely after unknown read outcomes. Spotify removed the n8n node's `getNewReleases` endpoint for development-mode apps in February 2026, so the connector does not expose it.
+
 The Spotify connector lists one bounded page of tracks from a playlist through
 Spotify's official [Get Playlist Items](https://developer.spotify.com/documentation/web-api/reference/get-playlists-items)
 endpoint. Spotify currently permits that endpoint only for playlists the

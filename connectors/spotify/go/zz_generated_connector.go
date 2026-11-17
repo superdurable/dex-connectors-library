@@ -43,6 +43,9 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetAlbum() sdkgo.Query[GetAlbumInput, AlbumSummary]
+	ListAlbumTracks() sdkgo.Query[ListAlbumTracksInput, AlbumTrackPage]
+	SearchAlbums() sdkgo.Query[SearchAlbumsInput, AlbumSummaryPage]
 	ListUserPlaylists() sdkgo.Query[ListUserPlaylistsInput, PlaylistSummaryPage]
 	SearchPlaylists() sdkgo.Query[SearchPlaylistsInput, PlaylistSummaryPage]
 	GetPlaylist() sdkgo.Query[GetPlaylistInput, PlaylistSummary]
@@ -51,6 +54,15 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetAlbum() sdkgo.Query[GetAlbumInput, AlbumSummary] {
+	return operations.client.GetAlbum()
+}
+func (operations clientOperations) ListAlbumTracks() sdkgo.Query[ListAlbumTracksInput, AlbumTrackPage] {
+	return operations.client.ListAlbumTracks()
+}
+func (operations clientOperations) SearchAlbums() sdkgo.Query[SearchAlbumsInput, AlbumSummaryPage] {
+	return operations.client.SearchAlbums()
+}
 func (operations clientOperations) ListUserPlaylists() sdkgo.Query[ListUserPlaylistsInput, PlaylistSummaryPage] {
 	return operations.client.ListUserPlaylists()
 }
@@ -250,6 +262,273 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const GetAlbumBranchFound sdkgo.BranchID = "found"
+const GetAlbumBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
+const GetAlbumBranchAccessDenied sdkgo.BranchID = "accessDenied"
+const GetAlbumBranchNotFound sdkgo.BranchID = "notFound"
+const GetAlbumBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetAlbumBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetAlbumBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetAlbumDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getAlbum"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetAlbumBranchFound, Description: "The album was loaded."},
+		{ID: GetAlbumBranchAuthorizationRevoked, Description: "The Spotify OAuth grant is invalid or revoked.", Optional: true},
+		{ID: GetAlbumBranchAccessDenied, Description: "Spotify denied access to this album.", Optional: true},
+		{ID: GetAlbumBranchNotFound, Description: "Spotify could not find this album.", Optional: true},
+		{ID: GetAlbumBranchProviderRejected, Description: "Spotify conclusively rejected the album query.", Optional: true},
+		{ID: GetAlbumBranchInvalidResponse, Description: "Spotify returned invalid or oversized album metadata.", Optional: true},
+		{ID: GetAlbumBranchDefect, Description: "The album ID or local connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetAlbumResult = sdkgo.QueryResult[AlbumSummary]
+
+type GetAlbumStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=spotify"`
+	operationID                    struct{}                                        `connector:"operationId=getAlbum"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetAlbumInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetAlbumResult]                    `connector:"branch=found"`
+	AuthorizationRevoked           sdkgo.Target[GetAlbumResult]                    `connector:"branch=authorizationRevoked,optional"`
+	AccessDenied                   sdkgo.Target[GetAlbumResult]                    `connector:"branch=accessDenied,optional"`
+	NotFound                       sdkgo.Target[GetAlbumResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetAlbumResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetAlbumResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetAlbumResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AlbumSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetAlbumStep[IN any](config GetAlbumStepConfig[IN]) sdkgo.QueryStep[IN, GetAlbumInput, AlbumSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("spotify connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetAlbumInput, AlbumSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetAlbum(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetAlbumResult] {
+			branches := make([]sdkgo.BranchTarget[GetAlbumResult], 0, 7)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetAlbumBranchFound))
+			}
+			if config.AuthorizationRevoked.HasStep() {
+				branches = append(branches, config.AuthorizationRevoked.BranchTarget(GetAlbumBranchAuthorizationRevoked))
+			}
+			if config.AccessDenied.HasStep() {
+				branches = append(branches, config.AccessDenied.BranchTarget(GetAlbumBranchAccessDenied))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetAlbumBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetAlbumBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetAlbumBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetAlbumBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListAlbumTracksBranchListed sdkgo.BranchID = "listed"
+const ListAlbumTracksBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
+const ListAlbumTracksBranchAccessDenied sdkgo.BranchID = "accessDenied"
+const ListAlbumTracksBranchNotFound sdkgo.BranchID = "notFound"
+const ListAlbumTracksBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListAlbumTracksBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListAlbumTracksBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListAlbumTracksDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listAlbumTracks"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListAlbumTracksBranchListed, Description: "The album track page was loaded."},
+		{ID: ListAlbumTracksBranchAuthorizationRevoked, Description: "The Spotify OAuth grant is invalid or revoked.", Optional: true},
+		{ID: ListAlbumTracksBranchAccessDenied, Description: "Spotify denied access to these album tracks.", Optional: true},
+		{ID: ListAlbumTracksBranchNotFound, Description: "Spotify could not find this album.", Optional: true},
+		{ID: ListAlbumTracksBranchProviderRejected, Description: "Spotify conclusively rejected the album track query.", Optional: true},
+		{ID: ListAlbumTracksBranchInvalidResponse, Description: "Spotify returned invalid or oversized album tracks.", Optional: true},
+		{ID: ListAlbumTracksBranchDefect, Description: "The album ID, market, page settings, or local connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListAlbumTracksResult = sdkgo.QueryResult[AlbumTrackPage]
+
+type ListAlbumTracksStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=spotify"`
+	operationID                    struct{}                                          `connector:"operationId=listAlbumTracks"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListAlbumTracksInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListAlbumTracksResult]               `connector:"branch=listed"`
+	AuthorizationRevoked           sdkgo.Target[ListAlbumTracksResult]               `connector:"branch=authorizationRevoked,optional"`
+	AccessDenied                   sdkgo.Target[ListAlbumTracksResult]               `connector:"branch=accessDenied,optional"`
+	NotFound                       sdkgo.Target[ListAlbumTracksResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListAlbumTracksResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListAlbumTracksResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListAlbumTracksResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AlbumTrackPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewListAlbumTracksStep[IN any](config ListAlbumTracksStepConfig[IN]) sdkgo.QueryStep[IN, ListAlbumTracksInput, AlbumTrackPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("spotify connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListAlbumTracksInput, AlbumTrackPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListAlbumTracks(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListAlbumTracksResult] {
+			branches := make([]sdkgo.BranchTarget[ListAlbumTracksResult], 0, 7)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListAlbumTracksBranchListed))
+			}
+			if config.AuthorizationRevoked.HasStep() {
+				branches = append(branches, config.AuthorizationRevoked.BranchTarget(ListAlbumTracksBranchAuthorizationRevoked))
+			}
+			if config.AccessDenied.HasStep() {
+				branches = append(branches, config.AccessDenied.BranchTarget(ListAlbumTracksBranchAccessDenied))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListAlbumTracksBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListAlbumTracksBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListAlbumTracksBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListAlbumTracksBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SearchAlbumsBranchListed sdkgo.BranchID = "listed"
+const SearchAlbumsBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
+const SearchAlbumsBranchAccessDenied sdkgo.BranchID = "accessDenied"
+const SearchAlbumsBranchNotFound sdkgo.BranchID = "notFound"
+const SearchAlbumsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SearchAlbumsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SearchAlbumsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SearchAlbumsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchAlbums"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SearchAlbumsBranchListed, Description: "The album search page was loaded."},
+		{ID: SearchAlbumsBranchAuthorizationRevoked, Description: "The Spotify OAuth grant is invalid or revoked.", Optional: true},
+		{ID: SearchAlbumsBranchAccessDenied, Description: "Spotify denied the album search.", Optional: true},
+		{ID: SearchAlbumsBranchNotFound, Description: "Spotify could not resolve the album search.", Optional: true},
+		{ID: SearchAlbumsBranchProviderRejected, Description: "Spotify conclusively rejected the album search.", Optional: true},
+		{ID: SearchAlbumsBranchInvalidResponse, Description: "Spotify returned invalid or oversized album results.", Optional: true},
+		{ID: SearchAlbumsBranchDefect, Description: "The query, market, page settings, or local connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SearchAlbumsResult = sdkgo.QueryResult[AlbumSummaryPage]
+
+type SearchAlbumsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=spotify"`
+	operationID                    struct{}                                            `connector:"operationId=searchAlbums"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) SearchAlbumsInput                          `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[SearchAlbumsResult]                    `connector:"branch=listed"`
+	AuthorizationRevoked           sdkgo.Target[SearchAlbumsResult]                    `connector:"branch=authorizationRevoked,optional"`
+	AccessDenied                   sdkgo.Target[SearchAlbumsResult]                    `connector:"branch=accessDenied,optional"`
+	NotFound                       sdkgo.Target[SearchAlbumsResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[SearchAlbumsResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[SearchAlbumsResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[SearchAlbumsResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AlbumSummaryPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewSearchAlbumsStep[IN any](config SearchAlbumsStepConfig[IN]) sdkgo.QueryStep[IN, SearchAlbumsInput, AlbumSummaryPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("spotify connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchAlbumsInput, AlbumSummaryPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SearchAlbums(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SearchAlbumsResult] {
+			branches := make([]sdkgo.BranchTarget[SearchAlbumsResult], 0, 7)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(SearchAlbumsBranchListed))
+			}
+			if config.AuthorizationRevoked.HasStep() {
+				branches = append(branches, config.AuthorizationRevoked.BranchTarget(SearchAlbumsBranchAuthorizationRevoked))
+			}
+			if config.AccessDenied.HasStep() {
+				branches = append(branches, config.AccessDenied.BranchTarget(SearchAlbumsBranchAccessDenied))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(SearchAlbumsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SearchAlbumsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SearchAlbumsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SearchAlbumsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListUserPlaylistsBranchListed sdkgo.BranchID = "listed"

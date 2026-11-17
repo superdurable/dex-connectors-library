@@ -65,14 +65,15 @@ func (operation GetPlaylistOperation) Invoke(call sdkgo.Call, input GetPlaylistI
 	}
 	credential, failure := operation.client.resolveCredential(call)
 	if failure != nil {
-		return sdkgo.NewQueryBranch(GetPlaylistBranchDefect, PlaylistSummary{}, failure, sdkgo.Receipt{})
+		corrected := spotifyOperationFailure("getPlaylist", failure.Kind, failure.Message)
+		return sdkgo.NewQueryBranch(GetPlaylistBranchDefect, PlaylistSummary{}, &corrected, sdkgo.Receipt{})
 	}
 	response, err := operation.client.getPlaylistDetails(call, &credential, input.PlaylistID)
 	if errors.Is(err, errResponseTooLarge) {
 		return playlistSummaryFailure(GetPlaylistBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "Spotify playlist response exceeds the configured size limit")
 	}
 	if err != nil {
-		return sdkgo.NewQueryRetry[PlaylistSummary](spotifyFailure(sdkgo.FailureAvailability, "Spotify is unavailable"), 0)
+		return sdkgo.NewQueryRetry[PlaylistSummary](spotifyOperationFailure("getPlaylist", sdkgo.FailureAvailability, "Spotify is unavailable"), 0)
 	}
 	switch response.statusCode {
 	case http.StatusOK:
@@ -83,10 +84,10 @@ func (operation GetPlaylistOperation) Invoke(call sdkgo.Call, input GetPlaylistI
 	case http.StatusNotFound:
 		return playlistSummaryFailure(GetPlaylistBranchNotFound, sdkgo.FailureNotFound, "Spotify playlist was not found")
 	case http.StatusTooManyRequests:
-		return sdkgo.NewQueryRetry[PlaylistSummary](spotifyFailure(sdkgo.FailureRateLimit, "Spotify rate limit was reached"), retryDelay(response.header))
+		return sdkgo.NewQueryRetry[PlaylistSummary](spotifyOperationFailure("getPlaylist", sdkgo.FailureRateLimit, "Spotify rate limit was reached"), retryDelay(response.header))
 	default:
 		if response.statusCode >= 500 {
-			return sdkgo.NewQueryRetry[PlaylistSummary](spotifyFailure(sdkgo.FailureAvailability, "Spotify is unavailable"), 0)
+			return sdkgo.NewQueryRetry[PlaylistSummary](spotifyOperationFailure("getPlaylist", sdkgo.FailureAvailability, "Spotify is unavailable"), 0)
 		}
 		return playlistSummaryFailure(GetPlaylistBranchProviderRejected, sdkgo.FailureProviderRejection, "Spotify rejected the playlist query")
 	}
@@ -166,6 +167,6 @@ func (client *Client) getSpotifyRead(call sdkgo.Call, credential *Credentials, p
 }
 
 func playlistSummaryFailure(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.QueryAttempt[PlaylistSummary] {
-	failure := spotifyFailure(kind, message)
+	failure := spotifyOperationFailure("getPlaylist", kind, message)
 	return sdkgo.NewQueryBranch(branch, PlaylistSummary{}, &failure, sdkgo.Receipt{})
 }

@@ -67,10 +67,10 @@ func (ListUserPlaylistsOperation) Definition() sdkgo.QueryDefinition {
 func (operation ListUserPlaylistsOperation) Invoke(call sdkgo.Call, input ListUserPlaylistsInput) sdkgo.QueryAttempt[PlaylistSummaryPage] {
 	limit, offset, ok := validatePlaylistPage(input.Limit, input.Offset)
 	if !ok {
-		return playlistPageFailure(ListUserPlaylistsBranchDefect, sdkgo.FailureValidation, "limit or offset is outside Spotify's range")
+		return playlistPageFailure("listUserPlaylists", ListUserPlaylistsBranchDefect, sdkgo.FailureValidation, "limit or offset is outside Spotify's range")
 	}
 	query := url.Values{"limit": {strconv.Itoa(limit)}, "offset": {strconv.Itoa(offset)}}
-	return operation.client.readPlaylistPage(call, "/me/playlists", query, false, playlistPageBranches{
+	return operation.client.readPlaylistPage(call, "listUserPlaylists", "/me/playlists", query, false, playlistPageBranches{
 		listed: ListUserPlaylistsBranchListed, authorizationRevoked: ListUserPlaylistsBranchAuthorizationRevoked,
 		accessDenied: ListUserPlaylistsBranchAccessDenied, notFound: ListUserPlaylistsBranchNotFound,
 		providerRejected: ListUserPlaylistsBranchProviderRejected, invalidResponse: ListUserPlaylistsBranchInvalidResponse,
@@ -102,13 +102,13 @@ func (operation SearchPlaylistsOperation) Invoke(call sdkgo.Call, input SearchPl
 		limit > 10 ||
 		strings.IndexFunc(queryText, unicode.IsControl) >= 0 ||
 		(market != "" && !isASCIICountryCode(market)) {
-		return playlistPageFailure(SearchPlaylistsBranchDefect, sdkgo.FailureValidation, "query, market, limit, or offset is invalid")
+		return playlistPageFailure("searchPlaylists", SearchPlaylistsBranchDefect, sdkgo.FailureValidation, "query, market, limit, or offset is invalid")
 	}
 	query := url.Values{"q": {queryText}, "type": {"playlist"}, "limit": {strconv.Itoa(limit)}, "offset": {strconv.Itoa(offset)}}
 	if market != "" {
 		query.Set("market", market)
 	}
-	return operation.client.readPlaylistPage(call, "/search", query, true, playlistPageBranches{
+	return operation.client.readPlaylistPage(call, "searchPlaylists", "/search", query, true, playlistPageBranches{
 		listed: SearchPlaylistsBranchListed, authorizationRevoked: SearchPlaylistsBranchAuthorizationRevoked,
 		accessDenied: SearchPlaylistsBranchAccessDenied, notFound: SearchPlaylistsBranchNotFound,
 		providerRejected: SearchPlaylistsBranchProviderRejected, invalidResponse: SearchPlaylistsBranchInvalidResponse,
@@ -120,37 +120,38 @@ type playlistPageBranches struct {
 	listed, authorizationRevoked, accessDenied, notFound, providerRejected, invalidResponse, defect sdkgo.BranchID
 }
 
-func (client *Client) readPlaylistPage(call sdkgo.Call, path string, query url.Values, isSearch bool, branches playlistPageBranches) sdkgo.QueryAttempt[PlaylistSummaryPage] {
+func (client *Client) readPlaylistPage(call sdkgo.Call, operationID, path string, query url.Values, isSearch bool, branches playlistPageBranches) sdkgo.QueryAttempt[PlaylistSummaryPage] {
 	credential, failure := client.resolveCredential(call)
 	if failure != nil {
-		return sdkgo.NewQueryBranch(branches.defect, PlaylistSummaryPage{}, failure, sdkgo.Receipt{})
+		corrected := spotifyOperationFailure(operationID, failure.Kind, failure.Message)
+		return sdkgo.NewQueryBranch(branches.defect, PlaylistSummaryPage{}, &corrected, sdkgo.Receipt{})
 	}
 	response, err := client.getSpotifyRead(call, &credential, path, query)
 	if errors.Is(err, errResponseTooLarge) {
-		return playlistPageFailure(branches.invalidResponse, sdkgo.FailureResponseTooLarge, "Spotify playlist page exceeds the configured size limit")
+		return playlistPageFailure(operationID, branches.invalidResponse, sdkgo.FailureResponseTooLarge, "Spotify playlist page exceeds the configured size limit")
 	}
 	if err != nil {
-		return sdkgo.NewQueryRetry[PlaylistSummaryPage](spotifyFailure(sdkgo.FailureAvailability, "Spotify is unavailable"), 0)
+		return sdkgo.NewQueryRetry[PlaylistSummaryPage](spotifyOperationFailure(operationID, sdkgo.FailureAvailability, "Spotify is unavailable"), 0)
 	}
 	switch response.statusCode {
 	case http.StatusOK:
 	case http.StatusUnauthorized:
-		return playlistPageFailure(branches.authorizationRevoked, sdkgo.FailureAuthentication, "Spotify authorization is invalid or revoked")
+		return playlistPageFailure(operationID, branches.authorizationRevoked, sdkgo.FailureAuthentication, "Spotify authorization is invalid or revoked")
 	case http.StatusForbidden:
-		return playlistPageFailure(branches.accessDenied, sdkgo.FailureAuthorization, "Spotify denied access to playlists")
+		return playlistPageFailure(operationID, branches.accessDenied, sdkgo.FailureAuthorization, "Spotify denied access to playlists")
 	case http.StatusNotFound:
-		return playlistPageFailure(branches.notFound, sdkgo.FailureNotFound, "Spotify playlist collection was not found")
+		return playlistPageFailure(operationID, branches.notFound, sdkgo.FailureNotFound, "Spotify playlist collection was not found")
 	case http.StatusTooManyRequests:
-		return sdkgo.NewQueryRetry[PlaylistSummaryPage](spotifyFailure(sdkgo.FailureRateLimit, "Spotify rate limit was reached"), retryDelay(response.header))
+		return sdkgo.NewQueryRetry[PlaylistSummaryPage](spotifyOperationFailure(operationID, sdkgo.FailureRateLimit, "Spotify rate limit was reached"), retryDelay(response.header))
 	default:
 		if response.statusCode >= 500 {
-			return sdkgo.NewQueryRetry[PlaylistSummaryPage](spotifyFailure(sdkgo.FailureAvailability, "Spotify is unavailable"), 0)
+			return sdkgo.NewQueryRetry[PlaylistSummaryPage](spotifyOperationFailure(operationID, sdkgo.FailureAvailability, "Spotify is unavailable"), 0)
 		}
-		return playlistPageFailure(branches.providerRejected, sdkgo.FailureProviderRejection, "Spotify rejected the playlist page request")
+		return playlistPageFailure(operationID, branches.providerRejected, sdkgo.FailureProviderRejection, "Spotify rejected the playlist page request")
 	}
 	page, err := decodePlaylistSummaryPage(response.body, isSearch)
 	if err != nil {
-		return playlistPageFailure(branches.invalidResponse, sdkgo.FailureProtocol, "Spotify returned invalid playlist page metadata")
+		return playlistPageFailure(operationID, branches.invalidResponse, sdkgo.FailureProtocol, "Spotify returned invalid playlist page metadata")
 	}
 	return sdkgo.NewQueryBranch(branches.listed, page, nil, sdkgo.Receipt{})
 }
@@ -199,7 +200,7 @@ func isASCIICountryCode(value string) bool {
 	return len(value) == 2 && value[0] >= 'A' && value[0] <= 'Z' && value[1] >= 'A' && value[1] <= 'Z'
 }
 
-func playlistPageFailure(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.QueryAttempt[PlaylistSummaryPage] {
-	failure := spotifyFailure(kind, message)
+func playlistPageFailure(operationID string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.QueryAttempt[PlaylistSummaryPage] {
+	failure := spotifyOperationFailure(operationID, kind, message)
 	return sdkgo.NewQueryBranch(branch, PlaylistSummaryPage{}, &failure, sdkgo.Receipt{})
 }

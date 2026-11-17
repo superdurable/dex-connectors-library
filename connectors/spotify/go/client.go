@@ -204,6 +204,7 @@ type spotifyAlbum struct {
 	ReleaseDate          string              `json:"release_date"`
 	ReleaseDatePrecision string              `json:"release_date_precision"`
 	Artists              []spotifyArtist     `json:"artists"`
+	TotalTracks          int                 `json:"total_tracks"`
 }
 
 type spotifyExternalURLs struct {
