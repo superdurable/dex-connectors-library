@@ -1,6 +1,6 @@
 # EMQX Cloud connector
 
-This Go connector calls the [EMQX Cloud Platform API](https://docs.emqx.com/en/cloud/latest/api/deployment_manage.html) `GET /deployments` endpoint. It lists deployments visible to a Platform API key's selected projects and returns IDs, names, plans, capacity, project, region, status, version, provider, and creation time. The response is bounded by `maxResponseBytes` (1 MiB by default). The provider limits this endpoint to 60 calls per 60 minutes.
+This connector calls the [EMQX Cloud Platform API](https://docs.emqx.com/en/cloud/latest/api/deployment_manage.html) `GET /deployments` endpoint. It lists deployments visible to a Platform API key's selected projects and returns IDs, names, plans, capacity, project, region, status, version, provider, and creation time. The response is bounded by `maxResponseBytes` (1 MiB by default). The provider limits this endpoint to 60 calls per 60 minutes.
 
 ## Connection
 
@@ -11,3 +11,7 @@ Sign in to the [EMQX Cloud Console](https://cloud.emqx.com/console/) as a Root U
 The [deployment list example](go/examples/deployment-list/) runs a Worker with static Dex Web connection name `emq`. The Flow uses `emq.NewListDeploymentsStep` and completes on `listed`. Other branches are optional and fail the Flow unless wired to a business response. Transient transport failures, HTTP 408/429, and 5xx retry under the default Query policy.
 
 No live EMQX Cloud key is bundled. The mock example exercises the actual Dex Worker and Server; a real provider call requires saving your own connection in Dex Web.
+
+## Python
+
+The [Python deployment list example](python/examples/deployment_list/) uses the same static connection and verifies retry through a real Dex Worker and Client. The package replays the Go-recorded provider scenarios. Live EMQX Cloud authorization and deployment data remain unverified without a user-controlled connection.
