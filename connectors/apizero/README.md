@@ -5,3 +5,8 @@ This connector reads the current Key's [ApiZero account information](https://api
 Sign in at [API Key](https://apizero.cn/account/keys), create or copy a secret `sk_live_` Key, and save it in Dex Web Connections. The Key is sent only in the Bearer header. The query takes `{}` and has no account ID. The provider documents a free, read-only request with a default one-request-per-second limit and a daily quota. Business code `0` is success. Every HTTP 429, including per-second throttling and daily-quota exhaustion, retries and honors `Retry-After`; Key rejection is terminal. The connector never copies raw provider messages into results or failures.
 
 Run the [example Flow](go/examples/get-account-info/) with the generated mock or a user-controlled connection. The live provider response is unverified without a user-controlled Key.
+
+## Python
+
+The [Python package](python/README.md) implements `getAccountInfo` and includes
+a runnable Dex Flow plus Go-recorded provider conformance scenarios.

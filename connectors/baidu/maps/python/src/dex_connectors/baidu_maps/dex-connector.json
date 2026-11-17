@@ -1,0 +1,64 @@
+{
+  "connectorId": "baidu-maps",
+  "releaseTag": "connectors/baidu/maps/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-baidu-maps",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_geocode_address_step",
+      "kind": "query",
+      "operationId": "geocodeAddress",
+      "inputType": "GeocodeAddressInput",
+      "description": "Resolve a structured Chinese address through Baidu Maps Geocoding API v3 and return its coordinate and confidence measures.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "geocoded",
+          "field": "geocoded",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GeocodeAddressInput selects a structured Chinese address and optional city.",
+        "properties": {
+          "address": {
+            "description": "Address is a UTF-8 address of at most 128 bytes, from province to street number.",
+            "type": "string"
+          },
+          "city": {
+            "description": "City is an optional Chinese city name used to help distinguish repeated addresses.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "address"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

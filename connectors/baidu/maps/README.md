@@ -30,3 +30,7 @@ GOWORK=off go vet ./...
 Provider tests use a local HTTP server. The example integration test uses a
 real Dex Worker and Client with a generated mock. A live Baidu Maps lookup
 requires a user-configured server-side AK and is not part of these tests.
+
+## Python
+
+The [Python package](python/README.md) implements `geocodeAddress` with a runnable Dex Flow and Go-recorded provider scenarios. Live Baidu Maps authorization with a real server AK remains unverified.

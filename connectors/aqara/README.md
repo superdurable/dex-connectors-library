@@ -9,3 +9,7 @@ Create an approved project at the [Aqara Developer Platform](https://developer.a
 See the [runnable Dex Flow](go/examples/device-list/README.md). The mock integration tests run against a real Dex Worker and Client; live Aqara authorization, token renewal, rate limits, and device response have not been exercised.
 
 The directory logo is the unmodified [official Aqara SVG](https://www.aqara.com/wp-content/uploads/2023/03/aqara-logo-dark.svg) displayed on Aqara’s [brand story](https://www.aqara.com/en/about-us/brand-story/) page.
+
+## Python
+
+The [Python package](python/README.md) implements `listDevices` with a runnable Dex Flow and Go-recorded signed provider scenarios. Live Aqara authorization remains unverified.

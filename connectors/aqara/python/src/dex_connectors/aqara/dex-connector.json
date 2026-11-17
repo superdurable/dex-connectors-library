@@ -1,0 +1,65 @@
+{
+  "connectorId": "aqara",
+  "releaseTag": "connectors/aqara/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-aqara",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_devices_step",
+      "kind": "query",
+      "operationId": "listDevices",
+      "inputType": "ListDevicesInput",
+      "description": "Read one bounded page of devices and online state for the authorized Aqara account or project.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListDevicesInput selects one bounded page from the authorized account's devices.",
+        "properties": {
+          "pageNum": {
+            "description": "PageNum is a one-based page number; zero selects page one.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is a count from 1 to 100; zero selects Aqara's documented default of 50.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pageNum",
+          "pageSize"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

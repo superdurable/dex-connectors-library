@@ -6,11 +6,11 @@ package aqara
 import (
 	"bytes"
 	"crypto/md5"
-	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -85,11 +85,11 @@ func (operation ListDevicesOperation) Invoke(call sdkgo.Call, input ListDevicesI
 		return deviceBranch(ListDevicesBranchDefect, sdkgo.FailureAuthentication, "Aqara connection credentials are unavailable or invalid")
 	}
 	nonceBytes := make([]byte, 16)
-	if _, err = rand.Read(nonceBytes); err != nil {
+	if _, err = io.ReadFull(operation.client.nonceSource, nonceBytes); err != nil {
 		return deviceRetry(sdkgo.FailureAvailability, "secure nonce generation failed", 0)
 	}
 	nonce := hex.EncodeToString(nonceBytes)
-	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	timestamp := strconv.FormatInt(operation.client.clock().UnixMilli(), 10)
 	requestBody, err := json.Marshal(struct {
 		Intent string `json:"intent"`
 		Data   struct {

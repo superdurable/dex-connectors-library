@@ -1,0 +1,52 @@
+{
+  "connectorId": "apizero",
+  "releaseTag": "connectors/apizero/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-apizero",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_account_info_step",
+      "kind": "query",
+      "operationId": "getAccountInfo",
+      "inputType": "GetAccountInfoInput",
+      "description": "Read the current standard Key wallet balance or prepaid Key remaining calls.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetAccountInfoInput has no input because the API Key identifies its own account or quota.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
