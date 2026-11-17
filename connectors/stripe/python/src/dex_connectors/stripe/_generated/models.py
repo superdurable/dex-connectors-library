@@ -178,3 +178,26 @@ class Refund:
 
 
 setattr(Refund, '__module__', 'dex_connectors.stripe.models')
+
+
+# CheckoutSessionEvent is one verified and normalized Stripe Checkout Session event.
+@dataclass(frozen=True, slots=True)
+class CheckoutSessionEvent:
+    # Type is the verified Stripe event type.
+    type: str = ''
+    # Session is the normalized Checkout Session snapshot carried by the event.
+    session: CheckoutSession = _dataclass_field(default_factory=CheckoutSession)
+
+
+setattr(CheckoutSessionEvent, '__module__', 'dex_connectors.stripe.models')
+
+
+# CheckoutSessionUpdatedTriggerConfiguration selects the Stripe event types accepted by one binding.
+# An empty list accepts every supported Checkout Session event type.
+@dataclass(frozen=True, slots=True)
+class CheckoutSessionUpdatedTriggerConfiguration:
+    # EventTypes limits the binding to supported Stripe event types; empty accepts all supported types.
+    event_types: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'eventTypes', 'dex_json_omit_default': True})
+
+
+setattr(CheckoutSessionUpdatedTriggerConfiguration, '__module__', 'dex_connectors.stripe.models')

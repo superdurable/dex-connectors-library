@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-stripe",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "factories": [
     {
@@ -322,7 +322,8 @@
           "invalidResponse": "unknown",
           "providerRejected": "rejected",
           "uncertain": "unknown"
-        }
+        },
+        "repeatOnUnknown": "safe"
       },
       "fields": {
         "stepType": "step_type",
@@ -391,6 +392,16 @@
           "paymentIntentId"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "define_checkout_session_updated_trigger_binding",
+      "kind": "trigger",
+      "triggerName": "checkoutSessionUpdated",
+      "fields": {
+        "connectionName": "connection_name",
+        "bindingName": "binding_name",
+        "configurationUI": "configuration_ui"
       }
     }
   ]

@@ -9,8 +9,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -44,6 +47,8 @@ CREATE_CARD_CHECKOUT_SESSION_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 CREATE_ACH_CHECKOUT_SESSION_DEFINITION = MutationDefinition(
@@ -60,6 +65,8 @@ CREATE_ACH_CHECKOUT_SESSION_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 GET_CHECKOUT_SESSION_DEFINITION = QueryDefinition(
@@ -108,4 +115,10 @@ CREATE_REFUND_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
+)
+
+CHECKOUT_SESSION_UPDATED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="checkoutSessionUpdated"),
+    description="Receive a verified Checkout Session completion, delayed-payment, or expiration event.",
 )

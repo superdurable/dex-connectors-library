@@ -36,6 +36,7 @@ def new_create_card_checkout_session_step(
     defect: dex.StepTarget[MutationResult[CheckoutSession]] | None = None,
     result_attribute: dex.Attribute[MutationResult[CheckoutSession]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, CreateCardCheckoutSessionInput, CheckoutSession]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Stripe Step connection name must match its connection reference")
@@ -69,6 +70,7 @@ def new_create_card_checkout_session_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -89,6 +91,7 @@ def new_create_ach_checkout_session_step(
     defect: dex.StepTarget[MutationResult[CheckoutSession]] | None = None,
     result_attribute: dex.Attribute[MutationResult[CheckoutSession]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, CreateACHCheckoutSessionInput, CheckoutSession]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Stripe Step connection name must match its connection reference")
@@ -122,6 +125,7 @@ def new_create_ach_checkout_session_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
