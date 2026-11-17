@@ -5416,6 +5416,2554 @@
       },
       "name": "deletePaymentMethodFromVault-defect",
       "operation": "deletePaymentMethodFromVault"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"transactions\":{\"edges\":[{\"node\":{\"id\":\"txn-1\",\"status\":\"SETTLED\"}}],\"pageInfo\":{\"hasNextPage\":false,\"endCursor\":\"cursor-1\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query SearchTransactions($input: TransactionSearchInput!, $first: Int!, $after: String) { transactions(input: $input, first: $first, after: $after) { edges { node { id status } } pageInfo { hasNextPage endCursor } } }",
+            "variables": {
+              "after": "cursor-0",
+              "first": 2,
+              "input": {
+                "id": {
+                  "is": "txn-1"
+                },
+                "orderId": {
+                  "is": "order-1"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "endCursor": "cursor-1",
+          "hasNextPage": false,
+          "transactions": [
+            {
+              "id": "txn-1",
+              "status": "SETTLED"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-0",
+        "first": 2,
+        "orderId": "order-1",
+        "transactionId": "txn-1"
+      },
+      "name": "searchTransactions-success",
+      "operation": "searchTransactions"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"VALIDATION\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query SearchTransactions($input: TransactionSearchInput!, $first: Int!, $after: String) { transactions(input: $input, first: $first, after: $after) { edges { node { id status } } pageInfo { hasNextPage endCursor } } }",
+            "variables": {
+              "after": "cursor-0",
+              "first": 2,
+              "input": {
+                "id": {
+                  "is": "txn-1"
+                },
+                "orderId": {
+                  "is": "order-1"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasNextPage": false,
+          "transactions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-0",
+        "first": 2,
+        "orderId": "order-1",
+        "transactionId": "txn-1"
+      },
+      "name": "searchTransactions-providerRejected",
+      "operation": "searchTransactions"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"NOT_FOUND\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query SearchTransactions($input: TransactionSearchInput!, $first: Int!, $after: String) { transactions(input: $input, first: $first, after: $after) { edges { node { id status } } pageInfo { hasNextPage endCursor } } }",
+            "variables": {
+              "after": "cursor-0",
+              "first": 2,
+              "input": {
+                "id": {
+                  "is": "txn-1"
+                },
+                "orderId": {
+                  "is": "order-1"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "hasNextPage": false,
+          "transactions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-0",
+        "first": 2,
+        "orderId": "order-1",
+        "transactionId": "txn-1"
+      },
+      "name": "searchTransactions-notFound",
+      "operation": "searchTransactions"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query SearchTransactions($input: TransactionSearchInput!, $first: Int!, $after: String) { transactions(input: $input, first: $first, after: $after) { edges { node { id status } } pageInfo { hasNextPage endCursor } } }",
+            "variables": {
+              "after": "cursor-0",
+              "first": 2,
+              "input": {
+                "id": {
+                  "is": "txn-1"
+                },
+                "orderId": {
+                  "is": "order-1"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-0",
+        "first": 2,
+        "orderId": "order-1",
+        "transactionId": "txn-1"
+      },
+      "name": "searchTransactions-final429",
+      "operation": "searchTransactions"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query SearchTransactions($input: TransactionSearchInput!, $first: Int!, $after: String) { transactions(input: $input, first: $first, after: $after) { edges { node { id status } } pageInfo { hasNextPage endCursor } } }",
+            "variables": {
+              "after": "cursor-0",
+              "first": 2,
+              "input": {
+                "id": {
+                  "is": "txn-1"
+                },
+                "orderId": {
+                  "is": "order-1"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-0",
+        "first": 2,
+        "orderId": "order-1",
+        "transactionId": "txn-1"
+      },
+      "name": "searchTransactions-final503",
+      "operation": "searchTransactions"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query SearchTransactions($input: TransactionSearchInput!, $first: Int!, $after: String) { transactions(input: $input, first: $first, after: $after) { edges { node { id status } } pageInfo { hasNextPage endCursor } } }",
+            "variables": {
+              "after": "cursor-0",
+              "first": 2,
+              "input": {
+                "id": {
+                  "is": "txn-1"
+                },
+                "orderId": {
+                  "is": "order-1"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-0",
+        "first": 2,
+        "orderId": "order-1",
+        "transactionId": "txn-1"
+      },
+      "name": "searchTransactions-transportFailure",
+      "operation": "searchTransactions"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query SearchTransactions($input: TransactionSearchInput!, $first: Int!, $after: String) { transactions(input: $input, first: $first, after: $after) { edges { node { id status } } pageInfo { hasNextPage endCursor } } }",
+            "variables": {
+              "after": "cursor-0",
+              "first": 2,
+              "input": {
+                "id": {
+                  "is": "txn-1"
+                },
+                "orderId": {
+                  "is": "order-1"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasNextPage": false,
+          "transactions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-0",
+        "first": 2,
+        "orderId": "order-1",
+        "transactionId": "txn-1"
+      },
+      "name": "searchTransactions-invalidResponse",
+      "operation": "searchTransactions"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasNextPage": false,
+          "transactions": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-0",
+        "first": 2,
+        "orderId": "",
+        "transactionId": ""
+      },
+      "name": "searchTransactions-defect",
+      "operation": "searchTransactions"
+    },
+    {
+      "callId": "def33b0a-55f8-5588-b784-5c49c7098b97",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"chargePaymentMethod\":{\"transaction\":{\"id\":\"txn-1\",\"status\":\"SUBMITTED_FOR_SETTLEMENT\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation ChargePaymentMethod($input: ChargePaymentMethodInput!) { chargePaymentMethod(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "def33b0a-55f8-5588-b784-5c49c7098b97",
+                "clientMutationId": "def33b0a-55f8-5588-b784-5c49c7098b97",
+                "paymentMethodId": "payment-method-1",
+                "transaction": {
+                  "amount": "10.00",
+                  "merchantAccountId": "merchant-1",
+                  "orderId": "order-1"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "charged",
+        "failureKind": "",
+        "output": {
+          "id": "txn-1",
+          "status": "SUBMITTED_FOR_SETTLEMENT"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "def33b0a-55f8-5588-b784-5c49c7098b97",
+      "input": {
+        "amount": "10.00",
+        "merchantAccountId": "merchant-1",
+        "orderId": "order-1",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "chargePaymentMethod-success",
+      "operation": "chargePaymentMethod"
+    },
+    {
+      "callId": "def33b0a-55f8-5588-b784-5c49c7098b97",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"VALIDATION\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation ChargePaymentMethod($input: ChargePaymentMethodInput!) { chargePaymentMethod(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "def33b0a-55f8-5588-b784-5c49c7098b97",
+                "clientMutationId": "def33b0a-55f8-5588-b784-5c49c7098b97",
+                "paymentMethodId": "payment-method-1",
+                "transaction": {
+                  "amount": "10.00",
+                  "merchantAccountId": "merchant-1",
+                  "orderId": "order-1"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "def33b0a-55f8-5588-b784-5c49c7098b97",
+      "input": {
+        "amount": "10.00",
+        "merchantAccountId": "merchant-1",
+        "orderId": "order-1",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "chargePaymentMethod-providerRejected",
+      "operation": "chargePaymentMethod"
+    },
+    {
+      "callId": "def33b0a-55f8-5588-b784-5c49c7098b97",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"NOT_FOUND\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation ChargePaymentMethod($input: ChargePaymentMethodInput!) { chargePaymentMethod(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "def33b0a-55f8-5588-b784-5c49c7098b97",
+                "clientMutationId": "def33b0a-55f8-5588-b784-5c49c7098b97",
+                "paymentMethodId": "payment-method-1",
+                "transaction": {
+                  "amount": "10.00",
+                  "merchantAccountId": "merchant-1",
+                  "orderId": "order-1"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "def33b0a-55f8-5588-b784-5c49c7098b97",
+      "input": {
+        "amount": "10.00",
+        "merchantAccountId": "merchant-1",
+        "orderId": "order-1",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "chargePaymentMethod-notFound",
+      "operation": "chargePaymentMethod"
+    },
+    {
+      "callId": "def33b0a-55f8-5588-b784-5c49c7098b97",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation ChargePaymentMethod($input: ChargePaymentMethodInput!) { chargePaymentMethod(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "def33b0a-55f8-5588-b784-5c49c7098b97",
+                "clientMutationId": "def33b0a-55f8-5588-b784-5c49c7098b97",
+                "paymentMethodId": "payment-method-1",
+                "transaction": {
+                  "amount": "10.00",
+                  "merchantAccountId": "merchant-1",
+                  "orderId": "order-1"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "def33b0a-55f8-5588-b784-5c49c7098b97",
+      "input": {
+        "amount": "10.00",
+        "merchantAccountId": "merchant-1",
+        "orderId": "order-1",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "chargePaymentMethod-final429",
+      "operation": "chargePaymentMethod"
+    },
+    {
+      "callId": "def33b0a-55f8-5588-b784-5c49c7098b97",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation ChargePaymentMethod($input: ChargePaymentMethodInput!) { chargePaymentMethod(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "def33b0a-55f8-5588-b784-5c49c7098b97",
+                "clientMutationId": "def33b0a-55f8-5588-b784-5c49c7098b97",
+                "paymentMethodId": "payment-method-1",
+                "transaction": {
+                  "amount": "10.00",
+                  "merchantAccountId": "merchant-1",
+                  "orderId": "order-1"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "def33b0a-55f8-5588-b784-5c49c7098b97",
+      "input": {
+        "amount": "10.00",
+        "merchantAccountId": "merchant-1",
+        "orderId": "order-1",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "chargePaymentMethod-final503",
+      "operation": "chargePaymentMethod"
+    },
+    {
+      "callId": "def33b0a-55f8-5588-b784-5c49c7098b97",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation ChargePaymentMethod($input: ChargePaymentMethodInput!) { chargePaymentMethod(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "def33b0a-55f8-5588-b784-5c49c7098b97",
+                "clientMutationId": "def33b0a-55f8-5588-b784-5c49c7098b97",
+                "paymentMethodId": "payment-method-1",
+                "transaction": {
+                  "amount": "10.00",
+                  "merchantAccountId": "merchant-1",
+                  "orderId": "order-1"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "def33b0a-55f8-5588-b784-5c49c7098b97",
+      "input": {
+        "amount": "10.00",
+        "merchantAccountId": "merchant-1",
+        "orderId": "order-1",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "chargePaymentMethod-transportFailure",
+      "operation": "chargePaymentMethod"
+    },
+    {
+      "callId": "def33b0a-55f8-5588-b784-5c49c7098b97",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation ChargePaymentMethod($input: ChargePaymentMethodInput!) { chargePaymentMethod(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "def33b0a-55f8-5588-b784-5c49c7098b97",
+                "clientMutationId": "def33b0a-55f8-5588-b784-5c49c7098b97",
+                "paymentMethodId": "payment-method-1",
+                "transaction": {
+                  "amount": "10.00",
+                  "merchantAccountId": "merchant-1",
+                  "orderId": "order-1"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "def33b0a-55f8-5588-b784-5c49c7098b97",
+      "input": {
+        "amount": "10.00",
+        "merchantAccountId": "merchant-1",
+        "orderId": "order-1",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "chargePaymentMethod-invalidResponse",
+      "operation": "chargePaymentMethod"
+    },
+    {
+      "callId": "def33b0a-55f8-5588-b784-5c49c7098b97",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "def33b0a-55f8-5588-b784-5c49c7098b97",
+      "input": {
+        "amount": "-1",
+        "merchantAccountId": "merchant-1",
+        "orderId": "order-1",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "chargePaymentMethod-defect",
+      "operation": "chargePaymentMethod"
+    },
+    {
+      "attempts": 2,
+      "callId": "def33b0a-55f8-5588-b784-5c49c7098b97",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation ChargePaymentMethod($input: ChargePaymentMethodInput!) { chargePaymentMethod(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "def33b0a-55f8-5588-b784-5c49c7098b97",
+                "clientMutationId": "def33b0a-55f8-5588-b784-5c49c7098b97",
+                "paymentMethodId": "payment-method-1",
+                "transaction": {
+                  "amount": "10.00",
+                  "merchantAccountId": "merchant-1",
+                  "orderId": "order-1"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":{\"chargePaymentMethod\":{\"transaction\":{\"id\":\"txn-1\",\"status\":\"SUBMITTED_FOR_SETTLEMENT\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation ChargePaymentMethod($input: ChargePaymentMethodInput!) { chargePaymentMethod(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "def33b0a-55f8-5588-b784-5c49c7098b97",
+                "clientMutationId": "def33b0a-55f8-5588-b784-5c49c7098b97",
+                "paymentMethodId": "payment-method-1",
+                "transaction": {
+                  "amount": "10.00",
+                  "merchantAccountId": "merchant-1",
+                  "orderId": "order-1"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "charged",
+        "failureKind": "",
+        "output": {
+          "id": "txn-1",
+          "status": "SUBMITTED_FOR_SETTLEMENT"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "def33b0a-55f8-5588-b784-5c49c7098b97",
+      "input": {
+        "amount": "10.00",
+        "merchantAccountId": "merchant-1",
+        "orderId": "order-1",
+        "paymentMethodId": "payment-method-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "chargePaymentMethod-serverFailureThenSuccess",
+      "operation": "chargePaymentMethod"
+    },
+    {
+      "callId": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"captureTransaction\":{\"transaction\":{\"id\":\"txn-1\",\"status\":\"SUBMITTED_FOR_SETTLEMENT\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CaptureTransaction($input: CaptureTransactionInput!) { captureTransaction(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+                "clientMutationId": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+                "transaction": {
+                  "amount": "5.00"
+                },
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "captured",
+        "failureKind": "",
+        "output": {
+          "id": "txn-1",
+          "status": "SUBMITTED_FOR_SETTLEMENT"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+      "input": {
+        "amount": "5.00",
+        "transactionId": "txn-1"
+      },
+      "name": "captureTransaction-success",
+      "operation": "captureTransaction"
+    },
+    {
+      "callId": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"VALIDATION\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CaptureTransaction($input: CaptureTransactionInput!) { captureTransaction(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+                "clientMutationId": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+                "transaction": {
+                  "amount": "5.00"
+                },
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+      "input": {
+        "amount": "5.00",
+        "transactionId": "txn-1"
+      },
+      "name": "captureTransaction-providerRejected",
+      "operation": "captureTransaction"
+    },
+    {
+      "callId": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"NOT_FOUND\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CaptureTransaction($input: CaptureTransactionInput!) { captureTransaction(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+                "clientMutationId": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+                "transaction": {
+                  "amount": "5.00"
+                },
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+      "input": {
+        "amount": "5.00",
+        "transactionId": "txn-1"
+      },
+      "name": "captureTransaction-notFound",
+      "operation": "captureTransaction"
+    },
+    {
+      "callId": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CaptureTransaction($input: CaptureTransactionInput!) { captureTransaction(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+                "clientMutationId": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+                "transaction": {
+                  "amount": "5.00"
+                },
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+      "input": {
+        "amount": "5.00",
+        "transactionId": "txn-1"
+      },
+      "name": "captureTransaction-final429",
+      "operation": "captureTransaction"
+    },
+    {
+      "callId": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CaptureTransaction($input: CaptureTransactionInput!) { captureTransaction(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+                "clientMutationId": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+                "transaction": {
+                  "amount": "5.00"
+                },
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+      "input": {
+        "amount": "5.00",
+        "transactionId": "txn-1"
+      },
+      "name": "captureTransaction-final503",
+      "operation": "captureTransaction"
+    },
+    {
+      "callId": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CaptureTransaction($input: CaptureTransactionInput!) { captureTransaction(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+                "clientMutationId": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+                "transaction": {
+                  "amount": "5.00"
+                },
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+      "input": {
+        "amount": "5.00",
+        "transactionId": "txn-1"
+      },
+      "name": "captureTransaction-transportFailure",
+      "operation": "captureTransaction"
+    },
+    {
+      "callId": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CaptureTransaction($input: CaptureTransactionInput!) { captureTransaction(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+                "clientMutationId": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+                "transaction": {
+                  "amount": "5.00"
+                },
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+      "input": {
+        "amount": "5.00",
+        "transactionId": "txn-1"
+      },
+      "name": "captureTransaction-invalidResponse",
+      "operation": "captureTransaction"
+    },
+    {
+      "callId": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+      "input": {
+        "amount": "5.00",
+        "transactionId": ""
+      },
+      "name": "captureTransaction-defect",
+      "operation": "captureTransaction"
+    },
+    {
+      "attempts": 2,
+      "callId": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CaptureTransaction($input: CaptureTransactionInput!) { captureTransaction(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+                "clientMutationId": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+                "transaction": {
+                  "amount": "5.00"
+                },
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":{\"captureTransaction\":{\"transaction\":{\"id\":\"txn-1\",\"status\":\"SUBMITTED_FOR_SETTLEMENT\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CaptureTransaction($input: CaptureTransactionInput!) { captureTransaction(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+                "clientMutationId": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+                "transaction": {
+                  "amount": "5.00"
+                },
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "captured",
+        "failureKind": "",
+        "output": {
+          "id": "txn-1",
+          "status": "SUBMITTED_FOR_SETTLEMENT"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce98a7df-1e82-516f-9682-fbe9ed5601a6",
+      "input": {
+        "amount": "5.00",
+        "transactionId": "txn-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "captureTransaction-serverFailureThenSuccess",
+      "operation": "captureTransaction"
+    },
+    {
+      "callId": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"voidTransaction\":{\"transaction\":{\"id\":\"txn-1\",\"status\":\"VOIDED\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation VoidTransaction($input: VoidTransactionInput!) { voidTransaction(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+                "clientMutationId": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "voided",
+        "failureKind": "",
+        "output": {
+          "id": "txn-1",
+          "status": "VOIDED"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+      "input": {
+        "transactionId": "txn-1"
+      },
+      "name": "voidTransaction-success",
+      "operation": "voidTransaction"
+    },
+    {
+      "callId": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"VALIDATION\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation VoidTransaction($input: VoidTransactionInput!) { voidTransaction(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+                "clientMutationId": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+      "input": {
+        "transactionId": "txn-1"
+      },
+      "name": "voidTransaction-providerRejected",
+      "operation": "voidTransaction"
+    },
+    {
+      "callId": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"NOT_FOUND\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation VoidTransaction($input: VoidTransactionInput!) { voidTransaction(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+                "clientMutationId": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+      "input": {
+        "transactionId": "txn-1"
+      },
+      "name": "voidTransaction-notFound",
+      "operation": "voidTransaction"
+    },
+    {
+      "callId": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation VoidTransaction($input: VoidTransactionInput!) { voidTransaction(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+                "clientMutationId": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+      "input": {
+        "transactionId": "txn-1"
+      },
+      "name": "voidTransaction-final429",
+      "operation": "voidTransaction"
+    },
+    {
+      "callId": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation VoidTransaction($input: VoidTransactionInput!) { voidTransaction(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+                "clientMutationId": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+      "input": {
+        "transactionId": "txn-1"
+      },
+      "name": "voidTransaction-final503",
+      "operation": "voidTransaction"
+    },
+    {
+      "callId": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation VoidTransaction($input: VoidTransactionInput!) { voidTransaction(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+                "clientMutationId": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+      "input": {
+        "transactionId": "txn-1"
+      },
+      "name": "voidTransaction-transportFailure",
+      "operation": "voidTransaction"
+    },
+    {
+      "callId": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation VoidTransaction($input: VoidTransactionInput!) { voidTransaction(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+                "clientMutationId": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+      "input": {
+        "transactionId": "txn-1"
+      },
+      "name": "voidTransaction-invalidResponse",
+      "operation": "voidTransaction"
+    },
+    {
+      "callId": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+      "input": {
+        "transactionId": ""
+      },
+      "name": "voidTransaction-defect",
+      "operation": "voidTransaction"
+    },
+    {
+      "attempts": 2,
+      "callId": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation VoidTransaction($input: VoidTransactionInput!) { voidTransaction(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+                "clientMutationId": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":{\"voidTransaction\":{\"transaction\":{\"id\":\"txn-1\",\"status\":\"VOIDED\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation VoidTransaction($input: VoidTransactionInput!) { voidTransaction(input: $input) { transaction { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+                "clientMutationId": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "voided",
+        "failureKind": "",
+        "output": {
+          "id": "txn-1",
+          "status": "VOIDED"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cb5847b4-7cf6-5a64-91f5-d3c75a8f1c85",
+      "input": {
+        "transactionId": "txn-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "voidTransaction-serverFailureThenSuccess",
+      "operation": "voidTransaction"
+    },
+    {
+      "callId": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"refundTransaction\":{\"refund\":{\"id\":\"refund-1\",\"status\":\"SUBMITTED_FOR_SETTLEMENT\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation RefundTransaction($input: RefundTransactionInput!) { refundTransaction(input: $input) { refund { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+                "clientMutationId": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+                "refund": {
+                  "amount": "2.00",
+                  "orderId": "refund-order-1"
+                },
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "refunded",
+        "failureKind": "",
+        "output": {
+          "id": "refund-1",
+          "status": "SUBMITTED_FOR_SETTLEMENT"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+      "input": {
+        "amount": "2.00",
+        "orderId": "refund-order-1",
+        "transactionId": "txn-1"
+      },
+      "name": "refundTransaction-success",
+      "operation": "refundTransaction"
+    },
+    {
+      "callId": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"VALIDATION\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation RefundTransaction($input: RefundTransactionInput!) { refundTransaction(input: $input) { refund { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+                "clientMutationId": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+                "refund": {
+                  "amount": "2.00",
+                  "orderId": "refund-order-1"
+                },
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+      "input": {
+        "amount": "2.00",
+        "orderId": "refund-order-1",
+        "transactionId": "txn-1"
+      },
+      "name": "refundTransaction-providerRejected",
+      "operation": "refundTransaction"
+    },
+    {
+      "callId": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"NOT_FOUND\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation RefundTransaction($input: RefundTransactionInput!) { refundTransaction(input: $input) { refund { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+                "clientMutationId": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+                "refund": {
+                  "amount": "2.00",
+                  "orderId": "refund-order-1"
+                },
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+      "input": {
+        "amount": "2.00",
+        "orderId": "refund-order-1",
+        "transactionId": "txn-1"
+      },
+      "name": "refundTransaction-notFound",
+      "operation": "refundTransaction"
+    },
+    {
+      "callId": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation RefundTransaction($input: RefundTransactionInput!) { refundTransaction(input: $input) { refund { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+                "clientMutationId": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+                "refund": {
+                  "amount": "2.00",
+                  "orderId": "refund-order-1"
+                },
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+      "input": {
+        "amount": "2.00",
+        "orderId": "refund-order-1",
+        "transactionId": "txn-1"
+      },
+      "name": "refundTransaction-final429",
+      "operation": "refundTransaction"
+    },
+    {
+      "callId": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation RefundTransaction($input: RefundTransactionInput!) { refundTransaction(input: $input) { refund { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+                "clientMutationId": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+                "refund": {
+                  "amount": "2.00",
+                  "orderId": "refund-order-1"
+                },
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+      "input": {
+        "amount": "2.00",
+        "orderId": "refund-order-1",
+        "transactionId": "txn-1"
+      },
+      "name": "refundTransaction-final503",
+      "operation": "refundTransaction"
+    },
+    {
+      "callId": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation RefundTransaction($input: RefundTransactionInput!) { refundTransaction(input: $input) { refund { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+                "clientMutationId": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+                "refund": {
+                  "amount": "2.00",
+                  "orderId": "refund-order-1"
+                },
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+      "input": {
+        "amount": "2.00",
+        "orderId": "refund-order-1",
+        "transactionId": "txn-1"
+      },
+      "name": "refundTransaction-transportFailure",
+      "operation": "refundTransaction"
+    },
+    {
+      "callId": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation RefundTransaction($input: RefundTransactionInput!) { refundTransaction(input: $input) { refund { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+                "clientMutationId": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+                "refund": {
+                  "amount": "2.00",
+                  "orderId": "refund-order-1"
+                },
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+      "input": {
+        "amount": "2.00",
+        "orderId": "refund-order-1",
+        "transactionId": "txn-1"
+      },
+      "name": "refundTransaction-invalidResponse",
+      "operation": "refundTransaction"
+    },
+    {
+      "callId": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+      "input": {
+        "amount": "2.00",
+        "orderId": "refund-order-1",
+        "transactionId": ""
+      },
+      "name": "refundTransaction-defect",
+      "operation": "refundTransaction"
+    },
+    {
+      "attempts": 2,
+      "callId": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation RefundTransaction($input: RefundTransactionInput!) { refundTransaction(input: $input) { refund { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+                "clientMutationId": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+                "refund": {
+                  "amount": "2.00",
+                  "orderId": "refund-order-1"
+                },
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":{\"refundTransaction\":{\"refund\":{\"id\":\"refund-1\",\"status\":\"SUBMITTED_FOR_SETTLEMENT\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation RefundTransaction($input: RefundTransactionInput!) { refundTransaction(input: $input) { refund { id status } } }",
+            "variables": {
+              "input": {
+                "apiRequestKey": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+                "clientMutationId": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+                "refund": {
+                  "amount": "2.00",
+                  "orderId": "refund-order-1"
+                },
+                "transactionId": "txn-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "refunded",
+        "failureKind": "",
+        "output": {
+          "id": "refund-1",
+          "status": "SUBMITTED_FOR_SETTLEMENT"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cbbee798-3708-59c4-9e56-aeac9b0e4d0b",
+      "input": {
+        "amount": "2.00",
+        "orderId": "refund-order-1",
+        "transactionId": "txn-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "refundTransaction-serverFailureThenSuccess",
+      "operation": "refundTransaction"
     }
   ],
   "schemaVersion": 1

@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "searchTransactions/searchedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.TransactionsPage](`{"transactions":[{"id":"txn-1","status":"SETTLED"}],"hasNextPage":false}`)
+			return err
+		}},
+		{name: "chargePaymentMethod/chargedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.TransactionProfile](`{"id":"txn-1","status":"SUBMITTED_FOR_SETTLEMENT"}`)
+			return err
+		}},
+		{name: "captureTransaction/capturedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.TransactionProfile](`{"id":"txn-1","status":"SUBMITTED_FOR_SETTLEMENT"}`)
+			return err
+		}},
+		{name: "voidTransaction/voidedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.TransactionProfile](`{"id":"txn-1","status":"SUBMITTED_FOR_SETTLEMENT"}`)
+			return err
+		}},
+		{name: "refundTransaction/refundedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.RefundProfile](`{"id":"refund-1","status":"SETTLED"}`)
+			return err
+		}},
 		{name: "vaultPaymentMethod/vaultedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[braintree.PaymentMethodProfile](`{"id":"payment-method-1","usage":"MULTI_USE"}`)
 			return err
@@ -74,6 +94,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.SearchTransactions().Definition().Operation.OperationID != "searchTransactions" {
+		t.Errorf("searchTransactions mock has another definition")
+	}
+	if mock.ChargePaymentMethod().Definition().Operation.OperationID != "chargePaymentMethod" {
+		t.Errorf("chargePaymentMethod mock has another definition")
+	}
+	if mock.CaptureTransaction().Definition().Operation.OperationID != "captureTransaction" {
+		t.Errorf("captureTransaction mock has another definition")
+	}
+	if mock.VoidTransaction().Definition().Operation.OperationID != "voidTransaction" {
+		t.Errorf("voidTransaction mock has another definition")
+	}
+	if mock.RefundTransaction().Definition().Operation.OperationID != "refundTransaction" {
+		t.Errorf("refundTransaction mock has another definition")
+	}
 	if mock.VaultPaymentMethod().Definition().Operation.OperationID != "vaultPaymentMethod" {
 		t.Errorf("vaultPaymentMethod mock has another definition")
 	}

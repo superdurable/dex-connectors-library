@@ -52,5 +52,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"updateCreditCardExpirationDate": newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.UpdateCreditCardExpirationDate(), reference, scenario.CallID),
 		"updateCreditCardBillingAddress": newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.UpdateCreditCardBillingAddress(), reference, scenario.CallID),
 		"deletePaymentMethodFromVault":   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeletePaymentMethodFromVault(), reference, scenario.CallID),
+		"searchTransactions":             newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.SearchTransactions(), reference),
+		"chargePaymentMethod":            newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.ChargePaymentMethod(), reference, scenario.CallID),
+		"captureTransaction":             newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.CaptureTransaction(), reference, scenario.CallID),
+		"voidTransaction":                newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.VoidTransaction(), reference, scenario.CallID),
+		"refundTransaction":              newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.RefundTransaction(), reference, scenario.CallID),
 	}}
 }

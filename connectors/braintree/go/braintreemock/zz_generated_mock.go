@@ -18,6 +18,11 @@ import (
 // Mock is a scripted braintree connection. Script each operation through its accessor.
 type Mock struct {
 	connection                     braintree.Connection
+	searchTransactions             *connectormock.Query[braintree.SearchTransactionsInput, braintree.TransactionsPage]
+	chargePaymentMethod            *connectormock.Mutation[braintree.ChargePaymentMethodInput, braintree.TransactionProfile]
+	captureTransaction             *connectormock.Mutation[braintree.CaptureTransactionInput, braintree.TransactionProfile]
+	voidTransaction                *connectormock.Mutation[braintree.GetTransactionInput, braintree.TransactionProfile]
+	refundTransaction              *connectormock.Mutation[braintree.RefundTransactionInput, braintree.RefundProfile]
 	vaultPaymentMethod             *connectormock.Mutation[braintree.VaultPaymentMethodInput, braintree.PaymentMethodProfile]
 	updateCreditCardCardholderName *connectormock.Mutation[braintree.UpdateCreditCardCardholderNameInput, braintree.PaymentMethodProfile]
 	updateCreditCardExpirationDate *connectormock.Mutation[braintree.UpdateCreditCardExpirationDateInput, braintree.PaymentMethodProfile]
@@ -37,6 +42,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		searchTransactions:             connectormock.NewQuery[braintree.SearchTransactionsInput, braintree.TransactionsPage](t, braintree.SearchTransactionsDefinition),
+		chargePaymentMethod:            connectormock.NewMutation[braintree.ChargePaymentMethodInput, braintree.TransactionProfile](t, braintree.ChargePaymentMethodDefinition),
+		captureTransaction:             connectormock.NewMutation[braintree.CaptureTransactionInput, braintree.TransactionProfile](t, braintree.CaptureTransactionDefinition),
+		voidTransaction:                connectormock.NewMutation[braintree.GetTransactionInput, braintree.TransactionProfile](t, braintree.VoidTransactionDefinition),
+		refundTransaction:              connectormock.NewMutation[braintree.RefundTransactionInput, braintree.RefundProfile](t, braintree.RefundTransactionDefinition),
 		vaultPaymentMethod:             connectormock.NewMutation[braintree.VaultPaymentMethodInput, braintree.PaymentMethodProfile](t, braintree.VaultPaymentMethodDefinition),
 		updateCreditCardCardholderName: connectormock.NewMutation[braintree.UpdateCreditCardCardholderNameInput, braintree.PaymentMethodProfile](t, braintree.UpdateCreditCardCardholderNameDefinition),
 		updateCreditCardExpirationDate: connectormock.NewMutation[braintree.UpdateCreditCardExpirationDateInput, braintree.PaymentMethodProfile](t, braintree.UpdateCreditCardExpirationDateDefinition),
@@ -50,6 +60,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		getRefund:                      connectormock.NewQuery[braintree.GetRefundInput, braintree.RefundProfile](t, braintree.GetRefundDefinition),
 		getTransaction:                 connectormock.NewQuery[braintree.GetTransactionInput, braintree.TransactionProfile](t, braintree.GetTransactionDefinition),
 	}
+	mock.searchTransactions.Default(SearchTransactionsDefault())
+	mock.chargePaymentMethod.Default(ChargePaymentMethodDefault())
+	mock.captureTransaction.Default(CaptureTransactionDefault())
+	mock.voidTransaction.Default(VoidTransactionDefault())
+	mock.refundTransaction.Default(RefundTransactionDefault())
 	mock.vaultPaymentMethod.Default(VaultPaymentMethodDefault())
 	mock.updateCreditCardCardholderName.Default(UpdateCreditCardCardholderNameDefault())
 	mock.updateCreditCardExpirationDate.Default(UpdateCreditCardExpirationDateDefault())
@@ -72,6 +87,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() braintree.Connection { return mock.connection }
+
+// SearchTransactions returns the searchTransactions script.
+func (mock *Mock) SearchTransactions() *connectormock.Query[braintree.SearchTransactionsInput, braintree.TransactionsPage] {
+	return mock.searchTransactions
+}
+
+// ChargePaymentMethod returns the chargePaymentMethod script.
+func (mock *Mock) ChargePaymentMethod() *connectormock.Mutation[braintree.ChargePaymentMethodInput, braintree.TransactionProfile] {
+	return mock.chargePaymentMethod
+}
+
+// CaptureTransaction returns the captureTransaction script.
+func (mock *Mock) CaptureTransaction() *connectormock.Mutation[braintree.CaptureTransactionInput, braintree.TransactionProfile] {
+	return mock.captureTransaction
+}
+
+// VoidTransaction returns the voidTransaction script.
+func (mock *Mock) VoidTransaction() *connectormock.Mutation[braintree.GetTransactionInput, braintree.TransactionProfile] {
+	return mock.voidTransaction
+}
+
+// RefundTransaction returns the refundTransaction script.
+func (mock *Mock) RefundTransaction() *connectormock.Mutation[braintree.RefundTransactionInput, braintree.RefundProfile] {
+	return mock.refundTransaction
+}
 
 // VaultPaymentMethod returns the vaultPaymentMethod script.
 func (mock *Mock) VaultPaymentMethod() *connectormock.Mutation[braintree.VaultPaymentMethodInput, braintree.PaymentMethodProfile] {
@@ -135,6 +175,21 @@ func (mock *Mock) GetTransaction() *connectormock.Query[braintree.GetTransaction
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) SearchTransactions() sdkgo.Query[braintree.SearchTransactionsInput, braintree.TransactionsPage] {
+	return operations.mock.searchTransactions
+}
+func (operations mockOperations) ChargePaymentMethod() sdkgo.Mutation[braintree.ChargePaymentMethodInput, braintree.TransactionProfile] {
+	return operations.mock.chargePaymentMethod
+}
+func (operations mockOperations) CaptureTransaction() sdkgo.Mutation[braintree.CaptureTransactionInput, braintree.TransactionProfile] {
+	return operations.mock.captureTransaction
+}
+func (operations mockOperations) VoidTransaction() sdkgo.Mutation[braintree.GetTransactionInput, braintree.TransactionProfile] {
+	return operations.mock.voidTransaction
+}
+func (operations mockOperations) RefundTransaction() sdkgo.Mutation[braintree.RefundTransactionInput, braintree.RefundProfile] {
+	return operations.mock.refundTransaction
+}
 func (operations mockOperations) VaultPaymentMethod() sdkgo.Mutation[braintree.VaultPaymentMethodInput, braintree.PaymentMethodProfile] {
 	return operations.mock.vaultPaymentMethod
 }
@@ -170,6 +225,191 @@ func (operations mockOperations) GetRefund() sdkgo.Query[braintree.GetRefundInpu
 }
 func (operations mockOperations) GetTransaction() sdkgo.Query[braintree.GetTransactionInput, braintree.TransactionProfile] {
 	return operations.mock.getTransaction
+}
+
+// SearchTransactionsSearched selects the searched branch: Braintree returned the requested result.
+func SearchTransactionsSearched(value braintree.TransactionsPage, failure *sdkgo.Failure) connectormock.Case[braintree.TransactionsPage] {
+	return connectormock.Branch(braintree.SearchTransactionsBranchSearched, value, failure)
+}
+
+// SearchTransactionsNotFound selects the notFound branch: The selected resource was not found.
+func SearchTransactionsNotFound(value braintree.TransactionsPage, failure *sdkgo.Failure) connectormock.Case[braintree.TransactionsPage] {
+	return connectormock.Branch(braintree.SearchTransactionsBranchNotFound, value, failure)
+}
+
+// SearchTransactionsProviderRejected selects the providerRejected branch: Braintree definitively rejected the request.
+func SearchTransactionsProviderRejected(value braintree.TransactionsPage, failure *sdkgo.Failure) connectormock.Case[braintree.TransactionsPage] {
+	return connectormock.Branch(braintree.SearchTransactionsBranchProviderRejected, value, failure)
+}
+
+// SearchTransactionsInvalidResponse selects the invalidResponse branch: Braintree returned invalid search JSON.
+func SearchTransactionsInvalidResponse(value braintree.TransactionsPage, failure *sdkgo.Failure) connectormock.Case[braintree.TransactionsPage] {
+	return connectormock.Branch(braintree.SearchTransactionsBranchInvalidResponse, value, failure)
+}
+
+// SearchTransactionsDefect selects the defect branch: Input or credentials are invalid.
+func SearchTransactionsDefect(value braintree.TransactionsPage, failure *sdkgo.Failure) connectormock.Case[braintree.TransactionsPage] {
+	return connectormock.Branch(braintree.SearchTransactionsBranchDefect, value, failure)
+}
+
+// SearchTransactionsRetry asks Dex to retry the searchTransactions Step, after the delay when it is positive.
+func SearchTransactionsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.TransactionsPage] {
+	return connectormock.Retry[braintree.TransactionsPage](failure, after)
+}
+
+// SearchTransactionsSearchedDefault is the manifest mock searchedDefault: One sample transaction page is returned.
+func SearchTransactionsSearchedDefault() connectormock.Case[braintree.TransactionsPage] {
+	value := connectormock.MustDecodeOutput[braintree.TransactionsPage](`{"transactions":[{"id":"txn-1","status":"SETTLED"}],"hasNextPage":false}`)
+	return connectormock.Branch(braintree.SearchTransactionsBranchSearched, value, nil)
+}
+
+// SearchTransactionsDefault is the manifest default, searchedDefault, which New installs.
+func SearchTransactionsDefault() connectormock.Case[braintree.TransactionsPage] {
+	return SearchTransactionsSearchedDefault()
+}
+
+// ChargePaymentMethodCharged selects the charged branch: Braintree returned the requested result.
+func ChargePaymentMethodCharged(value braintree.TransactionProfile, failure *sdkgo.Failure) connectormock.Case[braintree.TransactionProfile] {
+	return connectormock.Branch(braintree.ChargePaymentMethodBranchCharged, value, failure)
+}
+
+// ChargePaymentMethodNotFound selects the notFound branch: The selected resource was not found.
+func ChargePaymentMethodNotFound(value braintree.TransactionProfile, failure *sdkgo.Failure) connectormock.Case[braintree.TransactionProfile] {
+	return connectormock.Branch(braintree.ChargePaymentMethodBranchNotFound, value, failure)
+}
+
+// ChargePaymentMethodProviderRejected selects the providerRejected branch: Braintree definitively rejected the request.
+func ChargePaymentMethodProviderRejected(value braintree.TransactionProfile, failure *sdkgo.Failure) connectormock.Case[braintree.TransactionProfile] {
+	return connectormock.Branch(braintree.ChargePaymentMethodBranchProviderRejected, value, failure)
+}
+
+// ChargePaymentMethodDefect selects the defect branch: Input or credentials are invalid.
+func ChargePaymentMethodDefect(value braintree.TransactionProfile, failure *sdkgo.Failure) connectormock.Case[braintree.TransactionProfile] {
+	return connectormock.Branch(braintree.ChargePaymentMethodBranchDefect, value, failure)
+}
+
+// ChargePaymentMethodRetry asks Dex to retry the chargePaymentMethod Step, after the delay when it is positive.
+func ChargePaymentMethodRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.TransactionProfile] {
+	return connectormock.Retry[braintree.TransactionProfile](failure, after)
+}
+
+// ChargePaymentMethodChargedDefault is the manifest mock chargedDefault: One sample transaction is returned.
+func ChargePaymentMethodChargedDefault() connectormock.Case[braintree.TransactionProfile] {
+	value := connectormock.MustDecodeOutput[braintree.TransactionProfile](`{"id":"txn-1","status":"SUBMITTED_FOR_SETTLEMENT"}`)
+	return connectormock.Branch(braintree.ChargePaymentMethodBranchCharged, value, nil)
+}
+
+// ChargePaymentMethodDefault is the manifest default, chargedDefault, which New installs.
+func ChargePaymentMethodDefault() connectormock.Case[braintree.TransactionProfile] {
+	return ChargePaymentMethodChargedDefault()
+}
+
+// CaptureTransactionCaptured selects the captured branch: Braintree returned the requested result.
+func CaptureTransactionCaptured(value braintree.TransactionProfile, failure *sdkgo.Failure) connectormock.Case[braintree.TransactionProfile] {
+	return connectormock.Branch(braintree.CaptureTransactionBranchCaptured, value, failure)
+}
+
+// CaptureTransactionNotFound selects the notFound branch: The selected resource was not found.
+func CaptureTransactionNotFound(value braintree.TransactionProfile, failure *sdkgo.Failure) connectormock.Case[braintree.TransactionProfile] {
+	return connectormock.Branch(braintree.CaptureTransactionBranchNotFound, value, failure)
+}
+
+// CaptureTransactionProviderRejected selects the providerRejected branch: Braintree definitively rejected the request.
+func CaptureTransactionProviderRejected(value braintree.TransactionProfile, failure *sdkgo.Failure) connectormock.Case[braintree.TransactionProfile] {
+	return connectormock.Branch(braintree.CaptureTransactionBranchProviderRejected, value, failure)
+}
+
+// CaptureTransactionDefect selects the defect branch: Input or credentials are invalid.
+func CaptureTransactionDefect(value braintree.TransactionProfile, failure *sdkgo.Failure) connectormock.Case[braintree.TransactionProfile] {
+	return connectormock.Branch(braintree.CaptureTransactionBranchDefect, value, failure)
+}
+
+// CaptureTransactionRetry asks Dex to retry the captureTransaction Step, after the delay when it is positive.
+func CaptureTransactionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.TransactionProfile] {
+	return connectormock.Retry[braintree.TransactionProfile](failure, after)
+}
+
+// CaptureTransactionCapturedDefault is the manifest mock capturedDefault: One sample transaction is returned.
+func CaptureTransactionCapturedDefault() connectormock.Case[braintree.TransactionProfile] {
+	value := connectormock.MustDecodeOutput[braintree.TransactionProfile](`{"id":"txn-1","status":"SUBMITTED_FOR_SETTLEMENT"}`)
+	return connectormock.Branch(braintree.CaptureTransactionBranchCaptured, value, nil)
+}
+
+// CaptureTransactionDefault is the manifest default, capturedDefault, which New installs.
+func CaptureTransactionDefault() connectormock.Case[braintree.TransactionProfile] {
+	return CaptureTransactionCapturedDefault()
+}
+
+// VoidTransactionVoided selects the voided branch: Braintree returned the requested result.
+func VoidTransactionVoided(value braintree.TransactionProfile, failure *sdkgo.Failure) connectormock.Case[braintree.TransactionProfile] {
+	return connectormock.Branch(braintree.VoidTransactionBranchVoided, value, failure)
+}
+
+// VoidTransactionNotFound selects the notFound branch: The selected resource was not found.
+func VoidTransactionNotFound(value braintree.TransactionProfile, failure *sdkgo.Failure) connectormock.Case[braintree.TransactionProfile] {
+	return connectormock.Branch(braintree.VoidTransactionBranchNotFound, value, failure)
+}
+
+// VoidTransactionProviderRejected selects the providerRejected branch: Braintree definitively rejected the request.
+func VoidTransactionProviderRejected(value braintree.TransactionProfile, failure *sdkgo.Failure) connectormock.Case[braintree.TransactionProfile] {
+	return connectormock.Branch(braintree.VoidTransactionBranchProviderRejected, value, failure)
+}
+
+// VoidTransactionDefect selects the defect branch: Input or credentials are invalid.
+func VoidTransactionDefect(value braintree.TransactionProfile, failure *sdkgo.Failure) connectormock.Case[braintree.TransactionProfile] {
+	return connectormock.Branch(braintree.VoidTransactionBranchDefect, value, failure)
+}
+
+// VoidTransactionRetry asks Dex to retry the voidTransaction Step, after the delay when it is positive.
+func VoidTransactionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.TransactionProfile] {
+	return connectormock.Retry[braintree.TransactionProfile](failure, after)
+}
+
+// VoidTransactionVoidedDefault is the manifest mock voidedDefault: One sample transaction is returned.
+func VoidTransactionVoidedDefault() connectormock.Case[braintree.TransactionProfile] {
+	value := connectormock.MustDecodeOutput[braintree.TransactionProfile](`{"id":"txn-1","status":"SUBMITTED_FOR_SETTLEMENT"}`)
+	return connectormock.Branch(braintree.VoidTransactionBranchVoided, value, nil)
+}
+
+// VoidTransactionDefault is the manifest default, voidedDefault, which New installs.
+func VoidTransactionDefault() connectormock.Case[braintree.TransactionProfile] {
+	return VoidTransactionVoidedDefault()
+}
+
+// RefundTransactionRefunded selects the refunded branch: Braintree returned the requested result.
+func RefundTransactionRefunded(value braintree.RefundProfile, failure *sdkgo.Failure) connectormock.Case[braintree.RefundProfile] {
+	return connectormock.Branch(braintree.RefundTransactionBranchRefunded, value, failure)
+}
+
+// RefundTransactionNotFound selects the notFound branch: The selected resource was not found.
+func RefundTransactionNotFound(value braintree.RefundProfile, failure *sdkgo.Failure) connectormock.Case[braintree.RefundProfile] {
+	return connectormock.Branch(braintree.RefundTransactionBranchNotFound, value, failure)
+}
+
+// RefundTransactionProviderRejected selects the providerRejected branch: Braintree definitively rejected the request.
+func RefundTransactionProviderRejected(value braintree.RefundProfile, failure *sdkgo.Failure) connectormock.Case[braintree.RefundProfile] {
+	return connectormock.Branch(braintree.RefundTransactionBranchProviderRejected, value, failure)
+}
+
+// RefundTransactionDefect selects the defect branch: Input or credentials are invalid.
+func RefundTransactionDefect(value braintree.RefundProfile, failure *sdkgo.Failure) connectormock.Case[braintree.RefundProfile] {
+	return connectormock.Branch(braintree.RefundTransactionBranchDefect, value, failure)
+}
+
+// RefundTransactionRetry asks Dex to retry the refundTransaction Step, after the delay when it is positive.
+func RefundTransactionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.RefundProfile] {
+	return connectormock.Retry[braintree.RefundProfile](failure, after)
+}
+
+// RefundTransactionRefundedDefault is the manifest mock refundedDefault: One sample refund is returned.
+func RefundTransactionRefundedDefault() connectormock.Case[braintree.RefundProfile] {
+	value := connectormock.MustDecodeOutput[braintree.RefundProfile](`{"id":"refund-1","status":"SETTLED"}`)
+	return connectormock.Branch(braintree.RefundTransactionBranchRefunded, value, nil)
+}
+
+// RefundTransactionDefault is the manifest default, refundedDefault, which New installs.
+func RefundTransactionDefault() connectormock.Case[braintree.RefundProfile] {
+	return RefundTransactionRefundedDefault()
 }
 
 // VaultPaymentMethodVaulted selects the vaulted branch: A vaulted payment method was returned.
