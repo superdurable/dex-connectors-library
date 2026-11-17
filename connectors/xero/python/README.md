@@ -1,6 +1,6 @@
 # Xero Python connector
 
-`dex-connector-xero` v0.2.0 exposes all six Xero contact, invoice, and payment
+`dex-connector-xero` v0.2.1 exposes all six Xero contact, invoice, and payment
 operations through generated Dex Step factories and the `invoiceChanged` poll
 Trigger. It requires `dex-connectors-sdk>=0.12.0` and uses generated Custom
 Connection and OAuth refresh wiring. Configure `xero-books` in Dex Web **Connections** using the

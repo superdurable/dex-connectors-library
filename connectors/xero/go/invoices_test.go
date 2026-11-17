@@ -196,6 +196,14 @@ func TestCreateInvoiceRetriesOnlyWhatTheKeyMakesSafe(t *testing.T) {
 		{name: "maintenance", reply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusServiceUnavailable, `The Xero API is currently offline for maintenance`)
 		}, kind: sdkgo.FailureAvailability},
+		{name: "conflict", reply: func(response http.ResponseWriter) { writeJSON(t, response, http.StatusConflict, `{}`) },
+			kind: sdkgo.FailureProviderRejection},
+		{name: "not implemented", reply: func(response http.ResponseWriter) { writeJSON(t, response, http.StatusNotImplemented, `{}`) },
+			kind: sdkgo.FailureProviderRejection},
+		{name: "redirect", reply: func(response http.ResponseWriter) {
+			response.Header().Set("Location", "https://example.com/")
+			response.WriteHeader(http.StatusTemporaryRedirect)
+		}, kind: sdkgo.FailureProtocol},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingXero(t, func(response http.ResponseWriter, _ recordedRequest, _ int) { test.reply(response) })
