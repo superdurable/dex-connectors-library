@@ -18,6 +18,8 @@ import (
 // Mock is a scripted harvest connection. Script each operation through its accessor.
 type Mock struct {
 	connection                       harvest.Connection
+	getCompany                       *connectormock.Query[harvest.GetCompanyInput, harvest.CompanyRecord]
+	updateCompany                    *connectormock.Mutation[harvest.UpdateCompanyInput, harvest.CompanyRecord]
 	listClients                      *connectormock.Query[harvest.ListClientsInput, harvest.ClientPage]
 	getClient                        *connectormock.Query[harvest.GetClientInput, harvest.ClientRecord]
 	createClient                     *connectormock.Mutation[harvest.CreateClientInput, harvest.ClientRecord]
@@ -54,6 +56,8 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		getCompany:                       connectormock.NewQuery[harvest.GetCompanyInput, harvest.CompanyRecord](t, harvest.GetCompanyDefinition),
+		updateCompany:                    connectormock.NewMutation[harvest.UpdateCompanyInput, harvest.CompanyRecord](t, harvest.UpdateCompanyDefinition),
 		listClients:                      connectormock.NewQuery[harvest.ListClientsInput, harvest.ClientPage](t, harvest.ListClientsDefinition),
 		getClient:                        connectormock.NewQuery[harvest.GetClientInput, harvest.ClientRecord](t, harvest.GetClientDefinition),
 		createClient:                     connectormock.NewMutation[harvest.CreateClientInput, harvest.ClientRecord](t, harvest.CreateClientDefinition),
@@ -84,6 +88,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		deleteProject:                    connectormock.NewMutation[harvest.DeleteProjectInput, harvest.DeletedProject](t, harvest.DeleteProjectDefinition),
 		listTimeEntries:                  connectormock.NewQuery[harvest.ListTimeEntriesInput, harvest.TimeEntryPage](t, harvest.ListTimeEntriesDefinition),
 	}
+	mock.getCompany.Default(GetCompanyDefault())
+	mock.updateCompany.Default(UpdateCompanyDefault())
 	mock.listClients.Default(ListClientsDefault())
 	mock.getClient.Default(GetClientDefault())
 	mock.createClient.Default(CreateClientDefault())
@@ -123,6 +129,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() harvest.Connection { return mock.connection }
+
+// GetCompany returns the getCompany script.
+func (mock *Mock) GetCompany() *connectormock.Query[harvest.GetCompanyInput, harvest.CompanyRecord] {
+	return mock.getCompany
+}
+
+// UpdateCompany returns the updateCompany script.
+func (mock *Mock) UpdateCompany() *connectormock.Mutation[harvest.UpdateCompanyInput, harvest.CompanyRecord] {
+	return mock.updateCompany
+}
 
 // ListClients returns the listClients script.
 func (mock *Mock) ListClients() *connectormock.Query[harvest.ListClientsInput, harvest.ClientPage] {
@@ -271,6 +287,12 @@ func (mock *Mock) ListTimeEntries() *connectormock.Query[harvest.ListTimeEntries
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetCompany() sdkgo.Query[harvest.GetCompanyInput, harvest.CompanyRecord] {
+	return operations.mock.getCompany
+}
+func (operations mockOperations) UpdateCompany() sdkgo.Mutation[harvest.UpdateCompanyInput, harvest.CompanyRecord] {
+	return operations.mock.updateCompany
+}
 func (operations mockOperations) ListClients() sdkgo.Query[harvest.ListClientsInput, harvest.ClientPage] {
 	return operations.mock.listClients
 }
@@ -357,6 +379,71 @@ func (operations mockOperations) DeleteProject() sdkgo.Mutation[harvest.DeletePr
 }
 func (operations mockOperations) ListTimeEntries() sdkgo.Query[harvest.ListTimeEntriesInput, harvest.TimeEntryPage] {
 	return operations.mock.listTimeEntries
+}
+
+// GetCompanyFound selects the found branch: Harvest returned the company settings.
+func GetCompanyFound(value harvest.CompanyRecord, failure *sdkgo.Failure) connectormock.Case[harvest.CompanyRecord] {
+	return connectormock.Branch(harvest.GetCompanyBranchFound, value, failure)
+}
+
+// GetCompanyProviderRejected selects the providerRejected branch: Harvest rejected the company read.
+func GetCompanyProviderRejected(value harvest.CompanyRecord, failure *sdkgo.Failure) connectormock.Case[harvest.CompanyRecord] {
+	return connectormock.Branch(harvest.GetCompanyBranchProviderRejected, value, failure)
+}
+
+// GetCompanyInvalidResponse selects the invalidResponse branch: Harvest returned unusable JSON.
+func GetCompanyInvalidResponse(value harvest.CompanyRecord, failure *sdkgo.Failure) connectormock.Case[harvest.CompanyRecord] {
+	return connectormock.Branch(harvest.GetCompanyBranchInvalidResponse, value, failure)
+}
+
+// GetCompanyDefect selects the defect branch: Local input or credentials are invalid.
+func GetCompanyDefect(value harvest.CompanyRecord, failure *sdkgo.Failure) connectormock.Case[harvest.CompanyRecord] {
+	return connectormock.Branch(harvest.GetCompanyBranchDefect, value, failure)
+}
+
+// GetCompanyRetry asks Dex to retry the getCompany Step, after the delay when it is positive.
+func GetCompanyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.CompanyRecord] {
+	return connectormock.Retry[harvest.CompanyRecord](failure, after)
+}
+
+// GetCompanyDefaultAnswer is the manifest mock defaultAnswer: Meridian company settings.
+func GetCompanyDefaultAnswer() connectormock.Case[harvest.CompanyRecord] {
+	value := connectormock.MustDecodeOutput[harvest.CompanyRecord](`{"name":"Meridian","fullDomain":"meridian.harvestapp.com","isActive":true,"wantsTimestampTimers":false,"weeklyCapacitySeconds":144000}`)
+	return connectormock.Branch(harvest.GetCompanyBranchFound, value, nil)
+}
+
+// GetCompanyDefault is the manifest default, defaultAnswer, which New installs.
+func GetCompanyDefault() connectormock.Case[harvest.CompanyRecord] { return GetCompanyDefaultAnswer() }
+
+// UpdateCompanyUpdated selects the updated branch: Harvest updated company settings.
+func UpdateCompanyUpdated(value harvest.CompanyRecord, failure *sdkgo.Failure) connectormock.Case[harvest.CompanyRecord] {
+	return connectormock.Branch(harvest.UpdateCompanyBranchUpdated, value, failure)
+}
+
+// UpdateCompanyProviderRejected selects the providerRejected branch: Harvest rejected the company update.
+func UpdateCompanyProviderRejected(value harvest.CompanyRecord, failure *sdkgo.Failure) connectormock.Case[harvest.CompanyRecord] {
+	return connectormock.Branch(harvest.UpdateCompanyBranchProviderRejected, value, failure)
+}
+
+// UpdateCompanyDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateCompanyDefect(value harvest.CompanyRecord, failure *sdkgo.Failure) connectormock.Case[harvest.CompanyRecord] {
+	return connectormock.Branch(harvest.UpdateCompanyBranchDefect, value, failure)
+}
+
+// UpdateCompanyRetry asks Dex to retry the updateCompany Step, after the delay when it is positive.
+func UpdateCompanyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.CompanyRecord] {
+	return connectormock.Retry[harvest.CompanyRecord](failure, after)
+}
+
+// UpdateCompanyDefaultAnswer is the manifest mock defaultAnswer: Meridian company settings were updated.
+func UpdateCompanyDefaultAnswer() connectormock.Case[harvest.CompanyRecord] {
+	value := connectormock.MustDecodeOutput[harvest.CompanyRecord](`{"name":"Meridian","fullDomain":"meridian.harvestapp.com","isActive":true,"wantsTimestampTimers":false,"weeklyCapacitySeconds":144000}`)
+	return connectormock.Branch(harvest.UpdateCompanyBranchUpdated, value, nil)
+}
+
+// UpdateCompanyDefault is the manifest default, defaultAnswer, which New installs.
+func UpdateCompanyDefault() connectormock.Case[harvest.CompanyRecord] {
+	return UpdateCompanyDefaultAnswer()
 }
 
 // ListClientsListed selects the listed branch: Harvest returned the client page.

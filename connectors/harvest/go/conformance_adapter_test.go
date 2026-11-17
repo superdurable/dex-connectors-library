@@ -37,6 +37,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		priorAttempt = marker.Attempt
 	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { context.attempt = int32(attempt) + priorAttempt }, actions: map[string]conformanceOperationInvocation{
+		"getCompany":                       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCompany(), connection),
+		"updateCompany":                    newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateCompany(), connection, scenario.CallID),
 		"listContacts":                     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListContacts(), connection),
 		"getContact":                       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetContact(), connection),
 		"createContact":                    newConformanceMutationInvocation(t, scenario.Input, context, client.CreateContact(), connection, scenario.CallID),

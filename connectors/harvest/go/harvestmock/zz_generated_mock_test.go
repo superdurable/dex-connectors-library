@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getCompany/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.CompanyRecord](`{"name":"Meridian","fullDomain":"meridian.harvestapp.com","isActive":true,"wantsTimestampTimers":false,"weeklyCapacitySeconds":144000}`)
+			return err
+		}},
+		{name: "updateCompany/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.CompanyRecord](`{"name":"Meridian","fullDomain":"meridian.harvestapp.com","isActive":true,"wantsTimestampTimers":false,"weeklyCapacitySeconds":144000}`)
+			return err
+		}},
 		{name: "listClients/defaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[harvest.ClientPage](`{"clients":[{"id":2001,"name":"Meridian","isActive":true}]}`)
 			return err
@@ -130,6 +138,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetCompany().Definition().Operation.OperationID != "getCompany" {
+		t.Errorf("getCompany mock has another definition")
+	}
+	if mock.UpdateCompany().Definition().Operation.OperationID != "updateCompany" {
+		t.Errorf("updateCompany mock has another definition")
+	}
 	if mock.ListClients().Definition().Operation.OperationID != "listClients" {
 		t.Errorf("listClients mock has another definition")
 	}

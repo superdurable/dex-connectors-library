@@ -61,6 +61,45 @@ spec:
         - "Paste it into secret api_key. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults."
         - "Copy the decimal account ID shown with the personal token into accountId; this ID is not secret."
   operations:
+    - name: getCompany
+      goName: GetCompany
+      inputType: GetCompanyInput
+      outputType: CompanyRecord
+      kind: query
+      description: Read the connected Harvest account's company settings.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Harvest returned the company settings.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the company read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          default: true
+          description: Meridian company settings.
+          output: {name: Meridian, fullDomain: meridian.harvestapp.com, isActive: true, wantsTimestampTimers: false, weeklyCapacitySeconds: 144000}
+    - name: updateCompany
+      goName: UpdateCompany
+      inputType: UpdateCompanyInput
+      outputType: CompanyRecord
+      kind: mutation
+      description: Set the account's timer style or weekly capacity.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Harvest updated company settings.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the company update., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          default: true
+          description: Meridian company settings were updated.
+          output: {name: Meridian, fullDomain: meridian.harvestapp.com, isActive: true, wantsTimestampTimers: false, weeklyCapacitySeconds: 144000}
     - name: listClients
       goName: ListClients
       inputType: ListClientsInput

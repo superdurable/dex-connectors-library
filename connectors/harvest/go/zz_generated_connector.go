@@ -41,6 +41,8 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetCompany() sdkgo.Query[GetCompanyInput, CompanyRecord]
+	UpdateCompany() sdkgo.Mutation[UpdateCompanyInput, CompanyRecord]
 	ListClients() sdkgo.Query[ListClientsInput, ClientPage]
 	GetClient() sdkgo.Query[GetClientInput, ClientRecord]
 	CreateClient() sdkgo.Mutation[CreateClientInput, ClientRecord]
@@ -74,6 +76,12 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetCompany() sdkgo.Query[GetCompanyInput, CompanyRecord] {
+	return operations.client.GetCompany()
+}
+func (operations clientOperations) UpdateCompany() sdkgo.Mutation[UpdateCompanyInput, CompanyRecord] {
+	return operations.client.UpdateCompany()
+}
 func (operations clientOperations) ListClients() sdkgo.Query[ListClientsInput, ClientPage] {
 	return operations.client.ListClients()
 }
@@ -300,6 +308,143 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const GetCompanyBranchFound sdkgo.BranchID = "found"
+const GetCompanyBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCompanyBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCompanyBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCompanyDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCompany"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCompanyBranchFound, Description: "Harvest returned the company settings."},
+		{ID: GetCompanyBranchProviderRejected, Description: "Harvest rejected the company read.", Optional: true},
+		{ID: GetCompanyBranchInvalidResponse, Description: "Harvest returned unusable JSON.", Optional: true},
+		{ID: GetCompanyBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCompanyResult = sdkgo.QueryResult[CompanyRecord]
+
+type GetCompanyStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=harvest"`
+	operationID                    struct{}                                         `connector:"operationId=getCompany"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCompanyInput                         `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCompanyResult]                   `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetCompanyResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCompanyResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCompanyResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CompanyRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetCompanyStep[IN any](config GetCompanyStepConfig[IN]) sdkgo.QueryStep[IN, GetCompanyInput, CompanyRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCompanyInput, CompanyRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCompany(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCompanyResult] {
+			branches := make([]sdkgo.BranchTarget[GetCompanyResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCompanyBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCompanyBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCompanyBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCompanyBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateCompanyBranchUpdated sdkgo.BranchID = "updated"
+const UpdateCompanyBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateCompanyBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateCompanyDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateCompany"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateCompanyBranchUpdated, Description: "Harvest updated company settings."},
+		{ID: UpdateCompanyBranchProviderRejected, Description: "Harvest rejected the company update.", Optional: true},
+		{ID: UpdateCompanyBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateCompanyResult = sdkgo.MutationResult[CompanyRecord]
+
+type UpdateCompanyStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=harvest"`
+	operationID                       struct{}                                            `connector:"operationId=updateCompany"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateCompanyInput                         `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateCompanyResult]                   `connector:"branch=updated"`
+	ProviderRejected                  sdkgo.Target[UpdateCompanyResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateCompanyResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CompanyRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateCompanyStep[IN any](config UpdateCompanyStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCompanyInput, CompanyRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateCompanyInput, CompanyRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateCompany(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateCompanyResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateCompanyResult], 0, 3)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateCompanyBranchUpdated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateCompanyBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateCompanyBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListClientsBranchListed sdkgo.BranchID = "listed"
