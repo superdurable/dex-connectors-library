@@ -164,7 +164,7 @@ spec:
       description: Create one primary CRM record using provider JSON fields.
       idempotency: required
       authorization: required
-      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Insightly created the record.}
         - {id: providerRejected, goName: ProviderRejected, description: Insightly rejected the create., optional: true}

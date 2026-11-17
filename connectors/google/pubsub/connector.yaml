@@ -101,7 +101,7 @@ spec:
       description: Publish one text message to a topic.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: published, goName: Published, description: Pub/Sub accepted the message.}
         - {id: providerRejected, goName: ProviderRejected, description: Pub/Sub conclusively rejected the message., optional: true}

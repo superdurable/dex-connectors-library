@@ -319,7 +319,8 @@ spec:
         repeatOnUnknown: limited
         maxSends: 3
         executeMethodTimeout: 30s
-        durability: async
+        durability: sync
+        dispatchFence: true
       mocks:
         - name: createdDeal
           branch: created
