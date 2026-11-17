@@ -41,6 +41,8 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	QueryChart() sdkgo.Query[QueryChartInput, ChartResult]
+	GetActiveUserCounts() sdkgo.Query[ActiveUserCountsInput, ActiveUserCounts]
 	GetUserActivity() sdkgo.Query[GetUserActivityInput, UserActivity]
 	UnsetUserProperty() sdkgo.Mutation[UnsetUserPropertyInput, IdentifiedUser]
 	TrackEvent() sdkgo.Mutation[TrackEventInput, TrackedEvent]
@@ -50,6 +52,12 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) QueryChart() sdkgo.Query[QueryChartInput, ChartResult] {
+	return operations.client.QueryChart()
+}
+func (operations clientOperations) GetActiveUserCounts() sdkgo.Query[ActiveUserCountsInput, ActiveUserCounts] {
+	return operations.client.GetActiveUserCounts()
+}
 func (operations clientOperations) GetUserActivity() sdkgo.Query[GetUserActivityInput, UserActivity] {
 	return operations.client.GetUserActivity()
 }
@@ -206,6 +214,154 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential secretKey is required")
 	}
 	return nil
+}
+
+const QueryChartBranchFound sdkgo.BranchID = "found"
+const QueryChartBranchMissing sdkgo.BranchID = "missing"
+const QueryChartBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const QueryChartBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const QueryChartBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var QueryChartDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "queryChart"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: QueryChartBranchFound, Description: "Amplitude returned chart results."},
+		{ID: QueryChartBranchMissing, Description: "The saved chart does not exist.", Optional: true},
+		{ID: QueryChartBranchProviderRejected, Description: "Amplitude refused the chart query.", Optional: true},
+		{ID: QueryChartBranchInvalidResponse, Description: "Amplitude returned invalid chart JSON.", Optional: true},
+		{ID: QueryChartBranchDefect, Description: "The chart ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type QueryChartResult = sdkgo.QueryResult[ChartResult]
+
+type QueryChartStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=amplitude"`
+	operationID                    struct{}                                       `connector:"operationId=queryChart"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) QueryChartInput                       `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[QueryChartResult]                 `connector:"branch=found"`
+	Missing                        sdkgo.Target[QueryChartResult]                 `connector:"branch=missing,optional"`
+	ProviderRejected               sdkgo.Target[QueryChartResult]                 `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[QueryChartResult]                 `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[QueryChartResult]                 `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ChartResult]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewQueryChartStep[IN any](config QueryChartStepConfig[IN]) sdkgo.QueryStep[IN, QueryChartInput, ChartResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amplitude connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, QueryChartInput, ChartResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.QueryChart(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[QueryChartResult] {
+			branches := make([]sdkgo.BranchTarget[QueryChartResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(QueryChartBranchFound))
+			}
+			if config.Missing.HasStep() {
+				branches = append(branches, config.Missing.BranchTarget(QueryChartBranchMissing))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(QueryChartBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(QueryChartBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(QueryChartBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetActiveUserCountsBranchCounted sdkgo.BranchID = "counted"
+const GetActiveUserCountsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetActiveUserCountsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetActiveUserCountsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetActiveUserCountsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getActiveUserCounts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetActiveUserCountsBranchCounted, Description: "Amplitude returned user count series."},
+		{ID: GetActiveUserCountsBranchProviderRejected, Description: "Amplitude refused the metric query.", Optional: true},
+		{ID: GetActiveUserCountsBranchInvalidResponse, Description: "Amplitude returned invalid metric JSON.", Optional: true},
+		{ID: GetActiveUserCountsBranchDefect, Description: "Dates, metric, interval, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetActiveUserCountsResult = sdkgo.QueryResult[ActiveUserCounts]
+
+type GetActiveUserCountsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=amplitude"`
+	operationID                    struct{}                                            `connector:"operationId=getActiveUserCounts"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) ActiveUserCountsInput                      `connector:"mapToOperationInput"`
+	Counted                        sdkgo.Target[GetActiveUserCountsResult]             `connector:"branch=counted"`
+	ProviderRejected               sdkgo.Target[GetActiveUserCountsResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetActiveUserCountsResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetActiveUserCountsResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ActiveUserCounts]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewGetActiveUserCountsStep[IN any](config GetActiveUserCountsStepConfig[IN]) sdkgo.QueryStep[IN, ActiveUserCountsInput, ActiveUserCounts] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amplitude connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ActiveUserCountsInput, ActiveUserCounts]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetActiveUserCounts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetActiveUserCountsResult] {
+			branches := make([]sdkgo.BranchTarget[GetActiveUserCountsResult], 0, 4)
+			if config.Counted.HasStep() {
+				branches = append(branches, config.Counted.BranchTarget(GetActiveUserCountsBranchCounted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetActiveUserCountsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetActiveUserCountsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetActiveUserCountsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetUserActivityBranchFound sdkgo.BranchID = "found"

@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "queryChart/chartDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[amplitude.ChartResult](`{"chartID":"abc123","dataJSON":"{\"series\":[[1,2]],\"xValues\":[\"2026-11-01\",\"2026-11-02\"]}"}`)
+			return err
+		}},
+		{name: "getActiveUserCounts/countsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[amplitude.ActiveUserCounts](`{"startDate":"20261101","endDate":"20261102","metric":"active","intervalDays":1,"dates":["2026-11-01","2026-11-02"],"series":[[42,51]]}`)
+			return err
+		}},
 		{name: "getUserActivity/userActivityDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[amplitude.UserActivity](`{"amplitudeID":"12345","userID":"example-user","eventCount":142,"sessionCount":23,"returnedEvents":2}`)
 			return err
@@ -46,6 +54,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.QueryChart().Definition().Operation.OperationID != "queryChart" {
+		t.Errorf("queryChart mock has another definition")
+	}
+	if mock.GetActiveUserCounts().Definition().Operation.OperationID != "getActiveUserCounts" {
+		t.Errorf("getActiveUserCounts mock has another definition")
+	}
 	if mock.GetUserActivity().Definition().Operation.OperationID != "getUserActivity" {
 		t.Errorf("getUserActivity mock has another definition")
 	}

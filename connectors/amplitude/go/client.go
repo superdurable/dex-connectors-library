@@ -70,6 +70,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 
 var errCredential = errors.New("Amplitude credential unavailable")
 var errRequest = errors.New("Amplitude request failed")
+var errCredentialEcho = errors.New("Amplitude response contained connection credentials")
 
 type providerResponse struct {
 	body       []byte
@@ -105,6 +106,9 @@ func (client *Client) getDashboard(call sdkgo.Call, path string, parameters url.
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	if err == nil && (strings.Contains(string(body), apiKey) || strings.Contains(string(body), secretKey)) {
+		return providerResponse{status: response.StatusCode, retryAfter: retryAfter, err: errCredentialEcho}
+	}
 	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
 }
 

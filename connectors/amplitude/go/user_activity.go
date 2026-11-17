@@ -89,6 +89,9 @@ func (operation GetUserActivityOperation) Invoke(call sdkgo.Call, input GetUserA
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
 		return activityBranch(GetUserActivityBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "Amplitude activity exceeded the response limit")
 	}
+	if errors.Is(response.err, errCredentialEcho) {
+		return activityBranch(GetUserActivityBranchInvalidResponse, sdkgo.FailureProtocol, "Amplitude activity contained connection credentials")
+	}
 	if response.err != nil {
 		return sdkgo.NewQueryRetry[UserActivity](activityFailure(sdkgo.FailureTransport, "Amplitude activity response was interrupted"), 0)
 	}
