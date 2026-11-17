@@ -103,7 +103,7 @@ spec:
       description: List one bounded page of contacts, leads, organisations, opportunities, projects, or tasks.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Insightly returned the record page.}
         - {id: providerRejected, goName: ProviderRejected, description: Insightly rejected the list., optional: true}
@@ -123,7 +123,7 @@ spec:
       description: Read one primary CRM record by its numeric ID.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Insightly returned the record.}
         - {id: notFound, goName: NotFound, description: Insightly found no record with the ID., optional: true}
@@ -144,7 +144,7 @@ spec:
       description: Search one primary CRM resource by a provider field and value.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: searched, goName: Searched, description: Insightly returned the matching record page.}
         - {id: providerRejected, goName: ProviderRejected, description: Insightly rejected the search., optional: true}

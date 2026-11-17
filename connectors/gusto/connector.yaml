@@ -104,7 +104,7 @@ spec:
       description: Read one bounded page of employees from an authorized company.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Gusto returned the requested employee page.}
         - {id: missing, goName: Missing, description: The company is not visible to this connection., optional: true}

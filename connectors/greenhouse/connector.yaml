@@ -85,7 +85,7 @@ spec:
       description: Read one page of candidate IDs and names, with an opaque cursor for the next page.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Greenhouse returned a candidate page.}
         - {id: providerRejected, goName: ProviderRejected, description: Greenhouse conclusively rejected the list request., optional: true}
