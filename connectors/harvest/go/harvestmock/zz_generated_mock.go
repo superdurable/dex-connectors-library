@@ -23,6 +23,11 @@ type Mock struct {
 	createClient                     *connectormock.Mutation[harvest.CreateClientInput, harvest.ClientRecord]
 	updateClient                     *connectormock.Mutation[harvest.UpdateClientInput, harvest.ClientRecord]
 	deleteClient                     *connectormock.Mutation[harvest.DeleteClientInput, harvest.DeletedClient]
+	listContacts                     *connectormock.Query[harvest.ListContactsInput, harvest.ContactPage]
+	getContact                       *connectormock.Query[harvest.GetContactInput, harvest.ContactRecord]
+	createContact                    *connectormock.Mutation[harvest.CreateContactInput, harvest.ContactRecord]
+	updateContact                    *connectormock.Mutation[harvest.UpdateContactInput, harvest.ContactRecord]
+	deleteContact                    *connectormock.Mutation[harvest.DeleteContactInput, harvest.DeletedContact]
 	listUsers                        *connectormock.Query[harvest.ListUsersInput, harvest.UserPage]
 	getUser                          *connectormock.Query[harvest.GetUserInput, harvest.UserRecord]
 	getCurrentUser                   *connectormock.Query[harvest.GetCurrentUserInput, harvest.UserRecord]
@@ -54,6 +59,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		createClient:                     connectormock.NewMutation[harvest.CreateClientInput, harvest.ClientRecord](t, harvest.CreateClientDefinition),
 		updateClient:                     connectormock.NewMutation[harvest.UpdateClientInput, harvest.ClientRecord](t, harvest.UpdateClientDefinition),
 		deleteClient:                     connectormock.NewMutation[harvest.DeleteClientInput, harvest.DeletedClient](t, harvest.DeleteClientDefinition),
+		listContacts:                     connectormock.NewQuery[harvest.ListContactsInput, harvest.ContactPage](t, harvest.ListContactsDefinition),
+		getContact:                       connectormock.NewQuery[harvest.GetContactInput, harvest.ContactRecord](t, harvest.GetContactDefinition),
+		createContact:                    connectormock.NewMutation[harvest.CreateContactInput, harvest.ContactRecord](t, harvest.CreateContactDefinition),
+		updateContact:                    connectormock.NewMutation[harvest.UpdateContactInput, harvest.ContactRecord](t, harvest.UpdateContactDefinition),
+		deleteContact:                    connectormock.NewMutation[harvest.DeleteContactInput, harvest.DeletedContact](t, harvest.DeleteContactDefinition),
 		listUsers:                        connectormock.NewQuery[harvest.ListUsersInput, harvest.UserPage](t, harvest.ListUsersDefinition),
 		getUser:                          connectormock.NewQuery[harvest.GetUserInput, harvest.UserRecord](t, harvest.GetUserDefinition),
 		getCurrentUser:                   connectormock.NewQuery[harvest.GetCurrentUserInput, harvest.UserRecord](t, harvest.GetCurrentUserDefinition),
@@ -79,6 +89,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createClient.Default(CreateClientDefault())
 	mock.updateClient.Default(UpdateClientDefault())
 	mock.deleteClient.Default(DeleteClientDefault())
+	mock.listContacts.Default(ListContactsDefault())
+	mock.getContact.Default(GetContactDefault())
+	mock.createContact.Default(CreateContactDefault())
+	mock.updateContact.Default(UpdateContactDefault())
+	mock.deleteContact.Default(DeleteContactDefault())
 	mock.listUsers.Default(ListUsersDefault())
 	mock.getUser.Default(GetUserDefault())
 	mock.getCurrentUser.Default(GetCurrentUserDefault())
@@ -132,6 +147,31 @@ func (mock *Mock) UpdateClient() *connectormock.Mutation[harvest.UpdateClientInp
 // DeleteClient returns the deleteClient script.
 func (mock *Mock) DeleteClient() *connectormock.Mutation[harvest.DeleteClientInput, harvest.DeletedClient] {
 	return mock.deleteClient
+}
+
+// ListContacts returns the listContacts script.
+func (mock *Mock) ListContacts() *connectormock.Query[harvest.ListContactsInput, harvest.ContactPage] {
+	return mock.listContacts
+}
+
+// GetContact returns the getContact script.
+func (mock *Mock) GetContact() *connectormock.Query[harvest.GetContactInput, harvest.ContactRecord] {
+	return mock.getContact
+}
+
+// CreateContact returns the createContact script.
+func (mock *Mock) CreateContact() *connectormock.Mutation[harvest.CreateContactInput, harvest.ContactRecord] {
+	return mock.createContact
+}
+
+// UpdateContact returns the updateContact script.
+func (mock *Mock) UpdateContact() *connectormock.Mutation[harvest.UpdateContactInput, harvest.ContactRecord] {
+	return mock.updateContact
+}
+
+// DeleteContact returns the deleteContact script.
+func (mock *Mock) DeleteContact() *connectormock.Mutation[harvest.DeleteContactInput, harvest.DeletedContact] {
+	return mock.deleteContact
 }
 
 // ListUsers returns the listUsers script.
@@ -245,6 +285,21 @@ func (operations mockOperations) UpdateClient() sdkgo.Mutation[harvest.UpdateCli
 }
 func (operations mockOperations) DeleteClient() sdkgo.Mutation[harvest.DeleteClientInput, harvest.DeletedClient] {
 	return operations.mock.deleteClient
+}
+func (operations mockOperations) ListContacts() sdkgo.Query[harvest.ListContactsInput, harvest.ContactPage] {
+	return operations.mock.listContacts
+}
+func (operations mockOperations) GetContact() sdkgo.Query[harvest.GetContactInput, harvest.ContactRecord] {
+	return operations.mock.getContact
+}
+func (operations mockOperations) CreateContact() sdkgo.Mutation[harvest.CreateContactInput, harvest.ContactRecord] {
+	return operations.mock.createContact
+}
+func (operations mockOperations) UpdateContact() sdkgo.Mutation[harvest.UpdateContactInput, harvest.ContactRecord] {
+	return operations.mock.updateContact
+}
+func (operations mockOperations) DeleteContact() sdkgo.Mutation[harvest.DeleteContactInput, harvest.DeletedContact] {
+	return operations.mock.deleteContact
 }
 func (operations mockOperations) ListUsers() sdkgo.Query[harvest.ListUsersInput, harvest.UserPage] {
 	return operations.mock.listUsers
@@ -483,6 +538,189 @@ func DeleteClientDefaultAnswer() connectormock.Case[harvest.DeletedClient] {
 // DeleteClientDefault is the manifest default, defaultAnswer, which New installs.
 func DeleteClientDefault() connectormock.Case[harvest.DeletedClient] {
 	return DeleteClientDefaultAnswer()
+}
+
+// ListContactsListed selects the listed branch: Harvest confirmed the contact result.
+func ListContactsListed(value harvest.ContactPage, failure *sdkgo.Failure) connectormock.Case[harvest.ContactPage] {
+	return connectormock.Branch(harvest.ListContactsBranchListed, value, failure)
+}
+
+// ListContactsProviderRejected selects the providerRejected branch: Harvest rejected the operation.
+func ListContactsProviderRejected(value harvest.ContactPage, failure *sdkgo.Failure) connectormock.Case[harvest.ContactPage] {
+	return connectormock.Branch(harvest.ListContactsBranchProviderRejected, value, failure)
+}
+
+// ListContactsInvalidResponse selects the invalidResponse branch: Harvest returned unusable JSON.
+func ListContactsInvalidResponse(value harvest.ContactPage, failure *sdkgo.Failure) connectormock.Case[harvest.ContactPage] {
+	return connectormock.Branch(harvest.ListContactsBranchInvalidResponse, value, failure)
+}
+
+// ListContactsDefect selects the defect branch: Local input or credentials are invalid.
+func ListContactsDefect(value harvest.ContactPage, failure *sdkgo.Failure) connectormock.Case[harvest.ContactPage] {
+	return connectormock.Branch(harvest.ListContactsBranchDefect, value, failure)
+}
+
+// ListContactsRetry asks Dex to retry the listContacts Step, after the delay when it is positive.
+func ListContactsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.ContactPage] {
+	return connectormock.Retry[harvest.ContactPage](failure, after)
+}
+
+// ListContactsDefaultAnswer is the manifest mock defaultAnswer: A Meridian contact result.
+func ListContactsDefaultAnswer() connectormock.Case[harvest.ContactPage] {
+	value := connectormock.MustDecodeOutput[harvest.ContactPage](`{"contacts":[{"id":7001,"clientId":2001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com"}]}`)
+	return connectormock.Branch(harvest.ListContactsBranchListed, value, nil)
+}
+
+// ListContactsDefault is the manifest default, defaultAnswer, which New installs.
+func ListContactsDefault() connectormock.Case[harvest.ContactPage] {
+	return ListContactsDefaultAnswer()
+}
+
+// GetContactFound selects the found branch: Harvest confirmed the contact result.
+func GetContactFound(value harvest.ContactRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ContactRecord] {
+	return connectormock.Branch(harvest.GetContactBranchFound, value, failure)
+}
+
+// GetContactNotFound selects the notFound branch: The contact does not exist.
+func GetContactNotFound(value harvest.ContactRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ContactRecord] {
+	return connectormock.Branch(harvest.GetContactBranchNotFound, value, failure)
+}
+
+// GetContactProviderRejected selects the providerRejected branch: Harvest rejected the operation.
+func GetContactProviderRejected(value harvest.ContactRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ContactRecord] {
+	return connectormock.Branch(harvest.GetContactBranchProviderRejected, value, failure)
+}
+
+// GetContactInvalidResponse selects the invalidResponse branch: Harvest returned unusable JSON.
+func GetContactInvalidResponse(value harvest.ContactRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ContactRecord] {
+	return connectormock.Branch(harvest.GetContactBranchInvalidResponse, value, failure)
+}
+
+// GetContactDefect selects the defect branch: Local input or credentials are invalid.
+func GetContactDefect(value harvest.ContactRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ContactRecord] {
+	return connectormock.Branch(harvest.GetContactBranchDefect, value, failure)
+}
+
+// GetContactRetry asks Dex to retry the getContact Step, after the delay when it is positive.
+func GetContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.ContactRecord] {
+	return connectormock.Retry[harvest.ContactRecord](failure, after)
+}
+
+// GetContactDefaultAnswer is the manifest mock defaultAnswer: A Meridian contact result.
+func GetContactDefaultAnswer() connectormock.Case[harvest.ContactRecord] {
+	value := connectormock.MustDecodeOutput[harvest.ContactRecord](`{"id":7001,"clientId":2001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com"}`)
+	return connectormock.Branch(harvest.GetContactBranchFound, value, nil)
+}
+
+// GetContactDefault is the manifest default, defaultAnswer, which New installs.
+func GetContactDefault() connectormock.Case[harvest.ContactRecord] { return GetContactDefaultAnswer() }
+
+// CreateContactCreated selects the created branch: Harvest confirmed the contact result.
+func CreateContactCreated(value harvest.ContactRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ContactRecord] {
+	return connectormock.Branch(harvest.CreateContactBranchCreated, value, failure)
+}
+
+// CreateContactProviderRejected selects the providerRejected branch: Harvest rejected the operation.
+func CreateContactProviderRejected(value harvest.ContactRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ContactRecord] {
+	return connectormock.Branch(harvest.CreateContactBranchProviderRejected, value, failure)
+}
+
+// CreateContactUncertain returns an uncertain createContact outcome.
+func CreateContactUncertain(value harvest.ContactRecord, failure sdkgo.Failure) connectormock.Case[harvest.ContactRecord] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateContactDefect selects the defect branch: Local input or credentials are invalid.
+func CreateContactDefect(value harvest.ContactRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ContactRecord] {
+	return connectormock.Branch(harvest.CreateContactBranchDefect, value, failure)
+}
+
+// CreateContactRetry asks Dex to retry the createContact Step, after the delay when it is positive.
+func CreateContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.ContactRecord] {
+	return connectormock.Retry[harvest.ContactRecord](failure, after)
+}
+
+// CreateContactDefaultAnswer is the manifest mock defaultAnswer: A Meridian contact result.
+func CreateContactDefaultAnswer() connectormock.Case[harvest.ContactRecord] {
+	value := connectormock.MustDecodeOutput[harvest.ContactRecord](`{"id":7001,"clientId":2001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com"}`)
+	return connectormock.Branch(harvest.CreateContactBranchCreated, value, nil)
+}
+
+// CreateContactDefault is the manifest default, defaultAnswer, which New installs.
+func CreateContactDefault() connectormock.Case[harvest.ContactRecord] {
+	return CreateContactDefaultAnswer()
+}
+
+// UpdateContactUpdated selects the updated branch: Harvest confirmed the contact result.
+func UpdateContactUpdated(value harvest.ContactRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ContactRecord] {
+	return connectormock.Branch(harvest.UpdateContactBranchUpdated, value, failure)
+}
+
+// UpdateContactNotFound selects the notFound branch: The contact does not exist.
+func UpdateContactNotFound(value harvest.ContactRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ContactRecord] {
+	return connectormock.Branch(harvest.UpdateContactBranchNotFound, value, failure)
+}
+
+// UpdateContactProviderRejected selects the providerRejected branch: Harvest rejected the operation.
+func UpdateContactProviderRejected(value harvest.ContactRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ContactRecord] {
+	return connectormock.Branch(harvest.UpdateContactBranchProviderRejected, value, failure)
+}
+
+// UpdateContactDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateContactDefect(value harvest.ContactRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ContactRecord] {
+	return connectormock.Branch(harvest.UpdateContactBranchDefect, value, failure)
+}
+
+// UpdateContactRetry asks Dex to retry the updateContact Step, after the delay when it is positive.
+func UpdateContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.ContactRecord] {
+	return connectormock.Retry[harvest.ContactRecord](failure, after)
+}
+
+// UpdateContactDefaultAnswer is the manifest mock defaultAnswer: A Meridian contact result.
+func UpdateContactDefaultAnswer() connectormock.Case[harvest.ContactRecord] {
+	value := connectormock.MustDecodeOutput[harvest.ContactRecord](`{"id":7001,"clientId":2001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com"}`)
+	return connectormock.Branch(harvest.UpdateContactBranchUpdated, value, nil)
+}
+
+// UpdateContactDefault is the manifest default, defaultAnswer, which New installs.
+func UpdateContactDefault() connectormock.Case[harvest.ContactRecord] {
+	return UpdateContactDefaultAnswer()
+}
+
+// DeleteContactDeleted selects the deleted branch: Harvest confirmed the contact result.
+func DeleteContactDeleted(value harvest.DeletedContact, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedContact] {
+	return connectormock.Branch(harvest.DeleteContactBranchDeleted, value, failure)
+}
+
+// DeleteContactNotFound selects the notFound branch: The contact does not exist.
+func DeleteContactNotFound(value harvest.DeletedContact, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedContact] {
+	return connectormock.Branch(harvest.DeleteContactBranchNotFound, value, failure)
+}
+
+// DeleteContactProviderRejected selects the providerRejected branch: Harvest rejected the operation.
+func DeleteContactProviderRejected(value harvest.DeletedContact, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedContact] {
+	return connectormock.Branch(harvest.DeleteContactBranchProviderRejected, value, failure)
+}
+
+// DeleteContactDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteContactDefect(value harvest.DeletedContact, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedContact] {
+	return connectormock.Branch(harvest.DeleteContactBranchDefect, value, failure)
+}
+
+// DeleteContactRetry asks Dex to retry the deleteContact Step, after the delay when it is positive.
+func DeleteContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.DeletedContact] {
+	return connectormock.Retry[harvest.DeletedContact](failure, after)
+}
+
+// DeleteContactDefaultAnswer is the manifest mock defaultAnswer: A Meridian contact result.
+func DeleteContactDefaultAnswer() connectormock.Case[harvest.DeletedContact] {
+	value := connectormock.MustDecodeOutput[harvest.DeletedContact](`{"id":7001}`)
+	return connectormock.Branch(harvest.DeleteContactBranchDeleted, value, nil)
+}
+
+// DeleteContactDefault is the manifest default, defaultAnswer, which New installs.
+func DeleteContactDefault() connectormock.Case[harvest.DeletedContact] {
+	return DeleteContactDefaultAnswer()
 }
 
 // ListUsersListed selects the listed branch: Harvest confirmed the user result.

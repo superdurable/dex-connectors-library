@@ -25,6 +25,7 @@ The TypeScript package is [`@superdurable/connector-harvest`](typescript/README.
 | `getTimeEntry`, `createTimeEntryByDuration`, `createTimeEntryByStartEnd`, `updateTimeEntry`, `deleteTimeEntry`, `deleteTimeEntryExternalReference`, `stopTimeEntry` | [Harvest Time Entries API](https://help.getharvest.com/api-v2/timesheets-api/timesheets/time-entries/) |
 | `listUsers`, `getUser`, `getCurrentUser`, `createUser`, `updateUser`, `deleteUser` | [Harvest Users API](https://help.getharvest.com/api-v2/users-api/users/users/) |
 | `listClients`, `getClient`, `createClient`, `updateClient`, `deleteClient` | [Harvest Clients API](https://help.getharvest.com/api-v2/clients-api/clients/clients/) |
+| `listContacts`, `getContact`, `createContact`, `updateContact`, `deleteContact` | [Harvest Contacts API](https://help.getharvest.com/api-v2/clients-api/clients/contacts/) |
 
 Each operation returns a bounded, typed response. A 404 on a single-resource read selects `notFound`; other definitive 4xx select `providerRejected`; 408, 409, 429, 5xx, and interrupted reads Retry under the default one-hour budget. Malformed and oversized JSON selects `invalidResponse`. Invalid local input or missing credentials selects `defect` before a request. Provider error bodies are not copied into failures.
 
@@ -36,13 +37,15 @@ Both completed time-entry create operations use the limited tier with at most th
 
 `createUser` sends a Harvest invitation email and uses the limited tier with at most three sends. A possible earlier invitation without a returned user ID cannot be confirmed by the create response alone; inspect Harvest Users before inviting again after `uncertain`. User updates set absolute fields, and user deletion is repeat-safe. Administrator permissions are generally required for creation and deletion; `getCurrentUser` works with the connected user's own access.
 
+`createContact` uses the limited tier with at most three sends; Harvest does not deduplicate contact POSTs. A returned contact ID permits read-back on recovery, while a lost create response can become `uncertain`. Contact updates set absolute fields and deletion is repeat-safe. The connected user needs permission to manage the owning client.
+
 ## Mocks
 
 The generated `harvestmock` package includes one default Meridian answer per operation and an invalid-key rejection for each. The defaults describe a consistent set of project, lead, sheet, or file records.
 
 ## Example
 
-The runnable [example](go/examples/harvest-lookup/README.md) registers a Worker and a Flow using the static `harvest` connection. It lists projects, reads the first project's details, lists time entries, reads the first time-entry detail, reads the connected user, and lists clients. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
+The runnable [example](go/examples/harvest-lookup/README.md) registers a Worker and a Flow using the static `harvest` connection. It lists projects, reads the first project's details, lists time entries, reads the first time-entry detail, reads the connected user, lists clients, and lists contacts for the first client. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
 
 ## Live verification
 

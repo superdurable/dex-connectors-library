@@ -21,6 +21,7 @@ const secondStepType = "ReadHarvestSecond"
 const timeEntryStepType = "ReadHarvestTimeEntry"
 const currentUserStepType = "ReadHarvestCurrentUser"
 const clientStepType = "ReadHarvestClients"
+const contactStepType = "ReadHarvestContacts"
 
 // Request is the typed Start Flow input.
 type Request struct {
@@ -30,8 +31,8 @@ type Request struct {
 
 // Outcome is the Flow completion output.
 type Outcome struct {
-	// Clients contains the Harvest clients returned by the Flow.
-	Clients []harvest.ClientRecord `json:"clients"`
+	// Contacts contains the Harvest contacts returned by the Flow.
+	Contacts []harvest.ContactRecord `json:"contacts"`
 }
 
 // Flow reads the first and second provider resources.
@@ -78,7 +79,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStep(afterTimeEntry{}),
 		dex.DefineStep(harvest.NewGetCurrentUserStep(harvest.GetCurrentUserStepConfig[harvest.GetTimeEntryResult]{StepType: currentUserStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "harvest-lookup", GroupLabel: "Harvest lookup", Explanation: "Read the connection owner's Harvest user."}, MapToOperationInput: MapToGetCurrentUserInput, Found: sdkgo.GoTo(afterCurrentUser{})})),
 		dex.DefineStep(afterCurrentUser{}),
-		dex.DefineStep(harvest.NewListClientsStep(harvest.ListClientsStepConfig[harvest.GetCurrentUserResult]{StepType: clientStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "harvest-lookup", GroupLabel: "Harvest lookup", Explanation: "Read Harvest clients."}, MapToOperationInput: MapToListClientsInput, Listed: sdkgo.GoTo(completeLookup{})})),
+		dex.DefineStep(harvest.NewListClientsStep(harvest.ListClientsStepConfig[harvest.GetCurrentUserResult]{StepType: clientStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "harvest-lookup", GroupLabel: "Harvest lookup", Explanation: "Read Harvest clients."}, MapToOperationInput: MapToListClientsInput, Listed: sdkgo.GoTo(afterClients{})})),
+		dex.DefineStep(afterClients{}),
+		dex.DefineStep(harvest.NewListContactsStep(harvest.ListContactsStepConfig[harvest.ListClientsResult]{StepType: contactStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "harvest-lookup", GroupLabel: "Harvest lookup", Explanation: "Read contacts for the first client."}, MapToOperationInput: MapToListContactsInput, Listed: sdkgo.GoTo(completeLookup{})})),
 		dex.DefineStep(completeLookup{}),
 	}
 }
@@ -117,6 +120,14 @@ func MapToGetCurrentUserInput(_ harvest.GetTimeEntryResult) harvest.GetCurrentUs
 // MapToListClientsInput selects a bounded client page after the user read.
 func MapToListClientsInput(_ harvest.GetCurrentUserResult) harvest.ListClientsInput {
 	return harvest.ListClientsInput{PerPage: 10}
+}
+
+// MapToListContactsInput selects contacts belonging to the first listed client.
+func MapToListContactsInput(result harvest.ListClientsResult) harvest.ListContactsInput {
+	if len(result.Value.Clients) == 0 {
+		return harvest.ListContactsInput{PerPage: 10}
+	}
+	return harvest.ListContactsInput{ClientID: result.Value.Clients[0].ID, PerPage: 10}
 }
 
 // dex:group group-id:harvest-lookup group-label:"Harvest lookup"
@@ -187,12 +198,23 @@ func (afterCurrentUser) Execute(_ dex.Context, result harvest.GetCurrentUserResu
 }
 
 // dex:group group-id:harvest-lookup group-label:"Harvest lookup"
-// dex:explanation text:"Complete the Flow with Harvest data."
-type completeLookup struct {
+// dex:explanation text:"Read contacts for the selected Harvest client."
+type afterClients struct {
 	dex.StepDefaultsNoWaitFor[harvest.ListClientsResult]
 }
 
+func (afterClients) GetStepType() string { return "AfterHarvestClients" }
+func (afterClients) Execute(_ dex.Context, result harvest.ListClientsResult) (*dex.StepDecision, error) {
+	return dex.GoTo(sdkgo.StepRef[harvest.ListClientsResult](contactStepType), result), nil
+}
+
+// dex:group group-id:harvest-lookup group-label:"Harvest lookup"
+// dex:explanation text:"Complete the Flow with Harvest data."
+type completeLookup struct {
+	dex.StepDefaultsNoWaitFor[harvest.ListContactsResult]
+}
+
 func (completeLookup) GetStepType() string { return "CompleteHarvestLookup" }
-func (completeLookup) Execute(_ dex.Context, result harvest.ListClientsResult) (*dex.StepDecision, error) {
-	return dex.GracefulComplete(Outcome{Clients: result.Value.Clients}), nil
+func (completeLookup) Execute(_ dex.Context, result harvest.ListContactsResult) (*dex.StepDecision, error) {
+	return dex.GracefulComplete(Outcome{Contacts: result.Value.Contacts}), nil
 }

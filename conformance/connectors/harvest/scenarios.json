@@ -8638,6 +8638,1794 @@
           "state": "claimed"
         }
       }
+    },
+    {
+      "callId": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+      "exchanges": [
+        {
+          "body": "{\"contacts\":[{\"id\":7001,\"client\":{\"id\":2001},\"first_name\":\"Ada\",\"last_name\":\"Lee\",\"email\":\"ada@example.com\"}],\"links\":{\"next\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "client_id": [
+              "2001"
+            ],
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "contacts": [
+            {
+              "clientId": 2001,
+              "email": "ada@example.com",
+              "firstName": "Ada",
+              "id": 7001,
+              "lastName": "Lee"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": 2001,
+        "cursor": "next-token",
+        "perPage": 10
+      },
+      "name": "listContacts-success",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "CONTACT-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "client_id": [
+              "2001"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "contacts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": 2001,
+        "perPage": 10
+      },
+      "name": "listContacts-rejected",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "CONTACT-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "client_id": [
+              "2001"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": 2001,
+        "perPage": 10
+      },
+      "name": "listContacts-rate-limit",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "CONTACT-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "client_id": [
+              "2001"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": 2001,
+        "perPage": 10
+      },
+      "name": "listContacts-server-error",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "CONTACT-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "client_id": [
+              "2001"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": 2001,
+        "perPage": 10
+      },
+      "name": "listContacts-unavailable",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "CONTACT-CALL-ID",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "client_id": [
+              "2001"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": 2001,
+        "perPage": 10
+      },
+      "name": "listContacts-transport",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "CONTACT-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{\"contacts\":[{\"id\":7001,\"client\":{\"id\":2001},\"first_name\":\"Ada\",\"last_name\":\"Lee\",\"email\":\"ada@example.com\"}],\"links\":{\"next\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "client_id": [
+              "2001"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "contacts": [
+            {
+              "clientId": 2001,
+              "email": "ada@example.com",
+              "firstName": "Ada",
+              "id": 7001,
+              "lastName": "Lee"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": 2001,
+        "perPage": 10
+      },
+      "name": "listContacts-invalid",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "CONTACT-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{\"id\":7001,\"client\":{\"id\":2001},\"first_name\":\"Ada\",\"last_name\":\"Lee\",\"email\":\"ada@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/7001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "clientId": 2001,
+          "email": "ada@example.com",
+          "firstName": "Ada",
+          "id": 7001,
+          "lastName": "Lee"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 7001
+      },
+      "name": "getContact-success",
+      "operation": "getContact"
+    },
+    {
+      "callId": "CONTACT-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/7001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "clientId": 0,
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 7001
+      },
+      "name": "getContact-rejected",
+      "operation": "getContact"
+    },
+    {
+      "callId": "CONTACT-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/7001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 7001
+      },
+      "name": "getContact-rate-limit",
+      "operation": "getContact"
+    },
+    {
+      "callId": "CONTACT-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/7001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 7001
+      },
+      "name": "getContact-server-error",
+      "operation": "getContact"
+    },
+    {
+      "callId": "CONTACT-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/7001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 7001
+      },
+      "name": "getContact-unavailable",
+      "operation": "getContact"
+    },
+    {
+      "callId": "CONTACT-CALL-ID",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/7001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 7001
+      },
+      "name": "getContact-transport",
+      "operation": "getContact"
+    },
+    {
+      "callId": "CONTACT-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/7001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "clientId": 0,
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 7001
+      },
+      "name": "getContact-not-found",
+      "operation": "getContact"
+    },
+    {
+      "callId": "CONTACT-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{\"id\":7001,\"client\":{\"id\":2001},\"first_name\":\"Ada\",\"last_name\":\"Lee\",\"email\":\"ada@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/7001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "clientId": 2001,
+          "email": "ada@example.com",
+          "firstName": "Ada",
+          "id": 7001,
+          "lastName": "Lee"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 7001
+      },
+      "name": "getContact-invalid",
+      "operation": "getContact"
+    },
+    {
+      "callId": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+      "exchanges": [
+        {
+          "body": "{\"id\":7001,\"client\":{\"id\":2001},\"first_name\":\"Ada\",\"last_name\":\"Lee\",\"email\":\"ada@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "client_id": 2001,
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+          "providerId": "7001",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "clientId": 2001,
+          "email": "ada@example.com",
+          "firstName": "Ada",
+          "id": 7001,
+          "lastName": "Lee"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+      "input": {
+        "clientId": 2001,
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lee"
+      },
+      "name": "createContact-success",
+      "operation": "createContact"
+    },
+    {
+      "callId": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "client_id": 2001,
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "clientId": 0,
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+      "input": {
+        "clientId": 2001,
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lee"
+      },
+      "name": "createContact-rejected",
+      "operation": "createContact"
+    },
+    {
+      "callId": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "client_id": 2001,
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+      "input": {
+        "clientId": 2001,
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lee"
+      },
+      "name": "createContact-rate-limit",
+      "operation": "createContact"
+    },
+    {
+      "callId": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "client_id": 2001,
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+      "input": {
+        "clientId": 2001,
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lee"
+      },
+      "name": "createContact-server-error",
+      "operation": "createContact"
+    },
+    {
+      "callId": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "client_id": 2001,
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+      "input": {
+        "clientId": 2001,
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lee"
+      },
+      "name": "createContact-unavailable",
+      "operation": "createContact"
+    },
+    {
+      "callId": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "client_id": 2001,
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+      "input": {
+        "clientId": 2001,
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lee"
+      },
+      "name": "createContact-transport",
+      "operation": "createContact"
+    },
+    {
+      "callId": "35d46690-2e81-5e5e-8bf0-1f063a7c6b56",
+      "exchanges": [
+        {
+          "body": "{\"id\":7001,\"client\":{\"id\":2001},\"first_name\":\"Ada\",\"last_name\":\"Lee\",\"email\":\"ada@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/7001",
+          "requestBody": {
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "clientId": 2001,
+          "email": "ada@example.com",
+          "firstName": "Ada",
+          "id": 7001,
+          "lastName": "Lee"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d46690-2e81-5e5e-8bf0-1f063a7c6b56",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "id": 7001,
+        "lastName": "Lee"
+      },
+      "name": "updateContact-success",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "35d46690-2e81-5e5e-8bf0-1f063a7c6b56",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/7001",
+          "requestBody": {
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "clientId": 0,
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d46690-2e81-5e5e-8bf0-1f063a7c6b56",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "id": 7001,
+        "lastName": "Lee"
+      },
+      "name": "updateContact-rejected",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "35d46690-2e81-5e5e-8bf0-1f063a7c6b56",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/7001",
+          "requestBody": {
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d46690-2e81-5e5e-8bf0-1f063a7c6b56",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "id": 7001,
+        "lastName": "Lee"
+      },
+      "name": "updateContact-rate-limit",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "35d46690-2e81-5e5e-8bf0-1f063a7c6b56",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/7001",
+          "requestBody": {
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d46690-2e81-5e5e-8bf0-1f063a7c6b56",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "id": 7001,
+        "lastName": "Lee"
+      },
+      "name": "updateContact-server-error",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "35d46690-2e81-5e5e-8bf0-1f063a7c6b56",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/7001",
+          "requestBody": {
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d46690-2e81-5e5e-8bf0-1f063a7c6b56",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "id": 7001,
+        "lastName": "Lee"
+      },
+      "name": "updateContact-unavailable",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "35d46690-2e81-5e5e-8bf0-1f063a7c6b56",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/7001",
+          "requestBody": {
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d46690-2e81-5e5e-8bf0-1f063a7c6b56",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "id": 7001,
+        "lastName": "Lee"
+      },
+      "name": "updateContact-transport",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "35d46690-2e81-5e5e-8bf0-1f063a7c6b56",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/7001",
+          "requestBody": {
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "clientId": 0,
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d46690-2e81-5e5e-8bf0-1f063a7c6b56",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "id": 7001,
+        "lastName": "Lee"
+      },
+      "name": "updateContact-not-found",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "2aca48f6-f93c-5006-a3a0-9906c2eb1403",
+      "exchanges": [
+        {
+          "body": "{\"id\":7001,\"client\":{\"id\":2001},\"first_name\":\"Ada\",\"last_name\":\"Lee\",\"email\":\"ada@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/7001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": 7001
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2aca48f6-f93c-5006-a3a0-9906c2eb1403",
+      "input": {
+        "id": 7001
+      },
+      "name": "deleteContact-success",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "2aca48f6-f93c-5006-a3a0-9906c2eb1403",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/7001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2aca48f6-f93c-5006-a3a0-9906c2eb1403",
+      "input": {
+        "id": 7001
+      },
+      "name": "deleteContact-rejected",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "2aca48f6-f93c-5006-a3a0-9906c2eb1403",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/7001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2aca48f6-f93c-5006-a3a0-9906c2eb1403",
+      "input": {
+        "id": 7001
+      },
+      "name": "deleteContact-rate-limit",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "2aca48f6-f93c-5006-a3a0-9906c2eb1403",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/7001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2aca48f6-f93c-5006-a3a0-9906c2eb1403",
+      "input": {
+        "id": 7001
+      },
+      "name": "deleteContact-server-error",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "2aca48f6-f93c-5006-a3a0-9906c2eb1403",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/7001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2aca48f6-f93c-5006-a3a0-9906c2eb1403",
+      "input": {
+        "id": 7001
+      },
+      "name": "deleteContact-unavailable",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "2aca48f6-f93c-5006-a3a0-9906c2eb1403",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/7001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2aca48f6-f93c-5006-a3a0-9906c2eb1403",
+      "input": {
+        "id": 7001
+      },
+      "name": "deleteContact-transport",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "2aca48f6-f93c-5006-a3a0-9906c2eb1403",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/7001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2aca48f6-f93c-5006-a3a0-9906c2eb1403",
+      "input": {
+        "id": 7001
+      },
+      "name": "deleteContact-not-found",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "clientId": 0,
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+      "input": {
+        "clientId": 2001,
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lee"
+      },
+      "name": "createContact-send-cap-uncertain",
+      "operation": "createContact",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1
