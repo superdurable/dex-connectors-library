@@ -20,6 +20,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[acrobatsign.AgreementStatus](`{"id":"3AAABLblqZNOTREALAGREEMENTID5_BjiH","name":"Example agreement","status":"SIGNED"}`)
 			return err
 		}},
+		{name: "listAgreements/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[acrobatsign.AgreementPage](`{"agreements":[{"id":"3AAABLblqZNOTREALAGREEMENTID5_BjiH","name":"Example agreement","status":"SIGNED"}],"nextCursor":""}`)
+			return err
+		}},
+		{name: "updateAgreementVisibility/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[acrobatsign.AgreementVisibility](`{"agreementId":"3AAABLblqZNOTREALAGREEMENTID5_BjiH","visibility":"SHOW"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +40,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetAgreement().Definition().Operation.OperationID != "getAgreement" {
 		t.Errorf("getAgreement mock has another definition")
+	}
+	if mock.ListAgreements().Definition().Operation.OperationID != "listAgreements" {
+		t.Errorf("listAgreements mock has another definition")
+	}
+	if mock.UpdateAgreementVisibility().Definition().Operation.OperationID != "updateAgreementVisibility" {
+		t.Errorf("updateAgreementVisibility mock has another definition")
 	}
 }

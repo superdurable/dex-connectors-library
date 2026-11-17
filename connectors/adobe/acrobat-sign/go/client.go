@@ -5,6 +5,7 @@
 package acrobatsign
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -78,6 +79,14 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {
+	return client.request(call, http.MethodGet, path, nil)
+}
+
+func (client *Client) put(call sdkgo.Call, path string, body []byte) providerResponse {
+	return client.request(call, http.MethodPut, path, body)
+}
+
+func (client *Client) request(call sdkgo.Call, method, path string, body []byte) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -90,7 +99,7 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	if accessPoint.err != nil || accessPoint.status != http.StatusOK {
 		return accessPoint.providerResponse
 	}
-	return client.getFromURL(call, accessPoint.apiURL+"/api/rest/v6"+path, integrationKey)
+	return client.requestToURL(call, method, accessPoint.apiURL+"/api/rest/v6"+path, integrationKey, body)
 }
 
 type accessPointResult struct {
@@ -126,19 +135,26 @@ func (client *Client) discoverAccessPoint(call sdkgo.Call, integrationKey string
 }
 
 func (client *Client) getFromURL(call sdkgo.Call, requestURL string, integrationKey string) providerResponse {
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, requestURL, nil)
+	return client.requestToURL(call, http.MethodGet, requestURL, integrationKey, nil)
+}
+
+func (client *Client) requestToURL(call sdkgo.Call, method, requestURL, integrationKey string, body []byte) providerResponse {
+	request, err := http.NewRequestWithContext(call.Context, method, requestURL, bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Authorization", "Bearer "+integrationKey)
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
-	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	body, err = providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
 }
 

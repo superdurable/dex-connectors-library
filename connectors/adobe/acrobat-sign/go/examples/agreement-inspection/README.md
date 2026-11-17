@@ -1,5 +1,7 @@
 # Adobe Acrobat Sign agreement inspection Flow
 
+The Worker also registers `AdobeAcrobatSignAgreementList`. Start it with an optional `cursor` and `pageSize` to retrieve one metadata page. Its checked-in mock integration test exercises `listAgreements` against a real local Dex Server.
+
 This runnable Flow calls `getAgreement` through the static `adobe-acrobat-sign` connection. It saves the selected agreement status in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation

@@ -41,12 +41,20 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	GetAgreement() sdkgo.Query[GetAgreementInput, AgreementStatus]
+	ListAgreements() sdkgo.Query[ListAgreementsInput, AgreementPage]
+	UpdateAgreementVisibility() sdkgo.Mutation[UpdateAgreementVisibilityInput, AgreementVisibility]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) GetAgreement() sdkgo.Query[GetAgreementInput, AgreementStatus] {
 	return operations.client.GetAgreement()
+}
+func (operations clientOperations) ListAgreements() sdkgo.Query[ListAgreementsInput, AgreementPage] {
+	return operations.client.ListAgreements()
+}
+func (operations clientOperations) UpdateAgreementVisibility() sdkgo.Mutation[UpdateAgreementVisibilityInput, AgreementVisibility] {
+	return operations.client.UpdateAgreementVisibility()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -255,6 +263,154 @@ func NewGetAgreementStep[IN any](config GetAgreementStepConfig[IN]) sdkgo.QueryS
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetAgreementBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListAgreementsBranchListed sdkgo.BranchID = "listed"
+const ListAgreementsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListAgreementsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListAgreementsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListAgreementsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listAgreements"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListAgreementsBranchListed, Description: "Acrobat Sign returned the agreement page."},
+		{ID: ListAgreementsBranchProviderRejected, Description: "Acrobat Sign conclusively rejected discovery or listing.", Optional: true},
+		{ID: ListAgreementsBranchInvalidResponse, Description: "Acrobat Sign returned malformed or oversized JSON.", Optional: true},
+		{ID: ListAgreementsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListAgreementsResult = sdkgo.QueryResult[AgreementPage]
+
+type ListAgreementsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=adobe-acrobat-sign"`
+	operationID                    struct{}                                         `connector:"operationId=listAgreements"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListAgreementsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListAgreementsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListAgreementsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListAgreementsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListAgreementsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AgreementPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListAgreementsStep[IN any](config ListAgreementsStepConfig[IN]) sdkgo.QueryStep[IN, ListAgreementsInput, AgreementPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adobe-acrobat-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListAgreementsInput, AgreementPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListAgreements(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListAgreementsResult] {
+			branches := make([]sdkgo.BranchTarget[ListAgreementsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListAgreementsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListAgreementsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListAgreementsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListAgreementsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateAgreementVisibilityBranchUpdated sdkgo.BranchID = "updated"
+const UpdateAgreementVisibilityBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateAgreementVisibilityBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateAgreementVisibilityBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateAgreementVisibilityBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateAgreementVisibilityDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateAgreementVisibility"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateAgreementVisibilityBranchUpdated, Description: "Acrobat Sign set the requested agreement visibility."},
+		{ID: UpdateAgreementVisibilityBranchNotFound, Description: "Acrobat Sign did not expose the agreement.", Optional: true},
+		{ID: UpdateAgreementVisibilityBranchProviderRejected, Description: "Acrobat Sign conclusively rejected the visibility change.", Optional: true},
+		{ID: UpdateAgreementVisibilityBranchInvalidResponse, Description: "Acrobat Sign returned an unsafe discovery response.", Optional: true},
+		{ID: UpdateAgreementVisibilityBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpdateAgreementVisibilityResult = sdkgo.MutationResult[AgreementVisibility]
+
+type UpdateAgreementVisibilityStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=adobe-acrobat-sign"`
+	operationID                       struct{}                                                  `connector:"operationId=updateAgreementVisibility"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateAgreementVisibilityInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateAgreementVisibilityResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateAgreementVisibilityResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateAgreementVisibilityResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateAgreementVisibilityResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateAgreementVisibilityResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AgreementVisibility]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateAgreementVisibilityStep[IN any](config UpdateAgreementVisibilityStepConfig[IN]) sdkgo.MutationStep[IN, UpdateAgreementVisibilityInput, AgreementVisibility] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adobe-acrobat-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateAgreementVisibilityInput, AgreementVisibility]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateAgreementVisibility(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateAgreementVisibilityResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateAgreementVisibilityResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateAgreementVisibilityBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateAgreementVisibilityBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateAgreementVisibilityBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateAgreementVisibilityBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateAgreementVisibilityBranchDefect))
 			}
 			return branches
 		}(),
