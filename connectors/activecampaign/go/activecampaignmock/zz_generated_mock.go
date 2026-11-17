@@ -17,53 +17,58 @@ import (
 
 // Mock is a scripted activecampaign connection. Script each operation through its accessor.
 type Mock struct {
-	connection                 activecampaign.Connection
-	listEcommerceCustomers     *connectormock.Query[activecampaign.ListEcommerceCustomersInput, activecampaign.EcommerceCustomersPage]
-	getEcommerceCustomer       *connectormock.Query[activecampaign.GetEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata]
-	createEcommerceCustomer    *connectormock.Mutation[activecampaign.CreateEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata]
-	updateEcommerceCustomer    *connectormock.Mutation[activecampaign.UpdateEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata]
-	deleteEcommerceCustomer    *connectormock.Mutation[activecampaign.DeleteEcommerceCustomerInput, activecampaign.EcommerceCustomerDeletion]
-	listConnections            *connectormock.Query[activecampaign.ListConnectionsInput, activecampaign.ConnectionsPage]
-	getConnection              *connectormock.Query[activecampaign.GetConnectionInput, activecampaign.ConnectionMetadata]
-	createConnection           *connectormock.Mutation[activecampaign.CreateConnectionInput, activecampaign.ConnectionMetadata]
-	updateConnection           *connectormock.Mutation[activecampaign.UpdateConnectionInput, activecampaign.ConnectionMetadata]
-	deleteConnection           *connectormock.Mutation[activecampaign.DeleteConnectionInput, activecampaign.ConnectionDeletion]
-	listAccountContacts        *connectormock.Query[activecampaign.ListAccountContactsInput, activecampaign.AccountContactsPage]
-	getAccountContact          *connectormock.Query[activecampaign.GetAccountContactInput, activecampaign.AccountContactAssociation]
-	createAccountContact       *connectormock.Mutation[activecampaign.CreateAccountContactInput, activecampaign.AccountContactAssociation]
-	updateAccountContact       *connectormock.Mutation[activecampaign.UpdateAccountContactInput, activecampaign.AccountContactAssociation]
-	deleteAccountContact       *connectormock.Mutation[activecampaign.DeleteAccountContactInput, activecampaign.AccountContactDeletion]
-	listAccounts               *connectormock.Query[activecampaign.ListAccountsInput, activecampaign.AccountsPage]
-	getAccount                 *connectormock.Query[activecampaign.GetAccountInput, activecampaign.AccountMetadata]
-	createAccount              *connectormock.Mutation[activecampaign.CreateAccountInput, activecampaign.AccountMetadata]
-	updateAccount              *connectormock.Mutation[activecampaign.UpdateAccountInput, activecampaign.AccountMetadata]
-	deleteAccount              *connectormock.Mutation[activecampaign.DeleteAccountInput, activecampaign.AccountDeletion]
-	listContactListMemberships *connectormock.Query[activecampaign.ListContactListMembershipsInput, activecampaign.ContactListMembershipsPage]
-	subscribeContactToList     *connectormock.Mutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership]
-	unsubscribeContactFromList *connectormock.Mutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership]
-	listContactTags            *connectormock.Query[activecampaign.ListContactTagsInput, activecampaign.ContactTagAssociations]
-	applyTagToContact          *connectormock.Mutation[activecampaign.ApplyTagToContactInput, activecampaign.ContactTagAssociation]
-	removeTagFromContact       *connectormock.Mutation[activecampaign.RemoveTagFromContactInput, activecampaign.ContactTagRemoval]
-	listDealNotes              *connectormock.Query[activecampaign.ListDealNotesInput, activecampaign.DealNotesPage]
-	getDealNote                *connectormock.Query[activecampaign.GetDealNoteInput, activecampaign.DealNoteMetadata]
-	createDealNote             *connectormock.Mutation[activecampaign.CreateDealNoteInput, activecampaign.DealNoteMetadata]
-	updateDealNote             *connectormock.Mutation[activecampaign.UpdateDealNoteInput, activecampaign.DealNoteMetadata]
-	listDeals                  *connectormock.Query[activecampaign.ListDealsInput, activecampaign.DealsPage]
-	getDeal                    *connectormock.Query[activecampaign.GetDealInput, activecampaign.DealMetadata]
-	createDeal                 *connectormock.Mutation[activecampaign.CreateDealInput, activecampaign.DealMetadata]
-	updateDeal                 *connectormock.Mutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata]
-	deleteDeal                 *connectormock.Mutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion]
-	listTags                   *connectormock.Query[activecampaign.ListTagsInput, activecampaign.TagsPage]
-	getTag                     *connectormock.Query[activecampaign.GetTagInput, activecampaign.TagMetadata]
-	createTag                  *connectormock.Mutation[activecampaign.CreateTagInput, activecampaign.TagMetadata]
-	updateTag                  *connectormock.Mutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata]
-	deleteTag                  *connectormock.Mutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion]
-	listLists                  *connectormock.Query[activecampaign.ListListsInput, activecampaign.ListsPage]
-	getList                    *connectormock.Query[activecampaign.GetListInput, activecampaign.ListMetadata]
-	listContacts               *connectormock.Query[activecampaign.ListContactsInput, activecampaign.ContactsPage]
-	getContact                 *connectormock.Query[activecampaign.GetContactInput, activecampaign.ContactMetadata]
-	syncContact                *connectormock.Mutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata]
-	updateContact              *connectormock.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata]
+	connection                    activecampaign.Connection
+	listEcommerceOrders           *connectormock.Query[activecampaign.ListEcommerceOrdersInput, activecampaign.EcommerceOrdersPage]
+	getEcommerceOrder             *connectormock.Query[activecampaign.GetEcommerceOrderInput, activecampaign.EcommerceOrderMetadata]
+	listEcommerceOrderProducts    *connectormock.Query[activecampaign.ListEcommerceOrderProductsInput, activecampaign.EcommerceOrderProductsPage]
+	getEcommerceOrderProduct      *connectormock.Query[activecampaign.GetEcommerceOrderProductInput, activecampaign.EcommerceOrderProductMetadata]
+	listProductsForEcommerceOrder *connectormock.Query[activecampaign.ListProductsForEcommerceOrderInput, activecampaign.EcommerceOrderProductsPage]
+	listEcommerceCustomers        *connectormock.Query[activecampaign.ListEcommerceCustomersInput, activecampaign.EcommerceCustomersPage]
+	getEcommerceCustomer          *connectormock.Query[activecampaign.GetEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata]
+	createEcommerceCustomer       *connectormock.Mutation[activecampaign.CreateEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata]
+	updateEcommerceCustomer       *connectormock.Mutation[activecampaign.UpdateEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata]
+	deleteEcommerceCustomer       *connectormock.Mutation[activecampaign.DeleteEcommerceCustomerInput, activecampaign.EcommerceCustomerDeletion]
+	listConnections               *connectormock.Query[activecampaign.ListConnectionsInput, activecampaign.ConnectionsPage]
+	getConnection                 *connectormock.Query[activecampaign.GetConnectionInput, activecampaign.ConnectionMetadata]
+	createConnection              *connectormock.Mutation[activecampaign.CreateConnectionInput, activecampaign.ConnectionMetadata]
+	updateConnection              *connectormock.Mutation[activecampaign.UpdateConnectionInput, activecampaign.ConnectionMetadata]
+	deleteConnection              *connectormock.Mutation[activecampaign.DeleteConnectionInput, activecampaign.ConnectionDeletion]
+	listAccountContacts           *connectormock.Query[activecampaign.ListAccountContactsInput, activecampaign.AccountContactsPage]
+	getAccountContact             *connectormock.Query[activecampaign.GetAccountContactInput, activecampaign.AccountContactAssociation]
+	createAccountContact          *connectormock.Mutation[activecampaign.CreateAccountContactInput, activecampaign.AccountContactAssociation]
+	updateAccountContact          *connectormock.Mutation[activecampaign.UpdateAccountContactInput, activecampaign.AccountContactAssociation]
+	deleteAccountContact          *connectormock.Mutation[activecampaign.DeleteAccountContactInput, activecampaign.AccountContactDeletion]
+	listAccounts                  *connectormock.Query[activecampaign.ListAccountsInput, activecampaign.AccountsPage]
+	getAccount                    *connectormock.Query[activecampaign.GetAccountInput, activecampaign.AccountMetadata]
+	createAccount                 *connectormock.Mutation[activecampaign.CreateAccountInput, activecampaign.AccountMetadata]
+	updateAccount                 *connectormock.Mutation[activecampaign.UpdateAccountInput, activecampaign.AccountMetadata]
+	deleteAccount                 *connectormock.Mutation[activecampaign.DeleteAccountInput, activecampaign.AccountDeletion]
+	listContactListMemberships    *connectormock.Query[activecampaign.ListContactListMembershipsInput, activecampaign.ContactListMembershipsPage]
+	subscribeContactToList        *connectormock.Mutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership]
+	unsubscribeContactFromList    *connectormock.Mutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership]
+	listContactTags               *connectormock.Query[activecampaign.ListContactTagsInput, activecampaign.ContactTagAssociations]
+	applyTagToContact             *connectormock.Mutation[activecampaign.ApplyTagToContactInput, activecampaign.ContactTagAssociation]
+	removeTagFromContact          *connectormock.Mutation[activecampaign.RemoveTagFromContactInput, activecampaign.ContactTagRemoval]
+	listDealNotes                 *connectormock.Query[activecampaign.ListDealNotesInput, activecampaign.DealNotesPage]
+	getDealNote                   *connectormock.Query[activecampaign.GetDealNoteInput, activecampaign.DealNoteMetadata]
+	createDealNote                *connectormock.Mutation[activecampaign.CreateDealNoteInput, activecampaign.DealNoteMetadata]
+	updateDealNote                *connectormock.Mutation[activecampaign.UpdateDealNoteInput, activecampaign.DealNoteMetadata]
+	listDeals                     *connectormock.Query[activecampaign.ListDealsInput, activecampaign.DealsPage]
+	getDeal                       *connectormock.Query[activecampaign.GetDealInput, activecampaign.DealMetadata]
+	createDeal                    *connectormock.Mutation[activecampaign.CreateDealInput, activecampaign.DealMetadata]
+	updateDeal                    *connectormock.Mutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata]
+	deleteDeal                    *connectormock.Mutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion]
+	listTags                      *connectormock.Query[activecampaign.ListTagsInput, activecampaign.TagsPage]
+	getTag                        *connectormock.Query[activecampaign.GetTagInput, activecampaign.TagMetadata]
+	createTag                     *connectormock.Mutation[activecampaign.CreateTagInput, activecampaign.TagMetadata]
+	updateTag                     *connectormock.Mutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata]
+	deleteTag                     *connectormock.Mutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion]
+	listLists                     *connectormock.Query[activecampaign.ListListsInput, activecampaign.ListsPage]
+	getList                       *connectormock.Query[activecampaign.GetListInput, activecampaign.ListMetadata]
+	listContacts                  *connectormock.Query[activecampaign.ListContactsInput, activecampaign.ContactsPage]
+	getContact                    *connectormock.Query[activecampaign.GetContactInput, activecampaign.ContactMetadata]
+	syncContact                   *connectormock.Mutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata]
+	updateContact                 *connectormock.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -71,53 +76,63 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listEcommerceCustomers:     connectormock.NewQuery[activecampaign.ListEcommerceCustomersInput, activecampaign.EcommerceCustomersPage](t, activecampaign.ListEcommerceCustomersDefinition),
-		getEcommerceCustomer:       connectormock.NewQuery[activecampaign.GetEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata](t, activecampaign.GetEcommerceCustomerDefinition),
-		createEcommerceCustomer:    connectormock.NewMutation[activecampaign.CreateEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata](t, activecampaign.CreateEcommerceCustomerDefinition),
-		updateEcommerceCustomer:    connectormock.NewMutation[activecampaign.UpdateEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata](t, activecampaign.UpdateEcommerceCustomerDefinition),
-		deleteEcommerceCustomer:    connectormock.NewMutation[activecampaign.DeleteEcommerceCustomerInput, activecampaign.EcommerceCustomerDeletion](t, activecampaign.DeleteEcommerceCustomerDefinition),
-		listConnections:            connectormock.NewQuery[activecampaign.ListConnectionsInput, activecampaign.ConnectionsPage](t, activecampaign.ListConnectionsDefinition),
-		getConnection:              connectormock.NewQuery[activecampaign.GetConnectionInput, activecampaign.ConnectionMetadata](t, activecampaign.GetConnectionDefinition),
-		createConnection:           connectormock.NewMutation[activecampaign.CreateConnectionInput, activecampaign.ConnectionMetadata](t, activecampaign.CreateConnectionDefinition),
-		updateConnection:           connectormock.NewMutation[activecampaign.UpdateConnectionInput, activecampaign.ConnectionMetadata](t, activecampaign.UpdateConnectionDefinition),
-		deleteConnection:           connectormock.NewMutation[activecampaign.DeleteConnectionInput, activecampaign.ConnectionDeletion](t, activecampaign.DeleteConnectionDefinition),
-		listAccountContacts:        connectormock.NewQuery[activecampaign.ListAccountContactsInput, activecampaign.AccountContactsPage](t, activecampaign.ListAccountContactsDefinition),
-		getAccountContact:          connectormock.NewQuery[activecampaign.GetAccountContactInput, activecampaign.AccountContactAssociation](t, activecampaign.GetAccountContactDefinition),
-		createAccountContact:       connectormock.NewMutation[activecampaign.CreateAccountContactInput, activecampaign.AccountContactAssociation](t, activecampaign.CreateAccountContactDefinition),
-		updateAccountContact:       connectormock.NewMutation[activecampaign.UpdateAccountContactInput, activecampaign.AccountContactAssociation](t, activecampaign.UpdateAccountContactDefinition),
-		deleteAccountContact:       connectormock.NewMutation[activecampaign.DeleteAccountContactInput, activecampaign.AccountContactDeletion](t, activecampaign.DeleteAccountContactDefinition),
-		listAccounts:               connectormock.NewQuery[activecampaign.ListAccountsInput, activecampaign.AccountsPage](t, activecampaign.ListAccountsDefinition),
-		getAccount:                 connectormock.NewQuery[activecampaign.GetAccountInput, activecampaign.AccountMetadata](t, activecampaign.GetAccountDefinition),
-		createAccount:              connectormock.NewMutation[activecampaign.CreateAccountInput, activecampaign.AccountMetadata](t, activecampaign.CreateAccountDefinition),
-		updateAccount:              connectormock.NewMutation[activecampaign.UpdateAccountInput, activecampaign.AccountMetadata](t, activecampaign.UpdateAccountDefinition),
-		deleteAccount:              connectormock.NewMutation[activecampaign.DeleteAccountInput, activecampaign.AccountDeletion](t, activecampaign.DeleteAccountDefinition),
-		listContactListMemberships: connectormock.NewQuery[activecampaign.ListContactListMembershipsInput, activecampaign.ContactListMembershipsPage](t, activecampaign.ListContactListMembershipsDefinition),
-		subscribeContactToList:     connectormock.NewMutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership](t, activecampaign.SubscribeContactToListDefinition),
-		unsubscribeContactFromList: connectormock.NewMutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership](t, activecampaign.UnsubscribeContactFromListDefinition),
-		listContactTags:            connectormock.NewQuery[activecampaign.ListContactTagsInput, activecampaign.ContactTagAssociations](t, activecampaign.ListContactTagsDefinition),
-		applyTagToContact:          connectormock.NewMutation[activecampaign.ApplyTagToContactInput, activecampaign.ContactTagAssociation](t, activecampaign.ApplyTagToContactDefinition),
-		removeTagFromContact:       connectormock.NewMutation[activecampaign.RemoveTagFromContactInput, activecampaign.ContactTagRemoval](t, activecampaign.RemoveTagFromContactDefinition),
-		listDealNotes:              connectormock.NewQuery[activecampaign.ListDealNotesInput, activecampaign.DealNotesPage](t, activecampaign.ListDealNotesDefinition),
-		getDealNote:                connectormock.NewQuery[activecampaign.GetDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.GetDealNoteDefinition),
-		createDealNote:             connectormock.NewMutation[activecampaign.CreateDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.CreateDealNoteDefinition),
-		updateDealNote:             connectormock.NewMutation[activecampaign.UpdateDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.UpdateDealNoteDefinition),
-		listDeals:                  connectormock.NewQuery[activecampaign.ListDealsInput, activecampaign.DealsPage](t, activecampaign.ListDealsDefinition),
-		getDeal:                    connectormock.NewQuery[activecampaign.GetDealInput, activecampaign.DealMetadata](t, activecampaign.GetDealDefinition),
-		createDeal:                 connectormock.NewMutation[activecampaign.CreateDealInput, activecampaign.DealMetadata](t, activecampaign.CreateDealDefinition),
-		updateDeal:                 connectormock.NewMutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata](t, activecampaign.UpdateDealDefinition),
-		deleteDeal:                 connectormock.NewMutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion](t, activecampaign.DeleteDealDefinition),
-		listTags:                   connectormock.NewQuery[activecampaign.ListTagsInput, activecampaign.TagsPage](t, activecampaign.ListTagsDefinition),
-		getTag:                     connectormock.NewQuery[activecampaign.GetTagInput, activecampaign.TagMetadata](t, activecampaign.GetTagDefinition),
-		createTag:                  connectormock.NewMutation[activecampaign.CreateTagInput, activecampaign.TagMetadata](t, activecampaign.CreateTagDefinition),
-		updateTag:                  connectormock.NewMutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata](t, activecampaign.UpdateTagDefinition),
-		deleteTag:                  connectormock.NewMutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion](t, activecampaign.DeleteTagDefinition),
-		listLists:                  connectormock.NewQuery[activecampaign.ListListsInput, activecampaign.ListsPage](t, activecampaign.ListListsDefinition),
-		getList:                    connectormock.NewQuery[activecampaign.GetListInput, activecampaign.ListMetadata](t, activecampaign.GetListDefinition),
-		listContacts:               connectormock.NewQuery[activecampaign.ListContactsInput, activecampaign.ContactsPage](t, activecampaign.ListContactsDefinition),
-		getContact:                 connectormock.NewQuery[activecampaign.GetContactInput, activecampaign.ContactMetadata](t, activecampaign.GetContactDefinition),
-		syncContact:                connectormock.NewMutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata](t, activecampaign.SyncContactDefinition),
-		updateContact:              connectormock.NewMutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata](t, activecampaign.UpdateContactDefinition),
+		listEcommerceOrders:           connectormock.NewQuery[activecampaign.ListEcommerceOrdersInput, activecampaign.EcommerceOrdersPage](t, activecampaign.ListEcommerceOrdersDefinition),
+		getEcommerceOrder:             connectormock.NewQuery[activecampaign.GetEcommerceOrderInput, activecampaign.EcommerceOrderMetadata](t, activecampaign.GetEcommerceOrderDefinition),
+		listEcommerceOrderProducts:    connectormock.NewQuery[activecampaign.ListEcommerceOrderProductsInput, activecampaign.EcommerceOrderProductsPage](t, activecampaign.ListEcommerceOrderProductsDefinition),
+		getEcommerceOrderProduct:      connectormock.NewQuery[activecampaign.GetEcommerceOrderProductInput, activecampaign.EcommerceOrderProductMetadata](t, activecampaign.GetEcommerceOrderProductDefinition),
+		listProductsForEcommerceOrder: connectormock.NewQuery[activecampaign.ListProductsForEcommerceOrderInput, activecampaign.EcommerceOrderProductsPage](t, activecampaign.ListProductsForEcommerceOrderDefinition),
+		listEcommerceCustomers:        connectormock.NewQuery[activecampaign.ListEcommerceCustomersInput, activecampaign.EcommerceCustomersPage](t, activecampaign.ListEcommerceCustomersDefinition),
+		getEcommerceCustomer:          connectormock.NewQuery[activecampaign.GetEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata](t, activecampaign.GetEcommerceCustomerDefinition),
+		createEcommerceCustomer:       connectormock.NewMutation[activecampaign.CreateEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata](t, activecampaign.CreateEcommerceCustomerDefinition),
+		updateEcommerceCustomer:       connectormock.NewMutation[activecampaign.UpdateEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata](t, activecampaign.UpdateEcommerceCustomerDefinition),
+		deleteEcommerceCustomer:       connectormock.NewMutation[activecampaign.DeleteEcommerceCustomerInput, activecampaign.EcommerceCustomerDeletion](t, activecampaign.DeleteEcommerceCustomerDefinition),
+		listConnections:               connectormock.NewQuery[activecampaign.ListConnectionsInput, activecampaign.ConnectionsPage](t, activecampaign.ListConnectionsDefinition),
+		getConnection:                 connectormock.NewQuery[activecampaign.GetConnectionInput, activecampaign.ConnectionMetadata](t, activecampaign.GetConnectionDefinition),
+		createConnection:              connectormock.NewMutation[activecampaign.CreateConnectionInput, activecampaign.ConnectionMetadata](t, activecampaign.CreateConnectionDefinition),
+		updateConnection:              connectormock.NewMutation[activecampaign.UpdateConnectionInput, activecampaign.ConnectionMetadata](t, activecampaign.UpdateConnectionDefinition),
+		deleteConnection:              connectormock.NewMutation[activecampaign.DeleteConnectionInput, activecampaign.ConnectionDeletion](t, activecampaign.DeleteConnectionDefinition),
+		listAccountContacts:           connectormock.NewQuery[activecampaign.ListAccountContactsInput, activecampaign.AccountContactsPage](t, activecampaign.ListAccountContactsDefinition),
+		getAccountContact:             connectormock.NewQuery[activecampaign.GetAccountContactInput, activecampaign.AccountContactAssociation](t, activecampaign.GetAccountContactDefinition),
+		createAccountContact:          connectormock.NewMutation[activecampaign.CreateAccountContactInput, activecampaign.AccountContactAssociation](t, activecampaign.CreateAccountContactDefinition),
+		updateAccountContact:          connectormock.NewMutation[activecampaign.UpdateAccountContactInput, activecampaign.AccountContactAssociation](t, activecampaign.UpdateAccountContactDefinition),
+		deleteAccountContact:          connectormock.NewMutation[activecampaign.DeleteAccountContactInput, activecampaign.AccountContactDeletion](t, activecampaign.DeleteAccountContactDefinition),
+		listAccounts:                  connectormock.NewQuery[activecampaign.ListAccountsInput, activecampaign.AccountsPage](t, activecampaign.ListAccountsDefinition),
+		getAccount:                    connectormock.NewQuery[activecampaign.GetAccountInput, activecampaign.AccountMetadata](t, activecampaign.GetAccountDefinition),
+		createAccount:                 connectormock.NewMutation[activecampaign.CreateAccountInput, activecampaign.AccountMetadata](t, activecampaign.CreateAccountDefinition),
+		updateAccount:                 connectormock.NewMutation[activecampaign.UpdateAccountInput, activecampaign.AccountMetadata](t, activecampaign.UpdateAccountDefinition),
+		deleteAccount:                 connectormock.NewMutation[activecampaign.DeleteAccountInput, activecampaign.AccountDeletion](t, activecampaign.DeleteAccountDefinition),
+		listContactListMemberships:    connectormock.NewQuery[activecampaign.ListContactListMembershipsInput, activecampaign.ContactListMembershipsPage](t, activecampaign.ListContactListMembershipsDefinition),
+		subscribeContactToList:        connectormock.NewMutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership](t, activecampaign.SubscribeContactToListDefinition),
+		unsubscribeContactFromList:    connectormock.NewMutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership](t, activecampaign.UnsubscribeContactFromListDefinition),
+		listContactTags:               connectormock.NewQuery[activecampaign.ListContactTagsInput, activecampaign.ContactTagAssociations](t, activecampaign.ListContactTagsDefinition),
+		applyTagToContact:             connectormock.NewMutation[activecampaign.ApplyTagToContactInput, activecampaign.ContactTagAssociation](t, activecampaign.ApplyTagToContactDefinition),
+		removeTagFromContact:          connectormock.NewMutation[activecampaign.RemoveTagFromContactInput, activecampaign.ContactTagRemoval](t, activecampaign.RemoveTagFromContactDefinition),
+		listDealNotes:                 connectormock.NewQuery[activecampaign.ListDealNotesInput, activecampaign.DealNotesPage](t, activecampaign.ListDealNotesDefinition),
+		getDealNote:                   connectormock.NewQuery[activecampaign.GetDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.GetDealNoteDefinition),
+		createDealNote:                connectormock.NewMutation[activecampaign.CreateDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.CreateDealNoteDefinition),
+		updateDealNote:                connectormock.NewMutation[activecampaign.UpdateDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.UpdateDealNoteDefinition),
+		listDeals:                     connectormock.NewQuery[activecampaign.ListDealsInput, activecampaign.DealsPage](t, activecampaign.ListDealsDefinition),
+		getDeal:                       connectormock.NewQuery[activecampaign.GetDealInput, activecampaign.DealMetadata](t, activecampaign.GetDealDefinition),
+		createDeal:                    connectormock.NewMutation[activecampaign.CreateDealInput, activecampaign.DealMetadata](t, activecampaign.CreateDealDefinition),
+		updateDeal:                    connectormock.NewMutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata](t, activecampaign.UpdateDealDefinition),
+		deleteDeal:                    connectormock.NewMutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion](t, activecampaign.DeleteDealDefinition),
+		listTags:                      connectormock.NewQuery[activecampaign.ListTagsInput, activecampaign.TagsPage](t, activecampaign.ListTagsDefinition),
+		getTag:                        connectormock.NewQuery[activecampaign.GetTagInput, activecampaign.TagMetadata](t, activecampaign.GetTagDefinition),
+		createTag:                     connectormock.NewMutation[activecampaign.CreateTagInput, activecampaign.TagMetadata](t, activecampaign.CreateTagDefinition),
+		updateTag:                     connectormock.NewMutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata](t, activecampaign.UpdateTagDefinition),
+		deleteTag:                     connectormock.NewMutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion](t, activecampaign.DeleteTagDefinition),
+		listLists:                     connectormock.NewQuery[activecampaign.ListListsInput, activecampaign.ListsPage](t, activecampaign.ListListsDefinition),
+		getList:                       connectormock.NewQuery[activecampaign.GetListInput, activecampaign.ListMetadata](t, activecampaign.GetListDefinition),
+		listContacts:                  connectormock.NewQuery[activecampaign.ListContactsInput, activecampaign.ContactsPage](t, activecampaign.ListContactsDefinition),
+		getContact:                    connectormock.NewQuery[activecampaign.GetContactInput, activecampaign.ContactMetadata](t, activecampaign.GetContactDefinition),
+		syncContact:                   connectormock.NewMutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata](t, activecampaign.SyncContactDefinition),
+		updateContact:                 connectormock.NewMutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata](t, activecampaign.UpdateContactDefinition),
 	}
+	mock.listEcommerceOrders.Default(ListEcommerceOrdersDefault())
+	mock.getEcommerceOrder.Default(GetEcommerceOrderDefault())
+	mock.listEcommerceOrderProducts.Default(ListEcommerceOrderProductsDefault())
+	mock.getEcommerceOrderProduct.Default(GetEcommerceOrderProductDefault())
+	mock.listProductsForEcommerceOrder.Default(ListProductsForEcommerceOrderDefault())
 	mock.listEcommerceCustomers.Default(ListEcommerceCustomersDefault())
 	mock.getEcommerceCustomer.Default(GetEcommerceCustomerDefault())
 	mock.createEcommerceCustomer.Default(CreateEcommerceCustomerDefault())
@@ -174,6 +189,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() activecampaign.Connection { return mock.connection }
+
+// ListEcommerceOrders returns the listEcommerceOrders script.
+func (mock *Mock) ListEcommerceOrders() *connectormock.Query[activecampaign.ListEcommerceOrdersInput, activecampaign.EcommerceOrdersPage] {
+	return mock.listEcommerceOrders
+}
+
+// GetEcommerceOrder returns the getEcommerceOrder script.
+func (mock *Mock) GetEcommerceOrder() *connectormock.Query[activecampaign.GetEcommerceOrderInput, activecampaign.EcommerceOrderMetadata] {
+	return mock.getEcommerceOrder
+}
+
+// ListEcommerceOrderProducts returns the listEcommerceOrderProducts script.
+func (mock *Mock) ListEcommerceOrderProducts() *connectormock.Query[activecampaign.ListEcommerceOrderProductsInput, activecampaign.EcommerceOrderProductsPage] {
+	return mock.listEcommerceOrderProducts
+}
+
+// GetEcommerceOrderProduct returns the getEcommerceOrderProduct script.
+func (mock *Mock) GetEcommerceOrderProduct() *connectormock.Query[activecampaign.GetEcommerceOrderProductInput, activecampaign.EcommerceOrderProductMetadata] {
+	return mock.getEcommerceOrderProduct
+}
+
+// ListProductsForEcommerceOrder returns the listProductsForEcommerceOrder script.
+func (mock *Mock) ListProductsForEcommerceOrder() *connectormock.Query[activecampaign.ListProductsForEcommerceOrderInput, activecampaign.EcommerceOrderProductsPage] {
+	return mock.listProductsForEcommerceOrder
+}
 
 // ListEcommerceCustomers returns the listEcommerceCustomers script.
 func (mock *Mock) ListEcommerceCustomers() *connectormock.Query[activecampaign.ListEcommerceCustomersInput, activecampaign.EcommerceCustomersPage] {
@@ -407,6 +447,21 @@ func (mock *Mock) UpdateContact() *connectormock.Mutation[activecampaign.UpdateC
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListEcommerceOrders() sdkgo.Query[activecampaign.ListEcommerceOrdersInput, activecampaign.EcommerceOrdersPage] {
+	return operations.mock.listEcommerceOrders
+}
+func (operations mockOperations) GetEcommerceOrder() sdkgo.Query[activecampaign.GetEcommerceOrderInput, activecampaign.EcommerceOrderMetadata] {
+	return operations.mock.getEcommerceOrder
+}
+func (operations mockOperations) ListEcommerceOrderProducts() sdkgo.Query[activecampaign.ListEcommerceOrderProductsInput, activecampaign.EcommerceOrderProductsPage] {
+	return operations.mock.listEcommerceOrderProducts
+}
+func (operations mockOperations) GetEcommerceOrderProduct() sdkgo.Query[activecampaign.GetEcommerceOrderProductInput, activecampaign.EcommerceOrderProductMetadata] {
+	return operations.mock.getEcommerceOrderProduct
+}
+func (operations mockOperations) ListProductsForEcommerceOrder() sdkgo.Query[activecampaign.ListProductsForEcommerceOrderInput, activecampaign.EcommerceOrderProductsPage] {
+	return operations.mock.listProductsForEcommerceOrder
+}
 func (operations mockOperations) ListEcommerceCustomers() sdkgo.Query[activecampaign.ListEcommerceCustomersInput, activecampaign.EcommerceCustomersPage] {
 	return operations.mock.listEcommerceCustomers
 }
@@ -544,6 +599,201 @@ func (operations mockOperations) SyncContact() sdkgo.Mutation[activecampaign.Syn
 }
 func (operations mockOperations) UpdateContact() sdkgo.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata] {
 	return operations.mock.updateContact
+}
+
+// ListEcommerceOrdersListed selects the listed branch: ActiveCampaign returned the selected ecommerce data.
+func ListEcommerceOrdersListed(value activecampaign.EcommerceOrdersPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrdersPage] {
+	return connectormock.Branch(activecampaign.ListEcommerceOrdersBranchListed, value, failure)
+}
+
+// ListEcommerceOrdersProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func ListEcommerceOrdersProviderRejected(value activecampaign.EcommerceOrdersPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrdersPage] {
+	return connectormock.Branch(activecampaign.ListEcommerceOrdersBranchProviderRejected, value, failure)
+}
+
+// ListEcommerceOrdersInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func ListEcommerceOrdersInvalidResponse(value activecampaign.EcommerceOrdersPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrdersPage] {
+	return connectormock.Branch(activecampaign.ListEcommerceOrdersBranchInvalidResponse, value, failure)
+}
+
+// ListEcommerceOrdersDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListEcommerceOrdersDefect(value activecampaign.EcommerceOrdersPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrdersPage] {
+	return connectormock.Branch(activecampaign.ListEcommerceOrdersBranchDefect, value, failure)
+}
+
+// ListEcommerceOrdersRetry asks Dex to retry the listEcommerceOrders Step, after the delay when it is positive.
+func ListEcommerceOrdersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.EcommerceOrdersPage] {
+	return connectormock.Retry[activecampaign.EcommerceOrdersPage](failure, after)
+}
+
+// ListEcommerceOrdersListedDefault is the manifest mock listedDefault: Sample ecommerce result.
+func ListEcommerceOrdersListedDefault() connectormock.Case[activecampaign.EcommerceOrdersPage] {
+	value := connectormock.MustDecodeOutput[activecampaign.EcommerceOrdersPage](`{"orders":[{"id":"1","connectionId":"3","externalId":"store-order-1","customerId":"15","email":"person@example.com","currency":"USD","totalMinor":9111,"state":1}],"total":1}`)
+	return connectormock.Branch(activecampaign.ListEcommerceOrdersBranchListed, value, nil)
+}
+
+// ListEcommerceOrdersDefault is the manifest default, listedDefault, which New installs.
+func ListEcommerceOrdersDefault() connectormock.Case[activecampaign.EcommerceOrdersPage] {
+	return ListEcommerceOrdersListedDefault()
+}
+
+// GetEcommerceOrderFound selects the found branch: ActiveCampaign returned the selected ecommerce data.
+func GetEcommerceOrderFound(value activecampaign.EcommerceOrderMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderMetadata] {
+	return connectormock.Branch(activecampaign.GetEcommerceOrderBranchFound, value, failure)
+}
+
+// GetEcommerceOrderNotFound selects the notFound branch: No matching order or product exists.
+func GetEcommerceOrderNotFound(value activecampaign.EcommerceOrderMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderMetadata] {
+	return connectormock.Branch(activecampaign.GetEcommerceOrderBranchNotFound, value, failure)
+}
+
+// GetEcommerceOrderProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func GetEcommerceOrderProviderRejected(value activecampaign.EcommerceOrderMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderMetadata] {
+	return connectormock.Branch(activecampaign.GetEcommerceOrderBranchProviderRejected, value, failure)
+}
+
+// GetEcommerceOrderInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func GetEcommerceOrderInvalidResponse(value activecampaign.EcommerceOrderMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderMetadata] {
+	return connectormock.Branch(activecampaign.GetEcommerceOrderBranchInvalidResponse, value, failure)
+}
+
+// GetEcommerceOrderDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetEcommerceOrderDefect(value activecampaign.EcommerceOrderMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderMetadata] {
+	return connectormock.Branch(activecampaign.GetEcommerceOrderBranchDefect, value, failure)
+}
+
+// GetEcommerceOrderRetry asks Dex to retry the getEcommerceOrder Step, after the delay when it is positive.
+func GetEcommerceOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.EcommerceOrderMetadata] {
+	return connectormock.Retry[activecampaign.EcommerceOrderMetadata](failure, after)
+}
+
+// GetEcommerceOrderFoundDefault is the manifest mock foundDefault: Sample ecommerce result.
+func GetEcommerceOrderFoundDefault() connectormock.Case[activecampaign.EcommerceOrderMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.EcommerceOrderMetadata](`{"id":"1","connectionId":"3","externalId":"store-order-1","customerId":"15","email":"person@example.com","currency":"USD","totalMinor":9111,"state":1}`)
+	return connectormock.Branch(activecampaign.GetEcommerceOrderBranchFound, value, nil)
+}
+
+// GetEcommerceOrderDefault is the manifest default, foundDefault, which New installs.
+func GetEcommerceOrderDefault() connectormock.Case[activecampaign.EcommerceOrderMetadata] {
+	return GetEcommerceOrderFoundDefault()
+}
+
+// ListEcommerceOrderProductsListed selects the listed branch: ActiveCampaign returned the selected ecommerce data.
+func ListEcommerceOrderProductsListed(value activecampaign.EcommerceOrderProductsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderProductsPage] {
+	return connectormock.Branch(activecampaign.ListEcommerceOrderProductsBranchListed, value, failure)
+}
+
+// ListEcommerceOrderProductsProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func ListEcommerceOrderProductsProviderRejected(value activecampaign.EcommerceOrderProductsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderProductsPage] {
+	return connectormock.Branch(activecampaign.ListEcommerceOrderProductsBranchProviderRejected, value, failure)
+}
+
+// ListEcommerceOrderProductsInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func ListEcommerceOrderProductsInvalidResponse(value activecampaign.EcommerceOrderProductsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderProductsPage] {
+	return connectormock.Branch(activecampaign.ListEcommerceOrderProductsBranchInvalidResponse, value, failure)
+}
+
+// ListEcommerceOrderProductsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListEcommerceOrderProductsDefect(value activecampaign.EcommerceOrderProductsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderProductsPage] {
+	return connectormock.Branch(activecampaign.ListEcommerceOrderProductsBranchDefect, value, failure)
+}
+
+// ListEcommerceOrderProductsRetry asks Dex to retry the listEcommerceOrderProducts Step, after the delay when it is positive.
+func ListEcommerceOrderProductsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.EcommerceOrderProductsPage] {
+	return connectormock.Retry[activecampaign.EcommerceOrderProductsPage](failure, after)
+}
+
+// ListEcommerceOrderProductsListedDefault is the manifest mock listedDefault: Sample ecommerce result.
+func ListEcommerceOrderProductsListedDefault() connectormock.Case[activecampaign.EcommerceOrderProductsPage] {
+	value := connectormock.MustDecodeOutput[activecampaign.EcommerceOrderProductsPage](`{"products":[{"id":"7","orderId":"1","externalId":"product-1","name":"Skateboard","priceMinor":5000,"quantity":1}],"total":1}`)
+	return connectormock.Branch(activecampaign.ListEcommerceOrderProductsBranchListed, value, nil)
+}
+
+// ListEcommerceOrderProductsDefault is the manifest default, listedDefault, which New installs.
+func ListEcommerceOrderProductsDefault() connectormock.Case[activecampaign.EcommerceOrderProductsPage] {
+	return ListEcommerceOrderProductsListedDefault()
+}
+
+// GetEcommerceOrderProductFound selects the found branch: ActiveCampaign returned the selected ecommerce data.
+func GetEcommerceOrderProductFound(value activecampaign.EcommerceOrderProductMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderProductMetadata] {
+	return connectormock.Branch(activecampaign.GetEcommerceOrderProductBranchFound, value, failure)
+}
+
+// GetEcommerceOrderProductNotFound selects the notFound branch: No matching order or product exists.
+func GetEcommerceOrderProductNotFound(value activecampaign.EcommerceOrderProductMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderProductMetadata] {
+	return connectormock.Branch(activecampaign.GetEcommerceOrderProductBranchNotFound, value, failure)
+}
+
+// GetEcommerceOrderProductProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func GetEcommerceOrderProductProviderRejected(value activecampaign.EcommerceOrderProductMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderProductMetadata] {
+	return connectormock.Branch(activecampaign.GetEcommerceOrderProductBranchProviderRejected, value, failure)
+}
+
+// GetEcommerceOrderProductInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func GetEcommerceOrderProductInvalidResponse(value activecampaign.EcommerceOrderProductMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderProductMetadata] {
+	return connectormock.Branch(activecampaign.GetEcommerceOrderProductBranchInvalidResponse, value, failure)
+}
+
+// GetEcommerceOrderProductDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetEcommerceOrderProductDefect(value activecampaign.EcommerceOrderProductMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderProductMetadata] {
+	return connectormock.Branch(activecampaign.GetEcommerceOrderProductBranchDefect, value, failure)
+}
+
+// GetEcommerceOrderProductRetry asks Dex to retry the getEcommerceOrderProduct Step, after the delay when it is positive.
+func GetEcommerceOrderProductRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.EcommerceOrderProductMetadata] {
+	return connectormock.Retry[activecampaign.EcommerceOrderProductMetadata](failure, after)
+}
+
+// GetEcommerceOrderProductFoundDefault is the manifest mock foundDefault: Sample ecommerce result.
+func GetEcommerceOrderProductFoundDefault() connectormock.Case[activecampaign.EcommerceOrderProductMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.EcommerceOrderProductMetadata](`{"id":"7","orderId":"1","externalId":"product-1","name":"Skateboard","priceMinor":5000,"quantity":1}`)
+	return connectormock.Branch(activecampaign.GetEcommerceOrderProductBranchFound, value, nil)
+}
+
+// GetEcommerceOrderProductDefault is the manifest default, foundDefault, which New installs.
+func GetEcommerceOrderProductDefault() connectormock.Case[activecampaign.EcommerceOrderProductMetadata] {
+	return GetEcommerceOrderProductFoundDefault()
+}
+
+// ListProductsForEcommerceOrderListed selects the listed branch: ActiveCampaign returned the selected ecommerce data.
+func ListProductsForEcommerceOrderListed(value activecampaign.EcommerceOrderProductsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderProductsPage] {
+	return connectormock.Branch(activecampaign.ListProductsForEcommerceOrderBranchListed, value, failure)
+}
+
+// ListProductsForEcommerceOrderNotFound selects the notFound branch: No matching order or product exists.
+func ListProductsForEcommerceOrderNotFound(value activecampaign.EcommerceOrderProductsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderProductsPage] {
+	return connectormock.Branch(activecampaign.ListProductsForEcommerceOrderBranchNotFound, value, failure)
+}
+
+// ListProductsForEcommerceOrderProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func ListProductsForEcommerceOrderProviderRejected(value activecampaign.EcommerceOrderProductsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderProductsPage] {
+	return connectormock.Branch(activecampaign.ListProductsForEcommerceOrderBranchProviderRejected, value, failure)
+}
+
+// ListProductsForEcommerceOrderInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func ListProductsForEcommerceOrderInvalidResponse(value activecampaign.EcommerceOrderProductsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderProductsPage] {
+	return connectormock.Branch(activecampaign.ListProductsForEcommerceOrderBranchInvalidResponse, value, failure)
+}
+
+// ListProductsForEcommerceOrderDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListProductsForEcommerceOrderDefect(value activecampaign.EcommerceOrderProductsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderProductsPage] {
+	return connectormock.Branch(activecampaign.ListProductsForEcommerceOrderBranchDefect, value, failure)
+}
+
+// ListProductsForEcommerceOrderRetry asks Dex to retry the listProductsForEcommerceOrder Step, after the delay when it is positive.
+func ListProductsForEcommerceOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.EcommerceOrderProductsPage] {
+	return connectormock.Retry[activecampaign.EcommerceOrderProductsPage](failure, after)
+}
+
+// ListProductsForEcommerceOrderListedDefault is the manifest mock listedDefault: Sample ecommerce result.
+func ListProductsForEcommerceOrderListedDefault() connectormock.Case[activecampaign.EcommerceOrderProductsPage] {
+	value := connectormock.MustDecodeOutput[activecampaign.EcommerceOrderProductsPage](`{"products":[{"id":"7","orderId":"1","externalId":"product-1","name":"Skateboard","priceMinor":5000,"quantity":1}],"total":1}`)
+	return connectormock.Branch(activecampaign.ListProductsForEcommerceOrderBranchListed, value, nil)
+}
+
+// ListProductsForEcommerceOrderDefault is the manifest default, listedDefault, which New installs.
+func ListProductsForEcommerceOrderDefault() connectormock.Case[activecampaign.EcommerceOrderProductsPage] {
+	return ListProductsForEcommerceOrderListedDefault()
 }
 
 // ListEcommerceCustomersListed selects the listed branch: ActiveCampaign completed the ecommerce customer operation.

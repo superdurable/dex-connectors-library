@@ -19,6 +19,10 @@ type ListConnectionsInput struct {
 	Service string `json:"service,omitempty"`
 	// ExternalID optionally filters by the store identifier in that service.
 	ExternalID string `json:"externalId,omitempty"`
+	// Offset skips this many connections.
+	Offset int `json:"offset,omitempty"`
+	// Limit caps the returned connections; zero uses the provider default, at most 100.
+	Limit int `json:"limit,omitempty"`
 }
 
 // GetConnectionInput selects one ecommerce connection by numeric ID.
@@ -72,7 +76,7 @@ func (GetConnectionOperation) Definition() sdkgo.QueryDefinition { return GetCon
 // Invoke reads Deep Data connections by service or store identifier.
 func (operation ListConnectionsOperation) Invoke(call sdkgo.Call, input ListConnectionsInput) sdkgo.QueryAttempt[ConnectionsPage] {
 	branches := queryBranches{found: ListConnectionsBranchListed, rejected: ListConnectionsBranchProviderRejected, invalid: ListConnectionsBranchInvalidResponse, defect: ListConnectionsBranchDefect}
-	if len(input.Service) > 250 || len(input.ExternalID) > 250 || strings.ContainsAny(input.Service+input.ExternalID, "\r\n") {
+	if len(input.Service) > 250 || len(input.ExternalID) > 250 || strings.ContainsAny(input.Service+input.ExternalID, "\r\n") || input.Offset < 0 || input.Limit < 0 || input.Limit > 100 {
 		return queryBranch("listConnections", branches.defect, ConnectionsPage{}, sdkgo.FailureValidation, "service or external ID is invalid")
 	}
 	query := url.Values{}
@@ -81,6 +85,12 @@ func (operation ListConnectionsOperation) Invoke(call sdkgo.Call, input ListConn
 	}
 	if input.ExternalID != "" {
 		query.Set("filters[externalid]", input.ExternalID)
+	}
+	if input.Offset != 0 {
+		query.Set("offset", strconv.Itoa(input.Offset))
+	}
+	if input.Limit != 0 {
+		query.Set("limit", strconv.Itoa(input.Limit))
 	}
 	path := "/connections"
 	if len(query) > 0 {

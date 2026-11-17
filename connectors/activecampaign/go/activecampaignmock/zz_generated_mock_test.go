@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listEcommerceOrders/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceOrdersPage](`{"orders":[{"id":"1","connectionId":"3","externalId":"store-order-1","customerId":"15","email":"person@example.com","currency":"USD","totalMinor":9111,"state":1}],"total":1}`)
+			return err
+		}},
+		{name: "getEcommerceOrder/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceOrderMetadata](`{"id":"1","connectionId":"3","externalId":"store-order-1","customerId":"15","email":"person@example.com","currency":"USD","totalMinor":9111,"state":1}`)
+			return err
+		}},
+		{name: "listEcommerceOrderProducts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceOrderProductsPage](`{"products":[{"id":"7","orderId":"1","externalId":"product-1","name":"Skateboard","priceMinor":5000,"quantity":1}],"total":1}`)
+			return err
+		}},
+		{name: "getEcommerceOrderProduct/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceOrderProductMetadata](`{"id":"7","orderId":"1","externalId":"product-1","name":"Skateboard","priceMinor":5000,"quantity":1}`)
+			return err
+		}},
+		{name: "listProductsForEcommerceOrder/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceOrderProductsPage](`{"products":[{"id":"7","orderId":"1","externalId":"product-1","name":"Skateboard","priceMinor":5000,"quantity":1}],"total":1}`)
+			return err
+		}},
 		{name: "listEcommerceCustomers/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[activecampaign.EcommerceCustomersPage](`{"customers":[{"id":"15","connectionId":"3","externalId":"store-customer-1","email":"person@example.com"}],"total":1}`)
 			return err
@@ -210,6 +230,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListEcommerceOrders().Definition().Operation.OperationID != "listEcommerceOrders" {
+		t.Errorf("listEcommerceOrders mock has another definition")
+	}
+	if mock.GetEcommerceOrder().Definition().Operation.OperationID != "getEcommerceOrder" {
+		t.Errorf("getEcommerceOrder mock has another definition")
+	}
+	if mock.ListEcommerceOrderProducts().Definition().Operation.OperationID != "listEcommerceOrderProducts" {
+		t.Errorf("listEcommerceOrderProducts mock has another definition")
+	}
+	if mock.GetEcommerceOrderProduct().Definition().Operation.OperationID != "getEcommerceOrderProduct" {
+		t.Errorf("getEcommerceOrderProduct mock has another definition")
+	}
+	if mock.ListProductsForEcommerceOrder().Definition().Operation.OperationID != "listProductsForEcommerceOrder" {
+		t.Errorf("listProductsForEcommerceOrder mock has another definition")
+	}
 	if mock.ListEcommerceCustomers().Definition().Operation.OperationID != "listEcommerceCustomers" {
 		t.Errorf("listEcommerceCustomers mock has another definition")
 	}

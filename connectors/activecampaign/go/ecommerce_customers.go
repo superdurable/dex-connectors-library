@@ -21,6 +21,10 @@ type ListEcommerceCustomersInput struct {
 	ExternalID string `json:"externalId,omitempty"`
 	// Email optionally filters by customer email address.
 	Email string `json:"email,omitempty"`
+	// Offset skips this many customers.
+	Offset int `json:"offset,omitempty"`
+	// Limit caps the returned customers; zero uses the provider default, at most 100.
+	Limit int `json:"limit,omitempty"`
 }
 
 // GetEcommerceCustomerInput selects one customer by numeric provider ID.
@@ -78,7 +82,7 @@ func (GetEcommerceCustomerOperation) Definition() sdkgo.QueryDefinition {
 // Invoke reads customers by connection, store ID, or email.
 func (operation ListEcommerceCustomersOperation) Invoke(call sdkgo.Call, input ListEcommerceCustomersInput) sdkgo.QueryAttempt[EcommerceCustomersPage] {
 	branches := queryBranches{found: ListEcommerceCustomersBranchListed, rejected: ListEcommerceCustomersBranchProviderRejected, invalid: ListEcommerceCustomersBranchInvalidResponse, defect: ListEcommerceCustomersBranchDefect}
-	if input.ConnectionID != "" && !numericID.MatchString(input.ConnectionID) || len(input.ExternalID) > 250 || strings.ContainsAny(input.ExternalID, "\r\n") || input.Email != "" && !validContactEmail(input.Email) {
+	if input.ConnectionID != "" && !numericID.MatchString(input.ConnectionID) || len(input.ExternalID) > 250 || strings.ContainsAny(input.ExternalID, "\r\n") || input.Email != "" && !validContactEmail(input.Email) || input.Offset < 0 || input.Limit < 0 || input.Limit > 100 {
 		return queryBranch("listEcommerceCustomers", branches.defect, EcommerceCustomersPage{}, sdkgo.FailureValidation, "connection ID, external ID, or email is invalid")
 	}
 	query := url.Values{}
@@ -90,6 +94,12 @@ func (operation ListEcommerceCustomersOperation) Invoke(call sdkgo.Call, input L
 	}
 	if input.Email != "" {
 		query.Set("filters[email]", input.Email)
+	}
+	if input.Offset != 0 {
+		query.Set("offset", strconv.Itoa(input.Offset))
+	}
+	if input.Limit != 0 {
+		query.Set("limit", strconv.Itoa(input.Limit))
 	}
 	path := "/ecomCustomers"
 	if len(query) > 0 {

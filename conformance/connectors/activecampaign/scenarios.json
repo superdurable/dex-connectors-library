@@ -15522,6 +15522,1754 @@
       },
       "name": "deleteEcommerceCustomer-transportFailure",
       "operation": "deleteEcommerceCustomer"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"connections\":[{\"id\":\"1\",\"service\":\"fooCommerce\",\"externalid\":\"store-1\",\"name\":\"Store\",\"listId\":\"2\"}],\"meta\":{\"total\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/connections",
+          "query": {
+            "filters[externalid]": [
+              "store-1"
+            ],
+            "filters[service]": [
+              "fooCommerce"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "connections": [
+            {
+              "externalId": "store-1",
+              "id": "1",
+              "listId": "2",
+              "name": "Store",
+              "service": "fooCommerce"
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalId": "store-1",
+        "limit": 3,
+        "offset": 2,
+        "service": "fooCommerce"
+      },
+      "name": "listConnections-page",
+      "operation": "listConnections"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"ecomCustomers\":[{\"id\":\"15\",\"connectionid\":\"3\",\"externalid\":\"store-customer-1\",\"email\":\"person@example.com\"}],\"meta\":{\"total\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomCustomers",
+          "query": {
+            "filters[connectionid]": [
+              "3"
+            ],
+            "filters[email]": [
+              "person@example.com"
+            ],
+            "filters[externalid]": [
+              "store-customer-1"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "customers": [
+            {
+              "connectionId": "3",
+              "email": "person@example.com",
+              "externalId": "store-customer-1",
+              "id": "15"
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-customer-1",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listEcommerceCustomers-page",
+      "operation": "listEcommerceCustomers"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"ecomOrders\":[{\"id\":\"1\",\"connectionid\":\"3\",\"externalid\":\"store-order-1\",\"customerid\":\"15\",\"email\":\"person@example.com\",\"currency\":\"USD\",\"totalPrice\":9111,\"state\":1}],\"meta\":{\"total\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders",
+          "query": {
+            "filters[connectionid]": [
+              "3"
+            ],
+            "filters[email]": [
+              "person@example.com"
+            ],
+            "filters[externalid]": [
+              "store-order-1"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "orders": [
+            {
+              "connectionId": "3",
+              "currency": "USD",
+              "customerId": "15",
+              "email": "person@example.com",
+              "externalId": "store-order-1",
+              "id": "1",
+              "state": 1,
+              "totalMinor": 9111
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-order-1",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listEcommerceOrders-success",
+      "operation": "listEcommerceOrders"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders",
+          "query": {
+            "filters[connectionid]": [
+              "3"
+            ],
+            "filters[email]": [
+              "person@example.com"
+            ],
+            "filters[externalid]": [
+              "store-order-1"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "orders": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-order-1",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listEcommerceOrders-providerRejected",
+      "operation": "listEcommerceOrders"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"ecomOrders\":{},\"meta\":{\"total\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders",
+          "query": {
+            "filters[connectionid]": [
+              "3"
+            ],
+            "filters[email]": [
+              "person@example.com"
+            ],
+            "filters[externalid]": [
+              "store-order-1"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "orders": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-order-1",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listEcommerceOrders-invalidResponse",
+      "operation": "listEcommerceOrders"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "orders": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "bad"
+      },
+      "name": "listEcommerceOrders-defect",
+      "operation": "listEcommerceOrders"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders",
+          "query": {
+            "filters[connectionid]": [
+              "3"
+            ],
+            "filters[email]": [
+              "person@example.com"
+            ],
+            "filters[externalid]": [
+              "store-order-1"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-order-1",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listEcommerceOrders-rateLimit",
+      "operation": "listEcommerceOrders"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders",
+          "query": {
+            "filters[connectionid]": [
+              "3"
+            ],
+            "filters[email]": [
+              "person@example.com"
+            ],
+            "filters[externalid]": [
+              "store-order-1"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-order-1",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listEcommerceOrders-serverUnavailable",
+      "operation": "listEcommerceOrders"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders",
+          "query": {
+            "filters[connectionid]": [
+              "3"
+            ],
+            "filters[email]": [
+              "person@example.com"
+            ],
+            "filters[externalid]": [
+              "store-order-1"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-order-1",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listEcommerceOrders-transportFailure",
+      "operation": "listEcommerceOrders"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"ecomOrder\":{\"id\":\"1\",\"connectionid\":\"3\",\"externalid\":\"store-order-1\",\"customerid\":\"15\",\"email\":\"person@example.com\",\"currency\":\"USD\",\"totalPrice\":9111,\"state\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "connectionId": "3",
+          "currency": "USD",
+          "customerId": "15",
+          "email": "person@example.com",
+          "externalId": "store-order-1",
+          "id": "1",
+          "state": 1,
+          "totalMinor": 9111
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "1"
+      },
+      "name": "getEcommerceOrder-success",
+      "operation": "getEcommerceOrder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "connectionId": "",
+          "currency": "",
+          "customerId": "",
+          "email": "",
+          "externalId": "",
+          "id": "",
+          "state": 0,
+          "totalMinor": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "1"
+      },
+      "name": "getEcommerceOrder-providerRejected",
+      "operation": "getEcommerceOrder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "connectionId": "",
+          "currency": "",
+          "customerId": "",
+          "email": "",
+          "externalId": "",
+          "id": "",
+          "state": 0,
+          "totalMinor": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "1"
+      },
+      "name": "getEcommerceOrder-invalidResponse",
+      "operation": "getEcommerceOrder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "connectionId": "",
+          "currency": "",
+          "customerId": "",
+          "email": "",
+          "externalId": "",
+          "id": "",
+          "state": 0,
+          "totalMinor": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "1"
+      },
+      "name": "getEcommerceOrder-notFound",
+      "operation": "getEcommerceOrder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "connectionId": "",
+          "currency": "",
+          "customerId": "",
+          "email": "",
+          "externalId": "",
+          "id": "",
+          "state": 0,
+          "totalMinor": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "bad"
+      },
+      "name": "getEcommerceOrder-defect",
+      "operation": "getEcommerceOrder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "1"
+      },
+      "name": "getEcommerceOrder-rateLimit",
+      "operation": "getEcommerceOrder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "1"
+      },
+      "name": "getEcommerceOrder-serverUnavailable",
+      "operation": "getEcommerceOrder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "1"
+      },
+      "name": "getEcommerceOrder-transportFailure",
+      "operation": "getEcommerceOrder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"ecomOrderProducts\":[{\"id\":\"7\",\"orderid\":\"1\",\"externalid\":\"product-1\",\"name\":\"Skateboard\",\"price\":\"5000\",\"quantity\":\"1\"}],\"meta\":{\"total\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrderProducts",
+          "query": {
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "products": [
+            {
+              "externalId": "product-1",
+              "id": "7",
+              "name": "Skateboard",
+              "orderId": "1",
+              "priceMinor": 5000,
+              "quantity": 1
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listEcommerceOrderProducts-success",
+      "operation": "listEcommerceOrderProducts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrderProducts",
+          "query": {
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listEcommerceOrderProducts-providerRejected",
+      "operation": "listEcommerceOrderProducts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"ecomOrderProducts\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrderProducts",
+          "query": {
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listEcommerceOrderProducts-invalidResponse",
+      "operation": "listEcommerceOrderProducts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": -1
+      },
+      "name": "listEcommerceOrderProducts-defect",
+      "operation": "listEcommerceOrderProducts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrderProducts",
+          "query": {
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listEcommerceOrderProducts-rateLimit",
+      "operation": "listEcommerceOrderProducts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrderProducts",
+          "query": {
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listEcommerceOrderProducts-serverUnavailable",
+      "operation": "listEcommerceOrderProducts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrderProducts",
+          "query": {
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listEcommerceOrderProducts-transportFailure",
+      "operation": "listEcommerceOrderProducts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"ecomOrderProduct\":{\"id\":\"7\",\"orderid\":\"1\",\"externalid\":\"product-1\",\"name\":\"Skateboard\",\"price\":\"5000\",\"quantity\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrderProducts/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "externalId": "product-1",
+          "id": "7",
+          "name": "Skateboard",
+          "orderId": "1",
+          "priceMinor": 5000,
+          "quantity": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": "7"
+      },
+      "name": "getEcommerceOrderProduct-success",
+      "operation": "getEcommerceOrderProduct"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrderProducts/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "externalId": "",
+          "id": "",
+          "name": "",
+          "orderId": "",
+          "priceMinor": 0,
+          "quantity": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": "7"
+      },
+      "name": "getEcommerceOrderProduct-providerRejected",
+      "operation": "getEcommerceOrderProduct"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrderProducts/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "externalId": "",
+          "id": "",
+          "name": "",
+          "orderId": "",
+          "priceMinor": 0,
+          "quantity": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": "7"
+      },
+      "name": "getEcommerceOrderProduct-invalidResponse",
+      "operation": "getEcommerceOrderProduct"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrderProducts/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "externalId": "",
+          "id": "",
+          "name": "",
+          "orderId": "",
+          "priceMinor": 0,
+          "quantity": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": "7"
+      },
+      "name": "getEcommerceOrderProduct-notFound",
+      "operation": "getEcommerceOrderProduct"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "externalId": "",
+          "id": "",
+          "name": "",
+          "orderId": "",
+          "priceMinor": 0,
+          "quantity": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": "bad"
+      },
+      "name": "getEcommerceOrderProduct-defect",
+      "operation": "getEcommerceOrderProduct"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrderProducts/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": "7"
+      },
+      "name": "getEcommerceOrderProduct-rateLimit",
+      "operation": "getEcommerceOrderProduct"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrderProducts/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": "7"
+      },
+      "name": "getEcommerceOrderProduct-serverUnavailable",
+      "operation": "getEcommerceOrderProduct"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrderProducts/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": "7"
+      },
+      "name": "getEcommerceOrderProduct-transportFailure",
+      "operation": "getEcommerceOrderProduct"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"ecomOrderProducts\":[{\"id\":\"7\",\"orderid\":\"1\",\"externalid\":\"product-1\",\"name\":\"Skateboard\",\"price\":\"5000\",\"quantity\":\"1\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders/1/orderProducts",
+          "query": {
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "products": [
+            {
+              "externalId": "product-1",
+              "id": "7",
+              "name": "Skateboard",
+              "orderId": "1",
+              "priceMinor": 5000,
+              "quantity": 1
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2,
+        "orderId": "1"
+      },
+      "name": "listProductsForEcommerceOrder-success",
+      "operation": "listProductsForEcommerceOrder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders/1/orderProducts",
+          "query": {
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2,
+        "orderId": "1"
+      },
+      "name": "listProductsForEcommerceOrder-providerRejected",
+      "operation": "listProductsForEcommerceOrder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"ecomOrderProducts\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders/1/orderProducts",
+          "query": {
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2,
+        "orderId": "1"
+      },
+      "name": "listProductsForEcommerceOrder-invalidResponse",
+      "operation": "listProductsForEcommerceOrder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders/1/orderProducts",
+          "query": {
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2,
+        "orderId": "1"
+      },
+      "name": "listProductsForEcommerceOrder-notFound",
+      "operation": "listProductsForEcommerceOrder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "bad"
+      },
+      "name": "listProductsForEcommerceOrder-defect",
+      "operation": "listProductsForEcommerceOrder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders/1/orderProducts",
+          "query": {
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2,
+        "orderId": "1"
+      },
+      "name": "listProductsForEcommerceOrder-rateLimit",
+      "operation": "listProductsForEcommerceOrder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders/1/orderProducts",
+          "query": {
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2,
+        "orderId": "1"
+      },
+      "name": "listProductsForEcommerceOrder-serverUnavailable",
+      "operation": "listProductsForEcommerceOrder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomOrders/1/orderProducts",
+          "query": {
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2,
+        "orderId": "1"
+      },
+      "name": "listProductsForEcommerceOrder-transportFailure",
+      "operation": "listProductsForEcommerceOrder"
     }
   ],
   "schemaVersion": 1
