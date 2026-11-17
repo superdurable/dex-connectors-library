@@ -24,6 +24,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[freshsales.ContactMetadata](`{"id":144,"firstName":"Ada","lastName":"Lovelace","emailAddress":"ada@example.com"}`)
 			return err
 		}},
+		{name: "listContacts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.ContactsPage](`{"contacts":[{"id":144,"firstName":"Ada","lastName":"Lovelace","emailAddress":"ada@example.com"}],"page":1,"total":1}`)
+			return err
+		}},
+		{name: "createContact/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.ContactMetadata](`{"id":144,"firstName":"Ada","lastName":"Lovelace","emailAddress":"ada@example.com"}`)
+			return err
+		}},
+		{name: "updateContact/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.ContactMetadata](`{"id":144,"firstName":"Ada","lastName":"Byron","emailAddress":"ada@example.com"}`)
+			return err
+		}},
+		{name: "deleteContact/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.DeletedContact](`{"contactId":"144","deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +55,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")
+	}
+	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
+		t.Errorf("listContacts mock has another definition")
+	}
+	if mock.CreateContact().Definition().Operation.OperationID != "createContact" {
+		t.Errorf("createContact mock has another definition")
+	}
+	if mock.UpdateContact().Definition().Operation.OperationID != "updateContact" {
+		t.Errorf("updateContact mock has another definition")
+	}
+	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
+		t.Errorf("deleteContact mock has another definition")
 	}
 }

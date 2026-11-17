@@ -20,6 +20,10 @@ type Mock struct {
 	connection       freshsales.Connection
 	listContactViews *connectormock.Query[freshsales.ListContactViewsInput, freshsales.ContactViews]
 	getContact       *connectormock.Query[freshsales.GetContactInput, freshsales.ContactMetadata]
+	listContacts     *connectormock.Query[freshsales.ListContactsInput, freshsales.ContactsPage]
+	createContact    *connectormock.Mutation[freshsales.CreateContactInput, freshsales.ContactMetadata]
+	updateContact    *connectormock.Mutation[freshsales.UpdateContactInput, freshsales.ContactMetadata]
+	deleteContact    *connectormock.Mutation[freshsales.DeleteContactInput, freshsales.DeletedContact]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -29,9 +33,17 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock := &Mock{
 		listContactViews: connectormock.NewQuery[freshsales.ListContactViewsInput, freshsales.ContactViews](t, freshsales.ListContactViewsDefinition),
 		getContact:       connectormock.NewQuery[freshsales.GetContactInput, freshsales.ContactMetadata](t, freshsales.GetContactDefinition),
+		listContacts:     connectormock.NewQuery[freshsales.ListContactsInput, freshsales.ContactsPage](t, freshsales.ListContactsDefinition),
+		createContact:    connectormock.NewMutation[freshsales.CreateContactInput, freshsales.ContactMetadata](t, freshsales.CreateContactDefinition),
+		updateContact:    connectormock.NewMutation[freshsales.UpdateContactInput, freshsales.ContactMetadata](t, freshsales.UpdateContactDefinition),
+		deleteContact:    connectormock.NewMutation[freshsales.DeleteContactInput, freshsales.DeletedContact](t, freshsales.DeleteContactDefinition),
 	}
 	mock.listContactViews.Default(ListContactViewsDefault())
 	mock.getContact.Default(GetContactDefault())
+	mock.listContacts.Default(ListContactsDefault())
+	mock.createContact.Default(CreateContactDefault())
+	mock.updateContact.Default(UpdateContactDefault())
+	mock.deleteContact.Default(DeleteContactDefault())
 	connection, err := freshsales.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "freshsales", Name: connectionName})
 	if err != nil {
 		t.Fatalf("freshsales mock connection: %v", err)
@@ -53,6 +65,26 @@ func (mock *Mock) GetContact() *connectormock.Query[freshsales.GetContactInput, 
 	return mock.getContact
 }
 
+// ListContacts returns the listContacts script.
+func (mock *Mock) ListContacts() *connectormock.Query[freshsales.ListContactsInput, freshsales.ContactsPage] {
+	return mock.listContacts
+}
+
+// CreateContact returns the createContact script.
+func (mock *Mock) CreateContact() *connectormock.Mutation[freshsales.CreateContactInput, freshsales.ContactMetadata] {
+	return mock.createContact
+}
+
+// UpdateContact returns the updateContact script.
+func (mock *Mock) UpdateContact() *connectormock.Mutation[freshsales.UpdateContactInput, freshsales.ContactMetadata] {
+	return mock.updateContact
+}
+
+// DeleteContact returns the deleteContact script.
+func (mock *Mock) DeleteContact() *connectormock.Mutation[freshsales.DeleteContactInput, freshsales.DeletedContact] {
+	return mock.deleteContact
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListContactViews() sdkgo.Query[freshsales.ListContactViewsInput, freshsales.ContactViews] {
@@ -60,6 +92,18 @@ func (operations mockOperations) ListContactViews() sdkgo.Query[freshsales.ListC
 }
 func (operations mockOperations) GetContact() sdkgo.Query[freshsales.GetContactInput, freshsales.ContactMetadata] {
 	return operations.mock.getContact
+}
+func (operations mockOperations) ListContacts() sdkgo.Query[freshsales.ListContactsInput, freshsales.ContactsPage] {
+	return operations.mock.listContacts
+}
+func (operations mockOperations) CreateContact() sdkgo.Mutation[freshsales.CreateContactInput, freshsales.ContactMetadata] {
+	return operations.mock.createContact
+}
+func (operations mockOperations) UpdateContact() sdkgo.Mutation[freshsales.UpdateContactInput, freshsales.ContactMetadata] {
+	return operations.mock.updateContact
+}
+func (operations mockOperations) DeleteContact() sdkgo.Mutation[freshsales.DeleteContactInput, freshsales.DeletedContact] {
+	return operations.mock.deleteContact
 }
 
 // ListContactViewsListed selects the listed branch: Freshsales returned the available contact views.
@@ -137,4 +181,153 @@ func GetContactFoundDefault() connectormock.Case[freshsales.ContactMetadata] {
 // GetContactDefault is the manifest default, foundDefault, which New installs.
 func GetContactDefault() connectormock.Case[freshsales.ContactMetadata] {
 	return GetContactFoundDefault()
+}
+
+// ListContactsListed selects the listed branch: Freshsales returned the contact page.
+func ListContactsListed(value freshsales.ContactsPage, failure *sdkgo.Failure) connectormock.Case[freshsales.ContactsPage] {
+	return connectormock.Branch(freshsales.ListContactsBranchListed, value, failure)
+}
+
+// ListContactsNotFound selects the notFound branch: The contact view is unavailable.
+func ListContactsNotFound(value freshsales.ContactsPage, failure *sdkgo.Failure) connectormock.Case[freshsales.ContactsPage] {
+	return connectormock.Branch(freshsales.ListContactsBranchNotFound, value, failure)
+}
+
+// ListContactsProviderRejected selects the providerRejected branch: Freshsales conclusively rejected the request.
+func ListContactsProviderRejected(value freshsales.ContactsPage, failure *sdkgo.Failure) connectormock.Case[freshsales.ContactsPage] {
+	return connectormock.Branch(freshsales.ListContactsBranchProviderRejected, value, failure)
+}
+
+// ListContactsInvalidResponse selects the invalidResponse branch: Freshsales returned malformed or oversized JSON.
+func ListContactsInvalidResponse(value freshsales.ContactsPage, failure *sdkgo.Failure) connectormock.Case[freshsales.ContactsPage] {
+	return connectormock.Branch(freshsales.ListContactsBranchInvalidResponse, value, failure)
+}
+
+// ListContactsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListContactsDefect(value freshsales.ContactsPage, failure *sdkgo.Failure) connectormock.Case[freshsales.ContactsPage] {
+	return connectormock.Branch(freshsales.ListContactsBranchDefect, value, failure)
+}
+
+// ListContactsRetry asks Dex to retry the listContacts Step, after the delay when it is positive.
+func ListContactsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[freshsales.ContactsPage] {
+	return connectormock.Retry[freshsales.ContactsPage](failure, after)
+}
+
+// ListContactsListedDefault is the manifest mock listedDefault: Example contact page.
+func ListContactsListedDefault() connectormock.Case[freshsales.ContactsPage] {
+	value := connectormock.MustDecodeOutput[freshsales.ContactsPage](`{"contacts":[{"id":144,"firstName":"Ada","lastName":"Lovelace","emailAddress":"ada@example.com"}],"page":1,"total":1}`)
+	return connectormock.Branch(freshsales.ListContactsBranchListed, value, nil)
+}
+
+// ListContactsDefault is the manifest default, listedDefault, which New installs.
+func ListContactsDefault() connectormock.Case[freshsales.ContactsPage] {
+	return ListContactsListedDefault()
+}
+
+// CreateContactCreated selects the created branch: Freshsales confirmed the new contact.
+func CreateContactCreated(value freshsales.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.ContactMetadata] {
+	return connectormock.Branch(freshsales.CreateContactBranchCreated, value, failure)
+}
+
+// CreateContactProviderRejected selects the providerRejected branch: Freshsales conclusively rejected the creation.
+func CreateContactProviderRejected(value freshsales.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.ContactMetadata] {
+	return connectormock.Branch(freshsales.CreateContactBranchProviderRejected, value, failure)
+}
+
+// CreateContactUncertain returns an uncertain createContact outcome.
+func CreateContactUncertain(value freshsales.ContactMetadata, failure sdkgo.Failure) connectormock.Case[freshsales.ContactMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateContactDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateContactDefect(value freshsales.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.ContactMetadata] {
+	return connectormock.Branch(freshsales.CreateContactBranchDefect, value, failure)
+}
+
+// CreateContactRetry asks Dex to retry the createContact Step, after the delay when it is positive.
+func CreateContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[freshsales.ContactMetadata] {
+	return connectormock.Retry[freshsales.ContactMetadata](failure, after)
+}
+
+// CreateContactCreatedDefault is the manifest mock createdDefault: Example created contact.
+func CreateContactCreatedDefault() connectormock.Case[freshsales.ContactMetadata] {
+	value := connectormock.MustDecodeOutput[freshsales.ContactMetadata](`{"id":144,"firstName":"Ada","lastName":"Lovelace","emailAddress":"ada@example.com"}`)
+	return connectormock.Branch(freshsales.CreateContactBranchCreated, value, nil)
+}
+
+// CreateContactDefault is the manifest default, createdDefault, which New installs.
+func CreateContactDefault() connectormock.Case[freshsales.ContactMetadata] {
+	return CreateContactCreatedDefault()
+}
+
+// UpdateContactUpdated selects the updated branch: Freshsales confirmed the requested names.
+func UpdateContactUpdated(value freshsales.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.ContactMetadata] {
+	return connectormock.Branch(freshsales.UpdateContactBranchUpdated, value, failure)
+}
+
+// UpdateContactNotFound selects the notFound branch: The contact is unavailable.
+func UpdateContactNotFound(value freshsales.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.ContactMetadata] {
+	return connectormock.Branch(freshsales.UpdateContactBranchNotFound, value, failure)
+}
+
+// UpdateContactProviderRejected selects the providerRejected branch: Freshsales conclusively rejected the update.
+func UpdateContactProviderRejected(value freshsales.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.ContactMetadata] {
+	return connectormock.Branch(freshsales.UpdateContactBranchProviderRejected, value, failure)
+}
+
+// UpdateContactInvalidResponse selects the invalidResponse branch: Freshsales returned malformed or oversized JSON.
+func UpdateContactInvalidResponse(value freshsales.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.ContactMetadata] {
+	return connectormock.Branch(freshsales.UpdateContactBranchInvalidResponse, value, failure)
+}
+
+// UpdateContactDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateContactDefect(value freshsales.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.ContactMetadata] {
+	return connectormock.Branch(freshsales.UpdateContactBranchDefect, value, failure)
+}
+
+// UpdateContactRetry asks Dex to retry the updateContact Step, after the delay when it is positive.
+func UpdateContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[freshsales.ContactMetadata] {
+	return connectormock.Retry[freshsales.ContactMetadata](failure, after)
+}
+
+// UpdateContactUpdatedDefault is the manifest mock updatedDefault: Example renamed contact.
+func UpdateContactUpdatedDefault() connectormock.Case[freshsales.ContactMetadata] {
+	value := connectormock.MustDecodeOutput[freshsales.ContactMetadata](`{"id":144,"firstName":"Ada","lastName":"Byron","emailAddress":"ada@example.com"}`)
+	return connectormock.Branch(freshsales.UpdateContactBranchUpdated, value, nil)
+}
+
+// UpdateContactDefault is the manifest default, updatedDefault, which New installs.
+func UpdateContactDefault() connectormock.Case[freshsales.ContactMetadata] {
+	return UpdateContactUpdatedDefault()
+}
+
+// DeleteContactDeleted selects the deleted branch: The contact is absent.
+func DeleteContactDeleted(value freshsales.DeletedContact, failure *sdkgo.Failure) connectormock.Case[freshsales.DeletedContact] {
+	return connectormock.Branch(freshsales.DeleteContactBranchDeleted, value, failure)
+}
+
+// DeleteContactProviderRejected selects the providerRejected branch: Freshsales conclusively rejected the deletion.
+func DeleteContactProviderRejected(value freshsales.DeletedContact, failure *sdkgo.Failure) connectormock.Case[freshsales.DeletedContact] {
+	return connectormock.Branch(freshsales.DeleteContactBranchProviderRejected, value, failure)
+}
+
+// DeleteContactDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteContactDefect(value freshsales.DeletedContact, failure *sdkgo.Failure) connectormock.Case[freshsales.DeletedContact] {
+	return connectormock.Branch(freshsales.DeleteContactBranchDefect, value, failure)
+}
+
+// DeleteContactRetry asks Dex to retry the deleteContact Step, after the delay when it is positive.
+func DeleteContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[freshsales.DeletedContact] {
+	return connectormock.Retry[freshsales.DeletedContact](failure, after)
+}
+
+// DeleteContactDeletedDefault is the manifest mock deletedDefault: Example deleted contact.
+func DeleteContactDeletedDefault() connectormock.Case[freshsales.DeletedContact] {
+	value := connectormock.MustDecodeOutput[freshsales.DeletedContact](`{"contactId":"144","deleted":true}`)
+	return connectormock.Branch(freshsales.DeleteContactBranchDeleted, value, nil)
+}
+
+// DeleteContactDefault is the manifest default, deletedDefault, which New installs.
+func DeleteContactDefault() connectormock.Case[freshsales.DeletedContact] {
+	return DeleteContactDeletedDefault()
 }

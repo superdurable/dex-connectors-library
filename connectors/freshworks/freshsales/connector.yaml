@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: freshsales
   displayName: Freshsales
-  description: Read Freshsales contact views and selected contact identity.
+  description: Discover contact views and list, read, create, update, and delete Freshsales contacts.
   company: Freshworks
   categories: [crm-sales]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   languages:
     python:
@@ -95,3 +95,68 @@ spec:
           default: true
           description: One sample contact identity is returned.
           output: {id: 144, firstName: Ada, lastName: Lovelace, emailAddress: 'ada@example.com'}
+    - name: listContacts
+      goName: ListContacts
+      inputType: ListContactsInput
+      outputType: ContactsPage
+      kind: query
+      description: List one page of contacts from an accessible view.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Freshsales returned the contact page.}
+        - {id: notFound, goName: NotFound, description: The contact view is unavailable., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Freshsales returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example contact page., output: {contacts: [{id: 144, firstName: Ada, lastName: Lovelace, emailAddress: 'ada@example.com'}], page: 1, total: 1}}
+    - name: createContact
+      goName: CreateContact
+      inputType: CreateContactInput
+      outputType: ContactMetadata
+      kind: mutation
+      description: Create a contact with bounded duplicate sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Freshsales confirmed the new contact.}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales conclusively rejected the creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A prior create may have succeeded without a confirmed contact ID., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Example created contact., output: {id: 144, firstName: Ada, lastName: Lovelace, emailAddress: 'ada@example.com'}}
+    - name: updateContact
+      goName: UpdateContact
+      inputType: UpdateContactInput
+      outputType: ContactMetadata
+      kind: mutation
+      description: Replace one contact's first and last names.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Freshsales confirmed the requested names.}
+        - {id: notFound, goName: NotFound, description: The contact is unavailable., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Freshsales returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Example renamed contact., output: {id: 144, firstName: Ada, lastName: Byron, emailAddress: 'ada@example.com'}}
+    - name: deleteContact
+      goName: DeleteContact
+      inputType: DeleteContactInput
+      outputType: DeletedContact
+      kind: mutation
+      description: Delete a contact by ID; a missing contact is already deleted.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The contact is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales conclusively rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Example deleted contact., output: {contactId: '144', deleted: true}}

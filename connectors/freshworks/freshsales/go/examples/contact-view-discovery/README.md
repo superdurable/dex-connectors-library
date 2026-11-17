@@ -1,6 +1,6 @@
 # Freshsales contact-view-discovery Flow
 
-This runnable Flow calls `listContactViews` with the static `freshsales` connection. Its happy-path contact views are saved in an Attribute and shown through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected. Only contact view IDs and names enter the Flow result; the API Key does not.
+This runnable Flow calls `listContactViews`, then `listContacts` for the first visible view, with the static `freshsales` connection. Its happy-path contact views are saved in an Attribute and shown through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected. Only contact view IDs and names enter the Flow result; the API Key does not.
 
 ## Strict FDG 2.0 generation
 
