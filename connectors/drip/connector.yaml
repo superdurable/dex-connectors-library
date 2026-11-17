@@ -158,7 +158,7 @@ spec:
       description: Subscribe one email address to an email series campaign with a bounded send count.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: subscribed, goName: Subscribed, description: Drip confirmed the subscription.}
         - {id: providerRejected, goName: ProviderRejected, description: Drip conclusively rejected the subscription., optional: true}

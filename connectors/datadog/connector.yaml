@@ -73,7 +73,7 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Datadog definitively rejected creation., optional: true}
         - {id: uncertain, goName: Uncertain, description: A monitor may have been created without a confirmed ID after bounded sends., optional: true}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 2}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 2, dispatchFence: true}
       mocks:
         - name: latencyMonitorCreated
           branch: created

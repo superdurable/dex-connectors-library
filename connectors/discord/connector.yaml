@@ -200,7 +200,7 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Discord denied channel creation., optional: true}
         - {id: uncertain, goName: Uncertain, description: A channel may exist without a confirmed ID after bounded sends., optional: true}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 2}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 2, dispatchFence: true}
       mocks:
         - {name: createdTextChannel, branch: created, default: true, description: Create an example text channel., output: {id: "100000000000000003", type: 0, guildId: "200000000000000001", name: dex-updates, topic: Dex updates}}
     - name: updateChannel
