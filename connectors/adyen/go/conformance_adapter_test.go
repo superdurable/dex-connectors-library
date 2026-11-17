@@ -22,7 +22,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"expirePaymentLink": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.ExpirePaymentLink(), reference, scenario.CallID),
-		"getPaymentLink":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPaymentLink(), reference),
+		"listPaymentMethods": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPaymentMethods(), reference),
+		"createPaymentLink":  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreatePaymentLink(), reference, scenario.CallID),
+		"expirePaymentLink":  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.ExpirePaymentLink(), reference, scenario.CallID),
+		"getPaymentLink":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPaymentLink(), reference),
 	}}
 }

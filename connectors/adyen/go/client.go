@@ -68,14 +68,22 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {
-	return client.request(call, http.MethodGet, path, nil)
+	return client.request(call, http.MethodGet, path, nil, "")
 }
 
 func (client *Client) patch(call sdkgo.Call, path string, body []byte) providerResponse {
-	return client.request(call, http.MethodPatch, path, body)
+	return client.request(call, http.MethodPatch, path, body, "")
 }
 
-func (client *Client) request(call sdkgo.Call, method string, path string, body []byte) providerResponse {
+func (client *Client) post(call sdkgo.Call, path string, body []byte) providerResponse {
+	return client.request(call, http.MethodPost, path, body, string(call.IdempotencyKey))
+}
+
+func (client *Client) queryPost(call sdkgo.Call, path string, body []byte) providerResponse {
+	return client.request(call, http.MethodPost, path, body, "")
+}
+
+func (client *Client) request(call sdkgo.Call, method string, path string, body []byte, idempotencyKey string) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -93,6 +101,9 @@ func (client *Client) request(call sdkgo.Call, method string, path string, body 
 		request.Header.Set("Content-Type", "application/json")
 	}
 	request.Header.Set("X-API-Key", apiKey)
+	if idempotencyKey != "" {
+		request.Header.Set("Idempotency-Key", idempotencyKey)
+	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return providerResponse{err: errRequest}

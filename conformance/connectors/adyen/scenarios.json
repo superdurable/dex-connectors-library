@@ -2,6 +2,693 @@
   "connector": "adyen",
   "scenarios": [
     {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"paymentMethods\":[{\"type\":\"scheme\",\"name\":\"Cards\",\"configuration\":{\"private\":\"secret\"}},{\"type\":\"ideal\",\"name\":\"iDEAL\"}],\"storedPaymentMethods\":[{\"bankAccountNumber\":\"private\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/paymentMethods",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "countryCode": "NL",
+            "merchantAccount": "TestMerchant"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "methods": [
+            {
+              "name": "Cards",
+              "type": "scheme"
+            },
+            {
+              "name": "iDEAL",
+              "type": "ideal"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "amountMinorUnits": 1200,
+        "countryCode": "NL",
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant"
+      },
+      "name": "listPaymentMethods-listed",
+      "operation": "listPaymentMethods"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/paymentMethods",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "countryCode": "NL",
+            "merchantAccount": "TestMerchant"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "methods": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "amountMinorUnits": 1200,
+        "countryCode": "NL",
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant"
+      },
+      "name": "listPaymentMethods-providerRejected",
+      "operation": "listPaymentMethods"
+    },
+    {
+      "callId": "33333333-3333-4333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{\"paymentMethods\":[{\"name\":\"Missing code\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/paymentMethods",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "countryCode": "NL",
+            "merchantAccount": "TestMerchant"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "methods": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "amountMinorUnits": 1200,
+        "countryCode": "NL",
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant"
+      },
+      "name": "listPaymentMethods-invalidResponse",
+      "operation": "listPaymentMethods"
+    },
+    {
+      "callId": "44444444-4444-4444-8444-444444444444",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "methods": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "amountMinorUnits": 1200,
+        "countryCode": "NL",
+        "currencyCode": "eur",
+        "merchantAccount": "TestMerchant"
+      },
+      "name": "listPaymentMethods-defect",
+      "operation": "listPaymentMethods"
+    },
+    {
+      "callId": "55555555-5555-4555-8555-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/paymentMethods",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "countryCode": "NL",
+            "merchantAccount": "TestMerchant"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "amountMinorUnits": 1200,
+        "countryCode": "NL",
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant"
+      },
+      "name": "listPaymentMethods-rateLimit",
+      "operation": "listPaymentMethods"
+    },
+    {
+      "callId": "66666666-6666-4666-8666-666666666666",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/paymentMethods",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "countryCode": "NL",
+            "merchantAccount": "TestMerchant"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "amountMinorUnits": 1200,
+        "countryCode": "NL",
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant"
+      },
+      "name": "listPaymentMethods-serverUnavailable",
+      "operation": "listPaymentMethods"
+    },
+    {
+      "callId": "77777777-7777-4777-8777-777777777777",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/paymentMethods",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "countryCode": "NL",
+            "merchantAccount": "TestMerchant"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "amountMinorUnits": 1200,
+        "countryCode": "NL",
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant"
+      },
+      "name": "listPaymentMethods-transportFailure",
+      "operation": "listPaymentMethods"
+    },
+    {
+      "callId": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"PL50C5F751CED39G71\",\"status\":\"active\",\"amount\":{\"currency\":\"EUR\",\"value\":1200},\"url\":\"https://test.adyen.link/PL50C5F751CED39G71\"}",
+          "derivedKey": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/paymentLinks",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "countryCode": "NL",
+            "merchantAccount": "TestMerchant",
+            "reference": "order-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "amountMinorUnits": 1200,
+          "currencyCode": "EUR",
+          "id": "PL50C5F751CED39G71",
+          "status": "active",
+          "url": "https://test.adyen.link/PL50C5F751CED39G71"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+      "input": {
+        "amountMinorUnits": 1200,
+        "countryCode": "NL",
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "reference": "order-100"
+      },
+      "name": "createPaymentLink-created",
+      "operation": "createPaymentLink"
+    },
+    {
+      "callId": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/paymentLinks",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "countryCode": "NL",
+            "merchantAccount": "TestMerchant",
+            "reference": "order-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amountMinorUnits": 0,
+          "currencyCode": "",
+          "id": "",
+          "status": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+      "input": {
+        "amountMinorUnits": 1200,
+        "countryCode": "NL",
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "reference": "order-100"
+      },
+      "name": "createPaymentLink-providerRejected",
+      "operation": "createPaymentLink"
+    },
+    {
+      "callId": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"PL50C5F751CED39G71\",\"status\":\"active\",\"amount\":{\"currency\":\"EUR\",\"value\":1200},\"url\":\"http://example.test/link\"}",
+          "derivedKey": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/paymentLinks",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "countryCode": "NL",
+            "merchantAccount": "TestMerchant",
+            "reference": "order-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "amountMinorUnits": 0,
+          "currencyCode": "",
+          "id": "",
+          "status": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+      "input": {
+        "amountMinorUnits": 1200,
+        "countryCode": "NL",
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "reference": "order-100"
+      },
+      "name": "createPaymentLink-invalidResponse",
+      "operation": "createPaymentLink"
+    },
+    {
+      "callId": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amountMinorUnits": 0,
+          "currencyCode": "",
+          "id": "",
+          "status": "",
+          "url": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+      "input": {
+        "amountMinorUnits": 0,
+        "countryCode": "NL",
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "reference": "order-100"
+      },
+      "name": "createPaymentLink-defect",
+      "operation": "createPaymentLink"
+    },
+    {
+      "callId": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/paymentLinks",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "countryCode": "NL",
+            "merchantAccount": "TestMerchant",
+            "reference": "order-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+      "input": {
+        "amountMinorUnits": 1200,
+        "countryCode": "NL",
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "reference": "order-100"
+      },
+      "name": "createPaymentLink-rateLimit",
+      "operation": "createPaymentLink"
+    },
+    {
+      "callId": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/paymentLinks",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "countryCode": "NL",
+            "merchantAccount": "TestMerchant",
+            "reference": "order-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+      "input": {
+        "amountMinorUnits": 1200,
+        "countryCode": "NL",
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "reference": "order-100"
+      },
+      "name": "createPaymentLink-serverUnavailable",
+      "operation": "createPaymentLink"
+    },
+    {
+      "callId": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+      "exchanges": [
+        {
+          "derivedKey": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/paymentLinks",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "countryCode": "NL",
+            "merchantAccount": "TestMerchant",
+            "reference": "order-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
+      "input": {
+        "amountMinorUnits": 1200,
+        "countryCode": "NL",
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "reference": "order-100"
+      },
+      "name": "createPaymentLink-transportFailure",
+      "operation": "createPaymentLink"
+    },
+    {
       "callId": "139872d7-7357-5495-a564-8db377afcc9f",
       "exchanges": [
         {

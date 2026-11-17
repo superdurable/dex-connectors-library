@@ -17,9 +17,11 @@ import (
 
 // Mock is a scripted adyen connection. Script each operation through its accessor.
 type Mock struct {
-	connection        adyen.Connection
-	expirePaymentLink *connectormock.Mutation[adyen.ExpirePaymentLinkInput, adyen.PaymentLinkStatus]
-	getPaymentLink    *connectormock.Query[adyen.GetPaymentLinkInput, adyen.PaymentLinkStatus]
+	connection         adyen.Connection
+	listPaymentMethods *connectormock.Query[adyen.ListPaymentMethodsInput, adyen.PaymentMethodPage]
+	createPaymentLink  *connectormock.Mutation[adyen.CreatePaymentLinkInput, adyen.CreatedPaymentLink]
+	expirePaymentLink  *connectormock.Mutation[adyen.ExpirePaymentLinkInput, adyen.PaymentLinkStatus]
+	getPaymentLink     *connectormock.Query[adyen.GetPaymentLinkInput, adyen.PaymentLinkStatus]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,9 +29,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		expirePaymentLink: connectormock.NewMutation[adyen.ExpirePaymentLinkInput, adyen.PaymentLinkStatus](t, adyen.ExpirePaymentLinkDefinition),
-		getPaymentLink:    connectormock.NewQuery[adyen.GetPaymentLinkInput, adyen.PaymentLinkStatus](t, adyen.GetPaymentLinkDefinition),
+		listPaymentMethods: connectormock.NewQuery[adyen.ListPaymentMethodsInput, adyen.PaymentMethodPage](t, adyen.ListPaymentMethodsDefinition),
+		createPaymentLink:  connectormock.NewMutation[adyen.CreatePaymentLinkInput, adyen.CreatedPaymentLink](t, adyen.CreatePaymentLinkDefinition),
+		expirePaymentLink:  connectormock.NewMutation[adyen.ExpirePaymentLinkInput, adyen.PaymentLinkStatus](t, adyen.ExpirePaymentLinkDefinition),
+		getPaymentLink:     connectormock.NewQuery[adyen.GetPaymentLinkInput, adyen.PaymentLinkStatus](t, adyen.GetPaymentLinkDefinition),
 	}
+	mock.listPaymentMethods.Default(ListPaymentMethodsDefault())
+	mock.createPaymentLink.Default(CreatePaymentLinkDefault())
 	mock.expirePaymentLink.Default(ExpirePaymentLinkDefault())
 	mock.getPaymentLink.Default(GetPaymentLinkDefault())
 	connection, err := adyen.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "adyen", Name: connectionName})
@@ -43,6 +49,16 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() adyen.Connection { return mock.connection }
 
+// ListPaymentMethods returns the listPaymentMethods script.
+func (mock *Mock) ListPaymentMethods() *connectormock.Query[adyen.ListPaymentMethodsInput, adyen.PaymentMethodPage] {
+	return mock.listPaymentMethods
+}
+
+// CreatePaymentLink returns the createPaymentLink script.
+func (mock *Mock) CreatePaymentLink() *connectormock.Mutation[adyen.CreatePaymentLinkInput, adyen.CreatedPaymentLink] {
+	return mock.createPaymentLink
+}
+
 // ExpirePaymentLink returns the expirePaymentLink script.
 func (mock *Mock) ExpirePaymentLink() *connectormock.Mutation[adyen.ExpirePaymentLinkInput, adyen.PaymentLinkStatus] {
 	return mock.expirePaymentLink
@@ -55,11 +71,89 @@ func (mock *Mock) GetPaymentLink() *connectormock.Query[adyen.GetPaymentLinkInpu
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListPaymentMethods() sdkgo.Query[adyen.ListPaymentMethodsInput, adyen.PaymentMethodPage] {
+	return operations.mock.listPaymentMethods
+}
+func (operations mockOperations) CreatePaymentLink() sdkgo.Mutation[adyen.CreatePaymentLinkInput, adyen.CreatedPaymentLink] {
+	return operations.mock.createPaymentLink
+}
 func (operations mockOperations) ExpirePaymentLink() sdkgo.Mutation[adyen.ExpirePaymentLinkInput, adyen.PaymentLinkStatus] {
 	return operations.mock.expirePaymentLink
 }
 func (operations mockOperations) GetPaymentLink() sdkgo.Query[adyen.GetPaymentLinkInput, adyen.PaymentLinkStatus] {
 	return operations.mock.getPaymentLink
+}
+
+// ListPaymentMethodsListed selects the listed branch: Adyen returned available payment methods.
+func ListPaymentMethodsListed(value adyen.PaymentMethodPage, failure *sdkgo.Failure) connectormock.Case[adyen.PaymentMethodPage] {
+	return connectormock.Branch(adyen.ListPaymentMethodsBranchListed, value, failure)
+}
+
+// ListPaymentMethodsProviderRejected selects the providerRejected branch: Adyen conclusively rejected the request.
+func ListPaymentMethodsProviderRejected(value adyen.PaymentMethodPage, failure *sdkgo.Failure) connectormock.Case[adyen.PaymentMethodPage] {
+	return connectormock.Branch(adyen.ListPaymentMethodsBranchProviderRejected, value, failure)
+}
+
+// ListPaymentMethodsInvalidResponse selects the invalidResponse branch: Adyen returned malformed or oversized JSON.
+func ListPaymentMethodsInvalidResponse(value adyen.PaymentMethodPage, failure *sdkgo.Failure) connectormock.Case[adyen.PaymentMethodPage] {
+	return connectormock.Branch(adyen.ListPaymentMethodsBranchInvalidResponse, value, failure)
+}
+
+// ListPaymentMethodsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListPaymentMethodsDefect(value adyen.PaymentMethodPage, failure *sdkgo.Failure) connectormock.Case[adyen.PaymentMethodPage] {
+	return connectormock.Branch(adyen.ListPaymentMethodsBranchDefect, value, failure)
+}
+
+// ListPaymentMethodsRetry asks Dex to retry the listPaymentMethods Step, after the delay when it is positive.
+func ListPaymentMethodsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[adyen.PaymentMethodPage] {
+	return connectormock.Retry[adyen.PaymentMethodPage](failure, after)
+}
+
+// ListPaymentMethodsListedDefault is the manifest mock listedDefault: Two sample payment methods are available.
+func ListPaymentMethodsListedDefault() connectormock.Case[adyen.PaymentMethodPage] {
+	value := connectormock.MustDecodeOutput[adyen.PaymentMethodPage](`{"methods":[{"type":"scheme","name":"Cards"},{"type":"ideal","name":"iDEAL"}]}`)
+	return connectormock.Branch(adyen.ListPaymentMethodsBranchListed, value, nil)
+}
+
+// ListPaymentMethodsDefault is the manifest default, listedDefault, which New installs.
+func ListPaymentMethodsDefault() connectormock.Case[adyen.PaymentMethodPage] {
+	return ListPaymentMethodsListedDefault()
+}
+
+// CreatePaymentLinkCreated selects the created branch: Adyen created a payment link.
+func CreatePaymentLinkCreated(value adyen.CreatedPaymentLink, failure *sdkgo.Failure) connectormock.Case[adyen.CreatedPaymentLink] {
+	return connectormock.Branch(adyen.CreatePaymentLinkBranchCreated, value, failure)
+}
+
+// CreatePaymentLinkProviderRejected selects the providerRejected branch: Adyen conclusively rejected the payment link request.
+func CreatePaymentLinkProviderRejected(value adyen.CreatedPaymentLink, failure *sdkgo.Failure) connectormock.Case[adyen.CreatedPaymentLink] {
+	return connectormock.Branch(adyen.CreatePaymentLinkBranchProviderRejected, value, failure)
+}
+
+// CreatePaymentLinkInvalidResponse selects the invalidResponse branch: Adyen returned malformed or oversized JSON.
+func CreatePaymentLinkInvalidResponse(value adyen.CreatedPaymentLink, failure *sdkgo.Failure) connectormock.Case[adyen.CreatedPaymentLink] {
+	return connectormock.Branch(adyen.CreatePaymentLinkBranchInvalidResponse, value, failure)
+}
+
+// CreatePaymentLinkDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreatePaymentLinkDefect(value adyen.CreatedPaymentLink, failure *sdkgo.Failure) connectormock.Case[adyen.CreatedPaymentLink] {
+	return connectormock.Branch(adyen.CreatePaymentLinkBranchDefect, value, failure)
+}
+
+// CreatePaymentLinkRetry asks Dex to retry the createPaymentLink Step, after the delay when it is positive.
+func CreatePaymentLinkRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[adyen.CreatedPaymentLink] {
+	return connectormock.Retry[adyen.CreatedPaymentLink](failure, after)
+}
+
+// CreatePaymentLinkCreatedDefault is the manifest mock createdDefault: One EUR payment link is created.
+func CreatePaymentLinkCreatedDefault() connectormock.Case[adyen.CreatedPaymentLink] {
+	value := connectormock.MustDecodeOutput[adyen.CreatedPaymentLink](`{"id":"PL50C5F751CED39G71","status":"active","currencyCode":"EUR","amountMinorUnits":1200,"url":"https://test.adyen.link/PL50C5F751CED39G71"}`)
+	return connectormock.Branch(adyen.CreatePaymentLinkBranchCreated, value, nil)
+}
+
+// CreatePaymentLinkDefault is the manifest default, createdDefault, which New installs.
+func CreatePaymentLinkDefault() connectormock.Case[adyen.CreatedPaymentLink] {
+	return CreatePaymentLinkCreatedDefault()
 }
 
 // ExpirePaymentLinkExpired selects the expired branch: Adyen confirmed the link expired.

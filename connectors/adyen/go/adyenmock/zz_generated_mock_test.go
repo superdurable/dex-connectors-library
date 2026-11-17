@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listPaymentMethods/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[adyen.PaymentMethodPage](`{"methods":[{"type":"scheme","name":"Cards"},{"type":"ideal","name":"iDEAL"}]}`)
+			return err
+		}},
+		{name: "createPaymentLink/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[adyen.CreatedPaymentLink](`{"id":"PL50C5F751CED39G71","status":"active","currencyCode":"EUR","amountMinorUnits":1200,"url":"https://test.adyen.link/PL50C5F751CED39G71"}`)
+			return err
+		}},
 		{name: "expirePaymentLink/expiredDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[adyen.PaymentLinkStatus](`{"id":"PL50C5F751CED39G71","status":"expired","currencyCode":"EUR"}`)
 			return err
@@ -34,6 +42,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListPaymentMethods().Definition().Operation.OperationID != "listPaymentMethods" {
+		t.Errorf("listPaymentMethods mock has another definition")
+	}
+	if mock.CreatePaymentLink().Definition().Operation.OperationID != "createPaymentLink" {
+		t.Errorf("createPaymentLink mock has another definition")
+	}
 	if mock.ExpirePaymentLink().Definition().Operation.OperationID != "expirePaymentLink" {
 		t.Errorf("expirePaymentLink mock has another definition")
 	}

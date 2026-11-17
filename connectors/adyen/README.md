@@ -1,6 +1,6 @@
 # Adyen connector
 
-The Go, Python, and TypeScript `getPaymentLink` Query reads a Checkout payment link's ID, status, and amount currency. Go also offers `expirePaymentLink` to force the link's status to `expired`. Shopper and payment details stay out of Dex Results. A completed link is useful for payment workflow inspection; the operation does not retrieve a payment by PSP reference.
+The Go, Python, and TypeScript `getPaymentLink` Query reads a Checkout payment link's ID, status, and amount currency. Go also offers `createPaymentLink` with an Adyen idempotency key, `expirePaymentLink` to force the link's status to `expired`, and `listPaymentMethods` to read available method codes and names. Shopper identities and payment details stay out of Dex Results. A completed link is useful for payment workflow inspection; the operation does not retrieve a payment by PSP reference.
 
 ## Connect
 
@@ -9,6 +9,10 @@ In the [Adyen Customer Area](https://ca-test.adyen.com), select your company acc
 Leave `baseUrl`, `timeout`, and `maxResponseBytes` blank for their displayed defaults in test. Live requires a live API key and a URL with your company prefix from **Developers > API URLs > Prefix**: `https://{PREFIX}-checkout-live.adyenpayments.com/checkout/v72`. Find the non-secret link ID on the Payment Links page or in the create-link response and pass it as `paymentLinkId`, for example `PL50C5F751CED39G71`. See [Get a payment link](https://docs.adyen.com/api-explorer/Checkout/latest/get/paymentLinks/%28linkId%29) and the [Checkout API overview](https://docs.adyen.com/api-explorer/Checkout/latest/overview).
 
 `expirePaymentLink` sends `PATCH /paymentLinks/{linkId}` with `status: expired`. Adyen documents `expired` as the only accepted update value, and repeating the absolute setting is safe. The operation returns only the ID, status, and currency. See [Update the status of a payment link](https://docs.adyen.com/api-explorer/Checkout/latest/patch/paymentLinks/%28linkId%29).
+
+`createPaymentLink` sends `POST /paymentLinks` with a stable `Idempotency-Key`. In Customer Area, find `merchantAccount` under **Settings > Merchant accounts**; use the account identifier as a non-secret string. Set a unique `reference` for later payment status matching, a three-letter uppercase ISO `currencyCode`, and a positive `amountMinorUnits` using [Adyen's minor-unit table](https://docs.adyen.com/development-resources/currency-codes/). `countryCode` is an optional uppercase two-letter shopper country; blank omits it and lets Adyen determine available methods from the remaining request. The returned `url` is the shopper-facing payment page; share it only with the intended shopper. See [Create a payment link](https://docs.adyen.com/api-explorer/Checkout/latest/post/paymentLinks).
+
+`listPaymentMethods` sends a read-only `POST /paymentMethods` for the same merchant, amount, currency, and optional country fields. It returns only `paymentMethods[].type` and `paymentMethods[].name`, discarding stored shopper methods, payment form configuration, and other provider response fields. See [Get available payment methods](https://docs.adyen.com/api-explorer/Checkout/latest/post/paymentMethods).
 
 ## Examples and verification
 

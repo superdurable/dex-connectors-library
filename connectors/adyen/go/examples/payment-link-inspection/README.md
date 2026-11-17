@@ -29,3 +29,11 @@ CI runs the mock-backed real-Dex integration test. Local provider and determinis
 ## Payment link expiry
 
 The same Worker registers `AdyenExpirePaymentLink`. Start it with `ExpirePaymentLinkInput{PaymentLinkID: "PL50C5F751CED39G71"}` to force a link to `expired`. The checked-in mock-backed integration test exercises the mutation through a real Dex Worker and Client.
+
+## Payment link creation
+
+The Worker also registers `AdyenCreatePaymentLink`. Start it with `CreatePaymentLinkInput{MerchantAccount: "TestMerchant", Reference: "order-100", CurrencyCode: "EUR", AmountMinorUnits: 1200, CountryCode: "NL"}` after replacing the merchant account and reference. Its result contains the shopper-facing URL, which should be shared only with the intended shopper. The checked-in mock-backed integration test exercises this Flow through a real Dex Worker and Client.
+
+## Payment method availability
+
+The Worker also registers `AdyenListPaymentMethods`. Start it with `ListPaymentMethodsInput{MerchantAccount: "TestMerchant", CurrencyCode: "EUR", AmountMinorUnits: 1200, CountryCode: "NL"}` after replacing the merchant account and amount. Its result includes only method codes and names; stored shopper payment methods are discarded. The checked-in mock-backed integration test exercises this Query through a real Dex Worker and Client.
