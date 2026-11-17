@@ -451,11 +451,16 @@ func TestPostMessageMissingCheckpointResendsBelowSendCapOnly(t *testing.T) {
 		attempt      int32
 		heartbeat    []byte
 		wantsResend  bool
+		wantsRetry   bool
 		wantsMessage string
 	}{
 		{name: "missing_below_cap", attempt: 2, wantsResend: true},
 		{name: "missing_at_cap", attempt: 4, wantsMessage: "cannot be identified"},
+		// A foreign checkpoint fails closed: Retry below the send cap, uncertain at it.
+		{name: "foreign_first_attempt", attempt: 1, heartbeat: []byte(`{"callId":"old","attempt":1,"state":"canResend"}`), wantsRetry: true},
+		{name: "foreign_below_cap", attempt: 2, heartbeat: []byte(`{"callId":"old","attempt":1,"state":"canResend"}`), wantsRetry: true},
 		{name: "foreign", attempt: 3, heartbeat: []byte(`{"callId":"old","attempt":1,"state":"canResend"}`), wantsMessage: "may have posted"},
+		{name: "invalid_below_cap", attempt: 2, heartbeat: []byte(`{"callId":"post-checkpoint-invalid_below_cap","attempt":0,"state":"claimed"}`), wantsRetry: true},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			requests := 0
@@ -469,6 +474,12 @@ func TestPostMessageMissingCheckpointResendsBelowSendCapOnly(t *testing.T) {
 			ctx.attempt = testCase.attempt
 			ctx.heartbeat = testCase.heartbeat
 			result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+			if testCase.wantsRetry {
+				var retryError *sdkgo.RetryError
+				require.ErrorAs(t, err, &retryError)
+				require.Equal(t, 0, requests)
+				return
+			}
 			require.NoError(t, err)
 			if testCase.wantsResend {
 				require.Equal(t, slack.PostChannelMessageBranchSent, result.Branch)

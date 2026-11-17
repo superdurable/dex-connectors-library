@@ -432,9 +432,16 @@ is not unknown and a resend would certainly duplicate it. Definite refusals are
 never resent. A definite refusal of a first send selects `providerRejected`;
 a definite refusal of a resend selects `uncertain`, because an earlier send of
 the same call may have posted the message. From Go v1.8.1, TypeScript v0.8.1,
-and Python v0.6.1, a first send that selects `providerRejected` also records
-the `canResend` dispatch marker, so Dex agent hosts report the refused post as
-failed instead of unknown. The
+and Python v0.6.1, only a definite refusal selects `providerRejected`: an HTTP
+2xx `ok:false` with an error code, or an HTTP 400, 401, 403, 404, 411, 413,
+414, 415, or 422 whose body has neither `ok:true` nor a message `ts`. On a
+first send it also records the `canResend` dispatch marker; a lost marker write
+still selects `providerRejected`. Any other non-success response is an unknown
+outcome: an uncoded 2xx refusal such as `{}` or `{"ok":false}`, another 4xx
+such as 408 or 418, or a 4xx whose body has `ok:true` or a `ts`. A `ts` is read
+back; otherwise the attempt returns Retry and the next attempt resends with the
+same `client_msg_id`, and at the send cap the post selects `uncertain`. 409 and
+429 keep the behavior described here. The
 retry policy allows ten attempts within five minutes, enough for three sends
 and their rate-limit, credential-refresh, and read-back retries. A traced DNS,
 connect, or TLS failure before a connection exists, HTTP 429, and HTTP 503
@@ -465,15 +472,20 @@ retries. Reauthorization-required or missing bot credentials record `notSent`
 and select `defect` with an authentication failure and reconnect guidance.
 Before a resend, an earlier post may have landed, so nothing is recorded: a
 transient credential failure retries, and terminal credentials select
-`uncertain` with reconnect guidance.
+`uncertain` with reconnect guidance. From Go v1.8.1, TypeScript v0.8.1, and
+Python v0.6.1, terminal credentials also select `uncertain` instead of `defect`
+on any attempt where an earlier post may have landed, including a send allowed
+by a `canResend` checkpoint that still counts an earlier post.
 During read-back, a transient credential failure retries without another post;
 reauthorization-required or missing user credentials select `uncertain` with
 the known message timestamp in the receipt and reconnect guidance.
 For replies, whether Slack excludes the parent message when `oldest` and `latest`
 name the reply and `limit=1` is unverified. A parent-only result selects
 `uncertain`. A missing checkpoint counts as one possible send per attempt and
-permits a resend only below the cap; a checkpoint from another call fails
-closed to `uncertain`. Checkpoints written by v1.7.0 and earlier carry no send
+permits a resend only below the cap. A checkpoint from another call, an
+invalid checkpoint, or an unreadable heartbeat fails closed without a post:
+from v1.8.1 it returns Retry while the attempt number is below the send cap and
+selects `uncertain` at the cap. Checkpoints written by v1.7.0 and earlier carry no send
 count, and each is read as the most sends its attempt allows, so a post Step
 retry spanning the upgrade never exceeds three sends.
 The fence bounds each request inside the Step attempt. An application must not

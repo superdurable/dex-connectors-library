@@ -841,10 +841,29 @@ async def _reject_or_select_uncertain(
 
 
 def _is_definite_refusal(response: _Response) -> bool:
-    """Report a coded Slack ok:false response or a non-429, non-409 4xx, which prove nothing was posted."""
+    """Report a coded Slack ok:false response, or an allowlisted 4xx whose body reports no accepted post.
+
+    Either proves nothing was posted.
+    """
     if 200 <= response.status < 300:
         return response.decoded.get("ok") is False and bool(response.decoded.get("error"))
-    return 400 <= response.status < 500 and response.status not in (409, 429)
+    return response.status in _REFUSAL_STATUSES and not _is_accepted_body(response)
+
+
+# Request refusals; 408, 409, 429, and unlisted 4xx keep the claim.
+_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+
+
+def _is_accepted_body(response: _Response) -> bool:
+    """Report a body with ok:true or a message timestamp, whatever its HTTP status."""
+    return response.decoded.get("ok") is True or bool(_accepted_timestamp(response))
+
+
+def _accepted_timestamp(response: _Response) -> str:
+    """Return the posted message timestamp a response names, or empty."""
+    provider_message = response.decoded.get("message") or {}
+    timestamp = provider_message.get("ts", "") or response.decoded.get("ts", "")
+    return timestamp if isinstance(timestamp, str) else ""
 
 
 async def _read_back(
@@ -945,11 +964,14 @@ async def _post_message(
             _failure(operation, FailureKind.LOCAL_DEFECT, "Slack dispatch fence could not be constructed"),
         )
     if decision.kind == DecisionKind.FAIL_CLOSED:
-        return MutationAttempt.uncertain(
-            PostMessageOutput(),
+        # An unreadable checkpoint is an unknown outcome; attempts past the send cap stop repeating.
+        attempt = call.context.attempt if call.context is not None else 1
+        return _resend_or_select_uncertain(
+            attempt < call.max_sends,
             _failure(
                 operation, FailureKind.TRANSPORT, "an earlier attempt may have posted the Slack message"
             ),
+            0,
             client._receipt(call, _Response()),
         )
     if decision.kind == DecisionKind.READ_BACK_REQUIRED:
@@ -996,6 +1018,18 @@ async def _post_message(
                     FailureKind.AVAILABILITY,
                     "Slack credentials and no-send checkpoint are unavailable",
                 )
+            )
+        if terminal and has_possible_earlier_send:
+            # An earlier send may have posted, so terminal credentials cannot select defect.
+            return MutationAttempt.uncertain(
+                PostMessageOutput(),
+                _failure(
+                    operation,
+                    FailureKind.AUTHENTICATION,
+                    "an earlier attempt may have posted the Slack message, and the connection "
+                    "credentials are unavailable to resend it; reconnect the connection",
+                ),
+                client._receipt(call, _Response()),
             )
         if terminal:
             return MutationAttempt.branch_result(
@@ -1051,6 +1085,30 @@ async def _post_message(
             else "Slack message service is temporarily unavailable"
         )
         return MutationAttempt.retry(_failure(operation, kind, message), _retry_after(response))
+    if (
+        not response.error
+        and 400 <= response.status < 500
+        and response.status != 409
+        and _is_accepted_body(response)
+    ):
+        # A 4xx whose body reports a post may have created it, so the claim stays and nothing is resent.
+        accepted_timestamp = _accepted_timestamp(response)
+        if accepted_timestamp:
+            try:
+                await fence.record_provider_id(accepted_timestamp)
+            except CheckpointError:
+                pass  # Read-back still uses the provider ID from this response.
+            return await _read_back(client, call, operation, channel, thread, accepted_timestamp)
+        return _resend_or_select_uncertain(
+            can_resend_unknown_outcome,
+            _failure(
+                operation,
+                FailureKind.PROTOCOL,
+                "Slack returned a client error with an accepted message response",
+            ),
+            _retry_after(response),
+            client._receipt(call, response),
+        )
     if response.status == 401 or (
         not response.error
         and 200 <= response.status < 300
@@ -1160,6 +1218,14 @@ async def _post_message(
             client._receipt(call, response),
         )
     if not 200 <= response.status < 300 or not response.decoded.get("ok", False):
+        if not _is_definite_refusal(response):
+            # Only an allowlisted refusal proves nothing was posted; any other outcome is unknown.
+            return _resend_or_select_uncertain(
+                can_resend_unknown_outcome,
+                _failure(operation, FailureKind.PROTOCOL, "Slack message outcome is unknown"),
+                _retry_after(response),
+                client._receipt(call, response),
+            )
         return await _reject_or_select_uncertain(
             fence,
             has_possible_earlier_send,

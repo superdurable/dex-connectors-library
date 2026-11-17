@@ -149,13 +149,55 @@ async def test_definite_refusal_is_never_resent(refusal: tuple[int, dict[str, ob
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("body", [{"ok": False}, {}])
-async def test_uncoded_refusal_keeps_the_claim(body: dict[str, object]) -> None:
+@pytest.mark.parametrize(
+    "unknown",
+    [
+        (200, {"ok": False}),
+        (200, {}),
+        (408, {"ok": False, "error": "request_timeout"}),
+        (418, {"ok": False, "error": "teapot"}),
+        (400, {"ok": True, "channel": "C123"}),
+        (403, {"ok": True, "channel": "C123"}),
+        (401, {"ok": True, "channel": "C123"}),
+    ],
+)
+async def test_non_definite_refusal_resends_until_the_send_cap(
+    unknown: tuple[int, dict[str, object]],
+) -> None:
     requests: list[httpx.Request] = []
     context = AttemptContext()
-    result = await post(lambda _: (200, body), context, requests)
-    assert isinstance(result, MutationResult) and result.branch == "providerRejected"
+    states: list[str] = []
+    for attempt in range(1, POST_CHANNEL_MESSAGE_DEFINITION.max_sends):
+        context.attempt = attempt
+        assert isinstance(await post(lambda _: unknown, context, requests), RetryError)
+        assert context.marker is not None
+        states.append(context.marker.state)
+    context.attempt = POST_CHANNEL_MESSAGE_DEFINITION.max_sends
+    result = await post(lambda _: unknown, context, requests)
+    # The outcome is unknown, so the post repeats with one client_msg_id until the cap.
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == POST_CHANNEL_MESSAGE_DEFINITION.max_sends
+    assert {json.loads(request.content)["client_msg_id"] for request in requests} == {str(CALL_ID)}
     assert context.marker is not None and context.marker.state == "claimed"
+    assert context.marker.send_count == POST_CHANNEL_MESSAGE_DEFINITION.max_sends
+    assert "canResend" not in states
+
+
+@pytest.mark.asyncio
+async def test_client_error_naming_a_timestamp_is_read_back_without_can_resend() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+
+    def answer(request: httpx.Request) -> tuple[int, dict[str, object]]:
+        if request.method == "GET":
+            return 200, {"ok": True, "messages": [{"ts": "2.0", "user": "UBOT", "text": "hello"}]}
+        return 400, {"ok": True, "channel": "C123", "ts": "2.0"}
+
+    result = await post(answer, context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "sent"
+    assert [request.method for request in requests] == ["POST", "GET"]
+    assert context.marker is not None and context.marker.state == "claimed"
+    assert context.marker.provider_id == "2.0"
 
 
 class FailingCanResendContext(AttemptContext):
@@ -192,6 +234,38 @@ async def test_definite_refusal_of_a_resend_selects_uncertain() -> None:
     assert len(requests) == 2
     assert context.marker is not None and context.marker.state == "claimed"
     assert context.marker.send_count == 2
+
+
+@pytest.mark.asyncio
+async def test_terminal_credentials_after_a_counted_send_select_uncertain() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    context.attempt = 3
+    # A canResend marker that still counts one possible send allows a send without read-back.
+    context.marker = Marker.from_wire(
+        {"callId": str(CALL_ID), "attempt": 2, "state": "canResend", "sendCount": 1}
+    )
+    result = await post(lambda _: SERVER_FAILURE, context, requests, bot_tokens=[""])
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert result.failure is not None and result.failure.kind == "AUTHENTICATION"
+    assert not requests
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("attempt", "is_retry"), [(1, True), (2, True), (3, False)])
+async def test_unreadable_checkpoint_retries_below_the_send_cap(attempt: int, is_retry: bool) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    context.attempt = attempt
+    context.marker = Marker.from_wire(
+        {"callId": "5f0c4d1e-8b9a-4c3d-9e2f-1a2b3c4d5e6f", "attempt": 1, "state": "canResend"}
+    )
+    result = await post(lambda _: SERVER_FAILURE, context, requests)
+    if is_retry:
+        assert isinstance(result, RetryError)
+    else:
+        assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert not requests
 
 
 @pytest.mark.asyncio

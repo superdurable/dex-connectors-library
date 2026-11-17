@@ -823,6 +823,189 @@
       "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
       "exchanges": [
         {
+          "body": "{\"ok\":true,\"channel\":\"C123\",\"ts\":\"2.0\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "channel": "C123",
+            "client_msg_id": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+            "text": "hello"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"ok\":true,\"messages\":[{\"ts\":\"2.0\",\"thread_ts\":\"\",\"user\":\"U1\",\"text\":\"hello\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.replies",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "2.0"
+            ],
+            "limit": [
+              "1"
+            ],
+            "oldest": [
+              "2.0"
+            ],
+            "ts": [
+              "2.0"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer user-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+          "providerId": "2.0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "message": {
+            "channelId": "C123",
+            "text": "hello",
+            "timestamp": "2.0",
+            "userId": "U1"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+      "input": {
+        "channelId": "C123",
+        "text": "hello"
+      },
+      "name": "postChannelMessage-client-error-with-accepted-timestamp",
+      "operation": "postChannelMessage"
+    },
+    {
+      "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"channel\":\"C123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "channel": "C123",
+            "client_msg_id": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+            "text": "hello"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+      "input": {
+        "channelId": "C123",
+        "text": "hello"
+      },
+      "name": "postChannelMessage-client-error-reporting-ok",
+      "operation": "postChannelMessage"
+    },
+    {
+      "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"request_timeout\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "channel": "C123",
+            "client_msg_id": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+            "text": "hello"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+      "input": {
+        "channelId": "C123",
+        "text": "hello"
+      },
+      "name": "postChannelMessage-request-timeout-is-unknown",
+      "operation": "postChannelMessage"
+    },
+    {
+      "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+      "exchanges": [
+        {
           "body": "{\"ok\":false,\"error\":\"ratelimited\"}",
           "headers": {},
           "keyMode": "absent",
