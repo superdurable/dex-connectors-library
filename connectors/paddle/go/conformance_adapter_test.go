@@ -24,13 +24,20 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	require.NoError(t, err)
 	context := singledispatchtest.NewContext("conformance-flow", "paddle-customer")
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
-		if attempt > 1 { context.AdvanceAttempt() }
+		if attempt > 1 {
+			context.AdvanceAttempt()
+		}
 	}, actions: map[string]conformanceOperationInvocation{
-		"getTransaction": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTransaction(), reference),
-		"listCustomers": newConformanceQueryInvocation(t, scenario.Input, context, client.ListCustomers(), reference),
-		"getCustomer": newConformanceQueryInvocation(t, scenario.Input, context, client.GetCustomer(), reference),
-		"createCustomer": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateCustomer(), reference, scenario.CallID),
-		"updateCustomer": newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateCustomer(), reference, scenario.CallID),
+		"getTransaction":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTransaction(), reference),
+		"listCustomers":   newConformanceQueryInvocation(t, scenario.Input, context, client.ListCustomers(), reference),
+		"getCustomer":     newConformanceQueryInvocation(t, scenario.Input, context, client.GetCustomer(), reference),
+		"createCustomer":  newConformanceMutationInvocation(t, scenario.Input, context, client.CreateCustomer(), reference, scenario.CallID),
+		"updateCustomer":  newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateCustomer(), reference, scenario.CallID),
 		"archiveCustomer": newConformanceMutationInvocation(t, scenario.Input, context, client.ArchiveCustomer(), reference, scenario.CallID),
+		"listDiscounts":   newConformanceQueryInvocation(t, scenario.Input, context, client.ListDiscounts(), reference),
+		"getDiscount":     newConformanceQueryInvocation(t, scenario.Input, context, client.GetDiscount(), reference),
+		"createDiscount":  newConformanceMutationInvocation(t, scenario.Input, context, client.CreateDiscount(), reference, scenario.CallID),
+		"updateDiscount":  newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateDiscount(), reference, scenario.CallID),
+		"archiveDiscount": newConformanceMutationInvocation(t, scenario.Input, context, client.ArchiveDiscount(), reference, scenario.CallID),
 	}}
 }

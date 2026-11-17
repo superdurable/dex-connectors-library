@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{transactioninspection.NewFlow(connection), transactioninspection.NewCustomerFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{transactioninspection.NewFlow(connection), transactioninspection.NewCustomerFlow(connection), transactioninspection.NewDiscountFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Paddle transaction inspection Flow: %w", err)
 	}

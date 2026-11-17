@@ -36,6 +36,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[paddle.PaddleCustomer](`{"id":"ctm_01hv8wptq8987qeep44cyrewp9","email":"customer@example.com","name":"Sample Customer","status":"archived"}`)
 			return err
 		}},
+		{name: "listDiscounts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.DiscountPage](`{"items":[{"id":"dsc_01gtgztp8fpchantd5g1wrksa3","code":"SAVE10","description":"Sample discount","type":"percentage","amount":"10","status":"active"}],"hasMore":false,"nextCursor":""}`)
+			return err
+		}},
+		{name: "getDiscount/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleDiscount](`{"id":"dsc_01gtgztp8fpchantd5g1wrksa3","code":"SAVE10","description":"Sample discount","type":"percentage","amount":"10","status":"active"}`)
+			return err
+		}},
+		{name: "createDiscount/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleDiscount](`{"id":"dsc_01gtgztp8fpchantd5g1wrksa3","code":"SAVE10","description":"Sample discount","type":"percentage","amount":"10","status":"active"}`)
+			return err
+		}},
+		{name: "updateDiscount/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleDiscount](`{"id":"dsc_01gtgztp8fpchantd5g1wrksa3","code":"SAVE10","description":"Sample discount","type":"percentage","amount":"10","status":"active"}`)
+			return err
+		}},
+		{name: "archiveDiscount/archivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleDiscount](`{"id":"dsc_01gtgztp8fpchantd5g1wrksa3","code":"SAVE10","description":"Sample discount","type":"percentage","amount":"10","status":"archived"}`)
+			return err
+		}},
 		{name: "getTransaction/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[paddle.TransactionStatus](`{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"completed","currencyCode":"USD"}`)
 			return err
@@ -64,6 +84,21 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ArchiveCustomer().Definition().Operation.OperationID != "archiveCustomer" {
 		t.Errorf("archiveCustomer mock has another definition")
+	}
+	if mock.ListDiscounts().Definition().Operation.OperationID != "listDiscounts" {
+		t.Errorf("listDiscounts mock has another definition")
+	}
+	if mock.GetDiscount().Definition().Operation.OperationID != "getDiscount" {
+		t.Errorf("getDiscount mock has another definition")
+	}
+	if mock.CreateDiscount().Definition().Operation.OperationID != "createDiscount" {
+		t.Errorf("createDiscount mock has another definition")
+	}
+	if mock.UpdateDiscount().Definition().Operation.OperationID != "updateDiscount" {
+		t.Errorf("updateDiscount mock has another definition")
+	}
+	if mock.ArchiveDiscount().Definition().Operation.OperationID != "archiveDiscount" {
+		t.Errorf("archiveDiscount mock has another definition")
 	}
 	if mock.GetTransaction().Definition().Operation.OperationID != "getTransaction" {
 		t.Errorf("getTransaction mock has another definition")

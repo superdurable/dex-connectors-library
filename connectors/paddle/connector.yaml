@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: paddle
   displayName: Paddle
-  description: Read transactions and manage customers through the Paddle Billing API.
+  description: Read transactions and manage customers and discounts through the Paddle Billing API.
   company: Paddle
   categories: [finance-payments]
   version: v0.2.0
@@ -48,12 +48,12 @@ spec:
         goName: APIKey
         type: secretString
         required: true
-        description: Secret Paddle server-side API key from My account > Settings > Authentication > API keys > New API key. Grant transaction.read plus customer.read and customer.write for Go customer operations; copy the complete pdl_sdbx_apikey_ or pdl_live_apikey_ value when shown. Blank prevents calls. Dex sends it only in the Authorization Bearer header. Match the key to baseUrl.
+        description: Secret Paddle server-side API key from My account > Settings > Authentication > API keys > New API key. Grant transaction.read plus customer.read/write and discount.read/write for Go management operations; copy the complete pdl_sdbx_apikey_ or pdl_live_apikey_ value when shown. Blank prevents calls. Dex sends it only in the Authorization Bearer header. Match the key to baseUrl.
     guide:
       startURL: https://sandbox-vendors.paddle.com
       steps:
-        - Sign in to the Paddle Sandbox or Live dashboard, open My account > Settings > Authentication > API keys > New API key. Enter a name and description, grant transaction.read and, for Go customer operations, customer.read and customer.write, set an expiry, and click Save. Copy the complete secret key, shown only once, into Dex Web secret api_key. Choose Rotatable during creation if rotation is needed; revoke or rotate the key on the same API keys page. Blank is invalid.
-        - Leave baseUrl blank for a pdl_sdbx_apikey_ Sandbox key. For a pdl_live_apikey_ Live key use https://api.paddle.com. Leave timeout and maxResponseBytes blank for their displayed defaults. Find non-secret txn_ and ctm_ IDs on the Paddle Transactions and Customers pages or in API responses. Use a unique customer email and optional full name for createCustomer; blank email or ID is invalid.
+        - Sign in to the Paddle Sandbox or Live dashboard, open My account > Settings > Authentication > API keys > New API key. Enter a name and description, grant transaction.read and, for Go management operations, customer.read, customer.write, discount.read, and discount.write; set an expiry and click Save. Copy the complete secret key, shown only once, into Dex Web secret api_key. Choose Rotatable during creation if rotation is needed; revoke or rotate the key on the same API keys page. Blank is invalid.
+        - Leave baseUrl blank for a pdl_sdbx_apikey_ Sandbox key. For a pdl_live_apikey_ Live key use https://api.paddle.com. Leave timeout and maxResponseBytes blank for their displayed defaults. Find non-secret txn_, ctm_, and dsc_ IDs on the Paddle Transactions, Customers, and Catalog > Discounts pages or in API responses. Use a unique customer email for createCustomer and a unique 1–32 character alphanumeric checkout code, private description, and percentage amount for createDiscount; blank required values are invalid.
   operations:
     - name: listCustomers
       goName: ListCustomers
@@ -157,6 +157,108 @@ spec:
           default: true
           description: A sample customer is archived.
           output: {id: ctm_01hv8wptq8987qeep44cyrewp9, email: customer@example.com, name: Sample Customer, status: archived}
+    - name: listDiscounts
+      goName: ListDiscounts
+      inputType: ListDiscountsInput
+      outputType: DiscountPage
+      kind: query
+      description: List Paddle discounts with cursor pagination.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Paddle returned the listDiscounts.}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample discount is returned.
+          output: {items: [{id: dsc_01gtgztp8fpchantd5g1wrksa3, code: SAVE10, description: Sample discount, type: percentage, amount: '10', status: active}], hasMore: false, nextCursor: ''}
+    - name: getDiscount
+      goName: GetDiscount
+      inputType: DiscountIDInput
+      outputType: PaddleDiscount
+      kind: query
+      description: Read a Paddle discount.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Paddle returned the getDiscount.}
+        - {id: notFound, goName: NotFound, description: notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample discount is returned.
+          output: {id: dsc_01gtgztp8fpchantd5g1wrksa3, code: SAVE10, description: Sample discount, type: percentage, amount: '10', status: active}
+    - name: createDiscount
+      goName: CreateDiscount
+      inputType: CreateDiscountInput
+      outputType: PaddleDiscount
+      kind: mutation
+      description: Create a percentage discount with a unique checkout code.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Paddle returned the createDiscount.}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample discount is returned.
+          output: {id: dsc_01gtgztp8fpchantd5g1wrksa3, code: SAVE10, description: Sample discount, type: percentage, amount: '10', status: active}
+    - name: updateDiscount
+      goName: UpdateDiscount
+      inputType: UpdateDiscountInput
+      outputType: PaddleDiscount
+      kind: mutation
+      description: Replace a Paddle discount description and percentage amount.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Paddle returned the updateDiscount.}
+        - {id: notFound, goName: NotFound, description: notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample discount is returned.
+          output: {id: dsc_01gtgztp8fpchantd5g1wrksa3, code: SAVE10, description: Sample discount, type: percentage, amount: '10', status: active}
+    - name: archiveDiscount
+      goName: ArchiveDiscount
+      inputType: DiscountIDInput
+      outputType: PaddleDiscount
+      kind: mutation
+      description: Archive a Paddle discount.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: archived, goName: Archived, description: Paddle returned the archiveDiscount.}
+        - {id: notFound, goName: NotFound, description: notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: archivedDefault
+          branch: archived
+          default: true
+          description: A sample discount is returned.
+          output: {id: dsc_01gtgztp8fpchantd5g1wrksa3, code: SAVE10, description: Sample discount, type: percentage, amount: '10', status: archived}
     - name: getTransaction
       goName: GetTransaction
       inputType: GetTransactionInput

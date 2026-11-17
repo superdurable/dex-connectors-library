@@ -2360,6 +2360,2159 @@
       ],
       "name": "createCustomer-send-cap",
       "operation": "createCustomer"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000101",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"dsc_01gtgztp8fpchantd5g1wrksa3\",\"code\":\"SAVE10\",\"description\":\"Sample discount\",\"type\":\"percentage\",\"amount\":\"10\",\"status\":\"active\"}],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts",
+          "query": {
+            "after": [
+              "dsc_01gtgztp8fpchantd5g1wrksa3"
+            ],
+            "code": [
+              "SAVE10"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": false,
+          "items": [
+            {
+              "amount": "10",
+              "code": "SAVE10",
+              "description": "Sample discount",
+              "id": "dsc_01gtgztp8fpchantd5g1wrksa3",
+              "status": "active",
+              "type": "percentage"
+            }
+          ],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "dsc_01gtgztp8fpchantd5g1wrksa3",
+        "code": "SAVE10",
+        "perPage": 2
+      },
+      "name": "listDiscounts-listed",
+      "operation": "listDiscounts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000102",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts",
+          "query": {
+            "after": [
+              "dsc_01gtgztp8fpchantd5g1wrksa3"
+            ],
+            "code": [
+              "SAVE10"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "dsc_01gtgztp8fpchantd5g1wrksa3",
+        "code": "SAVE10",
+        "perPage": 2
+      },
+      "name": "listDiscounts-provider-rejected",
+      "operation": "listDiscounts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000103",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts",
+          "query": {
+            "after": [
+              "dsc_01gtgztp8fpchantd5g1wrksa3"
+            ],
+            "code": [
+              "SAVE10"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "dsc_01gtgztp8fpchantd5g1wrksa3",
+        "code": "SAVE10",
+        "perPage": 2
+      },
+      "name": "listDiscounts-invalid-response",
+      "operation": "listDiscounts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000104",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts",
+          "query": {
+            "after": [
+              "dsc_01gtgztp8fpchantd5g1wrksa3"
+            ],
+            "code": [
+              "SAVE10"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "dsc_01gtgztp8fpchantd5g1wrksa3",
+        "code": "SAVE10",
+        "perPage": 2
+      },
+      "name": "listDiscounts-rate-limit",
+      "operation": "listDiscounts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000105",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts",
+          "query": {
+            "after": [
+              "dsc_01gtgztp8fpchantd5g1wrksa3"
+            ],
+            "code": [
+              "SAVE10"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "dsc_01gtgztp8fpchantd5g1wrksa3",
+        "code": "SAVE10",
+        "perPage": 2
+      },
+      "name": "listDiscounts-service-unavailable",
+      "operation": "listDiscounts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000106",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts",
+          "query": {
+            "after": [
+              "dsc_01gtgztp8fpchantd5g1wrksa3"
+            ],
+            "code": [
+              "SAVE10"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "dsc_01gtgztp8fpchantd5g1wrksa3",
+        "code": "SAVE10",
+        "perPage": 2
+      },
+      "name": "listDiscounts-server-error",
+      "operation": "listDiscounts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000107",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts",
+          "query": {
+            "after": [
+              "dsc_01gtgztp8fpchantd5g1wrksa3"
+            ],
+            "code": [
+              "SAVE10"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "dsc_01gtgztp8fpchantd5g1wrksa3",
+        "code": "SAVE10",
+        "perPage": 2
+      },
+      "name": "listDiscounts-transport",
+      "operation": "listDiscounts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000108",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "nextCursor": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "dsc_01gtgztp8fpchantd5g1wrksa3",
+        "code": "SAVE10",
+        "perPage": 0
+      },
+      "name": "listDiscounts-defect",
+      "operation": "listDiscounts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000109",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"dsc_01gtgztp8fpchantd5g1wrksa3\",\"code\":\"SAVE10\",\"description\":\"Sample discount\",\"type\":\"percentage\",\"amount\":\"10\",\"status\":\"active\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "amount": "10",
+          "code": "SAVE10",
+          "description": "Sample discount",
+          "id": "dsc_01gtgztp8fpchantd5g1wrksa3",
+          "status": "active",
+          "type": "percentage"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "getDiscount-found",
+      "operation": "getDiscount"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000110",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "amount": "",
+          "code": "",
+          "description": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "getDiscount-not-found",
+      "operation": "getDiscount"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amount": "",
+          "code": "",
+          "description": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "getDiscount-provider-rejected",
+      "operation": "getDiscount"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000112",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "amount": "",
+          "code": "",
+          "description": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "getDiscount-invalid-response",
+      "operation": "getDiscount"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000113",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "getDiscount-rate-limit",
+      "operation": "getDiscount"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000114",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "getDiscount-service-unavailable",
+      "operation": "getDiscount"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000115",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "getDiscount-server-error",
+      "operation": "getDiscount"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000116",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "getDiscount-transport",
+      "operation": "getDiscount"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000117",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amount": "",
+          "code": "",
+          "description": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "discountId": "bad"
+      },
+      "name": "getDiscount-defect",
+      "operation": "getDiscount"
+    },
+    {
+      "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"dsc_01gtgztp8fpchantd5g1wrksa3\",\"code\":\"SAVE10\",\"description\":\"Sample discount\",\"type\":\"percentage\",\"amount\":\"10\",\"status\":\"active\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/discounts",
+          "requestBody": {
+            "amount": "10",
+            "code": "SAVE10",
+            "description": "Sample discount",
+            "type": "percentage"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+          "providerId": "dsc_01gtgztp8fpchantd5g1wrksa3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "amount": "10",
+          "code": "SAVE10",
+          "description": "Sample discount",
+          "id": "dsc_01gtgztp8fpchantd5g1wrksa3",
+          "status": "active",
+          "type": "percentage"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "input": {
+        "amount": "10",
+        "code": "SAVE10",
+        "description": "Sample discount"
+      },
+      "name": "createDiscount-created",
+      "operation": "createDiscount"
+    },
+    {
+      "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/discounts",
+          "requestBody": {
+            "amount": "10",
+            "code": "SAVE10",
+            "description": "Sample discount",
+            "type": "percentage"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "amount": "",
+          "code": "",
+          "description": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "input": {
+        "amount": "10",
+        "code": "SAVE10",
+        "description": "Sample discount"
+      },
+      "name": "createDiscount-provider-rejected",
+      "operation": "createDiscount"
+    },
+    {
+      "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/discounts",
+          "requestBody": {
+            "amount": "10",
+            "code": "SAVE10",
+            "description": "Sample discount",
+            "type": "percentage"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "input": {
+        "amount": "10",
+        "code": "SAVE10",
+        "description": "Sample discount"
+      },
+      "name": "createDiscount-rate-limit",
+      "operation": "createDiscount"
+    },
+    {
+      "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/discounts",
+          "requestBody": {
+            "amount": "10",
+            "code": "SAVE10",
+            "description": "Sample discount",
+            "type": "percentage"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "input": {
+        "amount": "10",
+        "code": "SAVE10",
+        "description": "Sample discount"
+      },
+      "name": "createDiscount-service-unavailable",
+      "operation": "createDiscount"
+    },
+    {
+      "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/discounts",
+          "requestBody": {
+            "amount": "10",
+            "code": "SAVE10",
+            "description": "Sample discount",
+            "type": "percentage"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "input": {
+        "amount": "10",
+        "code": "SAVE10",
+        "description": "Sample discount"
+      },
+      "name": "createDiscount-server-error",
+      "operation": "createDiscount"
+    },
+    {
+      "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/discounts",
+          "requestBody": {
+            "amount": "10",
+            "code": "SAVE10",
+            "description": "Sample discount",
+            "type": "percentage"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "input": {
+        "amount": "10",
+        "code": "SAVE10",
+        "description": "Sample discount"
+      },
+      "name": "createDiscount-transport",
+      "operation": "createDiscount"
+    },
+    {
+      "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amount": "",
+          "code": "",
+          "description": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "input": {
+        "amount": "10",
+        "code": "bad!",
+        "description": "Sample discount"
+      },
+      "name": "createDiscount-defect",
+      "operation": "createDiscount"
+    },
+    {
+      "callId": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"dsc_01gtgztp8fpchantd5g1wrksa3\",\"code\":\"SAVE10\",\"description\":\"Sample discount\",\"type\":\"percentage\",\"amount\":\"10\",\"status\":\"active\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "amount": "10",
+            "description": "Sample discount"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "amount": "10",
+          "code": "SAVE10",
+          "description": "Sample discount",
+          "id": "dsc_01gtgztp8fpchantd5g1wrksa3",
+          "status": "active",
+          "type": "percentage"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "input": {
+        "amount": "10",
+        "description": "Sample discount",
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "updateDiscount-updated",
+      "operation": "updateDiscount"
+    },
+    {
+      "callId": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "amount": "10",
+            "description": "Sample discount"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "amount": "",
+          "code": "",
+          "description": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "input": {
+        "amount": "10",
+        "description": "Sample discount",
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "updateDiscount-not-found",
+      "operation": "updateDiscount"
+    },
+    {
+      "callId": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "amount": "10",
+            "description": "Sample discount"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amount": "",
+          "code": "",
+          "description": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "input": {
+        "amount": "10",
+        "description": "Sample discount",
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "updateDiscount-provider-rejected",
+      "operation": "updateDiscount"
+    },
+    {
+      "callId": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "amount": "10",
+            "description": "Sample discount"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "amount": "",
+          "code": "",
+          "description": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "input": {
+        "amount": "10",
+        "description": "Sample discount",
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "updateDiscount-invalid-response",
+      "operation": "updateDiscount"
+    },
+    {
+      "callId": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "amount": "10",
+            "description": "Sample discount"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "input": {
+        "amount": "10",
+        "description": "Sample discount",
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "updateDiscount-rate-limit",
+      "operation": "updateDiscount"
+    },
+    {
+      "callId": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "amount": "10",
+            "description": "Sample discount"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "input": {
+        "amount": "10",
+        "description": "Sample discount",
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "updateDiscount-service-unavailable",
+      "operation": "updateDiscount"
+    },
+    {
+      "callId": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "amount": "10",
+            "description": "Sample discount"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "input": {
+        "amount": "10",
+        "description": "Sample discount",
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "updateDiscount-server-error",
+      "operation": "updateDiscount"
+    },
+    {
+      "callId": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "amount": "10",
+            "description": "Sample discount"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "input": {
+        "amount": "10",
+        "description": "Sample discount",
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "updateDiscount-transport",
+      "operation": "updateDiscount"
+    },
+    {
+      "callId": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amount": "",
+          "code": "",
+          "description": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "input": {
+        "amount": "10",
+        "description": "Sample discount",
+        "discountId": "bad"
+      },
+      "name": "updateDiscount-defect",
+      "operation": "updateDiscount"
+    },
+    {
+      "callId": "50702014-8922-51ee-9653-276144e80737",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"dsc_01gtgztp8fpchantd5g1wrksa3\",\"code\":\"SAVE10\",\"description\":\"Sample discount\",\"type\":\"percentage\",\"amount\":\"10\",\"status\":\"archived\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "archived",
+        "failureKind": "",
+        "output": {
+          "amount": "10",
+          "code": "SAVE10",
+          "description": "Sample discount",
+          "id": "dsc_01gtgztp8fpchantd5g1wrksa3",
+          "status": "archived",
+          "type": "percentage"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50702014-8922-51ee-9653-276144e80737",
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "archiveDiscount-archived",
+      "operation": "archiveDiscount"
+    },
+    {
+      "callId": "50702014-8922-51ee-9653-276144e80737",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "amount": "",
+          "code": "",
+          "description": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50702014-8922-51ee-9653-276144e80737",
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "archiveDiscount-not-found",
+      "operation": "archiveDiscount"
+    },
+    {
+      "callId": "50702014-8922-51ee-9653-276144e80737",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amount": "",
+          "code": "",
+          "description": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50702014-8922-51ee-9653-276144e80737",
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "archiveDiscount-provider-rejected",
+      "operation": "archiveDiscount"
+    },
+    {
+      "callId": "50702014-8922-51ee-9653-276144e80737",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "amount": "",
+          "code": "",
+          "description": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50702014-8922-51ee-9653-276144e80737",
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "archiveDiscount-invalid-response",
+      "operation": "archiveDiscount"
+    },
+    {
+      "callId": "50702014-8922-51ee-9653-276144e80737",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50702014-8922-51ee-9653-276144e80737",
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "archiveDiscount-rate-limit",
+      "operation": "archiveDiscount"
+    },
+    {
+      "callId": "50702014-8922-51ee-9653-276144e80737",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50702014-8922-51ee-9653-276144e80737",
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "archiveDiscount-service-unavailable",
+      "operation": "archiveDiscount"
+    },
+    {
+      "callId": "50702014-8922-51ee-9653-276144e80737",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50702014-8922-51ee-9653-276144e80737",
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "archiveDiscount-server-error",
+      "operation": "archiveDiscount"
+    },
+    {
+      "callId": "50702014-8922-51ee-9653-276144e80737",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50702014-8922-51ee-9653-276144e80737",
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "archiveDiscount-transport",
+      "operation": "archiveDiscount"
+    },
+    {
+      "callId": "50702014-8922-51ee-9653-276144e80737",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amount": "",
+          "code": "",
+          "description": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50702014-8922-51ee-9653-276144e80737",
+      "input": {
+        "discountId": "bad"
+      },
+      "name": "archiveDiscount-defect",
+      "operation": "archiveDiscount"
+    },
+    {
+      "attempts": 2,
+      "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/discounts",
+          "requestBody": {
+            "amount": "10",
+            "code": "SAVE10",
+            "description": "Sample discount",
+            "type": "percentage"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[{\"id\":\"dsc_01gtgztp8fpchantd5g1wrksa3\",\"code\":\"SAVE10\",\"description\":\"Sample discount\",\"type\":\"percentage\",\"amount\":\"10\",\"status\":\"active\"}],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts",
+          "query": {
+            "code": [
+              "SAVE10"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "amount": "10",
+          "code": "SAVE10",
+          "description": "Sample discount",
+          "id": "dsc_01gtgztp8fpchantd5g1wrksa3",
+          "status": "active",
+          "type": "percentage"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "input": {
+        "amount": "10",
+        "code": "SAVE10",
+        "description": "Sample discount"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createDiscount-read-back",
+      "operation": "createDiscount"
+    },
+    {
+      "attempts": 4,
+      "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/discounts",
+          "requestBody": {
+            "amount": "10",
+            "code": "SAVE10",
+            "description": "Sample discount",
+            "type": "percentage"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts",
+          "query": {
+            "code": [
+              "SAVE10"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/discounts",
+          "requestBody": {
+            "amount": "10",
+            "code": "SAVE10",
+            "description": "Sample discount",
+            "type": "percentage"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts",
+          "query": {
+            "code": [
+              "SAVE10"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/discounts",
+          "requestBody": {
+            "amount": "10",
+            "code": "SAVE10",
+            "description": "Sample discount",
+            "type": "percentage"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts",
+          "query": {
+            "code": [
+              "SAVE10"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "LOCAL_DEFECT",
+        "output": {
+          "amount": "",
+          "code": "",
+          "description": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 6,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "input": {
+        "amount": "10",
+        "code": "SAVE10",
+        "description": "Sample discount"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 5,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 3,
+            "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+            "sendCount": 3,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createDiscount-send-cap",
+      "operation": "createDiscount"
     }
   ],
   "schemaVersion": 1

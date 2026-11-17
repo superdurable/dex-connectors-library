@@ -23,6 +23,11 @@ type Mock struct {
 	createCustomer  *connectormock.Mutation[paddle.CreateCustomerInput, paddle.PaddleCustomer]
 	updateCustomer  *connectormock.Mutation[paddle.UpdateCustomerInput, paddle.PaddleCustomer]
 	archiveCustomer *connectormock.Mutation[paddle.CustomerIDInput, paddle.PaddleCustomer]
+	listDiscounts   *connectormock.Query[paddle.ListDiscountsInput, paddle.DiscountPage]
+	getDiscount     *connectormock.Query[paddle.DiscountIDInput, paddle.PaddleDiscount]
+	createDiscount  *connectormock.Mutation[paddle.CreateDiscountInput, paddle.PaddleDiscount]
+	updateDiscount  *connectormock.Mutation[paddle.UpdateDiscountInput, paddle.PaddleDiscount]
+	archiveDiscount *connectormock.Mutation[paddle.DiscountIDInput, paddle.PaddleDiscount]
 	getTransaction  *connectormock.Query[paddle.GetTransactionInput, paddle.TransactionStatus]
 }
 
@@ -36,6 +41,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		createCustomer:  connectormock.NewMutation[paddle.CreateCustomerInput, paddle.PaddleCustomer](t, paddle.CreateCustomerDefinition),
 		updateCustomer:  connectormock.NewMutation[paddle.UpdateCustomerInput, paddle.PaddleCustomer](t, paddle.UpdateCustomerDefinition),
 		archiveCustomer: connectormock.NewMutation[paddle.CustomerIDInput, paddle.PaddleCustomer](t, paddle.ArchiveCustomerDefinition),
+		listDiscounts:   connectormock.NewQuery[paddle.ListDiscountsInput, paddle.DiscountPage](t, paddle.ListDiscountsDefinition),
+		getDiscount:     connectormock.NewQuery[paddle.DiscountIDInput, paddle.PaddleDiscount](t, paddle.GetDiscountDefinition),
+		createDiscount:  connectormock.NewMutation[paddle.CreateDiscountInput, paddle.PaddleDiscount](t, paddle.CreateDiscountDefinition),
+		updateDiscount:  connectormock.NewMutation[paddle.UpdateDiscountInput, paddle.PaddleDiscount](t, paddle.UpdateDiscountDefinition),
+		archiveDiscount: connectormock.NewMutation[paddle.DiscountIDInput, paddle.PaddleDiscount](t, paddle.ArchiveDiscountDefinition),
 		getTransaction:  connectormock.NewQuery[paddle.GetTransactionInput, paddle.TransactionStatus](t, paddle.GetTransactionDefinition),
 	}
 	mock.listCustomers.Default(ListCustomersDefault())
@@ -43,6 +53,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createCustomer.Default(CreateCustomerDefault())
 	mock.updateCustomer.Default(UpdateCustomerDefault())
 	mock.archiveCustomer.Default(ArchiveCustomerDefault())
+	mock.listDiscounts.Default(ListDiscountsDefault())
+	mock.getDiscount.Default(GetDiscountDefault())
+	mock.createDiscount.Default(CreateDiscountDefault())
+	mock.updateDiscount.Default(UpdateDiscountDefault())
+	mock.archiveDiscount.Default(ArchiveDiscountDefault())
 	mock.getTransaction.Default(GetTransactionDefault())
 	connection, err := paddle.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "paddle", Name: connectionName})
 	if err != nil {
@@ -80,6 +95,31 @@ func (mock *Mock) ArchiveCustomer() *connectormock.Mutation[paddle.CustomerIDInp
 	return mock.archiveCustomer
 }
 
+// ListDiscounts returns the listDiscounts script.
+func (mock *Mock) ListDiscounts() *connectormock.Query[paddle.ListDiscountsInput, paddle.DiscountPage] {
+	return mock.listDiscounts
+}
+
+// GetDiscount returns the getDiscount script.
+func (mock *Mock) GetDiscount() *connectormock.Query[paddle.DiscountIDInput, paddle.PaddleDiscount] {
+	return mock.getDiscount
+}
+
+// CreateDiscount returns the createDiscount script.
+func (mock *Mock) CreateDiscount() *connectormock.Mutation[paddle.CreateDiscountInput, paddle.PaddleDiscount] {
+	return mock.createDiscount
+}
+
+// UpdateDiscount returns the updateDiscount script.
+func (mock *Mock) UpdateDiscount() *connectormock.Mutation[paddle.UpdateDiscountInput, paddle.PaddleDiscount] {
+	return mock.updateDiscount
+}
+
+// ArchiveDiscount returns the archiveDiscount script.
+func (mock *Mock) ArchiveDiscount() *connectormock.Mutation[paddle.DiscountIDInput, paddle.PaddleDiscount] {
+	return mock.archiveDiscount
+}
+
 // GetTransaction returns the getTransaction script.
 func (mock *Mock) GetTransaction() *connectormock.Query[paddle.GetTransactionInput, paddle.TransactionStatus] {
 	return mock.getTransaction
@@ -101,6 +141,21 @@ func (operations mockOperations) UpdateCustomer() sdkgo.Mutation[paddle.UpdateCu
 }
 func (operations mockOperations) ArchiveCustomer() sdkgo.Mutation[paddle.CustomerIDInput, paddle.PaddleCustomer] {
 	return operations.mock.archiveCustomer
+}
+func (operations mockOperations) ListDiscounts() sdkgo.Query[paddle.ListDiscountsInput, paddle.DiscountPage] {
+	return operations.mock.listDiscounts
+}
+func (operations mockOperations) GetDiscount() sdkgo.Query[paddle.DiscountIDInput, paddle.PaddleDiscount] {
+	return operations.mock.getDiscount
+}
+func (operations mockOperations) CreateDiscount() sdkgo.Mutation[paddle.CreateDiscountInput, paddle.PaddleDiscount] {
+	return operations.mock.createDiscount
+}
+func (operations mockOperations) UpdateDiscount() sdkgo.Mutation[paddle.UpdateDiscountInput, paddle.PaddleDiscount] {
+	return operations.mock.updateDiscount
+}
+func (operations mockOperations) ArchiveDiscount() sdkgo.Mutation[paddle.DiscountIDInput, paddle.PaddleDiscount] {
+	return operations.mock.archiveDiscount
 }
 func (operations mockOperations) GetTransaction() sdkgo.Query[paddle.GetTransactionInput, paddle.TransactionStatus] {
 	return operations.mock.getTransaction
@@ -292,6 +347,194 @@ func ArchiveCustomerArchivedDefault() connectormock.Case[paddle.PaddleCustomer] 
 // ArchiveCustomerDefault is the manifest default, archivedDefault, which New installs.
 func ArchiveCustomerDefault() connectormock.Case[paddle.PaddleCustomer] {
 	return ArchiveCustomerArchivedDefault()
+}
+
+// ListDiscountsListed selects the listed branch: Paddle returned the listDiscounts.
+func ListDiscountsListed(value paddle.DiscountPage, failure *sdkgo.Failure) connectormock.Case[paddle.DiscountPage] {
+	return connectormock.Branch(paddle.ListDiscountsBranchListed, value, failure)
+}
+
+// ListDiscountsProviderRejected selects the providerRejected branch: providerRejected outcome.
+func ListDiscountsProviderRejected(value paddle.DiscountPage, failure *sdkgo.Failure) connectormock.Case[paddle.DiscountPage] {
+	return connectormock.Branch(paddle.ListDiscountsBranchProviderRejected, value, failure)
+}
+
+// ListDiscountsInvalidResponse selects the invalidResponse branch: invalidResponse outcome.
+func ListDiscountsInvalidResponse(value paddle.DiscountPage, failure *sdkgo.Failure) connectormock.Case[paddle.DiscountPage] {
+	return connectormock.Branch(paddle.ListDiscountsBranchInvalidResponse, value, failure)
+}
+
+// ListDiscountsDefect selects the defect branch: defect outcome.
+func ListDiscountsDefect(value paddle.DiscountPage, failure *sdkgo.Failure) connectormock.Case[paddle.DiscountPage] {
+	return connectormock.Branch(paddle.ListDiscountsBranchDefect, value, failure)
+}
+
+// ListDiscountsRetry asks Dex to retry the listDiscounts Step, after the delay when it is positive.
+func ListDiscountsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paddle.DiscountPage] {
+	return connectormock.Retry[paddle.DiscountPage](failure, after)
+}
+
+// ListDiscountsListedDefault is the manifest mock listedDefault: A sample discount is returned.
+func ListDiscountsListedDefault() connectormock.Case[paddle.DiscountPage] {
+	value := connectormock.MustDecodeOutput[paddle.DiscountPage](`{"items":[{"id":"dsc_01gtgztp8fpchantd5g1wrksa3","code":"SAVE10","description":"Sample discount","type":"percentage","amount":"10","status":"active"}],"hasMore":false,"nextCursor":""}`)
+	return connectormock.Branch(paddle.ListDiscountsBranchListed, value, nil)
+}
+
+// ListDiscountsDefault is the manifest default, listedDefault, which New installs.
+func ListDiscountsDefault() connectormock.Case[paddle.DiscountPage] {
+	return ListDiscountsListedDefault()
+}
+
+// GetDiscountFound selects the found branch: Paddle returned the getDiscount.
+func GetDiscountFound(value paddle.PaddleDiscount, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Branch(paddle.GetDiscountBranchFound, value, failure)
+}
+
+// GetDiscountNotFound selects the notFound branch: notFound outcome.
+func GetDiscountNotFound(value paddle.PaddleDiscount, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Branch(paddle.GetDiscountBranchNotFound, value, failure)
+}
+
+// GetDiscountProviderRejected selects the providerRejected branch: providerRejected outcome.
+func GetDiscountProviderRejected(value paddle.PaddleDiscount, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Branch(paddle.GetDiscountBranchProviderRejected, value, failure)
+}
+
+// GetDiscountInvalidResponse selects the invalidResponse branch: invalidResponse outcome.
+func GetDiscountInvalidResponse(value paddle.PaddleDiscount, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Branch(paddle.GetDiscountBranchInvalidResponse, value, failure)
+}
+
+// GetDiscountDefect selects the defect branch: defect outcome.
+func GetDiscountDefect(value paddle.PaddleDiscount, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Branch(paddle.GetDiscountBranchDefect, value, failure)
+}
+
+// GetDiscountRetry asks Dex to retry the getDiscount Step, after the delay when it is positive.
+func GetDiscountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Retry[paddle.PaddleDiscount](failure, after)
+}
+
+// GetDiscountFoundDefault is the manifest mock foundDefault: A sample discount is returned.
+func GetDiscountFoundDefault() connectormock.Case[paddle.PaddleDiscount] {
+	value := connectormock.MustDecodeOutput[paddle.PaddleDiscount](`{"id":"dsc_01gtgztp8fpchantd5g1wrksa3","code":"SAVE10","description":"Sample discount","type":"percentage","amount":"10","status":"active"}`)
+	return connectormock.Branch(paddle.GetDiscountBranchFound, value, nil)
+}
+
+// GetDiscountDefault is the manifest default, foundDefault, which New installs.
+func GetDiscountDefault() connectormock.Case[paddle.PaddleDiscount] { return GetDiscountFoundDefault() }
+
+// CreateDiscountCreated selects the created branch: Paddle returned the createDiscount.
+func CreateDiscountCreated(value paddle.PaddleDiscount, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Branch(paddle.CreateDiscountBranchCreated, value, failure)
+}
+
+// CreateDiscountProviderRejected selects the providerRejected branch: providerRejected outcome.
+func CreateDiscountProviderRejected(value paddle.PaddleDiscount, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Branch(paddle.CreateDiscountBranchProviderRejected, value, failure)
+}
+
+// CreateDiscountDefect selects the defect branch: defect outcome.
+func CreateDiscountDefect(value paddle.PaddleDiscount, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Branch(paddle.CreateDiscountBranchDefect, value, failure)
+}
+
+// CreateDiscountRetry asks Dex to retry the createDiscount Step, after the delay when it is positive.
+func CreateDiscountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Retry[paddle.PaddleDiscount](failure, after)
+}
+
+// CreateDiscountCreatedDefault is the manifest mock createdDefault: A sample discount is returned.
+func CreateDiscountCreatedDefault() connectormock.Case[paddle.PaddleDiscount] {
+	value := connectormock.MustDecodeOutput[paddle.PaddleDiscount](`{"id":"dsc_01gtgztp8fpchantd5g1wrksa3","code":"SAVE10","description":"Sample discount","type":"percentage","amount":"10","status":"active"}`)
+	return connectormock.Branch(paddle.CreateDiscountBranchCreated, value, nil)
+}
+
+// CreateDiscountDefault is the manifest default, createdDefault, which New installs.
+func CreateDiscountDefault() connectormock.Case[paddle.PaddleDiscount] {
+	return CreateDiscountCreatedDefault()
+}
+
+// UpdateDiscountUpdated selects the updated branch: Paddle returned the updateDiscount.
+func UpdateDiscountUpdated(value paddle.PaddleDiscount, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Branch(paddle.UpdateDiscountBranchUpdated, value, failure)
+}
+
+// UpdateDiscountNotFound selects the notFound branch: notFound outcome.
+func UpdateDiscountNotFound(value paddle.PaddleDiscount, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Branch(paddle.UpdateDiscountBranchNotFound, value, failure)
+}
+
+// UpdateDiscountProviderRejected selects the providerRejected branch: providerRejected outcome.
+func UpdateDiscountProviderRejected(value paddle.PaddleDiscount, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Branch(paddle.UpdateDiscountBranchProviderRejected, value, failure)
+}
+
+// UpdateDiscountInvalidResponse selects the invalidResponse branch: invalidResponse outcome.
+func UpdateDiscountInvalidResponse(value paddle.PaddleDiscount, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Branch(paddle.UpdateDiscountBranchInvalidResponse, value, failure)
+}
+
+// UpdateDiscountDefect selects the defect branch: defect outcome.
+func UpdateDiscountDefect(value paddle.PaddleDiscount, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Branch(paddle.UpdateDiscountBranchDefect, value, failure)
+}
+
+// UpdateDiscountRetry asks Dex to retry the updateDiscount Step, after the delay when it is positive.
+func UpdateDiscountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Retry[paddle.PaddleDiscount](failure, after)
+}
+
+// UpdateDiscountUpdatedDefault is the manifest mock updatedDefault: A sample discount is returned.
+func UpdateDiscountUpdatedDefault() connectormock.Case[paddle.PaddleDiscount] {
+	value := connectormock.MustDecodeOutput[paddle.PaddleDiscount](`{"id":"dsc_01gtgztp8fpchantd5g1wrksa3","code":"SAVE10","description":"Sample discount","type":"percentage","amount":"10","status":"active"}`)
+	return connectormock.Branch(paddle.UpdateDiscountBranchUpdated, value, nil)
+}
+
+// UpdateDiscountDefault is the manifest default, updatedDefault, which New installs.
+func UpdateDiscountDefault() connectormock.Case[paddle.PaddleDiscount] {
+	return UpdateDiscountUpdatedDefault()
+}
+
+// ArchiveDiscountArchived selects the archived branch: Paddle returned the archiveDiscount.
+func ArchiveDiscountArchived(value paddle.PaddleDiscount, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Branch(paddle.ArchiveDiscountBranchArchived, value, failure)
+}
+
+// ArchiveDiscountNotFound selects the notFound branch: notFound outcome.
+func ArchiveDiscountNotFound(value paddle.PaddleDiscount, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Branch(paddle.ArchiveDiscountBranchNotFound, value, failure)
+}
+
+// ArchiveDiscountProviderRejected selects the providerRejected branch: providerRejected outcome.
+func ArchiveDiscountProviderRejected(value paddle.PaddleDiscount, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Branch(paddle.ArchiveDiscountBranchProviderRejected, value, failure)
+}
+
+// ArchiveDiscountInvalidResponse selects the invalidResponse branch: invalidResponse outcome.
+func ArchiveDiscountInvalidResponse(value paddle.PaddleDiscount, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Branch(paddle.ArchiveDiscountBranchInvalidResponse, value, failure)
+}
+
+// ArchiveDiscountDefect selects the defect branch: defect outcome.
+func ArchiveDiscountDefect(value paddle.PaddleDiscount, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Branch(paddle.ArchiveDiscountBranchDefect, value, failure)
+}
+
+// ArchiveDiscountRetry asks Dex to retry the archiveDiscount Step, after the delay when it is positive.
+func ArchiveDiscountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paddle.PaddleDiscount] {
+	return connectormock.Retry[paddle.PaddleDiscount](failure, after)
+}
+
+// ArchiveDiscountArchivedDefault is the manifest mock archivedDefault: A sample discount is returned.
+func ArchiveDiscountArchivedDefault() connectormock.Case[paddle.PaddleDiscount] {
+	value := connectormock.MustDecodeOutput[paddle.PaddleDiscount](`{"id":"dsc_01gtgztp8fpchantd5g1wrksa3","code":"SAVE10","description":"Sample discount","type":"percentage","amount":"10","status":"archived"}`)
+	return connectormock.Branch(paddle.ArchiveDiscountBranchArchived, value, nil)
+}
+
+// ArchiveDiscountDefault is the manifest default, archivedDefault, which New installs.
+func ArchiveDiscountDefault() connectormock.Case[paddle.PaddleDiscount] {
+	return ArchiveDiscountArchivedDefault()
 }
 
 // GetTransactionFound selects the found branch: Paddle returned the transaction.

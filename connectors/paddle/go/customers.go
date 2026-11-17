@@ -193,7 +193,7 @@ func customerFailure(operationName string, kind sdkgo.FailureKind, message strin
 	return &sdkgo.Failure{Kind: kind, Provider: "paddle", Operation: operationName, Message: message}
 }
 
-func customerRetryable(exchange paddleExchange) bool {
+func paddleRetryable(exchange paddleExchange) bool {
 	return errors.Is(exchange.err, errRequest) || exchange.status == http.StatusRequestTimeout || exchange.status == http.StatusTooManyRequests || exchange.status >= 500
 }
 
@@ -278,7 +278,7 @@ func (operation ListCustomersOperation) Invoke(call sdkgo.Call, input ListCustom
 	if errors.Is(exchange.err, errCredential) {
 		return sdkgo.NewQueryBranch(ListCustomersBranchDefect, CustomerPage{}, customerFailure(name, sdkgo.FailureAuthentication, "Paddle credentials are invalid"), sdkgo.Receipt{})
 	}
-	if customerRetryable(exchange) {
+	if paddleRetryable(exchange) {
 		return sdkgo.NewQueryRetry[CustomerPage](*customerFailure(name, sdkgo.FailureAvailability, "customer listing is unavailable"), exchange.retryAfter)
 	}
 	if exchange.status != http.StatusOK {
@@ -301,7 +301,7 @@ func (operation GetCustomerOperation) Invoke(call sdkgo.Call, input CustomerIDIn
 	if errors.Is(exchange.err, errCredential) {
 		return sdkgo.NewQueryBranch(GetCustomerBranchDefect, PaddleCustomer{}, customerFailure(name, sdkgo.FailureAuthentication, "Paddle credentials are invalid"), sdkgo.Receipt{})
 	}
-	if customerRetryable(exchange) {
+	if paddleRetryable(exchange) {
 		return sdkgo.NewQueryRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureAvailability, "customer lookup is unavailable"), exchange.retryAfter)
 	}
 	if exchange.status == http.StatusNotFound {
@@ -345,7 +345,7 @@ func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCus
 			if len(page.Items) != 0 {
 				return sdkgo.NewMutationUncertain(PaddleCustomer{}, *customerFailure(name, sdkgo.FailureProtocol, "customer read-back disagreed with request"), sdkgo.Receipt{})
 			}
-		} else if customerRetryable(readBack) {
+		} else if paddleRetryable(readBack) {
 			return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureAvailability, "customer read-back is unavailable"), readBack.retryAfter)
 		} else {
 			return sdkgo.NewMutationUncertain(PaddleCustomer{}, *customerFailure(name, sdkgo.FailureTransport, "customer read-back was rejected"), sdkgo.Receipt{})
@@ -371,7 +371,7 @@ func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCus
 		}
 		return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureAvailability, "Paddle requested a retry"), exchange.retryAfter)
 	}
-	if customerRetryable(exchange) {
+	if paddleRetryable(exchange) {
 		return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureAvailability, "customer creation outcome is unknown"), exchange.retryAfter)
 	}
 	if exchange.status != http.StatusCreated {
@@ -398,7 +398,7 @@ func (operation UpdateCustomerOperation) Invoke(call sdkgo.Call, input UpdateCus
 	if errors.Is(exchange.err, errCredential) {
 		return sdkgo.NewMutationBranch(UpdateCustomerBranchDefect, PaddleCustomer{}, customerFailure(name, sdkgo.FailureAuthentication, "Paddle credentials are invalid"), sdkgo.Receipt{})
 	}
-	if customerRetryable(exchange) {
+	if paddleRetryable(exchange) {
 		return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureAvailability, "customer update is unavailable"), exchange.retryAfter)
 	}
 	if exchange.status == http.StatusNotFound {
@@ -424,7 +424,7 @@ func (operation ArchiveCustomerOperation) Invoke(call sdkgo.Call, input Customer
 	if errors.Is(exchange.err, errCredential) {
 		return sdkgo.NewMutationBranch(ArchiveCustomerBranchDefect, PaddleCustomer{}, customerFailure(name, sdkgo.FailureAuthentication, "Paddle credentials are invalid"), sdkgo.Receipt{})
 	}
-	if customerRetryable(exchange) {
+	if paddleRetryable(exchange) {
 		return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureAvailability, "customer archival is unavailable"), exchange.retryAfter)
 	}
 	if exchange.status == http.StatusNotFound {
