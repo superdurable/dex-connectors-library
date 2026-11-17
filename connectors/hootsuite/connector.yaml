@@ -6,16 +6,16 @@ metadata:
   description: List social profiles, inspect scheduled messages, and schedule text posts.
   company: Hootsuite
   categories: [social-media, marketing]
-  version: v0.1.0
+  version: v0.1.1
 spec:
   provider: hootsuite
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       operations: [listSocialProfiles, listScheduledPosts, schedulePost]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       operations: [listSocialProfiles, listScheduledPosts, schedulePost]
       triggers: []
   codegen:
@@ -135,15 +135,15 @@ spec:
       inputType: SchedulePostInput
       outputType: ScheduledPostReceipt
       kind: mutation
-      description: Schedule a text message on one social profile; inspect Hootsuite Planner if the outcome is uncertain.
+      description: Schedule a text message on one social profile. An unknown outcome resends up to the send cap, so Planner may show a duplicate; inspect Planner if the outcome is uncertain.
       idempotency: required
       authorization: required
       execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
       branches:
         - {id: scheduled, goName: Scheduled, description: Hootsuite accepted the scheduled message and returned its ID.}
         - {id: providerRejected, goName: ProviderRejected, description: Hootsuite definitively rejected the schedule request., optional: true}
-        - {id: uncertain, goName: Uncertain, description: The request may have reached Hootsuite but no message ID was confirmed; inspect Planner before resending., optional: true}
-        - {id: defect, goName: Defect, description: "Local post input, credentials, or dispatch checkpoint is invalid.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Hootsuite may have scheduled the message, but the send cap was reached or Hootsuite returned a message ID without a complete confirmation; inspect Planner before resending.", optional: true}
+        - {id: defect, goName: Defect, description: "Local post input, credentials, or dispatch fence is invalid before any send.", optional: true}
       mocks:
         - name: scheduledDefault
           branch: scheduled
