@@ -26,5 +26,12 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"getContact": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetContact(), reference),
+		"listContacts": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListContacts(), reference),
+		"deleteContact": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteContact(), reference, scenario.CallID),
+		"getContactList": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetContactList(), reference),
+		"listContactLists": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListContactLists(), reference),
+		"createContactList": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateContactList(), reference, scenario.CallID),
+		"updateContactList": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateContactList(), reference, scenario.CallID),
+		"deleteContactList": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteContactList(), reference, scenario.CallID),
 	}}
 }

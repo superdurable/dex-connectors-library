@@ -16,8 +16,36 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listContacts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[constantcontact.ContactsPage](`{"contacts":[{"contactId":"1898ae62-4752-11e9-9c8a-fa163e6b01c1","emailAddress":"reader@example.com"}]}`)
+			return err
+		}},
+		{name: "deleteContact/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[constantcontact.DeleteContactOutput](`{"contactId":"1898ae62-4752-11e9-9c8a-fa163e6b01c1"}`)
+			return err
+		}},
 		{name: "getContact/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[constantcontact.ContactMetadata](`{"contactId":"1898ae62-4752-11e9-9c8a-fa163e6b01c1","emailAddress":"reader@example.com","firstName":"Avery","lastName":"Reader","emailPermission":"explicit"}`)
+			return err
+		}},
+		{name: "getContactList/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[constantcontact.ContactListMetadata](`{"listId":"1898ae62-4752-11e9-9c8a-fa163e6b01c1","name":"Customers"}`)
+			return err
+		}},
+		{name: "listContactLists/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[constantcontact.ContactListsPage](`{"lists":[{"listId":"1898ae62-4752-11e9-9c8a-fa163e6b01c1","name":"Customers"}]}`)
+			return err
+		}},
+		{name: "createContactList/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[constantcontact.ContactListMetadata](`{"listId":"1898ae62-4752-11e9-9c8a-fa163e6b01c1","name":"Customers"}`)
+			return err
+		}},
+		{name: "updateContactList/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[constantcontact.ContactListMetadata](`{"listId":"1898ae62-4752-11e9-9c8a-fa163e6b01c1","name":"Preferred Customers"}`)
+			return err
+		}},
+		{name: "deleteContactList/acceptedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[constantcontact.DeleteContactListOutput](`{"listId":"1898ae62-4752-11e9-9c8a-fa163e6b01c1"}`)
 			return err
 		}},
 	}
@@ -30,7 +58,28 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
+		t.Errorf("listContacts mock has another definition")
+	}
+	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
+		t.Errorf("deleteContact mock has another definition")
+	}
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")
+	}
+	if mock.GetContactList().Definition().Operation.OperationID != "getContactList" {
+		t.Errorf("getContactList mock has another definition")
+	}
+	if mock.ListContactLists().Definition().Operation.OperationID != "listContactLists" {
+		t.Errorf("listContactLists mock has another definition")
+	}
+	if mock.CreateContactList().Definition().Operation.OperationID != "createContactList" {
+		t.Errorf("createContactList mock has another definition")
+	}
+	if mock.UpdateContactList().Definition().Operation.OperationID != "updateContactList" {
+		t.Errorf("updateContactList mock has another definition")
+	}
+	if mock.DeleteContactList().Definition().Operation.OperationID != "deleteContactList" {
+		t.Errorf("deleteContactList mock has another definition")
 	}
 }

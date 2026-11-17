@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: constantcontact
   displayName: Constant Contact
-  description: Read contact details from the Constant Contact V3 API.
+  description: Search and delete contacts, and manage contact lists through the Constant Contact V3 API.
   company: Constant Contact
   categories: [marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: constantcontact
   languages:
@@ -69,9 +69,10 @@ spec:
       startURL: https://app.constantcontact.com/pages/dma/portal/
       steps:
         - Open the Constant Contact Developer Portal > My Applications > Create a New Application, choose Authorization Code Flow, and copy the API Key and Client Secret. The API Key is not secret; store the Client Secret only in Dex credentials.
-        - In the application's Redirect URI settings, register the exact redirect URI displayed by Dex Web. Enable the contact_data scope for contact reads and offline_access for refresh tokens; ask the account administrator to authorize the application if your user cannot grant access.
+        - In the application's Redirect URI settings, register the exact redirect URI displayed by Dex Web. Enable the contact_data scope for contact and list access and offline_access for refresh tokens; ask the account administrator for contacts read/write and contact-list read/write privileges if your user cannot grant access.
         - Save the two app credentials, choose Authorize in Dex Web, and approve Constant Contact consent. Dex stores and refreshes the returned access and refresh tokens. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
         - To find a contact ID, open Constant Contact > Contacts, select a contact, and use the contact ID from its V3 API resource or an exported V3 contacts list. It is a non-secret UUID. Blank contact IDs are invalid.
+        - To find a list ID, open Constant Contact > Contacts > Lists, select a list, and use its list_id from the V3 contact-lists API. It is a non-secret UUID. Blank list IDs are invalid; a blank contact page cursor starts a new search.
     oauth2:
       authorizationEndpoint: https://authz.constantcontact.com/oauth2/default/v1/authorize
       tokenEndpoint: https://authz.constantcontact.com/oauth2/default/v1/token
@@ -91,6 +92,46 @@ spec:
         requiredScopes: [contact_data]
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: listContacts
+      goName: ListContacts
+      inputType: ListContactsInput
+      outputType: ContactsPage
+      kind: query
+      description: Search contacts by exact email or page through the contact collection.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Constant Contact returned a page of contacts.}
+        - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Constant Contact returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One contact is returned.
+          output: {contacts: [{contactId: "1898ae62-4752-11e9-9c8a-fa163e6b01c1", emailAddress: "reader@example.com"}]}
+    - name: deleteContact
+      goName: DeleteContact
+      inputType: DeleteContactInput
+      outputType: DeleteContactOutput
+      kind: mutation
+      description: Delete one contact and its list memberships by contact UUID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Constant Contact deleted the contact.}
+        - {id: notFound, goName: NotFound, description: The contact was already absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: The contact was deleted.
+          output: {contactId: "1898ae62-4752-11e9-9c8a-fa163e6b01c1"}
     - name: getContact
       goName: GetContact
       inputType: GetContactInput
@@ -116,3 +157,104 @@ spec:
           branch: notFound
           description: The requested contact is absent.
           failure: {kind: NOT_FOUND, message: Constant Contact did not find the contact.}
+    - name: getContactList
+      goName: GetContactList
+      inputType: GetContactListInput
+      outputType: ContactListMetadata
+      kind: query
+      description: Read one contact list by UUID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Constant Contact returned the list.}
+        - {id: notFound, goName: NotFound, description: The list does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Constant Contact returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample contact list is returned.
+          output: {listId: "1898ae62-4752-11e9-9c8a-fa163e6b01c1", name: Customers}
+    - name: listContactLists
+      goName: ListContactLists
+      inputType: ListContactListsInput
+      outputType: ContactListsPage
+      kind: query
+      description: Read a bounded collection of contact lists, optionally by exact name.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Constant Contact returned a page of lists.}
+        - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Constant Contact returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One contact list is returned.
+          output: {lists: [{listId: "1898ae62-4752-11e9-9c8a-fa163e6b01c1", name: Customers}]}
+    - name: createContactList
+      goName: CreateContactList
+      inputType: CreateContactListInput
+      outputType: ContactListMetadata
+      kind: mutation
+      description: Create one named contact list.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Constant Contact created the list.}
+        - {id: alreadyExists, goName: AlreadyExists, description: A list with this name exists., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample list is created.
+          output: {listId: "1898ae62-4752-11e9-9c8a-fa163e6b01c1", name: Customers}
+    - name: updateContactList
+      goName: UpdateContactList
+      inputType: UpdateContactListInput
+      outputType: ContactListMetadata
+      kind: mutation
+      description: Replace the name, description, and favorite state of one list.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Constant Contact updated the list.}
+        - {id: notFound, goName: NotFound, description: The list does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample list is renamed.
+          output: {listId: "1898ae62-4752-11e9-9c8a-fa163e6b01c1", name: Preferred Customers}
+    - name: deleteContactList
+      goName: DeleteContactList
+      inputType: DeleteContactListInput
+      outputType: DeleteContactListOutput
+      kind: mutation
+      description: Request asynchronous deletion of one contact list.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: accepted, goName: Accepted, description: Constant Contact accepted the list deletion.}
+        - {id: notFound, goName: NotFound, description: The list does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: acceptedDefault
+          branch: accepted
+          default: true
+          description: Deletion was accepted for a sample list.
+          output: {listId: "1898ae62-4752-11e9-9c8a-fa163e6b01c1"}

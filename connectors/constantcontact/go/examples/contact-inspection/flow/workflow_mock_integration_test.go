@@ -24,7 +24,8 @@ import (
 func TestContactInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := constantcontactmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	contactListsFlow := NewContactListsFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, contactListsFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +57,14 @@ func TestContactInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, "1898ae62-4752-11e9-9c8a-fa163e6b01c1", output.ContactID)
 	require.Len(t, mock.GetContact().Calls(), 1)
+	listsFlowID := "constantcontact-lists-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, contactListsFlow, listsFlowID, constantcontact.ListContactListsInput{Limit: 2}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	listsResult, err := client.WaitForFlow(ctx, listsFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, listsResult.Status, listsResult.ErrorMessage)
+	var listsOutput constantcontact.ContactListsPage
+	require.NoError(t, listsResult.DecodeSingleOutput(&listsOutput))
+	require.Len(t, listsOutput.Lists, 1)
+	require.Len(t, mock.ListContactLists().Calls(), 1)
 }
