@@ -8,6 +8,7 @@ Brevo contact, attribute, and sender management plus transactional email for Dex
 
 | Operation | Method | Result |
 | --- | --- | --- |
+| `createContact` | `POST /v3/contacts` with `updateEnabled: false` | `created` with the new contact ID |
 | `createOrUpdateContact` | `POST /v3/contacts` with `updateEnabled: true` | `saved` after HTTP 201 or 204 |
 | `getContact` | `GET /v3/contacts/{email}` | `found` after HTTP 200; `notFound` after HTTP 404 |
 | `listContacts` | `GET /v3/contacts` | `listed` with a bounded page of IDs and emails |
@@ -25,6 +26,8 @@ Brevo contact, attribute, and sender management plus transactional email for Dex
 | `sendTemplateEmail` | `POST /v3/smtp/email` | `sent` with Brevo's message ID |
 
 `createOrUpdateContact` identifies a contact by email and sets the provided attributes to absolute values. Brevo's `updateEnabled` makes a retry update that same contact. A 201 response includes a new contact ID; a 204 update does not. It does not expose provider attributes in the result. `getContact` returns only the contact ID and email.
+
+`createContact` uses `updateEnabled: false` so an existing email is rejected instead of changed. It reads the email back after an unknown send, caps possible sends at three, and returns `uncertain` when the read-back cannot confirm creation at that cap.
 
 The new `updateContact` sets absolute uppercase named attributes. `deleteContact` removes a contact by email. These writes are repeat-safe; a retry of an update sets the same values and a retry of a deletion targets the same address. `listContacts` accepts a `limit` from 1 to 1000 and a zero-based `offset`; a zero limit uses 50. Email can be empty for phone-only contacts. The discovery Queries expose no contact attributes, sender IPs, or credentials.
 
@@ -56,7 +59,7 @@ Sign in at [Brevo API keys](https://app.brevo.com/settings/keys/api), open **Set
 | Invalid local input or missing credentials | `defect` |
 | Transport failure, 408, 409, 429, or 5xx | Retry with Dex's default one-hour budget |
 
-Only the happy branches are wired in the [contact sync example](go/examples/contact-sync), which lists attribute definitions after saving a contact and optionally updates a sender and a normal multiple-choice attribute or sends an inline or template email. Selecting an optional branch fails its Flow. No `uncertain` branch is needed for absolute updates and deletions.
+Only the happy branches are wired in the [contact sync example](go/examples/contact-sync), which can choose strict contact creation, lists attribute definitions, and optionally updates a sender and a normal multiple-choice attribute or sends an inline or template email. Selecting an optional branch fails its Flow. No `uncertain` branch is needed for absolute updates and deletions.
 
 ## Mocks
 

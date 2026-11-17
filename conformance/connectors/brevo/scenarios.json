@@ -5102,6 +5102,503 @@
           "state": "claimed"
         }
       }
+    },
+    {
+      "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+      "exchanges": [
+        {
+          "body": "{\"id\":21}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts",
+          "requestBody": {
+            "attributes": {
+              "FIRSTNAME": "Avery"
+            },
+            "email": "member@example.com",
+            "updateEnabled": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "created": true,
+          "email": "member@example.com",
+          "id": 21
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+      "input": {
+        "attributes": {
+          "FIRSTNAME": "Avery"
+        },
+        "email": "member@example.com"
+      },
+      "name": "createContact-success",
+      "operation": "createContact"
+    },
+    {
+      "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts",
+          "requestBody": {
+            "attributes": {
+              "FIRSTNAME": "Avery"
+            },
+            "email": "member@example.com",
+            "updateEnabled": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "created": false,
+          "email": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+      "input": {
+        "attributes": {
+          "FIRSTNAME": "Avery"
+        },
+        "email": "member@example.com"
+      },
+      "name": "createContact-providerRejected",
+      "operation": "createContact"
+    },
+    {
+      "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "created": false,
+          "email": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+      "input": {
+        "attributes": {
+          "FIRSTNAME": "Avery"
+        },
+        "email": "bad"
+      },
+      "name": "createContact-defect",
+      "operation": "createContact"
+    },
+    {
+      "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts",
+          "requestBody": {
+            "attributes": {
+              "FIRSTNAME": "Avery"
+            },
+            "email": "member@example.com",
+            "updateEnabled": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+      "input": {
+        "attributes": {
+          "FIRSTNAME": "Avery"
+        },
+        "email": "member@example.com"
+      },
+      "name": "createContact-429",
+      "operation": "createContact"
+    },
+    {
+      "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts",
+          "requestBody": {
+            "attributes": {
+              "FIRSTNAME": "Avery"
+            },
+            "email": "member@example.com",
+            "updateEnabled": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+      "input": {
+        "attributes": {
+          "FIRSTNAME": "Avery"
+        },
+        "email": "member@example.com"
+      },
+      "name": "createContact-500",
+      "operation": "createContact"
+    },
+    {
+      "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts",
+          "requestBody": {
+            "attributes": {
+              "FIRSTNAME": "Avery"
+            },
+            "email": "member@example.com",
+            "updateEnabled": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+      "input": {
+        "attributes": {
+          "FIRSTNAME": "Avery"
+        },
+        "email": "member@example.com"
+      },
+      "name": "createContact-transportFailure",
+      "operation": "createContact"
+    },
+    {
+      "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/contacts/member@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "created": false,
+          "email": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+      "input": {
+        "attributes": {
+          "FIRSTNAME": "Avery"
+        },
+        "email": "member@example.com"
+      },
+      "name": "createContact-uncertainAfterSendCap",
+      "operation": "createContact",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+      "exchanges": [
+        {
+          "body": "{\"id\":21,\"email\":\"member@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/contacts/member@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "created": true,
+          "email": "member@example.com",
+          "id": 21
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+      "input": {
+        "attributes": {
+          "FIRSTNAME": "Avery"
+        },
+        "email": "member@example.com"
+      },
+      "name": "createContact-readBackConfirmed",
+      "operation": "createContact",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/contacts/member@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{\"id\":21}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts",
+          "requestBody": {
+            "attributes": {
+              "FIRSTNAME": "Avery"
+            },
+            "email": "member@example.com",
+            "updateEnabled": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "created": true,
+          "email": "member@example.com",
+          "id": 21
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+      "input": {
+        "attributes": {
+          "FIRSTNAME": "Avery"
+        },
+        "email": "member@example.com"
+      },
+      "name": "createContact-readBackAbsentResend",
+      "operation": "createContact",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

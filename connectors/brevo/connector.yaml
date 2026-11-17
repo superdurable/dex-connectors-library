@@ -55,6 +55,26 @@ spec:
         - Select Generate a new API key, give it a name, and copy the displayed secret string once.
         - Paste the key into the secret api_key field; leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: createContact
+      goName: CreateContact
+      inputType: CreateContactInput
+      outputType: ContactWriteResult
+      kind: mutation
+      description: Create a contact by email without updating an existing contact.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Brevo created the contact.}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the contact., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The contact may have been created after the send cap., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample new contact.
+          output: {id: 21, email: member@meridian.example, created: true}
     - name: listContacts
       goName: ListContacts
       inputType: ListContactsInput

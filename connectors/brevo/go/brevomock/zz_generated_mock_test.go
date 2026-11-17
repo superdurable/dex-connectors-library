@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createContact/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.ContactWriteResult](`{"id":21,"email":"member@meridian.example","created":true}`)
+			return err
+		}},
 		{name: "listContacts/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[brevo.ContactsList](`{"contacts":[{"id":21,"email":"member@meridian.example"}],"count":1}`)
 			return err
@@ -77,6 +81,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateContact().Definition().Operation.OperationID != "createContact" {
+		t.Errorf("createContact mock has another definition")
+	}
 	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
 		t.Errorf("listContacts mock has another definition")
 	}

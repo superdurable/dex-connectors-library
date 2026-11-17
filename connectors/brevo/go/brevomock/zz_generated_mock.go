@@ -18,6 +18,7 @@ import (
 // Mock is a scripted brevo connection. Script each operation through its accessor.
 type Mock struct {
 	connection            brevo.Connection
+	createContact         *connectormock.Mutation[brevo.CreateContactInput, brevo.ContactWriteResult]
 	listContacts          *connectormock.Query[brevo.ListContactsInput, brevo.ContactsList]
 	updateContact         *connectormock.Mutation[brevo.UpdateContactInput, brevo.ContactChangeResult]
 	deleteContact         *connectormock.Mutation[brevo.DeleteContactInput, brevo.ContactChangeResult]
@@ -40,6 +41,7 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		createContact:         connectormock.NewMutation[brevo.CreateContactInput, brevo.ContactWriteResult](t, brevo.CreateContactDefinition),
 		listContacts:          connectormock.NewQuery[brevo.ListContactsInput, brevo.ContactsList](t, brevo.ListContactsDefinition),
 		updateContact:         connectormock.NewMutation[brevo.UpdateContactInput, brevo.ContactChangeResult](t, brevo.UpdateContactDefinition),
 		deleteContact:         connectormock.NewMutation[brevo.DeleteContactInput, brevo.ContactChangeResult](t, brevo.DeleteContactDefinition),
@@ -56,6 +58,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		createOrUpdateContact: connectormock.NewMutation[brevo.CreateOrUpdateContactInput, brevo.ContactWriteResult](t, brevo.CreateOrUpdateContactDefinition),
 		getContact:            connectormock.NewQuery[brevo.GetContactInput, brevo.Contact](t, brevo.GetContactDefinition),
 	}
+	mock.createContact.Default(CreateContactDefault())
 	mock.listContacts.Default(ListContactsDefault())
 	mock.updateContact.Default(UpdateContactDefault())
 	mock.deleteContact.Default(DeleteContactDefault())
@@ -81,6 +84,11 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() brevo.Connection { return mock.connection }
+
+// CreateContact returns the createContact script.
+func (mock *Mock) CreateContact() *connectormock.Mutation[brevo.CreateContactInput, brevo.ContactWriteResult] {
+	return mock.createContact
+}
 
 // ListContacts returns the listContacts script.
 func (mock *Mock) ListContacts() *connectormock.Query[brevo.ListContactsInput, brevo.ContactsList] {
@@ -159,6 +167,9 @@ func (mock *Mock) GetContact() *connectormock.Query[brevo.GetContactInput, brevo
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateContact() sdkgo.Mutation[brevo.CreateContactInput, brevo.ContactWriteResult] {
+	return operations.mock.createContact
+}
 func (operations mockOperations) ListContacts() sdkgo.Query[brevo.ListContactsInput, brevo.ContactsList] {
 	return operations.mock.listContacts
 }
@@ -203,6 +214,42 @@ func (operations mockOperations) CreateOrUpdateContact() sdkgo.Mutation[brevo.Cr
 }
 func (operations mockOperations) GetContact() sdkgo.Query[brevo.GetContactInput, brevo.Contact] {
 	return operations.mock.getContact
+}
+
+// CreateContactCreated selects the created branch: Brevo created the contact.
+func CreateContactCreated(value brevo.ContactWriteResult, failure *sdkgo.Failure) connectormock.Case[brevo.ContactWriteResult] {
+	return connectormock.Branch(brevo.CreateContactBranchCreated, value, failure)
+}
+
+// CreateContactProviderRejected selects the providerRejected branch: Brevo conclusively rejected the contact.
+func CreateContactProviderRejected(value brevo.ContactWriteResult, failure *sdkgo.Failure) connectormock.Case[brevo.ContactWriteResult] {
+	return connectormock.Branch(brevo.CreateContactBranchProviderRejected, value, failure)
+}
+
+// CreateContactDefect selects the defect branch: Local input or credentials are invalid.
+func CreateContactDefect(value brevo.ContactWriteResult, failure *sdkgo.Failure) connectormock.Case[brevo.ContactWriteResult] {
+	return connectormock.Branch(brevo.CreateContactBranchDefect, value, failure)
+}
+
+// CreateContactUncertain returns an uncertain createContact outcome.
+func CreateContactUncertain(value brevo.ContactWriteResult, failure sdkgo.Failure) connectormock.Case[brevo.ContactWriteResult] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateContactRetry asks Dex to retry the createContact Step, after the delay when it is positive.
+func CreateContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[brevo.ContactWriteResult] {
+	return connectormock.Retry[brevo.ContactWriteResult](failure, after)
+}
+
+// CreateContactCreatedDefault is the manifest mock createdDefault: Sample new contact.
+func CreateContactCreatedDefault() connectormock.Case[brevo.ContactWriteResult] {
+	value := connectormock.MustDecodeOutput[brevo.ContactWriteResult](`{"id":21,"email":"member@meridian.example","created":true}`)
+	return connectormock.Branch(brevo.CreateContactBranchCreated, value, nil)
+}
+
+// CreateContactDefault is the manifest default, createdDefault, which New installs.
+func CreateContactDefault() connectormock.Case[brevo.ContactWriteResult] {
+	return CreateContactCreatedDefault()
 }
 
 // ListContactsListed selects the listed branch: Brevo completed the operation.

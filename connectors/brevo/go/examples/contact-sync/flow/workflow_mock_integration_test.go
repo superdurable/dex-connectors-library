@@ -76,4 +76,13 @@ func TestContactSyncUsesMockWithRealDex(t *testing.T) {
 	require.Equal(t, dex.FlowCompleted, templateResult.Status, templateResult.ErrorMessage)
 	require.Len(t, mock.SendTemplateEmail().Calls(), 1)
 	require.Equal(t, int64(42), mock.SendTemplateEmail().Calls()[0].Input.TemplateID)
+
+	strictFlowID := flowID + "-strict"
+	_, err = client.StartFlow(ctx, flow, strictFlowID, Request{Email: "member@meridian.example", FirstName: "Meridian", StrictCreate: true}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	strictResult, err := client.WaitForFlow(ctx, strictFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, strictResult.Status, strictResult.ErrorMessage)
+	require.Len(t, mock.CreateContact().Calls(), 1)
+	require.Equal(t, "member@meridian.example", mock.CreateContact().Calls()[0].Input.Email)
 }

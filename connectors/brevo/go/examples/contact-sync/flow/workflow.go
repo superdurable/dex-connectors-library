@@ -19,6 +19,7 @@ const (
 	// ConnectionName is the static Dex Web connection used by the Flow.
 	ConnectionName            = "brevo"
 	upsertStepType            = "UpsertBrevoContact"
+	createContactStepType     = "CreateBrevoContact"
 	listAttributesStepType    = "ListBrevoAttributes"
 	updateSenderStepType      = "UpdateBrevoSender"
 	updateAttributeStepType   = "UpdateBrevoAttribute"
@@ -38,6 +39,8 @@ type Request struct {
 	Email string `json:"email"`
 	// FirstName is the contact's first name.
 	FirstName string `json:"firstName"`
+	// StrictCreate rejects an already existing contact instead of updating it.
+	StrictCreate bool `json:"strictCreate,omitempty"`
 	// SenderID optionally identifies a sender whose name should be updated.
 	SenderID int64 `json:"senderId,omitempty"`
 	// SenderName is required when SenderID is supplied.
@@ -84,7 +87,14 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: MapToCreateOrUpdateContactInput,
 			Saved:               sdkgo.GoTo(saved{}),
 		})),
+		dex.DefineStep(brevo.NewCreateContactStep(brevo.CreateContactStepConfig[Request]{
+			StepType: createContactStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "contact-sync", GroupLabel: "Contact sync", Explanation: "Create a contact only when its email is unused in Brevo."},
+			MapToOperationInput: MapToCreateContactInput,
+			Created:             sdkgo.GoTo(createdContact{}),
+		})),
 		dex.DefineStep(saved{}),
+		dex.DefineStep(createdContact{}),
 		dex.DefineStep(brevo.NewListAttributesStep(brevo.ListAttributesStepConfig[brevo.ListAttributesInput]{
 			StepType: listAttributesStepType, ConnectionName: ConnectionName, Connection: flow.connection,
 			Annotations:         sdkgo.StepAnnotations{GroupID: "contact-sync", GroupLabel: "Contact sync", Explanation: "Discover contact attribute definitions in Brevo."},
@@ -127,6 +137,11 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 // MapToCreateOrUpdateContactInput maps a validated request to absolute contact fields.
 func MapToCreateOrUpdateContactInput(request Request) brevo.CreateOrUpdateContactInput {
 	return brevo.CreateOrUpdateContactInput{Email: request.Email, Attributes: map[string]string{"FNAME": request.FirstName}}
+}
+
+// MapToCreateContactInput maps a validated request to strict contact creation fields.
+func MapToCreateContactInput(request Request) brevo.CreateContactInput {
+	return brevo.CreateContactInput{Email: request.Email, Attributes: map[string]string{"FNAME": request.FirstName}}
 }
 
 // GetRPCs registers the Dex Web summary and display views.
@@ -202,6 +217,9 @@ func (start) Execute(ctx dex.Context, request Request) (*dex.StepDecision, error
 			return nil, err
 		}
 	}
+	if request.StrictCreate {
+		return dex.GoTo(sdkgo.StepRef[Request](createContactStepType), request), nil
+	}
 	return dex.GoTo(sdkgo.StepRef[Request](upsertStepType), request), nil
 }
 
@@ -213,6 +231,19 @@ type saved struct {
 
 func (saved) GetStepType() string { return "BrevoContactSaved" }
 func (saved) Execute(ctx dex.Context, result brevo.CreateOrUpdateContactResult) (*dex.StepDecision, error) {
+	if err := outcomeAttribute.Set(ctx, result.Value); err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[brevo.ListAttributesInput](listAttributesStepType), brevo.ListAttributesInput{}), nil
+}
+
+// dex:group group-id:contact-sync group-label:"Contact sync"
+// dex:explanation text:"Persist the newly created contact confirmation."
+type createdContact struct {
+	dex.StepDefaultsNoWaitFor[brevo.CreateContactResult]
+}
+
+func (createdContact) Execute(ctx dex.Context, result brevo.CreateContactResult) (*dex.StepDecision, error) {
 	if err := outcomeAttribute.Set(ctx, result.Value); err != nil {
 		return nil, err
 	}
