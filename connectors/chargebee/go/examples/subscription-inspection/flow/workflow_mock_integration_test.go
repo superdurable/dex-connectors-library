@@ -59,4 +59,5 @@ func TestSubscriptionInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "active", output.Status)
 	require.Len(t, mock.GetSubscription().Calls(), 1)
 	require.Len(t, mock.ListSubscriptions().Calls(), 1)
+	require.Len(t, mock.ListEvents().Calls(), 1)
 }

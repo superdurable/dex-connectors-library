@@ -18,6 +18,8 @@ import (
 // Mock is a scripted chargebee connection. Script each operation through its accessor.
 type Mock struct {
 	connection        chargebee.Connection
+	getEvent          *connectormock.Query[chargebee.GetEventInput, chargebee.EventSummary]
+	listEvents        *connectormock.Query[chargebee.ListEventsInput, chargebee.EventPage]
 	listSubscriptions *connectormock.Query[chargebee.ListSubscriptionsInput, chargebee.SubscriptionPage]
 	getCustomer       *connectormock.Query[chargebee.GetCustomerInput, chargebee.CustomerIdentity]
 	listCustomers     *connectormock.Query[chargebee.ListCustomersInput, chargebee.CustomerPage]
@@ -31,6 +33,8 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		getEvent:          connectormock.NewQuery[chargebee.GetEventInput, chargebee.EventSummary](t, chargebee.GetEventDefinition),
+		listEvents:        connectormock.NewQuery[chargebee.ListEventsInput, chargebee.EventPage](t, chargebee.ListEventsDefinition),
 		listSubscriptions: connectormock.NewQuery[chargebee.ListSubscriptionsInput, chargebee.SubscriptionPage](t, chargebee.ListSubscriptionsDefinition),
 		getCustomer:       connectormock.NewQuery[chargebee.GetCustomerInput, chargebee.CustomerIdentity](t, chargebee.GetCustomerDefinition),
 		listCustomers:     connectormock.NewQuery[chargebee.ListCustomersInput, chargebee.CustomerPage](t, chargebee.ListCustomersDefinition),
@@ -38,6 +42,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		listInvoices:      connectormock.NewQuery[chargebee.ListInvoicesInput, chargebee.InvoicePage](t, chargebee.ListInvoicesDefinition),
 		getSubscription:   connectormock.NewQuery[chargebee.GetSubscriptionInput, chargebee.SubscriptionStatus](t, chargebee.GetSubscriptionDefinition),
 	}
+	mock.getEvent.Default(GetEventDefault())
+	mock.listEvents.Default(ListEventsDefault())
 	mock.listSubscriptions.Default(ListSubscriptionsDefault())
 	mock.getCustomer.Default(GetCustomerDefault())
 	mock.listCustomers.Default(ListCustomersDefault())
@@ -54,6 +60,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() chargebee.Connection { return mock.connection }
+
+// GetEvent returns the getEvent script.
+func (mock *Mock) GetEvent() *connectormock.Query[chargebee.GetEventInput, chargebee.EventSummary] {
+	return mock.getEvent
+}
+
+// ListEvents returns the listEvents script.
+func (mock *Mock) ListEvents() *connectormock.Query[chargebee.ListEventsInput, chargebee.EventPage] {
+	return mock.listEvents
+}
 
 // ListSubscriptions returns the listSubscriptions script.
 func (mock *Mock) ListSubscriptions() *connectormock.Query[chargebee.ListSubscriptionsInput, chargebee.SubscriptionPage] {
@@ -87,6 +103,12 @@ func (mock *Mock) GetSubscription() *connectormock.Query[chargebee.GetSubscripti
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetEvent() sdkgo.Query[chargebee.GetEventInput, chargebee.EventSummary] {
+	return operations.mock.getEvent
+}
+func (operations mockOperations) ListEvents() sdkgo.Query[chargebee.ListEventsInput, chargebee.EventPage] {
+	return operations.mock.listEvents
+}
 func (operations mockOperations) ListSubscriptions() sdkgo.Query[chargebee.ListSubscriptionsInput, chargebee.SubscriptionPage] {
 	return operations.mock.listSubscriptions
 }
@@ -105,6 +127,79 @@ func (operations mockOperations) ListInvoices() sdkgo.Query[chargebee.ListInvoic
 func (operations mockOperations) GetSubscription() sdkgo.Query[chargebee.GetSubscriptionInput, chargebee.SubscriptionStatus] {
 	return operations.mock.getSubscription
 }
+
+// GetEventFound selects the found branch: Chargebee returned the event.
+func GetEventFound(value chargebee.EventSummary, failure *sdkgo.Failure) connectormock.Case[chargebee.EventSummary] {
+	return connectormock.Branch(chargebee.GetEventBranchFound, value, failure)
+}
+
+// GetEventNotFound selects the notFound branch: Chargebee did not find a recent event.
+func GetEventNotFound(value chargebee.EventSummary, failure *sdkgo.Failure) connectormock.Case[chargebee.EventSummary] {
+	return connectormock.Branch(chargebee.GetEventBranchNotFound, value, failure)
+}
+
+// GetEventProviderRejected selects the providerRejected branch: Chargebee rejected the request.
+func GetEventProviderRejected(value chargebee.EventSummary, failure *sdkgo.Failure) connectormock.Case[chargebee.EventSummary] {
+	return connectormock.Branch(chargebee.GetEventBranchProviderRejected, value, failure)
+}
+
+// GetEventInvalidResponse selects the invalidResponse branch: Chargebee returned invalid JSON.
+func GetEventInvalidResponse(value chargebee.EventSummary, failure *sdkgo.Failure) connectormock.Case[chargebee.EventSummary] {
+	return connectormock.Branch(chargebee.GetEventBranchInvalidResponse, value, failure)
+}
+
+// GetEventDefect selects the defect branch: Local input or credentials are invalid.
+func GetEventDefect(value chargebee.EventSummary, failure *sdkgo.Failure) connectormock.Case[chargebee.EventSummary] {
+	return connectormock.Branch(chargebee.GetEventBranchDefect, value, failure)
+}
+
+// GetEventRetry asks Dex to retry the getEvent Step, after the delay when it is positive.
+func GetEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[chargebee.EventSummary] {
+	return connectormock.Retry[chargebee.EventSummary](failure, after)
+}
+
+// GetEventFoundDefault is the manifest mock foundDefault: Sample event summary.
+func GetEventFoundDefault() connectormock.Case[chargebee.EventSummary] {
+	value := connectormock.MustDecodeOutput[chargebee.EventSummary](`{"id":"ev_123456","eventType":"subscription_created","occurredAt":1702645601}`)
+	return connectormock.Branch(chargebee.GetEventBranchFound, value, nil)
+}
+
+// GetEventDefault is the manifest default, foundDefault, which New installs.
+func GetEventDefault() connectormock.Case[chargebee.EventSummary] { return GetEventFoundDefault() }
+
+// ListEventsListed selects the listed branch: Chargebee returned an event page.
+func ListEventsListed(value chargebee.EventPage, failure *sdkgo.Failure) connectormock.Case[chargebee.EventPage] {
+	return connectormock.Branch(chargebee.ListEventsBranchListed, value, failure)
+}
+
+// ListEventsProviderRejected selects the providerRejected branch: Chargebee rejected the request.
+func ListEventsProviderRejected(value chargebee.EventPage, failure *sdkgo.Failure) connectormock.Case[chargebee.EventPage] {
+	return connectormock.Branch(chargebee.ListEventsBranchProviderRejected, value, failure)
+}
+
+// ListEventsInvalidResponse selects the invalidResponse branch: Chargebee returned invalid JSON.
+func ListEventsInvalidResponse(value chargebee.EventPage, failure *sdkgo.Failure) connectormock.Case[chargebee.EventPage] {
+	return connectormock.Branch(chargebee.ListEventsBranchInvalidResponse, value, failure)
+}
+
+// ListEventsDefect selects the defect branch: Local input or credentials are invalid.
+func ListEventsDefect(value chargebee.EventPage, failure *sdkgo.Failure) connectormock.Case[chargebee.EventPage] {
+	return connectormock.Branch(chargebee.ListEventsBranchDefect, value, failure)
+}
+
+// ListEventsRetry asks Dex to retry the listEvents Step, after the delay when it is positive.
+func ListEventsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[chargebee.EventPage] {
+	return connectormock.Retry[chargebee.EventPage](failure, after)
+}
+
+// ListEventsListedDefault is the manifest mock listedDefault: Sample event page.
+func ListEventsListedDefault() connectormock.Case[chargebee.EventPage] {
+	value := connectormock.MustDecodeOutput[chargebee.EventPage](`{"events":[{"id":"ev_123456","eventType":"subscription_created","occurredAt":1702645601}],"nextOffset":"next-page"}`)
+	return connectormock.Branch(chargebee.ListEventsBranchListed, value, nil)
+}
+
+// ListEventsDefault is the manifest default, listedDefault, which New installs.
+func ListEventsDefault() connectormock.Case[chargebee.EventPage] { return ListEventsListedDefault() }
 
 // ListSubscriptionsListed selects the listed branch: Chargebee returned a subscription page.
 func ListSubscriptionsListed(value chargebee.SubscriptionPage, failure *sdkgo.Failure) connectormock.Case[chargebee.SubscriptionPage] {

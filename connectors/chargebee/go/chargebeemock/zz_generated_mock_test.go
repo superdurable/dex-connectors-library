@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getEvent/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[chargebee.EventSummary](`{"id":"ev_123456","eventType":"subscription_created","occurredAt":1702645601}`)
+			return err
+		}},
+		{name: "listEvents/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[chargebee.EventPage](`{"events":[{"id":"ev_123456","eventType":"subscription_created","occurredAt":1702645601}],"nextOffset":"next-page"}`)
+			return err
+		}},
 		{name: "listSubscriptions/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[chargebee.SubscriptionPage](`{"subscriptions":[{"id":"sub_123456","status":"active","currencyCode":"USD"}],"nextOffset":"next-page"}`)
 			return err
@@ -50,6 +58,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetEvent().Definition().Operation.OperationID != "getEvent" {
+		t.Errorf("getEvent mock has another definition")
+	}
+	if mock.ListEvents().Definition().Operation.OperationID != "listEvents" {
+		t.Errorf("listEvents mock has another definition")
+	}
 	if mock.ListSubscriptions().Definition().Operation.OperationID != "listSubscriptions" {
 		t.Errorf("listSubscriptions mock has another definition")
 	}

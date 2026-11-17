@@ -95,6 +95,38 @@ type InvoicePage struct {
 	NextOffset string `json:"nextOffset,omitempty"`
 }
 
+// GetEventInput selects one recent Chargebee event by ID.
+type GetEventInput struct {
+	// EventID is the ID shown in Chargebee Events or returned by listEvents.
+	EventID string `json:"eventId"`
+}
+
+// ListEventsInput selects one page of Chargebee events.
+type ListEventsInput struct {
+	// Limit is 1 to 100; zero uses the provider default.
+	Limit int `json:"limit,omitempty"`
+	// Offset is Chargebee's opaque next_offset; blank begins at the first page.
+	Offset string `json:"offset,omitempty"`
+}
+
+// EventSummary excludes event content, user identity, and payment details.
+type EventSummary struct {
+	// ID is the Chargebee event ID.
+	ID string `json:"id"`
+	// EventType identifies the business event.
+	EventType string `json:"eventType"`
+	// OccurredAt is the event time in Unix seconds.
+	OccurredAt int64 `json:"occurredAt"`
+}
+
+// EventPage contains selected event metadata and a pagination token.
+type EventPage struct {
+	// Events contains this page's event summaries.
+	Events []EventSummary `json:"events"`
+	// NextOffset is passed to the next request; blank means no more pages.
+	NextOffset string `json:"nextOffset,omitempty"`
+}
+
 // ListSubscriptionsOperation reads one subscription page.
 type ListSubscriptionsOperation struct{ client *Client }
 
@@ -109,6 +141,12 @@ type GetInvoiceOperation struct{ client *Client }
 
 // ListInvoicesOperation reads one invoice page.
 type ListInvoicesOperation struct{ client *Client }
+
+// GetEventOperation reads one event summary.
+type GetEventOperation struct{ client *Client }
+
+// ListEventsOperation reads one event page.
+type ListEventsOperation struct{ client *Client }
 
 // ListSubscriptions binds subscription pagination to this client.
 func (client *Client) ListSubscriptions() ListSubscriptionsOperation {
@@ -127,6 +165,12 @@ func (client *Client) GetInvoice() GetInvoiceOperation { return GetInvoiceOperat
 // ListInvoices binds invoice pagination to this client.
 func (client *Client) ListInvoices() ListInvoicesOperation { return ListInvoicesOperation{client} }
 
+// GetEvent binds event lookup to this client.
+func (client *Client) GetEvent() GetEventOperation { return GetEventOperation{client} }
+
+// ListEvents binds event pagination to this client.
+func (client *Client) ListEvents() ListEventsOperation { return ListEventsOperation{client} }
+
 // Definition returns the generated subscription page contract.
 func (ListSubscriptionsOperation) Definition() sdkgo.QueryDefinition {
 	return ListSubscriptionsDefinition
@@ -143,6 +187,12 @@ func (GetInvoiceOperation) Definition() sdkgo.QueryDefinition { return GetInvoic
 
 // Definition returns the generated invoice page contract.
 func (ListInvoicesOperation) Definition() sdkgo.QueryDefinition { return ListInvoicesDefinition }
+
+// Definition returns the generated event lookup contract.
+func (GetEventOperation) Definition() sdkgo.QueryDefinition { return GetEventDefinition }
+
+// Definition returns the generated event page contract.
+func (ListEventsOperation) Definition() sdkgo.QueryDefinition { return ListEventsDefinition }
 
 // Invoke reads one page of subscription status.
 func (operation ListSubscriptionsOperation) Invoke(call sdkgo.Call, input ListSubscriptionsInput) sdkgo.QueryAttempt[SubscriptionPage] {
@@ -274,6 +324,52 @@ func (operation ListInvoicesOperation) Invoke(call sdkgo.Call, input ListInvoice
 	})
 }
 
+// Invoke reads recent event metadata without exposing event content.
+func (operation GetEventOperation) Invoke(call sdkgo.Call, input GetEventInput) sdkgo.QueryAttempt[EventSummary] {
+	const name = "getEvent"
+	if !validSubscriptionID(input.EventID) {
+		return chargebeeQueryBranch(name, "defect", EventSummary{}, sdkgo.FailureValidation, "event ID is invalid")
+	}
+	return invokeChargebeeQuery(call, operation.client, name, "/events/"+url.PathEscape(input.EventID), "found", "notFound", func(body []byte) (EventSummary, error) {
+		var wire struct {
+			Event json.RawMessage `json:"event"`
+		}
+		if err := json.Unmarshal(body, &wire); err != nil {
+			return EventSummary{}, err
+		}
+		return decodeChargebeeEvent(wire.Event, input.EventID)
+	})
+}
+
+// Invoke reads one page of event metadata without exposing event content.
+func (operation ListEventsOperation) Invoke(call sdkgo.Call, input ListEventsInput) sdkgo.QueryAttempt[EventPage] {
+	const name = "listEvents"
+	path, err := chargebeePagePath("/events", input.Limit, input.Offset)
+	if err != nil {
+		return chargebeeQueryBranch(name, "defect", EventPage{}, sdkgo.FailureValidation, "page limit or offset is invalid")
+	}
+	return invokeChargebeeQuery(call, operation.client, name, path, "listed", "", func(body []byte) (EventPage, error) {
+		var wire struct {
+			List []struct {
+				Event json.RawMessage `json:"event"`
+			} `json:"list"`
+			NextOffset string `json:"next_offset"`
+		}
+		if err := json.Unmarshal(body, &wire); err != nil || wire.List == nil {
+			return EventPage{}, errors.New("event list missing")
+		}
+		rows := make([]EventSummary, 0, len(wire.List))
+		for _, row := range wire.List {
+			item, err := decodeChargebeeEvent(row.Event, "")
+			if err != nil {
+				return EventPage{}, err
+			}
+			rows = append(rows, item)
+		}
+		return EventPage{Events: rows, NextOffset: wire.NextOffset}, nil
+	})
+}
+
 func chargebeePagePath(resource string, limit int, offset string) (string, error) {
 	if limit < 0 || limit > 100 || len(offset) > 1000 || strings.ContainsAny(offset, "\r\n") {
 		return "", errors.New("invalid page input")
@@ -305,6 +401,21 @@ func decodeChargebeeInvoice(body []byte, requestedID string) (InvoiceStatus, err
 		return InvoiceStatus{}, errors.New("invoice fields missing")
 	}
 	return InvoiceStatus{ID: wire.ID, Status: wire.Status, CurrencyCode: wire.CurrencyCode, Total: *wire.Total}, nil
+}
+
+func decodeChargebeeEvent(body []byte, requestedID string) (EventSummary, error) {
+	var wire struct {
+		ID         string `json:"id"`
+		EventType  string `json:"event_type"`
+		OccurredAt *int64 `json:"occurred_at"`
+	}
+	if err := json.Unmarshal(body, &wire); err != nil {
+		return EventSummary{}, err
+	}
+	if wire.ID == "" || requestedID != "" && wire.ID != requestedID || wire.EventType == "" || wire.OccurredAt == nil || *wire.OccurredAt <= 0 {
+		return EventSummary{}, errors.New("event fields missing")
+	}
+	return EventSummary{ID: wire.ID, EventType: wire.EventType, OccurredAt: *wire.OccurredAt}, nil
 }
 
 func invokeChargebeeQuery[T any](call sdkgo.Call, client *Client, name, path string, success, notFound sdkgo.BranchID, decode func([]byte) (T, error)) sdkgo.QueryAttempt[T] {
