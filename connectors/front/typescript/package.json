@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-front",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "description": "Front conversation and contact operations for Dex Flows",
   "repository": {
@@ -45,7 +45,7 @@
     "example:contact:start": "npm run build && tsx examples/find-contact/start.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.1.0",
+    "@superdurable/connectors-sdk": "0.12.0",
     "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },

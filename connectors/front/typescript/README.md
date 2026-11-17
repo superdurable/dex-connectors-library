@@ -12,6 +12,6 @@ Use Node.js 22 or 24 and Dex TypeScript SDK 1.28.0 or newer. Create a secret Fro
 | `newUpdateConversationStep` | Set status, assignee, and tags | `updated` |
 | `newFindContactByEmailStep` | Look up a contact email alias | `found` |
 
-Every other branch is optional, so an unwired branch fails the Flow. Replies and comments use the SDK single-dispatch fence: Front has no provider idempotency key, and an ambiguous send selects `uncertain` rather than sending twice. Updates set absolute values and read back the conversation, so they can retry safely.
+Every other branch is optional, so an unwired branch fails the Flow. Replies and comments use the SDK single-dispatch fence: Front has no provider idempotency key, so an ambiguous send is resent while the manifest send cap allows and selects `uncertain` at the cap. Updates set absolute values and read back the conversation, so they can retry safely.
 
 Run `npm ci`, `npm run check`, and `npm run test:integration` with a local `dexcli dev` address. The package replays the Go-recorded provider scenarios; the integration test runs the checked-in Flow through a real Dex Worker and Client against a local Front-compatible fixture. Live Front authorization, conversation operations, and contact lookup have not been verified.

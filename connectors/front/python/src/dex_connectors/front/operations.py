@@ -6,7 +6,7 @@ import html
 import json
 import re
 import unicodedata
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import timedelta
 from email.utils import parseaddr
 from typing import Any
@@ -17,6 +17,7 @@ from dex_connectors.sdk import (
     CallID,
     CredentialRefreshResult,
     CredentialRefreshState,
+    Failure,
     FailureKind,
     IdempotencyKey,
     MutationAttempt,
@@ -99,9 +100,7 @@ def _query(input: SearchConversationsInput) -> str:
     terms: list[str] = []
     text = input.text.strip()
     if text:
-        if len(text.encode()) > 512 or any(
-            unicodedata.category(character) == "Cc" for character in text
-        ):
+        if len(text.encode()) > 512 or any(unicodedata.category(character) == "Cc" for character in text):
             raise ValueError("text must be at most 512 bytes without control characters")
         terms.append(text)
     for field, value, kind, example in (
@@ -565,8 +564,21 @@ class UpdateConversationOperation:
         path = "/conversations/" + input.conversation_id
         observed = receipt(call, input.conversation_id)
 
-        async def read() -> tuple[Conversation | None, MutationAttempt[UpdateConversationOutput] | None]:
+        async def read(
+            is_after_write: bool,
+        ) -> tuple[Conversation | None, MutationAttempt[UpdateConversationOutput] | None]:
             answer = await self.client.exchange(credentials, operation, "GET", path)
+            if is_after_write and answer.outcome in ("invalid", "rejected"):
+                # After a write, the final values are safe to repeat, so a failed read-back retries.
+                assert answer.error is not None
+                return None, MutationAttempt.retry(
+                    failure(
+                        answer.error.kind,
+                        operation,
+                        "Front accepted the change but its read-back failed: " + answer.error.message,
+                    ),
+                    answer.retry_after,
+                )
             if answer.outcome != "succeeded":
                 return None, _update_failure(answer, empty, observed)
             try:
@@ -575,6 +587,14 @@ class UpdateConversationOperation:
                     raise ValueError("Front returned another conversation")
                 return current, None
             except (ValueError, TypeError, KeyError, json.JSONDecodeError) as error:
+                if is_after_write:
+                    return None, MutationAttempt.retry(
+                        failure(
+                            FailureKind.PROTOCOL,
+                            operation,
+                            "Front accepted the change but returned an invalid conversation: " + str(error),
+                        )
+                    )
                 return None, MutationAttempt.branch_result(
                     "invalidResponse",
                     empty,
@@ -586,7 +606,7 @@ class UpdateConversationOperation:
                     ),
                 )
 
-        current, terminal = await read()
+        current, terminal = await read(False)
         if terminal:
             return terminal
         assert current is not None
@@ -595,13 +615,18 @@ class UpdateConversationOperation:
             answer = await self.client.exchange(credentials, operation, method, write_path, payload=payload)
             if answer.outcome == "notFound":
                 answer = replace(answer, outcome="rejected")
+            if answer.outcome == "invalid" or (
+                answer.outcome == "rejected" and answer.status not in DEFINITE_REFUSAL_STATUSES
+            ):
+                # Every write sets a final value, so an unknown outcome repeats it.
+                return _retry_mutation(answer)
             if answer.outcome != "succeeded":
                 return _update_failure(
                     answer, empty, observed, "; writes sent before it stay applied" if index else ""
                 )
         if not writes:
             return MutationAttempt.branch_result("updated", UpdateConversationOutput(current, True), observed)
-        updated, terminal = await read()
+        updated, terminal = await read(True)
         if terminal:
             return terminal
         assert updated is not None
@@ -684,15 +709,14 @@ class ReplyToConversationOperation:
         )
 
     async def _rejected_credential(
-        self, call: Call, output: ConversationReply, rejected: Credentials, fence: Fence
+        self, call: Call, output: ConversationReply, rejected: Credentials, permit: "_ReplySendPermit"
     ) -> MutationAttempt[ConversationReply]:
         operation = "replyToConversation"
-        observed = receipt(call, output.conversation_id)
         if not isinstance(self.client.credentials, RejectedCredentialRefreshingProvider):
-            return MutationAttempt.branch_result(
-                "providerRejected",
+            return await permit.reject(
+                call,
                 output,
-                observed,
+                "providerRejected",
                 failure(
                     FailureKind.AUTHENTICATION,
                     operation,
@@ -714,7 +738,7 @@ class ReplyToConversationOperation:
             and is_header_safe_credential(replacement.api_token.reveal())
         ):
             try:
-                await fence.record_can_resend()
+                await permit.fence.record_can_resend()
             except Exception:
                 return MutationAttempt.retry(
                     failure(FailureKind.AVAILABILITY, operation, "the credential resend checkpoint failed")
@@ -729,8 +753,8 @@ class ReplyToConversationOperation:
         message = "Front rejected the API token (HTTP 401); reconnect the Front connection"
         if refresh_error is not None and not isinstance(refresh_error, ReauthorizationRequiredError):
             message = "Front rejected the API token (HTTP 401); credential refresh is temporarily unavailable"
-        return MutationAttempt.branch_result(
-            "providerRejected", output, observed, failure(FailureKind.AUTHENTICATION, operation, message)
+        return await permit.reject(
+            call, output, "providerRejected", failure(FailureKind.AUTHENTICATION, operation, message)
         )
 
     async def _read_back(
@@ -816,24 +840,53 @@ class ReplyToConversationOperation:
                 "defect", output, Receipt(), failure(FailureKind.VALIDATION, operation, str(error))
             )
         try:
-            fence = Fence(call, timedelta(seconds=30))
+            fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
         except ValueError as error:
             return MutationAttempt.branch_result(
                 "defect", output, Receipt(), failure(FailureKind.LOCAL_DEFECT, operation, str(error))
             )
         decision = await fence.decide()
         if decision.kind == DecisionKind.FAIL_CLOSED:
-            return self._uncertain(
-                call,
-                output,
-                FailureKind.AVAILABILITY,
-                "the dispatch checkpoint could not be trusted; the reply or comment is not sent again",
+            # FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+            return MutationAttempt.retry(
+                failure(
+                    FailureKind.AVAILABILITY,
+                    operation,
+                    "the dispatch checkpoint could not be read; nothing was sent in this attempt",
+                )
             )
-        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED or (
+            decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
+            and decision.marker is not None
+            and decision.marker.provider_id
+        ):
+            # Front returns an ID only for an accepted write, so a saved one is read back and never resent.
             return await self._read_back(call, input, output, decision.marker)
+        permit = _ReplySendPermit(
+            fence,
+            decision.prior_send_upper_bound == 0,
+            decision.prior_send_upper_bound + 1 < call.max_sends,
+        )
         credentials, credential_failure, credential_error = await self.client.resolve_credentials(
             call, operation
         )
+        if credential_failure and not permit.is_first_send:
+            # notSent would hide the earlier possible send, so nothing is recorded.
+            if credential_error is None or isinstance(credential_error, ReauthorizationRequiredError):
+                return self._uncertain(
+                    call,
+                    output,
+                    FailureKind.AUTHENTICATION,
+                    "an earlier attempt may have sent the reply or comment, "
+                    "and the connection needs reconnection to resend it",
+                )
+            return MutationAttempt.retry(
+                failure(
+                    FailureKind.AVAILABILITY,
+                    operation,
+                    "Front credentials were temporarily unavailable; nothing was sent in this attempt",
+                )
+            )
         if credential_failure:
             try:
                 await fence.record_not_sent()
@@ -867,7 +920,8 @@ class ReplyToConversationOperation:
 
         try:
             answer = await fence.dispatch(send)
-        except (CheckpointError, InsufficientAttemptTimeError):
+        except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
+            # Dispatch refused before sending, so nothing reached Front in this attempt.
             return MutationAttempt.retry(
                 failure(
                     FailureKind.AVAILABILITY,
@@ -875,11 +929,6 @@ class ReplyToConversationOperation:
                     "the reply was not dispatched; retry after the checkpoint or attempt budget recovers",
                 )
             )
-        except Exception:
-            return self._uncertain(
-                call, output, FailureKind.TRANSPORT, "the fenced reply outcome could not be determined"
-            )
-        observed = receipt(call, input.conversation_id)
         if 200 <= answer.status < 300:
             try:
                 body = decode_json(answer.body)
@@ -889,12 +938,13 @@ class ReplyToConversationOperation:
             pattern = r"com_[A-Za-z0-9]{1,40}\Z" if input.is_internal_note else r"[A-Za-z0-9]{1,64}\Z"
             if not isinstance(provider_id, str) or not re.fullmatch(pattern, provider_id):
                 kind = answer.error.kind if answer.error else FailureKind.PROTOCOL
-                return self._uncertain(
+                # Without a provider ID the answer cannot be read back, so it counts as an unknown outcome.
+                return permit.resend_or_uncertain(
                     call,
                     output,
-                    kind,
-                    "Front accepted the reply or comment, but its answer has no usable provider ID; "
-                    "do not resend",
+                    failure(
+                        kind, operation, "Front answered the reply or comment without a usable provider ID"
+                    ),
                 )
             try:
                 await fence.record_provider_id(provider_id)
@@ -908,24 +958,27 @@ class ReplyToConversationOperation:
             return MutationAttempt.branch_result("replied", output, receipt(call, provider_id))
         assert answer.error is not None
         if answer.outcome == "defect":
-            return MutationAttempt.branch_result("defect", output, Receipt(), answer.error)
+            if not permit.is_first_send:
+                # defect would hide an earlier possible send.
+                return permit.resend_or_uncertain(call, output, answer.error)
+            return await permit.reject(call, output, "defect", answer.error)
         if answer.outcome in ("notSent", "rateLimited") or answer.status == 503:
             try:
                 await fence.record_can_resend()
             except Exception:
-                return MutationAttempt.retry(
-                    failure(FailureKind.AVAILABILITY, operation, "the resend checkpoint failed")
-                )
+                pass  # A lost checkpoint leaves the claim, so the next attempt counts this send.
             return _retry_mutation(answer)
         if answer.outcome == "unconfirmed":
-            return MutationAttempt.uncertain(
+            return permit.resend_or_uncertain(
+                call,
                 output,
                 failure(
                     answer.error.kind, operation, answer.error.message + "; the reply or comment may exist"
                 ),
-                observed,
+                answer.retry_after,
             )
-        if answer.outcome in ("notFound", "merged"):
+        if (answer.outcome == "notFound" and answer.status == 404) or answer.outcome == "merged":
+            # Front documents its 301 as a merged conversation, a definite refusal of the write.
             reply_failure = answer.error
             if answer.outcome == "merged":
                 merged = merged_conversation_id(answer.headers.get("Location", "") if answer.headers else "")
@@ -935,17 +988,56 @@ class ReplyToConversationOperation:
                         operation,
                         f"the conversation was merged into {merged}; reply to that conversation",
                     )
-            return MutationAttempt.branch_result("notFound", output, observed, reply_failure)
-        if answer.status == 409:
-            return self._uncertain(
-                call,
-                output,
-                FailureKind.CONFLICT,
-                "Front returned a conflict without a key or unique value for read-back",
-            )
+            return await permit.reject(call, output, "notFound", reply_failure)
         if answer.status == 401:
-            return await self._rejected_credential(call, output, credentials, fence)
-        return MutationAttempt.branch_result("providerRejected", output, observed, answer.error)
+            return await self._rejected_credential(call, output, credentials, permit)
+        if answer.outcome == "rejected" and answer.status in DEFINITE_REFUSAL_STATUSES:
+            return await permit.reject(call, output, "providerRejected", answer.error)
+        message = answer.error.message
+        if answer.outcome != "rejected" and answer.outcome != "notFound":
+            message += "; the reply or comment may exist"
+        return permit.resend_or_uncertain(call, output, failure(answer.error.kind, operation, message))
+
+
+# Only these statuses prove Front applied nothing; any other non-2xx answer may have been applied.
+DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+
+
+@dataclass(frozen=True)
+class _ReplySendPermit:
+    """A fence that allowed this attempt's send, with its send-cap facts."""
+
+    fence: Fence
+    is_first_send: bool
+    can_resend_unknown_outcome: bool
+
+    def resend_or_uncertain(
+        self, call: Call, output: ConversationReply, problem: Failure, retry_after: float = 0
+    ) -> MutationAttempt[ConversationReply]:
+        """Retry an unknown outcome while the send cap allows another send."""
+        if self.can_resend_unknown_outcome:
+            # The claim stays the last marker, so the next attempt counts this send.
+            return MutationAttempt.retry(problem, retry_after)
+        return MutationAttempt.uncertain(output, problem, receipt(call, output.conversation_id))
+
+    async def reject(
+        self, call: Call, output: ConversationReply, branch: str, problem: Failure
+    ) -> MutationAttempt[ConversationReply]:
+        """Select a refusal branch only when no earlier send of this call may have applied."""
+        if not self.is_first_send:
+            return MutationAttempt.uncertain(output, problem, receipt(call, output.conversation_id))
+        try:
+            await self.fence.record_can_resend()
+        except Exception:
+            return MutationAttempt.retry(
+                failure(FailureKind.AVAILABILITY, "replyToConversation", "the refusal checkpoint failed")
+            )
+        return MutationAttempt.branch_result(
+            branch,
+            output,
+            Receipt() if branch == "defect" else receipt(call, output.conversation_id),
+            problem,
+        )
 
 
 class _FrontCredentialRefreshDriver:

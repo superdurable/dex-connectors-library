@@ -83,7 +83,7 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 	}
 	receipt := client.receipt(call, input.ConversationID)
 	conversationPath := "/conversations/" + input.ConversationID
-	current, attempt, isTerminal := client.readConversationForUpdate(call, credentials, conversationPath, receipt)
+	current, attempt, isTerminal := client.readConversationForUpdate(call, credentials, conversationPath, receipt, false)
 	if isTerminal {
 		return attempt
 	}
@@ -93,6 +93,10 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 		if result.outcome == exchangeNotFound {
 			// The read just found the conversation, so a 404 most likely names an unknown teammate, tag, or status.
 			result.outcome = exchangeRejected
+		}
+		if result.outcome == exchangeInvalid || (result.outcome == exchangeRejected && !isDefiniteRefusalStatus(result.response.statusCode)) {
+			// Every write sets a final value, so an unknown outcome repeats it.
+			return sdkgo.NewMutationRetry[UpdateConversationOutput](result.failure, result.retryAfter)
 		}
 		if result.outcome != exchangeSucceeded {
 			appliedWritesNote := ""
@@ -105,7 +109,7 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 	if len(writes) == 0 {
 		return sdkgo.NewMutationBranch(UpdateConversationBranchUpdated, UpdateConversationOutput{Conversation: current, WasAlreadyApplied: true}, nil, receipt)
 	}
-	updated, attempt, isTerminal := client.readConversationForUpdate(call, credentials, conversationPath, receipt)
+	updated, attempt, isTerminal := client.readConversationForUpdate(call, credentials, conversationPath, receipt, true)
 	if isTerminal {
 		return attempt
 	}
@@ -118,17 +122,27 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 }
 
 // readConversationForUpdate reads the conversation; a merged one selects notFound, because its ID no longer accepts writes.
+// After a write, an invalid or rejected read retries, because the final values are safe to repeat.
 func (client *Client) readConversationForUpdate(
-	call sdkgo.Call, credentials Credentials, conversationPath string, receipt sdkgo.Receipt,
+	call sdkgo.Call, credentials Credentials, conversationPath string, receipt sdkgo.Receipt, isAfterWrite bool,
 ) (Conversation, sdkgo.MutationAttempt[UpdateConversationOutput], bool) {
 	operationID := UpdateConversationDefinition.Operation.OperationID
 	result := client.exchange(call.Context, credentials, operationID, frontRequest{method: http.MethodGet, path: conversationPath})
+	if isAfterWrite && (result.outcome == exchangeInvalid || result.outcome == exchangeRejected) {
+		failure := result.failure
+		failure.Message = "Front accepted the change but its read-back failed: " + failure.Message
+		return Conversation{}, sdkgo.NewMutationRetry[UpdateConversationOutput](failure, result.retryAfter), true
+	}
 	if result.outcome != exchangeSucceeded {
 		return Conversation{}, classifyUpdateFailure(result, UpdateConversationOutput{}, receipt, ""), true
 	}
 	conversation, err := decodeConversation(result.response.body)
 	if err == nil && "/conversations/"+conversation.ID != conversationPath {
 		err = errors.New("Front returned another conversation")
+	}
+	if err != nil && isAfterWrite {
+		return Conversation{}, sdkgo.NewMutationRetry[UpdateConversationOutput](frontFailure(sdkgo.FailureProtocol, operationID,
+			"Front accepted the change but returned an invalid conversation: "+err.Error()), 0), true
 	}
 	if err != nil {
 		return Conversation{}, sdkgo.NewMutationBranch(UpdateConversationBranchInvalidResponse, UpdateConversationOutput{},

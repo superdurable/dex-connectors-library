@@ -6,16 +6,16 @@ metadata:
   description: "Search, read, reply to, comment on, and update Front conversations and find contacts by email, keeping Front's own conversation statuses, ticket status IDs, and tag and teammate IDs."
   company: Front
   categories: [customer-support, communication]
-  version: v0.23.0
+  version: v0.23.1
 spec:
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-front"
       operations: [searchConversations, getConversation, replyToConversation, updateConversation, findContactByEmail]
       triggers: []
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-front
       operations: [searchConversations, getConversation, replyToConversation, updateConversation, findContactByEmail]
       triggers: []
@@ -186,13 +186,13 @@ spec:
         - {id: replied, goName: Replied, description: "Front accepted the reply for delivery or created the comment."}
         - {id: notFound, goName: NotFound, description: "The conversation does not exist, was merged, or is not visible to the API token; nothing was sent.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Front conclusively rejected the reply or comment, such as a token without send permission or an unknown author; nothing was sent.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The reply or comment may exist after a lost answer, ambiguous server error, late answer, 409 conflict, or terminal credential failure during accepted-write read-back; an accepted comment may have been deleted before read-back. The connector never resends without proof of non-application.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, an unlisted status, an ambiguous server error, or a 2xx without a provider ID, or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection credentials that require reauthorization or are unusable before sending, or the connector definition is invalid; transient credential failures Retry.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Front has no key or client-supplied lookup value to confirm a lost reply answer; keep retries bounded while the fence fails closed."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Front has no key or client-supplied lookup value to confirm a lost reply answer, so every resend below the send cap may deliver another reply."}}
       mocks:
         - name: triageComment
           branch: replied
@@ -218,11 +218,13 @@ spec:
         - {id: updated, goName: Updated, description: "The conversation holds the requested status, assignee, and tags, written now or by an earlier attempt."}
         - {id: notFound, goName: NotFound, description: "The conversation does not exist, was merged, or is not visible to the API token.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Front conclusively rejected a change, such as an unknown teammate, tag, or ticket status; changes sent before it stay applied.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Front returned a malformed or oversized conversation, so the change may have been applied.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Front returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 60s
         durability: async
+        # Every write sets a final status, assignee, or tag membership, so a repeat leaves one result.
+        repeatOnUnknown: safe
       mocks:
         - name: routedConversation
           branch: updated
@@ -240,7 +242,7 @@ spec:
           failure: {kind: VALIDATION, message: "Front rejected the tag ID (HTTP 400)."}
         - name: oversizedReadBack
           branch: invalidResponse
-          description: "The read-back of cnv_100 exceeds maxResponseBytes after routing."
+          description: "The read of cnv_100 before routing exceeds maxResponseBytes."
           failure: {kind: RESPONSE_TOO_LARGE, message: "The Front response exceeds maxResponseBytes."}
     - name: findContactByEmail
       goName: FindContactByEmail

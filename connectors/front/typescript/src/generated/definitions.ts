@@ -89,7 +89,7 @@ export const ReplyToConversationBranchReplied = ReplyToConversationBranch.Replie
 export const ReplyToConversationBranchNotFound = ReplyToConversationBranch.NotFound;
 /** Front conclusively rejected the reply or comment, such as a token without send permission or an unknown author; nothing was sent. */
 export const ReplyToConversationBranchProviderRejected = ReplyToConversationBranch.ProviderRejected;
-/** The reply or comment may exist after a lost answer, ambiguous server error, late answer, 409 conflict, or terminal credential failure during accepted-write read-back; an accepted comment may have been deleted before read-back. The connector never resends without proof of non-application. */
+/** The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, an unlisted status, an ambiguous server error, or a 2xx without a provider ID, or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows. */
 export const ReplyToConversationBranchUncertain = ReplyToConversationBranch.Uncertain;
 /** Local input, connection credentials that require reauthorization or are unusable before sending, or the connector definition is invalid; transient credential failures Retry. */
 export const ReplyToConversationBranchDefect = ReplyToConversationBranch.Defect;
@@ -100,10 +100,12 @@ export const ReplyToConversationDefinition: MutationDefinition = {
     { id: "replied", description: "Front accepted the reply for delivery or created the comment." },
     { id: "notFound", description: "The conversation does not exist, was merged, or is not visible to the API token; nothing was sent.", optional: true },
     { id: "providerRejected", description: "Front conclusively rejected the reply or comment, such as a token without send permission or an unknown author; nothing was sent.", optional: true },
-    { id: "uncertain", description: "The reply or comment may exist after a lost answer, ambiguous server error, late answer, 409 conflict, or terminal credential failure during accepted-write read-back; an accepted comment may have been deleted before read-back. The connector never resends without proof of non-application.", optional: true },
+    { id: "uncertain", description: "The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, an unlisted status, an ambiguous server error, or a 2xx without a provider ID, or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows.", optional: true },
     { id: "defect", description: "Local input, connection credentials that require reauthorization or are unusable before sending, or the connector definition is invalid; transient credential failures Retry.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for replyToConversation. */
 export const ReplyToConversationMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -122,7 +124,7 @@ export const UpdateConversationBranchUpdated = UpdateConversationBranch.Updated;
 export const UpdateConversationBranchNotFound = UpdateConversationBranch.NotFound;
 /** Front conclusively rejected a change, such as an unknown teammate, tag, or ticket status; changes sent before it stay applied. */
 export const UpdateConversationBranchProviderRejected = UpdateConversationBranch.ProviderRejected;
-/** Front returned a malformed or oversized conversation, so the change may have been applied. */
+/** Front returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing. */
 export const UpdateConversationBranchInvalidResponse = UpdateConversationBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateConversationBranchDefect = UpdateConversationBranch.Defect;
@@ -133,10 +135,11 @@ export const UpdateConversationDefinition: MutationDefinition = {
     { id: "updated", description: "The conversation holds the requested status, assignee, and tags, written now or by an earlier attempt." },
     { id: "notFound", description: "The conversation does not exist, was merged, or is not visible to the API token.", optional: true },
     { id: "providerRejected", description: "Front conclusively rejected a change, such as an unknown teammate, tag, or ticket status; changes sent before it stay applied.", optional: true },
-    { id: "invalidResponse", description: "Front returned a malformed or oversized conversation, so the change may have been applied.", optional: true },
+    { id: "invalidResponse", description: "Front returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 60000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updateConversation. */
 export const UpdateConversationMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
