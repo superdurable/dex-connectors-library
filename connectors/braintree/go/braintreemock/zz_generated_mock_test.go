@@ -32,6 +32,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[braintree.DisputeTextEvidenceProfile](`{"id":"evidence-1","category":"GENERAL","content":"Shipment proof"}`)
 			return err
 		}},
+		{name: "createDisputeFileEvidence/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.DisputeEvidenceProfile](`{"id":"evidence-file-1","category":"GENERAL"}`)
+			return err
+		}},
 		{name: "deleteDisputeEvidence/deletedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[braintree.DisputeEvidenceDeleteResult](`{"disputeId":"dispute-1","evidenceId":"evidence-1","deleted":true}`)
 			return err
@@ -129,6 +133,9 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.CreateDisputeTextEvidence().Definition().Operation.OperationID != "createDisputeTextEvidence" {
 		t.Errorf("createDisputeTextEvidence mock has another definition")
+	}
+	if mock.CreateDisputeFileEvidence().Definition().Operation.OperationID != "createDisputeFileEvidence" {
+		t.Errorf("createDisputeFileEvidence mock has another definition")
 	}
 	if mock.DeleteDisputeEvidence().Definition().Operation.OperationID != "deleteDisputeEvidence" {
 		t.Errorf("deleteDisputeEvidence mock has another definition")

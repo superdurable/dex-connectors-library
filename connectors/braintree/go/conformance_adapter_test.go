@@ -6,6 +6,8 @@ package braintree
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -19,7 +21,9 @@ const conformanceFixturePathPrefix = ""
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
 	reference := sdkgo.ConnectionRef{Provider: "braintree", Name: "braintree"}
-	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{
+	evidenceDirectory := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(evidenceDirectory, "sample.pdf"), []byte("%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF\n"), 0600))
+	client, err := New(Config{BaseURL: endpoint, EvidenceDirectory: evidenceDirectory}, sdkgo.StaticCredentialProvider[Credentials]{
 		reference: {PublicKey: "sample-public-key", PrivateKey: sdkgo.NewSecretString("sample-private-key")},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
@@ -61,6 +65,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"searchDisputes":                 newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.SearchDisputes(), reference),
 		"acceptDispute":                  newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.AcceptDispute(), reference, scenario.CallID),
 		"createDisputeTextEvidence":      newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.CreateDisputeTextEvidence(), reference, scenario.CallID),
+		"createDisputeFileEvidence":      newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.CreateDisputeFileEvidence(), reference, scenario.CallID),
 		"deleteDisputeEvidence":          newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteDisputeEvidence(), reference, scenario.CallID),
 		"finalizeDispute":                newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.FinalizeDispute(), reference, scenario.CallID),
 	}}

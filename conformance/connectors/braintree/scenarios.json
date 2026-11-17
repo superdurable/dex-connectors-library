@@ -10848,6 +10848,657 @@
           "state": "claimed"
         }
       }
+    },
+    {
+      "callId": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"createDisputeFileEvidence\":{\"dispute\":{\"id\":\"dispute-1\"},\"evidence\":{\"id\":\"evidence-file-1\",\"category\":\"GENERAL\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJxdWVyeSI6Im11dGF0aW9uIENyZWF0ZURpc3B1dGVGaWxlRXZpZGVuY2UoJGlucHV0OiBDcmVhdGVEaXNwdXRlRmlsZUV2aWRlbmNlSW5wdXQhKSB7IGNyZWF0ZURpc3B1dGVGaWxlRXZpZGVuY2UoaW5wdXQ6ICRpbnB1dCkgeyBkaXNwdXRlIHsgaWQgfSBldmlkZW5jZSB7IGlkIGNhdGVnb3J5IH0gfSB9IiwidmFyaWFibGVzIjp7ImZpbGUiOm51bGwsImlucHV0Ijp7ImNhdGVnb3J5IjoiR0VORVJBTCIsImNsaWVudE11dGF0aW9uSWQiOiJmMTE2ZmRmZC1mMGY4LTVhMTgtYjY3OC00MTdlZDI2NTYxZDMiLCJkaXNwdXRlSWQiOiJkaXNwdXRlLTEifX19",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"operations\""
+                  ],
+                  "Content-Type": [
+                    "application/json"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "eyJmaWxlX3RvX3VwbG9hZCI6InZhcmlhYmxlcy5maWxlIn0=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"map\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "JVBERi0xLjQKMSAwIG9iago8PD4+CmVuZG9iagolJUVPRgo=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"file_to_upload\"; filename=\"sample.pdf\""
+                  ],
+                  "Content-Type": [
+                    "application/pdf"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "category": "GENERAL",
+          "id": "evidence-file-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+      "input": {
+        "category": "GENERAL",
+        "disputeId": "dispute-1",
+        "expectedSha256": "a580a4a92ef8d5c28ba07d43410bd8bdd0ea470461593dc7e5fbb354174098b9",
+        "fileName": "sample.pdf"
+      },
+      "name": "createDisputeFileEvidence-success",
+      "operation": "createDisputeFileEvidence"
+    },
+    {
+      "callId": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"File rejected\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJxdWVyeSI6Im11dGF0aW9uIENyZWF0ZURpc3B1dGVGaWxlRXZpZGVuY2UoJGlucHV0OiBDcmVhdGVEaXNwdXRlRmlsZUV2aWRlbmNlSW5wdXQhKSB7IGNyZWF0ZURpc3B1dGVGaWxlRXZpZGVuY2UoaW5wdXQ6ICRpbnB1dCkgeyBkaXNwdXRlIHsgaWQgfSBldmlkZW5jZSB7IGlkIGNhdGVnb3J5IH0gfSB9IiwidmFyaWFibGVzIjp7ImZpbGUiOm51bGwsImlucHV0Ijp7ImNhdGVnb3J5IjoiR0VORVJBTCIsImNsaWVudE11dGF0aW9uSWQiOiJmMTE2ZmRmZC1mMGY4LTVhMTgtYjY3OC00MTdlZDI2NTYxZDMiLCJkaXNwdXRlSWQiOiJkaXNwdXRlLTEifX19",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"operations\""
+                  ],
+                  "Content-Type": [
+                    "application/json"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "eyJmaWxlX3RvX3VwbG9hZCI6InZhcmlhYmxlcy5maWxlIn0=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"map\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "JVBERi0xLjQKMSAwIG9iago8PD4+CmVuZG9iagolJUVPRgo=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"file_to_upload\"; filename=\"sample.pdf\""
+                  ],
+                  "Content-Type": [
+                    "application/pdf"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+      "input": {
+        "category": "GENERAL",
+        "disputeId": "dispute-1",
+        "expectedSha256": "a580a4a92ef8d5c28ba07d43410bd8bdd0ea470461593dc7e5fbb354174098b9",
+        "fileName": "sample.pdf"
+      },
+      "name": "createDisputeFileEvidence-providerRejected",
+      "operation": "createDisputeFileEvidence"
+    },
+    {
+      "callId": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"Dispute not found\",\"extensions\":{\"errorClass\":\"NOT_FOUND\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJxdWVyeSI6Im11dGF0aW9uIENyZWF0ZURpc3B1dGVGaWxlRXZpZGVuY2UoJGlucHV0OiBDcmVhdGVEaXNwdXRlRmlsZUV2aWRlbmNlSW5wdXQhKSB7IGNyZWF0ZURpc3B1dGVGaWxlRXZpZGVuY2UoaW5wdXQ6ICRpbnB1dCkgeyBkaXNwdXRlIHsgaWQgfSBldmlkZW5jZSB7IGlkIGNhdGVnb3J5IH0gfSB9IiwidmFyaWFibGVzIjp7ImZpbGUiOm51bGwsImlucHV0Ijp7ImNhdGVnb3J5IjoiR0VORVJBTCIsImNsaWVudE11dGF0aW9uSWQiOiJmMTE2ZmRmZC1mMGY4LTVhMTgtYjY3OC00MTdlZDI2NTYxZDMiLCJkaXNwdXRlSWQiOiJkaXNwdXRlLTEifX19",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"operations\""
+                  ],
+                  "Content-Type": [
+                    "application/json"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "eyJmaWxlX3RvX3VwbG9hZCI6InZhcmlhYmxlcy5maWxlIn0=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"map\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "JVBERi0xLjQKMSAwIG9iago8PD4+CmVuZG9iagolJUVPRgo=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"file_to_upload\"; filename=\"sample.pdf\""
+                  ],
+                  "Content-Type": [
+                    "application/pdf"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+      "input": {
+        "category": "GENERAL",
+        "disputeId": "dispute-1",
+        "expectedSha256": "a580a4a92ef8d5c28ba07d43410bd8bdd0ea470461593dc7e5fbb354174098b9",
+        "fileName": "sample.pdf"
+      },
+      "name": "createDisputeFileEvidence-notFound",
+      "operation": "createDisputeFileEvidence"
+    },
+    {
+      "callId": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJxdWVyeSI6Im11dGF0aW9uIENyZWF0ZURpc3B1dGVGaWxlRXZpZGVuY2UoJGlucHV0OiBDcmVhdGVEaXNwdXRlRmlsZUV2aWRlbmNlSW5wdXQhKSB7IGNyZWF0ZURpc3B1dGVGaWxlRXZpZGVuY2UoaW5wdXQ6ICRpbnB1dCkgeyBkaXNwdXRlIHsgaWQgfSBldmlkZW5jZSB7IGlkIGNhdGVnb3J5IH0gfSB9IiwidmFyaWFibGVzIjp7ImZpbGUiOm51bGwsImlucHV0Ijp7ImNhdGVnb3J5IjoiR0VORVJBTCIsImNsaWVudE11dGF0aW9uSWQiOiJmMTE2ZmRmZC1mMGY4LTVhMTgtYjY3OC00MTdlZDI2NTYxZDMiLCJkaXNwdXRlSWQiOiJkaXNwdXRlLTEifX19",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"operations\""
+                  ],
+                  "Content-Type": [
+                    "application/json"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "eyJmaWxlX3RvX3VwbG9hZCI6InZhcmlhYmxlcy5maWxlIn0=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"map\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "JVBERi0xLjQKMSAwIG9iago8PD4+CmVuZG9iagolJUVPRgo=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"file_to_upload\"; filename=\"sample.pdf\""
+                  ],
+                  "Content-Type": [
+                    "application/pdf"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+      "input": {
+        "category": "GENERAL",
+        "disputeId": "dispute-1",
+        "expectedSha256": "a580a4a92ef8d5c28ba07d43410bd8bdd0ea470461593dc7e5fbb354174098b9",
+        "fileName": "sample.pdf"
+      },
+      "name": "createDisputeFileEvidence-final429",
+      "operation": "createDisputeFileEvidence"
+    },
+    {
+      "callId": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJxdWVyeSI6Im11dGF0aW9uIENyZWF0ZURpc3B1dGVGaWxlRXZpZGVuY2UoJGlucHV0OiBDcmVhdGVEaXNwdXRlRmlsZUV2aWRlbmNlSW5wdXQhKSB7IGNyZWF0ZURpc3B1dGVGaWxlRXZpZGVuY2UoaW5wdXQ6ICRpbnB1dCkgeyBkaXNwdXRlIHsgaWQgfSBldmlkZW5jZSB7IGlkIGNhdGVnb3J5IH0gfSB9IiwidmFyaWFibGVzIjp7ImZpbGUiOm51bGwsImlucHV0Ijp7ImNhdGVnb3J5IjoiR0VORVJBTCIsImNsaWVudE11dGF0aW9uSWQiOiJmMTE2ZmRmZC1mMGY4LTVhMTgtYjY3OC00MTdlZDI2NTYxZDMiLCJkaXNwdXRlSWQiOiJkaXNwdXRlLTEifX19",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"operations\""
+                  ],
+                  "Content-Type": [
+                    "application/json"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "eyJmaWxlX3RvX3VwbG9hZCI6InZhcmlhYmxlcy5maWxlIn0=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"map\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "JVBERi0xLjQKMSAwIG9iago8PD4+CmVuZG9iagolJUVPRgo=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"file_to_upload\"; filename=\"sample.pdf\""
+                  ],
+                  "Content-Type": [
+                    "application/pdf"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+      "input": {
+        "category": "GENERAL",
+        "disputeId": "dispute-1",
+        "expectedSha256": "a580a4a92ef8d5c28ba07d43410bd8bdd0ea470461593dc7e5fbb354174098b9",
+        "fileName": "sample.pdf"
+      },
+      "name": "createDisputeFileEvidence-final503",
+      "operation": "createDisputeFileEvidence"
+    },
+    {
+      "callId": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJxdWVyeSI6Im11dGF0aW9uIENyZWF0ZURpc3B1dGVGaWxlRXZpZGVuY2UoJGlucHV0OiBDcmVhdGVEaXNwdXRlRmlsZUV2aWRlbmNlSW5wdXQhKSB7IGNyZWF0ZURpc3B1dGVGaWxlRXZpZGVuY2UoaW5wdXQ6ICRpbnB1dCkgeyBkaXNwdXRlIHsgaWQgfSBldmlkZW5jZSB7IGlkIGNhdGVnb3J5IH0gfSB9IiwidmFyaWFibGVzIjp7ImZpbGUiOm51bGwsImlucHV0Ijp7ImNhdGVnb3J5IjoiR0VORVJBTCIsImNsaWVudE11dGF0aW9uSWQiOiJmMTE2ZmRmZC1mMGY4LTVhMTgtYjY3OC00MTdlZDI2NTYxZDMiLCJkaXNwdXRlSWQiOiJkaXNwdXRlLTEifX19",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"operations\""
+                  ],
+                  "Content-Type": [
+                    "application/json"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "eyJmaWxlX3RvX3VwbG9hZCI6InZhcmlhYmxlcy5maWxlIn0=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"map\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "JVBERi0xLjQKMSAwIG9iago8PD4+CmVuZG9iagolJUVPRgo=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"file_to_upload\"; filename=\"sample.pdf\""
+                  ],
+                  "Content-Type": [
+                    "application/pdf"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+      "input": {
+        "category": "GENERAL",
+        "disputeId": "dispute-1",
+        "expectedSha256": "a580a4a92ef8d5c28ba07d43410bd8bdd0ea470461593dc7e5fbb354174098b9",
+        "fileName": "sample.pdf"
+      },
+      "name": "createDisputeFileEvidence-transportFailure",
+      "operation": "createDisputeFileEvidence"
+    },
+    {
+      "callId": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"createDisputeFileEvidence\":{\"dispute\":{\"id\":\"dispute-1\"},\"evidence\":{\"id\":\"\",\"category\":\"GENERAL\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJxdWVyeSI6Im11dGF0aW9uIENyZWF0ZURpc3B1dGVGaWxlRXZpZGVuY2UoJGlucHV0OiBDcmVhdGVEaXNwdXRlRmlsZUV2aWRlbmNlSW5wdXQhKSB7IGNyZWF0ZURpc3B1dGVGaWxlRXZpZGVuY2UoaW5wdXQ6ICRpbnB1dCkgeyBkaXNwdXRlIHsgaWQgfSBldmlkZW5jZSB7IGlkIGNhdGVnb3J5IH0gfSB9IiwidmFyaWFibGVzIjp7ImZpbGUiOm51bGwsImlucHV0Ijp7ImNhdGVnb3J5IjoiR0VORVJBTCIsImNsaWVudE11dGF0aW9uSWQiOiJmMTE2ZmRmZC1mMGY4LTVhMTgtYjY3OC00MTdlZDI2NTYxZDMiLCJkaXNwdXRlSWQiOiJkaXNwdXRlLTEifX19",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"operations\""
+                  ],
+                  "Content-Type": [
+                    "application/json"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "eyJmaWxlX3RvX3VwbG9hZCI6InZhcmlhYmxlcy5maWxlIn0=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"map\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "JVBERi0xLjQKMSAwIG9iago8PD4+CmVuZG9iagolJUVPRgo=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"file_to_upload\"; filename=\"sample.pdf\""
+                  ],
+                  "Content-Type": [
+                    "application/pdf"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+      "input": {
+        "category": "GENERAL",
+        "disputeId": "dispute-1",
+        "expectedSha256": "a580a4a92ef8d5c28ba07d43410bd8bdd0ea470461593dc7e5fbb354174098b9",
+        "fileName": "sample.pdf"
+      },
+      "name": "createDisputeFileEvidence-invalidResponse",
+      "operation": "createDisputeFileEvidence"
+    },
+    {
+      "callId": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+      "input": {
+        "category": "GENERAL",
+        "disputeId": "dispute-1",
+        "expectedSha256": "a580a4a92ef8d5c28ba07d43410bd8bdd0ea470461593dc7e5fbb354174098b9",
+        "fileName": "../sample.pdf"
+      },
+      "name": "createDisputeFileEvidence-defect",
+      "operation": "createDisputeFileEvidence"
+    },
+    {
+      "callId": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+      "input": {
+        "category": "GENERAL",
+        "disputeId": "dispute-1",
+        "expectedSha256": "a580a4a92ef8d5c28ba07d43410bd8bdd0ea470461593dc7e5fbb354174098b9",
+        "fileName": "sample.pdf"
+      },
+      "name": "createDisputeFileEvidence-uncertain",
+      "operation": "createDisputeFileEvidence",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

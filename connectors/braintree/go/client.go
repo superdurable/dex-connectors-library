@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -30,11 +31,12 @@ func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{ht
 
 // Client holds immutable provider settings and resolves credentials per call.
 type Client struct {
-	baseURL          string
-	apiVersion       string
-	maxResponseBytes int64
-	credentials      CredentialSource
-	httpClient       *http.Client
+	baseURL           string
+	apiVersion        string
+	maxResponseBytes  int64
+	evidenceDirectory string
+	credentials       CredentialSource
+	httpClient        *http.Client
 }
 
 // New validates configuration and required dependencies without contacting Braintree.
@@ -53,7 +55,10 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("Braintree API URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, apiVersion: config.APIVersion, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	if config.EvidenceDirectory != "" && !filepath.IsAbs(config.EvidenceDirectory) {
+		return nil, errors.New("Braintree evidence directory must be absolute")
+	}
+	client := &Client{baseURL: baseURL, apiVersion: config.APIVersion, maxResponseBytes: config.MaxResponseBytes, evidenceDirectory: config.EvidenceDirectory, credentials: credentials}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Braintree client option is required")

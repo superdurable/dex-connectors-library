@@ -22,6 +22,7 @@ type Mock struct {
 	searchDisputes                 *connectormock.Query[braintree.SearchDisputesInput, braintree.DisputesPage]
 	acceptDispute                  *connectormock.Mutation[braintree.GetDisputeInput, braintree.DisputeProfile]
 	createDisputeTextEvidence      *connectormock.Mutation[braintree.CreateDisputeTextEvidenceInput, braintree.DisputeTextEvidenceProfile]
+	createDisputeFileEvidence      *connectormock.Mutation[braintree.CreateDisputeFileEvidenceInput, braintree.DisputeEvidenceProfile]
 	deleteDisputeEvidence          *connectormock.Mutation[braintree.DeleteDisputeEvidenceInput, braintree.DisputeEvidenceDeleteResult]
 	finalizeDispute                *connectormock.Mutation[braintree.GetDisputeInput, braintree.DisputeProfile]
 	searchTransactions             *connectormock.Query[braintree.SearchTransactionsInput, braintree.TransactionsPage]
@@ -52,6 +53,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		searchDisputes:                 connectormock.NewQuery[braintree.SearchDisputesInput, braintree.DisputesPage](t, braintree.SearchDisputesDefinition),
 		acceptDispute:                  connectormock.NewMutation[braintree.GetDisputeInput, braintree.DisputeProfile](t, braintree.AcceptDisputeDefinition),
 		createDisputeTextEvidence:      connectormock.NewMutation[braintree.CreateDisputeTextEvidenceInput, braintree.DisputeTextEvidenceProfile](t, braintree.CreateDisputeTextEvidenceDefinition),
+		createDisputeFileEvidence:      connectormock.NewMutation[braintree.CreateDisputeFileEvidenceInput, braintree.DisputeEvidenceProfile](t, braintree.CreateDisputeFileEvidenceDefinition),
 		deleteDisputeEvidence:          connectormock.NewMutation[braintree.DeleteDisputeEvidenceInput, braintree.DisputeEvidenceDeleteResult](t, braintree.DeleteDisputeEvidenceDefinition),
 		finalizeDispute:                connectormock.NewMutation[braintree.GetDisputeInput, braintree.DisputeProfile](t, braintree.FinalizeDisputeDefinition),
 		searchTransactions:             connectormock.NewQuery[braintree.SearchTransactionsInput, braintree.TransactionsPage](t, braintree.SearchTransactionsDefinition),
@@ -76,6 +78,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.searchDisputes.Default(SearchDisputesDefault())
 	mock.acceptDispute.Default(AcceptDisputeDefault())
 	mock.createDisputeTextEvidence.Default(CreateDisputeTextEvidenceDefault())
+	mock.createDisputeFileEvidence.Default(CreateDisputeFileEvidenceDefault())
 	mock.deleteDisputeEvidence.Default(DeleteDisputeEvidenceDefault())
 	mock.finalizeDispute.Default(FinalizeDisputeDefault())
 	mock.searchTransactions.Default(SearchTransactionsDefault())
@@ -124,6 +127,11 @@ func (mock *Mock) AcceptDispute() *connectormock.Mutation[braintree.GetDisputeIn
 // CreateDisputeTextEvidence returns the createDisputeTextEvidence script.
 func (mock *Mock) CreateDisputeTextEvidence() *connectormock.Mutation[braintree.CreateDisputeTextEvidenceInput, braintree.DisputeTextEvidenceProfile] {
 	return mock.createDisputeTextEvidence
+}
+
+// CreateDisputeFileEvidence returns the createDisputeFileEvidence script.
+func (mock *Mock) CreateDisputeFileEvidence() *connectormock.Mutation[braintree.CreateDisputeFileEvidenceInput, braintree.DisputeEvidenceProfile] {
+	return mock.createDisputeFileEvidence
 }
 
 // DeleteDisputeEvidence returns the deleteDisputeEvidence script.
@@ -234,6 +242,9 @@ func (operations mockOperations) AcceptDispute() sdkgo.Mutation[braintree.GetDis
 }
 func (operations mockOperations) CreateDisputeTextEvidence() sdkgo.Mutation[braintree.CreateDisputeTextEvidenceInput, braintree.DisputeTextEvidenceProfile] {
 	return operations.mock.createDisputeTextEvidence
+}
+func (operations mockOperations) CreateDisputeFileEvidence() sdkgo.Mutation[braintree.CreateDisputeFileEvidenceInput, braintree.DisputeEvidenceProfile] {
+	return operations.mock.createDisputeFileEvidence
 }
 func (operations mockOperations) DeleteDisputeEvidence() sdkgo.Mutation[braintree.DeleteDisputeEvidenceInput, braintree.DisputeEvidenceDeleteResult] {
 	return operations.mock.deleteDisputeEvidence
@@ -455,6 +466,47 @@ func CreateDisputeTextEvidenceCreatedDefault() connectormock.Case[braintree.Disp
 // CreateDisputeTextEvidenceDefault is the manifest default, createdDefault, which New installs.
 func CreateDisputeTextEvidenceDefault() connectormock.Case[braintree.DisputeTextEvidenceProfile] {
 	return CreateDisputeTextEvidenceCreatedDefault()
+}
+
+// CreateDisputeFileEvidenceCreated selects the created branch: Braintree returned the created evidence.
+func CreateDisputeFileEvidenceCreated(value braintree.DisputeEvidenceProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeEvidenceProfile] {
+	return connectormock.Branch(braintree.CreateDisputeFileEvidenceBranchCreated, value, failure)
+}
+
+// CreateDisputeFileEvidenceNotFound selects the notFound branch: The dispute was not found.
+func CreateDisputeFileEvidenceNotFound(value braintree.DisputeEvidenceProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeEvidenceProfile] {
+	return connectormock.Branch(braintree.CreateDisputeFileEvidenceBranchNotFound, value, failure)
+}
+
+// CreateDisputeFileEvidenceProviderRejected selects the providerRejected branch: Braintree definitively rejected the file.
+func CreateDisputeFileEvidenceProviderRejected(value braintree.DisputeEvidenceProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeEvidenceProfile] {
+	return connectormock.Branch(braintree.CreateDisputeFileEvidenceBranchProviderRejected, value, failure)
+}
+
+// CreateDisputeFileEvidenceDefect selects the defect branch: Invalid file or input or credentials.
+func CreateDisputeFileEvidenceDefect(value braintree.DisputeEvidenceProfile, failure *sdkgo.Failure) connectormock.Case[braintree.DisputeEvidenceProfile] {
+	return connectormock.Branch(braintree.CreateDisputeFileEvidenceBranchDefect, value, failure)
+}
+
+// CreateDisputeFileEvidenceUncertain returns an uncertain createDisputeFileEvidence outcome.
+func CreateDisputeFileEvidenceUncertain(value braintree.DisputeEvidenceProfile, failure sdkgo.Failure) connectormock.Case[braintree.DisputeEvidenceProfile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateDisputeFileEvidenceRetry asks Dex to retry the createDisputeFileEvidence Step, after the delay when it is positive.
+func CreateDisputeFileEvidenceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.DisputeEvidenceProfile] {
+	return connectormock.Retry[braintree.DisputeEvidenceProfile](failure, after)
+}
+
+// CreateDisputeFileEvidenceCreatedDefault is the manifest mock createdDefault: One sample file evidence result is returned.
+func CreateDisputeFileEvidenceCreatedDefault() connectormock.Case[braintree.DisputeEvidenceProfile] {
+	value := connectormock.MustDecodeOutput[braintree.DisputeEvidenceProfile](`{"id":"evidence-file-1","category":"GENERAL"}`)
+	return connectormock.Branch(braintree.CreateDisputeFileEvidenceBranchCreated, value, nil)
+}
+
+// CreateDisputeFileEvidenceDefault is the manifest default, createdDefault, which New installs.
+func CreateDisputeFileEvidenceDefault() connectormock.Case[braintree.DisputeEvidenceProfile] {
+	return CreateDisputeFileEvidenceCreatedDefault()
 }
 
 // DeleteDisputeEvidenceDeleted selects the deleted branch: Braintree returned the requested result.

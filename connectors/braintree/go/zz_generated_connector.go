@@ -19,10 +19,11 @@ import (
 const ConnectorID = "braintree"
 
 type Config struct {
-	BaseURL          string        `json:"baseUrl,omitempty" yaml:"baseUrl,omitempty"`
-	APIVersion       string        `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty"`
-	Timeout          time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
-	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	BaseURL           string        `json:"baseUrl,omitempty" yaml:"baseUrl,omitempty"`
+	APIVersion        string        `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty"`
+	Timeout           time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	MaxResponseBytes  int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	EvidenceDirectory string        `json:"evidenceDirectory,omitempty" yaml:"evidenceDirectory,omitempty"`
 }
 
 type Credentials struct {
@@ -46,6 +47,7 @@ type Operations interface {
 	SearchDisputes() sdkgo.Query[SearchDisputesInput, DisputesPage]
 	AcceptDispute() sdkgo.Mutation[GetDisputeInput, DisputeProfile]
 	CreateDisputeTextEvidence() sdkgo.Mutation[CreateDisputeTextEvidenceInput, DisputeTextEvidenceProfile]
+	CreateDisputeFileEvidence() sdkgo.Mutation[CreateDisputeFileEvidenceInput, DisputeEvidenceProfile]
 	DeleteDisputeEvidence() sdkgo.Mutation[DeleteDisputeEvidenceInput, DisputeEvidenceDeleteResult]
 	FinalizeDispute() sdkgo.Mutation[GetDisputeInput, DisputeProfile]
 	SearchTransactions() sdkgo.Query[SearchTransactionsInput, TransactionsPage]
@@ -80,6 +82,9 @@ func (operations clientOperations) AcceptDispute() sdkgo.Mutation[GetDisputeInpu
 }
 func (operations clientOperations) CreateDisputeTextEvidence() sdkgo.Mutation[CreateDisputeTextEvidenceInput, DisputeTextEvidenceProfile] {
 	return operations.client.CreateDisputeTextEvidence()
+}
+func (operations clientOperations) CreateDisputeFileEvidence() sdkgo.Mutation[CreateDisputeFileEvidenceInput, DisputeEvidenceProfile] {
+	return operations.client.CreateDisputeFileEvidence()
 }
 func (operations clientOperations) DeleteDisputeEvidence() sdkgo.Mutation[DeleteDisputeEvidenceInput, DisputeEvidenceDeleteResult] {
 	return operations.client.DeleteDisputeEvidence()
@@ -235,10 +240,11 @@ func (Connection) GoString() string { return "braintree.Connection{[REDACTED]}" 
 
 func DefaultConfig() Config {
 	return Config{
-		BaseURL:          "https://payments.sandbox.braintree-api.com",
-		APIVersion:       "2019-01-01",
-		Timeout:          time.Duration(15000000000),
-		MaxResponseBytes: 1048576,
+		BaseURL:           "https://payments.sandbox.braintree-api.com",
+		APIVersion:        "2019-01-01",
+		Timeout:           time.Duration(15000000000),
+		MaxResponseBytes:  1048576,
+		EvidenceDirectory: "",
 	}
 }
 
@@ -255,6 +261,9 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
+	}
+	if config.EvidenceDirectory == "" {
+		config.EvidenceDirectory = defaults.EvidenceDirectory
 	}
 	return config
 }
@@ -594,6 +603,88 @@ func NewCreateDisputeTextEvidenceStep[IN any](config CreateDisputeTextEvidenceSt
 			}
 			if config.Uncertain.HasStep() {
 				branches = append(branches, config.Uncertain.BranchTarget(CreateDisputeTextEvidenceBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const CreateDisputeFileEvidenceBranchCreated sdkgo.BranchID = "created"
+const CreateDisputeFileEvidenceBranchNotFound sdkgo.BranchID = "notFound"
+const CreateDisputeFileEvidenceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateDisputeFileEvidenceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateDisputeFileEvidenceBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateDisputeFileEvidenceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createDisputeFileEvidence"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateDisputeFileEvidenceBranchCreated, Description: "Braintree returned the created evidence."},
+		{ID: CreateDisputeFileEvidenceBranchNotFound, Description: "The dispute was not found.", Optional: true},
+		{ID: CreateDisputeFileEvidenceBranchProviderRejected, Description: "Braintree definitively rejected the file.", Optional: true},
+		{ID: CreateDisputeFileEvidenceBranchDefect, Description: "Invalid file or input or credentials.", Optional: true},
+		{ID: CreateDisputeFileEvidenceBranchUncertain, Description: "The outcome cannot be confirmed after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateDisputeFileEvidenceResult = sdkgo.MutationResult[DisputeEvidenceProfile]
+
+type CreateDisputeFileEvidenceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                     `connector:"connectorId=braintree"`
+	operationID                       struct{}                                                     `connector:"operationId=createDisputeFileEvidence"`
+	StepType                          string                                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                        `connector:"annotations"`
+	Connection                        Connection                                                   `connector:"connection"`
+	ConnectionName                    string                                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateDisputeFileEvidenceInput                      `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateDisputeFileEvidenceResult]                `connector:"branch=created"`
+	NotFound                          sdkgo.Target[CreateDisputeFileEvidenceResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CreateDisputeFileEvidenceResult]                `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateDisputeFileEvidenceResult]                `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateDisputeFileEvidenceResult]                `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DisputeEvidenceProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateDisputeFileEvidenceStep[IN any](config CreateDisputeFileEvidenceStepConfig[IN]) sdkgo.MutationStep[IN, CreateDisputeFileEvidenceInput, DisputeEvidenceProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateDisputeFileEvidenceInput, DisputeEvidenceProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateDisputeFileEvidence(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateDisputeFileEvidenceResult] {
+			branches := make([]sdkgo.BranchTarget[CreateDisputeFileEvidenceResult], 0, 5)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateDisputeFileEvidenceBranchCreated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CreateDisputeFileEvidenceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateDisputeFileEvidenceBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateDisputeFileEvidenceBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateDisputeFileEvidenceBranchUncertain))
 			}
 			return branches
 		}(),
