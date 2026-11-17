@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: constantcontact
   displayName: Constant Contact
-  description: Create, update, search, and delete contacts, and manage contact lists through the Constant Contact V3 API.
+  description: Manage contacts and lists, and inspect bulk activity status through the Constant Contact V3 API.
   company: Constant Contact
   categories: [marketing]
   version: v0.2.0
@@ -73,6 +73,7 @@ spec:
         - Save the two app credentials, choose Authorize in Dex Web, and approve Constant Contact consent. Dex stores and refreshes the returned access and refresh tokens. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
         - To find a contact ID, open Constant Contact > Contacts, select a contact, and use the contact ID from its V3 API resource or an exported V3 contacts list. It is a non-secret UUID. Blank contact IDs are invalid.
         - To find a list ID, open Constant Contact > Contacts > Lists, select a list, and use its list_id from the V3 contact-lists API. It is a non-secret UUID. Blank list IDs are invalid; a blank contact page cursor starts a new search.
+        - To inspect an asynchronous job, use the non-secret activity_id UUID returned by a V3 bulk activity response, such as deleteContactList, or find it through GET /activities in the API tester at https://developer.constantcontact.com/api_reference/index.html. Blank activity IDs are invalid; statuses expire after ten days.
     oauth2:
       authorizationEndpoint: https://authz.constantcontact.com/oauth2/default/v1/authorize
       tokenEndpoint: https://authz.constantcontact.com/oauth2/default/v1/token
@@ -92,6 +93,47 @@ spec:
         requiredScopes: [contact_data]
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: getActivity
+      goName: GetActivity
+      inputType: GetActivityInput
+      outputType: ActivityMetadata
+      kind: query
+      description: Read the current state and progress of one recent bulk activity.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Constant Contact returned the activity.}
+        - {id: notFound, goName: NotFound, description: The activity is absent or older than ten days., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Constant Contact returned malformed activity JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample list-deletion activity is complete.
+          output: {activityId: "3d72da26-2115-11ea-9216-fa163e6b01c0", state: completed, percentDone: 100}
+    - name: listActivities
+      goName: ListActivities
+      inputType: ListActivitiesInput
+      outputType: ActivitiesPage
+      kind: query
+      description: Read recent bulk activity states retained for ten days.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Constant Contact returned recent activities.}
+        - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Constant Contact returned malformed activity JSON., optional: true}
+        - {id: defect, goName: Defect, description: Credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One recent bulk activity is returned.
+          output: {activities: [{activityId: "3d72da26-2115-11ea-9216-fa163e6b01c0", state: completed, percentDone: 100}]}
     - name: createContact
       goName: CreateContact
       inputType: CreateContactInput

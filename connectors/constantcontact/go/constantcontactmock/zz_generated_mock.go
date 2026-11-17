@@ -18,6 +18,8 @@ import (
 // Mock is a scripted constantcontact connection. Script each operation through its accessor.
 type Mock struct {
 	connection        constantcontact.Connection
+	getActivity       *connectormock.Query[constantcontact.GetActivityInput, constantcontact.ActivityMetadata]
+	listActivities    *connectormock.Query[constantcontact.ListActivitiesInput, constantcontact.ActivitiesPage]
 	createContact     *connectormock.Mutation[constantcontact.CreateContactInput, constantcontact.ContactMetadata]
 	listContacts      *connectormock.Query[constantcontact.ListContactsInput, constantcontact.ContactsPage]
 	updateContact     *connectormock.Mutation[constantcontact.UpdateContactInput, constantcontact.ContactMetadata]
@@ -35,6 +37,8 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		getActivity:       connectormock.NewQuery[constantcontact.GetActivityInput, constantcontact.ActivityMetadata](t, constantcontact.GetActivityDefinition),
+		listActivities:    connectormock.NewQuery[constantcontact.ListActivitiesInput, constantcontact.ActivitiesPage](t, constantcontact.ListActivitiesDefinition),
 		createContact:     connectormock.NewMutation[constantcontact.CreateContactInput, constantcontact.ContactMetadata](t, constantcontact.CreateContactDefinition),
 		listContacts:      connectormock.NewQuery[constantcontact.ListContactsInput, constantcontact.ContactsPage](t, constantcontact.ListContactsDefinition),
 		updateContact:     connectormock.NewMutation[constantcontact.UpdateContactInput, constantcontact.ContactMetadata](t, constantcontact.UpdateContactDefinition),
@@ -46,6 +50,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		updateContactList: connectormock.NewMutation[constantcontact.UpdateContactListInput, constantcontact.ContactListMetadata](t, constantcontact.UpdateContactListDefinition),
 		deleteContactList: connectormock.NewMutation[constantcontact.DeleteContactListInput, constantcontact.DeleteContactListOutput](t, constantcontact.DeleteContactListDefinition),
 	}
+	mock.getActivity.Default(GetActivityDefault())
+	mock.listActivities.Default(ListActivitiesDefault())
 	mock.createContact.Default(CreateContactDefault())
 	mock.listContacts.Default(ListContactsDefault())
 	mock.updateContact.Default(UpdateContactDefault())
@@ -66,6 +72,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() constantcontact.Connection { return mock.connection }
+
+// GetActivity returns the getActivity script.
+func (mock *Mock) GetActivity() *connectormock.Query[constantcontact.GetActivityInput, constantcontact.ActivityMetadata] {
+	return mock.getActivity
+}
+
+// ListActivities returns the listActivities script.
+func (mock *Mock) ListActivities() *connectormock.Query[constantcontact.ListActivitiesInput, constantcontact.ActivitiesPage] {
+	return mock.listActivities
+}
 
 // CreateContact returns the createContact script.
 func (mock *Mock) CreateContact() *connectormock.Mutation[constantcontact.CreateContactInput, constantcontact.ContactMetadata] {
@@ -119,6 +135,12 @@ func (mock *Mock) DeleteContactList() *connectormock.Mutation[constantcontact.De
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetActivity() sdkgo.Query[constantcontact.GetActivityInput, constantcontact.ActivityMetadata] {
+	return operations.mock.getActivity
+}
+func (operations mockOperations) ListActivities() sdkgo.Query[constantcontact.ListActivitiesInput, constantcontact.ActivitiesPage] {
+	return operations.mock.listActivities
+}
 func (operations mockOperations) CreateContact() sdkgo.Mutation[constantcontact.CreateContactInput, constantcontact.ContactMetadata] {
 	return operations.mock.createContact
 }
@@ -148,6 +170,83 @@ func (operations mockOperations) UpdateContactList() sdkgo.Mutation[constantcont
 }
 func (operations mockOperations) DeleteContactList() sdkgo.Mutation[constantcontact.DeleteContactListInput, constantcontact.DeleteContactListOutput] {
 	return operations.mock.deleteContactList
+}
+
+// GetActivityFound selects the found branch: Constant Contact returned the activity.
+func GetActivityFound(value constantcontact.ActivityMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.ActivityMetadata] {
+	return connectormock.Branch(constantcontact.GetActivityBranchFound, value, failure)
+}
+
+// GetActivityNotFound selects the notFound branch: The activity is absent or older than ten days.
+func GetActivityNotFound(value constantcontact.ActivityMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.ActivityMetadata] {
+	return connectormock.Branch(constantcontact.GetActivityBranchNotFound, value, failure)
+}
+
+// GetActivityProviderRejected selects the providerRejected branch: Constant Contact rejected the lookup.
+func GetActivityProviderRejected(value constantcontact.ActivityMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.ActivityMetadata] {
+	return connectormock.Branch(constantcontact.GetActivityBranchProviderRejected, value, failure)
+}
+
+// GetActivityInvalidResponse selects the invalidResponse branch: Constant Contact returned malformed activity JSON.
+func GetActivityInvalidResponse(value constantcontact.ActivityMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.ActivityMetadata] {
+	return connectormock.Branch(constantcontact.GetActivityBranchInvalidResponse, value, failure)
+}
+
+// GetActivityDefect selects the defect branch: Input or credentials are invalid.
+func GetActivityDefect(value constantcontact.ActivityMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.ActivityMetadata] {
+	return connectormock.Branch(constantcontact.GetActivityBranchDefect, value, failure)
+}
+
+// GetActivityRetry asks Dex to retry the getActivity Step, after the delay when it is positive.
+func GetActivityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[constantcontact.ActivityMetadata] {
+	return connectormock.Retry[constantcontact.ActivityMetadata](failure, after)
+}
+
+// GetActivityFoundDefault is the manifest mock foundDefault: A sample list-deletion activity is complete.
+func GetActivityFoundDefault() connectormock.Case[constantcontact.ActivityMetadata] {
+	value := connectormock.MustDecodeOutput[constantcontact.ActivityMetadata](`{"activityId":"3d72da26-2115-11ea-9216-fa163e6b01c0","state":"completed","percentDone":100}`)
+	return connectormock.Branch(constantcontact.GetActivityBranchFound, value, nil)
+}
+
+// GetActivityDefault is the manifest default, foundDefault, which New installs.
+func GetActivityDefault() connectormock.Case[constantcontact.ActivityMetadata] {
+	return GetActivityFoundDefault()
+}
+
+// ListActivitiesListed selects the listed branch: Constant Contact returned recent activities.
+func ListActivitiesListed(value constantcontact.ActivitiesPage, failure *sdkgo.Failure) connectormock.Case[constantcontact.ActivitiesPage] {
+	return connectormock.Branch(constantcontact.ListActivitiesBranchListed, value, failure)
+}
+
+// ListActivitiesProviderRejected selects the providerRejected branch: Constant Contact rejected the lookup.
+func ListActivitiesProviderRejected(value constantcontact.ActivitiesPage, failure *sdkgo.Failure) connectormock.Case[constantcontact.ActivitiesPage] {
+	return connectormock.Branch(constantcontact.ListActivitiesBranchProviderRejected, value, failure)
+}
+
+// ListActivitiesInvalidResponse selects the invalidResponse branch: Constant Contact returned malformed activity JSON.
+func ListActivitiesInvalidResponse(value constantcontact.ActivitiesPage, failure *sdkgo.Failure) connectormock.Case[constantcontact.ActivitiesPage] {
+	return connectormock.Branch(constantcontact.ListActivitiesBranchInvalidResponse, value, failure)
+}
+
+// ListActivitiesDefect selects the defect branch: Credentials are invalid.
+func ListActivitiesDefect(value constantcontact.ActivitiesPage, failure *sdkgo.Failure) connectormock.Case[constantcontact.ActivitiesPage] {
+	return connectormock.Branch(constantcontact.ListActivitiesBranchDefect, value, failure)
+}
+
+// ListActivitiesRetry asks Dex to retry the listActivities Step, after the delay when it is positive.
+func ListActivitiesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[constantcontact.ActivitiesPage] {
+	return connectormock.Retry[constantcontact.ActivitiesPage](failure, after)
+}
+
+// ListActivitiesListedDefault is the manifest mock listedDefault: One recent bulk activity is returned.
+func ListActivitiesListedDefault() connectormock.Case[constantcontact.ActivitiesPage] {
+	value := connectormock.MustDecodeOutput[constantcontact.ActivitiesPage](`{"activities":[{"activityId":"3d72da26-2115-11ea-9216-fa163e6b01c0","state":"completed","percentDone":100}]}`)
+	return connectormock.Branch(constantcontact.ListActivitiesBranchListed, value, nil)
+}
+
+// ListActivitiesDefault is the manifest default, listedDefault, which New installs.
+func ListActivitiesDefault() connectormock.Case[constantcontact.ActivitiesPage] {
+	return ListActivitiesListedDefault()
 }
 
 // CreateContactCreated selects the created branch: Constant Contact created the contact.

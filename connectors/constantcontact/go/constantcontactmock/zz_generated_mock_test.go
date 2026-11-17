@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getActivity/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[constantcontact.ActivityMetadata](`{"activityId":"3d72da26-2115-11ea-9216-fa163e6b01c0","state":"completed","percentDone":100}`)
+			return err
+		}},
+		{name: "listActivities/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[constantcontact.ActivitiesPage](`{"activities":[{"activityId":"3d72da26-2115-11ea-9216-fa163e6b01c0","state":"completed","percentDone":100}]}`)
+			return err
+		}},
 		{name: "createContact/createdDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[constantcontact.ContactMetadata](`{"contactId":"1898ae62-4752-11e9-9c8a-fa163e6b01c1","emailAddress":"reader@example.com","firstName":"Avery","lastName":"Reader","emailPermission":"implicit"}`)
 			return err
@@ -66,6 +74,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetActivity().Definition().Operation.OperationID != "getActivity" {
+		t.Errorf("getActivity mock has another definition")
+	}
+	if mock.ListActivities().Definition().Operation.OperationID != "listActivities" {
+		t.Errorf("listActivities mock has another definition")
+	}
 	if mock.CreateContact().Definition().Operation.OperationID != "createContact" {
 		t.Errorf("createContact mock has another definition")
 	}

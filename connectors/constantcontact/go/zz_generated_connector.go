@@ -43,6 +43,8 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetActivity() sdkgo.Query[GetActivityInput, ActivityMetadata]
+	ListActivities() sdkgo.Query[ListActivitiesInput, ActivitiesPage]
 	CreateContact() sdkgo.Mutation[CreateContactInput, ContactMetadata]
 	ListContacts() sdkgo.Query[ListContactsInput, ContactsPage]
 	UpdateContact() sdkgo.Mutation[UpdateContactInput, ContactMetadata]
@@ -57,6 +59,12 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetActivity() sdkgo.Query[GetActivityInput, ActivityMetadata] {
+	return operations.client.GetActivity()
+}
+func (operations clientOperations) ListActivities() sdkgo.Query[ListActivitiesInput, ActivitiesPage] {
+	return operations.client.ListActivities()
+}
 func (operations clientOperations) CreateContact() sdkgo.Mutation[CreateContactInput, ContactMetadata] {
 	return operations.client.CreateContact()
 }
@@ -286,6 +294,154 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const GetActivityBranchFound sdkgo.BranchID = "found"
+const GetActivityBranchNotFound sdkgo.BranchID = "notFound"
+const GetActivityBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetActivityBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetActivityBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetActivityDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getActivity"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetActivityBranchFound, Description: "Constant Contact returned the activity."},
+		{ID: GetActivityBranchNotFound, Description: "The activity is absent or older than ten days.", Optional: true},
+		{ID: GetActivityBranchProviderRejected, Description: "Constant Contact rejected the lookup.", Optional: true},
+		{ID: GetActivityBranchInvalidResponse, Description: "Constant Contact returned malformed activity JSON.", Optional: true},
+		{ID: GetActivityBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetActivityResult = sdkgo.QueryResult[ActivityMetadata]
+
+type GetActivityStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=constantcontact"`
+	operationID                    struct{}                                            `connector:"operationId=getActivity"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetActivityInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetActivityResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetActivityResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetActivityResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetActivityResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetActivityResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ActivityMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewGetActivityStep[IN any](config GetActivityStepConfig[IN]) sdkgo.QueryStep[IN, GetActivityInput, ActivityMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("constantcontact connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetActivityInput, ActivityMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetActivity(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetActivityResult] {
+			branches := make([]sdkgo.BranchTarget[GetActivityResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetActivityBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetActivityBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetActivityBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetActivityBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetActivityBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListActivitiesBranchListed sdkgo.BranchID = "listed"
+const ListActivitiesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListActivitiesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListActivitiesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListActivitiesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listActivities"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListActivitiesBranchListed, Description: "Constant Contact returned recent activities."},
+		{ID: ListActivitiesBranchProviderRejected, Description: "Constant Contact rejected the lookup.", Optional: true},
+		{ID: ListActivitiesBranchInvalidResponse, Description: "Constant Contact returned malformed activity JSON.", Optional: true},
+		{ID: ListActivitiesBranchDefect, Description: "Credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListActivitiesResult = sdkgo.QueryResult[ActivitiesPage]
+
+type ListActivitiesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=constantcontact"`
+	operationID                    struct{}                                          `connector:"operationId=listActivities"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListActivitiesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListActivitiesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListActivitiesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListActivitiesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListActivitiesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ActivitiesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewListActivitiesStep[IN any](config ListActivitiesStepConfig[IN]) sdkgo.QueryStep[IN, ListActivitiesInput, ActivitiesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("constantcontact connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListActivitiesInput, ActivitiesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListActivities(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListActivitiesResult] {
+			branches := make([]sdkgo.BranchTarget[ListActivitiesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListActivitiesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListActivitiesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListActivitiesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListActivitiesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const CreateContactBranchCreated sdkgo.BranchID = "created"
