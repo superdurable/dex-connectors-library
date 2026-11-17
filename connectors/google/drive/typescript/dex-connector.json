@@ -1,10 +1,10 @@
 {
   "connectorId": "google-drive",
-  "releaseTag": "connectors/google/drive/go/v0.25.0",
+  "releaseTag": "connectors/google/drive/go/v0.25.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-google-drive",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -205,7 +205,7 @@
       "kind": "mutation",
       "operationId": "uploadFile",
       "inputType": "UploadFileInput",
-      "description": "Create one file from text or bytes in an optional parent folder. Sync durability makes the single-dispatch heartbeat fence visible to retries, while the app property supports read-back of ambiguous uploads.",
+      "description": "Create one file from text or bytes in an optional parent folder. Sync durability makes the single-dispatch heartbeat fence visible to retries. Each attempt reads back an earlier upload by its app property, and an unconfirmed upload is resent until the send cap.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

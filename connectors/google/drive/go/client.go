@@ -33,6 +33,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/pollingtrigger"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -371,21 +372,33 @@ func (client *Client) lookupEarlierUpload(call sdkgo.Call, credential *Credentia
 	return earlierFile, lookupResponse, nil, isIncompleteLookup
 }
 
-func (client *Client) reconcileUpload(call sdkgo.Call, credential *Credentials, idempotencyKey, requestID string) sdkgo.MutationAttempt[UploadFileOutput] {
+// reconcileUpload reads back an upload with an unknown outcome, then resends while the cap allows.
+func (client *Client) reconcileUpload(call sdkgo.Call, fence *singledispatch.Fence, credential *Credentials, idempotencyKey, requestID string, canResendUnknownOutcome bool) sdkgo.MutationAttempt[UploadFileOutput] {
 	file, response, outcome, isIncomplete := client.lookupEarlierUpload(call, credential, idempotencyKey)
 	if outcome != nil {
 		if outcome.branch == "" {
 			return sdkgo.NewMutationRetry[UploadFileOutput](outcome.failure, outcome.retryAfter)
 		}
-		return uploadUncertain(call, client, "upload read-back could not confirm the outcome")
+		return resendUploadOrSelectUncertain(call, client, canResendUnknownOutcome, "upload read-back could not confirm the outcome", requestID)
 	}
 	if file != nil {
+		// A later attempt reads this file back by ID even when the property lookup lags.
+		_ = fence.RecordProviderID(file.ID)
 		return sdkgo.NewMutationBranch(UploadFileBranchUploaded, UploadFileOutput{File: *file}, nil, client.receipt(call, response.requestID, file.ID))
 	}
 	if isIncomplete {
 		return sdkgo.NewMutationRetry[UploadFileOutput](driveFailure(sdkgo.FailureAvailability, uploadFileOperationID, "provider did not complete upload read-back"), 0)
 	}
-	return sdkgo.NewMutationUncertain(UploadFileOutput{}, driveFailure(sdkgo.FailureAvailability, uploadFileOperationID, "upload was sent but read-back found no matching file"), client.receipt(call, requestID, ""))
+	return resendUploadOrSelectUncertain(call, client, canResendUnknownOutcome, "upload was sent but read-back found no matching file", requestID)
+}
+
+// resendUploadOrSelectUncertain retries a possibly accepted upload while the send cap allows another send.
+func resendUploadOrSelectUncertain(call sdkgo.Call, client *Client, canResendUnknownOutcome bool, message, requestID string) sdkgo.MutationAttempt[UploadFileOutput] {
+	if canResendUnknownOutcome {
+		// The claim stays the last marker, so the next attempt reads back again and counts this send.
+		return sdkgo.NewMutationRetry[UploadFileOutput](driveFailure(sdkgo.FailureAvailability, uploadFileOperationID, message), 0)
+	}
+	return sdkgo.NewMutationUncertain(UploadFileOutput{}, driveFailure(sdkgo.FailureAvailability, uploadFileOperationID, message+"; the send cap is reached"), client.receipt(call, requestID, ""))
 }
 
 // sendRead performs one idempotent Drive read and classifies every non-2xx or unreadable response.

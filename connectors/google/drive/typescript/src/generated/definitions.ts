@@ -130,7 +130,7 @@ export const UploadFileBranchUploaded = UploadFileBranch.Uploaded;
 export const UploadFileBranchProviderRejected = UploadFileBranch.ProviderRejected;
 /** Google returned an invalid or oversized duplicate-lookup response before any upload was sent. */
 export const UploadFileBranchInvalidResponse = UploadFileBranch.InvalidResponse;
-/** The dispatched upload outcome cannot be confirmed. */
+/** The upload outcome was still unconfirmed when the send cap was reached. */
 export const UploadFileBranchUncertain = UploadFileBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UploadFileBranchDefect = UploadFileBranch.Defect;
@@ -141,7 +141,7 @@ export const UploadFileDefinition: MutationDefinition = {
     { id: "uploaded", description: "Google Drive created the file or returned the file an earlier attempt created." },
     { id: "providerRejected", description: "Google conclusively rejected the upload or duplicate lookup, such as a missing or read-only parent folder.", optional: true },
     { id: "invalidResponse", description: "Google returned an invalid or oversized duplicate-lookup response before any upload was sent.", optional: true },
-    { id: "uncertain", description: "The dispatched upload outcome cannot be confirmed.", optional: true },
+    { id: "uncertain", description: "The upload outcome was still unconfirmed when the send cap was reached.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },

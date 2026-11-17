@@ -746,7 +746,7 @@ var UploadFileDefinition = sdkgo.MutationDefinition{
 		{ID: UploadFileBranchUploaded, Description: "Google Drive created the file or returned the file an earlier attempt created."},
 		{ID: UploadFileBranchProviderRejected, Description: "Google conclusively rejected the upload or duplicate lookup, such as a missing or read-only parent folder.", Optional: true},
 		{ID: UploadFileBranchInvalidResponse, Description: "Google returned an invalid or oversized duplicate-lookup response before any upload was sent.", Optional: true},
-		{ID: UploadFileBranchUncertain, Description: "The dispatched upload outcome cannot be confirmed.", Optional: true},
+		{ID: UploadFileBranchUncertain, Description: "The upload outcome was still unconfirmed when the send cap was reached.", Optional: true},
 		{ID: UploadFileBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

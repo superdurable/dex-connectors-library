@@ -118,7 +118,7 @@ export interface UploadFileStepConfig<StepInput, OperationInput = UploadFileInpu
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Google returned an invalid or oversized duplicate-lookup response before any upload was sent. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** The dispatched upload outcome cannot be confirmed. */
+  /** The upload outcome was still unconfirmed when the send cap was reached. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
