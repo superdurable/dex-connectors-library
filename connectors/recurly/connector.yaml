@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: recurly
   displayName: Recurly
-  description: Read and create Recurly accounts through the Subscriptions API.
+  description: Read and manage Recurly accounts and subscriptions through the Subscriptions API.
   company: Recurly
   categories: [finance-payments]
   version: v0.2.0
@@ -55,6 +55,85 @@ spec:
         - Sign in to the Recurly site with Integration permission. Open Integrations > API Credentials, scroll to Add Private API Key, name the integration and click Save Changes. Copy the complete unencoded secret key into Dex Web secret api_key; blank is invalid. Regenerate or revoke it later under Developers > API Keys. Do not paste the Base64 example shown under Need help using the API Key.
         - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret account ID in Recurly account details or the API account response and enter it as accountId; blank is invalid. Account codes require a code- prefix, for example code-acme. IDs and codes each have at most 50 characters.
   operations:
+    - name: listSubscriptions
+      goName: ListSubscriptions
+      inputType: ListSubscriptionsInput
+      outputType: SubscriptionPage
+      kind: query
+      description: List one bounded page of subscription states.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Recurly returned a page of subscriptions.}
+        - {id: providerRejected, goName: ProviderRejected, description: Recurly rejected subscription listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Recurly returned unusable subscription list data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid page size or credentials., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample subscription page is returned.
+          output: {subscriptions: [{id: e28zov4fw0v2, state: active}], hasMore: false}
+    - name: getSubscription
+      goName: GetSubscription
+      inputType: GetSubscriptionInput
+      outputType: SubscriptionSummary
+      kind: query
+      description: Read one subscription state by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Recurly returned the subscription.}
+        - {id: notFound, goName: NotFound, description: The subscription was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Recurly rejected subscription lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Recurly returned unusable subscription data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid ID or credentials., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample active subscription is returned.
+          output: {id: e28zov4fw0v2, state: active}
+    - name: cancelSubscription
+      goName: CancelSubscription
+      inputType: CancelSubscriptionInput
+      outputType: SubscriptionSummary
+      kind: mutation
+      description: Cancel a subscription at its term end.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: cancelled, goName: Cancelled, description: Recurly cancelled or confirmed the subscription.}
+        - {id: providerRejected, goName: ProviderRejected, description: Recurly rejected subscription cancellation., optional: true}
+        - {id: defect, goName: Defect, description: Invalid ID or credentials., optional: true}
+      mocks:
+        - name: cancelledDefault
+          branch: cancelled
+          default: true
+          description: A sample subscription was cancelled.
+          output: {id: e28zov4fw0v2, state: canceled}
+    - name: reactivateSubscription
+      goName: ReactivateSubscription
+      inputType: ReactivateSubscriptionInput
+      outputType: SubscriptionSummary
+      kind: mutation
+      description: Reactivate a cancelled subscription before expiration.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: reactivated, goName: Reactivated, description: Recurly reactivated or confirmed the subscription.}
+        - {id: providerRejected, goName: ProviderRejected, description: Recurly rejected subscription reactivation., optional: true}
+        - {id: defect, goName: Defect, description: Invalid ID or credentials., optional: true}
+      mocks:
+        - name: reactivatedDefault
+          branch: reactivated
+          default: true
+          description: A sample subscription is active.
+          output: {id: e28zov4fw0v2, state: active}
     - name: listAccounts
       goName: ListAccounts
       inputType: ListAccountsInput

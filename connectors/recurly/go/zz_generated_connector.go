@@ -40,6 +40,10 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListSubscriptions() sdkgo.Query[ListSubscriptionsInput, SubscriptionPage]
+	GetSubscription() sdkgo.Query[GetSubscriptionInput, SubscriptionSummary]
+	CancelSubscription() sdkgo.Mutation[CancelSubscriptionInput, SubscriptionSummary]
+	ReactivateSubscription() sdkgo.Mutation[ReactivateSubscriptionInput, SubscriptionSummary]
 	ListAccounts() sdkgo.Query[ListAccountsInput, AccountPage]
 	CreateAccount() sdkgo.Mutation[CreateAccountInput, AccountIdentity]
 	GetAccount() sdkgo.Query[GetAccountInput, AccountIdentity]
@@ -47,6 +51,18 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListSubscriptions() sdkgo.Query[ListSubscriptionsInput, SubscriptionPage] {
+	return operations.client.ListSubscriptions()
+}
+func (operations clientOperations) GetSubscription() sdkgo.Query[GetSubscriptionInput, SubscriptionSummary] {
+	return operations.client.GetSubscription()
+}
+func (operations clientOperations) CancelSubscription() sdkgo.Mutation[CancelSubscriptionInput, SubscriptionSummary] {
+	return operations.client.CancelSubscription()
+}
+func (operations clientOperations) ReactivateSubscription() sdkgo.Mutation[ReactivateSubscriptionInput, SubscriptionSummary] {
+	return operations.client.ReactivateSubscription()
+}
 func (operations clientOperations) ListAccounts() sdkgo.Query[ListAccountsInput, AccountPage] {
 	return operations.client.ListAccounts()
 }
@@ -192,6 +208,284 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ListSubscriptionsBranchListed sdkgo.BranchID = "listed"
+const ListSubscriptionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSubscriptionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSubscriptionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSubscriptionsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSubscriptions"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSubscriptionsBranchListed, Description: "Recurly returned a page of subscriptions."},
+		{ID: ListSubscriptionsBranchProviderRejected, Description: "Recurly rejected subscription listing.", Optional: true},
+		{ID: ListSubscriptionsBranchInvalidResponse, Description: "Recurly returned unusable subscription list data.", Optional: true},
+		{ID: ListSubscriptionsBranchDefect, Description: "Invalid page size or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSubscriptionsResult = sdkgo.QueryResult[SubscriptionPage]
+
+type ListSubscriptionsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=recurly"`
+	operationID                    struct{}                                            `connector:"operationId=listSubscriptions"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSubscriptionsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSubscriptionsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListSubscriptionsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSubscriptionsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSubscriptionsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SubscriptionPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewListSubscriptionsStep[IN any](config ListSubscriptionsStepConfig[IN]) sdkgo.QueryStep[IN, ListSubscriptionsInput, SubscriptionPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("recurly connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSubscriptionsInput, SubscriptionPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSubscriptions(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSubscriptionsResult] {
+			branches := make([]sdkgo.BranchTarget[ListSubscriptionsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSubscriptionsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSubscriptionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSubscriptionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSubscriptionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetSubscriptionBranchFound sdkgo.BranchID = "found"
+const GetSubscriptionBranchNotFound sdkgo.BranchID = "notFound"
+const GetSubscriptionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetSubscriptionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetSubscriptionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetSubscriptionDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getSubscription"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetSubscriptionBranchFound, Description: "Recurly returned the subscription."},
+		{ID: GetSubscriptionBranchNotFound, Description: "The subscription was not found.", Optional: true},
+		{ID: GetSubscriptionBranchProviderRejected, Description: "Recurly rejected subscription lookup.", Optional: true},
+		{ID: GetSubscriptionBranchInvalidResponse, Description: "Recurly returned unusable subscription data.", Optional: true},
+		{ID: GetSubscriptionBranchDefect, Description: "Invalid ID or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetSubscriptionResult = sdkgo.QueryResult[SubscriptionSummary]
+
+type GetSubscriptionStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=recurly"`
+	operationID                    struct{}                                               `connector:"operationId=getSubscription"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetSubscriptionInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetSubscriptionResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetSubscriptionResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetSubscriptionResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetSubscriptionResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetSubscriptionResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SubscriptionSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewGetSubscriptionStep[IN any](config GetSubscriptionStepConfig[IN]) sdkgo.QueryStep[IN, GetSubscriptionInput, SubscriptionSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("recurly connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetSubscriptionInput, SubscriptionSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetSubscription(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetSubscriptionResult] {
+			branches := make([]sdkgo.BranchTarget[GetSubscriptionResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetSubscriptionBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetSubscriptionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetSubscriptionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetSubscriptionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetSubscriptionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CancelSubscriptionBranchCancelled sdkgo.BranchID = "cancelled"
+const CancelSubscriptionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CancelSubscriptionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CancelSubscriptionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "cancelSubscription"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CancelSubscriptionBranchCancelled, Description: "Recurly cancelled or confirmed the subscription."},
+		{ID: CancelSubscriptionBranchProviderRejected, Description: "Recurly rejected subscription cancellation.", Optional: true},
+		{ID: CancelSubscriptionBranchDefect, Description: "Invalid ID or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CancelSubscriptionResult = sdkgo.MutationResult[SubscriptionSummary]
+
+type CancelSubscriptionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=recurly"`
+	operationID                       struct{}                                                  `connector:"operationId=cancelSubscription"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) CancelSubscriptionInput                          `connector:"mapToOperationInput"`
+	Cancelled                         sdkgo.Target[CancelSubscriptionResult]                    `connector:"branch=cancelled"`
+	ProviderRejected                  sdkgo.Target[CancelSubscriptionResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CancelSubscriptionResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SubscriptionSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewCancelSubscriptionStep[IN any](config CancelSubscriptionStepConfig[IN]) sdkgo.MutationStep[IN, CancelSubscriptionInput, SubscriptionSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("recurly connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CancelSubscriptionInput, SubscriptionSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CancelSubscription(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CancelSubscriptionResult] {
+			branches := make([]sdkgo.BranchTarget[CancelSubscriptionResult], 0, 3)
+			if config.Cancelled.HasStep() {
+				branches = append(branches, config.Cancelled.BranchTarget(CancelSubscriptionBranchCancelled))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CancelSubscriptionBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CancelSubscriptionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ReactivateSubscriptionBranchReactivated sdkgo.BranchID = "reactivated"
+const ReactivateSubscriptionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ReactivateSubscriptionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ReactivateSubscriptionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "reactivateSubscription"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ReactivateSubscriptionBranchReactivated, Description: "Recurly reactivated or confirmed the subscription."},
+		{ID: ReactivateSubscriptionBranchProviderRejected, Description: "Recurly rejected subscription reactivation.", Optional: true},
+		{ID: ReactivateSubscriptionBranchDefect, Description: "Invalid ID or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ReactivateSubscriptionResult = sdkgo.MutationResult[SubscriptionSummary]
+
+type ReactivateSubscriptionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=recurly"`
+	operationID                       struct{}                                                  `connector:"operationId=reactivateSubscription"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) ReactivateSubscriptionInput                      `connector:"mapToOperationInput"`
+	Reactivated                       sdkgo.Target[ReactivateSubscriptionResult]                `connector:"branch=reactivated"`
+	ProviderRejected                  sdkgo.Target[ReactivateSubscriptionResult]                `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[ReactivateSubscriptionResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SubscriptionSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewReactivateSubscriptionStep[IN any](config ReactivateSubscriptionStepConfig[IN]) sdkgo.MutationStep[IN, ReactivateSubscriptionInput, SubscriptionSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("recurly connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ReactivateSubscriptionInput, SubscriptionSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ReactivateSubscription(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ReactivateSubscriptionResult] {
+			branches := make([]sdkgo.BranchTarget[ReactivateSubscriptionResult], 0, 3)
+			if config.Reactivated.HasStep() {
+				branches = append(branches, config.Reactivated.BranchTarget(ReactivateSubscriptionBranchReactivated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ReactivateSubscriptionBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ReactivateSubscriptionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListAccountsBranchListed sdkgo.BranchID = "listed"

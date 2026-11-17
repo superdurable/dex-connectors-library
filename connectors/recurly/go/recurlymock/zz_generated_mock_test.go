@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listSubscriptions/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.SubscriptionPage](`{"subscriptions":[{"id":"e28zov4fw0v2","state":"active"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getSubscription/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.SubscriptionSummary](`{"id":"e28zov4fw0v2","state":"active"}`)
+			return err
+		}},
+		{name: "cancelSubscription/cancelledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.SubscriptionSummary](`{"id":"e28zov4fw0v2","state":"canceled"}`)
+			return err
+		}},
+		{name: "reactivateSubscription/reactivatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.SubscriptionSummary](`{"id":"e28zov4fw0v2","state":"active"}`)
+			return err
+		}},
 		{name: "listAccounts/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[recurly.AccountPage](`{"accounts":[{"id":"e28zov4fw0v2","code":"acme-corp"}],"hasMore":false}`)
 			return err
@@ -38,6 +54,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListSubscriptions().Definition().Operation.OperationID != "listSubscriptions" {
+		t.Errorf("listSubscriptions mock has another definition")
+	}
+	if mock.GetSubscription().Definition().Operation.OperationID != "getSubscription" {
+		t.Errorf("getSubscription mock has another definition")
+	}
+	if mock.CancelSubscription().Definition().Operation.OperationID != "cancelSubscription" {
+		t.Errorf("cancelSubscription mock has another definition")
+	}
+	if mock.ReactivateSubscription().Definition().Operation.OperationID != "reactivateSubscription" {
+		t.Errorf("reactivateSubscription mock has another definition")
+	}
 	if mock.ListAccounts().Definition().Operation.OperationID != "listAccounts" {
 		t.Errorf("listAccounts mock has another definition")
 	}

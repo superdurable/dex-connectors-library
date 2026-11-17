@@ -938,6 +938,1264 @@
       },
       "name": "createAccount-defect",
       "operation": "createAccount"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"has_more\":false,\"data\":[{\"id\":\"e28zov4fw0v2\",\"state\":\"active\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": false,
+          "subscriptions": [
+            {
+              "id": "e28zov4fw0v2",
+              "state": "active"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listSubscriptions-success",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasMore": false,
+          "subscriptions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listSubscriptions-providerRejected",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listSubscriptions-rateLimit",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listSubscriptions-unavailable",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listSubscriptions-serverError",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listSubscriptions-transportFailure",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "subscriptions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listSubscriptions-invalidResponse",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMore": false,
+          "subscriptions": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 0
+      },
+      "name": "listSubscriptions-defect",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"e28zov4fw0v2\",\"state\":\"active\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "e28zov4fw0v2",
+          "state": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "getSubscription-success",
+      "operation": "getSubscription"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "getSubscription-providerRejected",
+      "operation": "getSubscription"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "getSubscription-rateLimit",
+      "operation": "getSubscription"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "getSubscription-unavailable",
+      "operation": "getSubscription"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "getSubscription-serverError",
+      "operation": "getSubscription"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "getSubscription-transportFailure",
+      "operation": "getSubscription"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "getSubscription-notFound",
+      "operation": "getSubscription"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "getSubscription-invalidResponse",
+      "operation": "getSubscription"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "state": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subscriptionId": "bad id"
+      },
+      "name": "getSubscription-defect",
+      "operation": "getSubscription"
+    },
+    {
+      "callId": "d1a296fa-0d6a-5cc3-8936-296fd6da5cce",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"e28zov4fw0v2\",\"state\":\"canceled\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscriptions/e28zov4fw0v2/cancel",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "cancelled",
+        "failureKind": "",
+        "output": {
+          "id": "e28zov4fw0v2",
+          "state": "canceled"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d1a296fa-0d6a-5cc3-8936-296fd6da5cce",
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "cancelSubscription-success",
+      "operation": "cancelSubscription"
+    },
+    {
+      "callId": "d1a296fa-0d6a-5cc3-8936-296fd6da5cce",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscriptions/e28zov4fw0v2/cancel",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d1a296fa-0d6a-5cc3-8936-296fd6da5cce",
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "cancelSubscription-providerRejected",
+      "operation": "cancelSubscription"
+    },
+    {
+      "callId": "d1a296fa-0d6a-5cc3-8936-296fd6da5cce",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscriptions/e28zov4fw0v2/cancel",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d1a296fa-0d6a-5cc3-8936-296fd6da5cce",
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "cancelSubscription-rateLimit",
+      "operation": "cancelSubscription"
+    },
+    {
+      "callId": "d1a296fa-0d6a-5cc3-8936-296fd6da5cce",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscriptions/e28zov4fw0v2/cancel",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d1a296fa-0d6a-5cc3-8936-296fd6da5cce",
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "cancelSubscription-unavailable",
+      "operation": "cancelSubscription"
+    },
+    {
+      "callId": "d1a296fa-0d6a-5cc3-8936-296fd6da5cce",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscriptions/e28zov4fw0v2/cancel",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d1a296fa-0d6a-5cc3-8936-296fd6da5cce",
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "cancelSubscription-serverError",
+      "operation": "cancelSubscription"
+    },
+    {
+      "callId": "d1a296fa-0d6a-5cc3-8936-296fd6da5cce",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscriptions/e28zov4fw0v2/cancel",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d1a296fa-0d6a-5cc3-8936-296fd6da5cce",
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "cancelSubscription-transportFailure",
+      "operation": "cancelSubscription"
+    },
+    {
+      "callId": "d1a296fa-0d6a-5cc3-8936-296fd6da5cce",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscriptions/e28zov4fw0v2/cancel",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 422
+        },
+        {
+          "body": "{\"id\":\"e28zov4fw0v2\",\"state\":\"canceled\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "cancelled",
+        "failureKind": "",
+        "output": {
+          "id": "e28zov4fw0v2",
+          "state": "canceled"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d1a296fa-0d6a-5cc3-8936-296fd6da5cce",
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "cancelSubscription-already",
+      "operation": "cancelSubscription"
+    },
+    {
+      "callId": "d1a296fa-0d6a-5cc3-8936-296fd6da5cce",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "state": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d1a296fa-0d6a-5cc3-8936-296fd6da5cce",
+      "input": {
+        "subscriptionId": "bad id"
+      },
+      "name": "cancelSubscription-defect",
+      "operation": "cancelSubscription"
+    },
+    {
+      "callId": "2ce488df-2cb9-5802-ab20-f07764781e63",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"e28zov4fw0v2\",\"state\":\"active\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscriptions/e28zov4fw0v2/reactivate",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "reactivated",
+        "failureKind": "",
+        "output": {
+          "id": "e28zov4fw0v2",
+          "state": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2ce488df-2cb9-5802-ab20-f07764781e63",
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "reactivateSubscription-success",
+      "operation": "reactivateSubscription"
+    },
+    {
+      "callId": "2ce488df-2cb9-5802-ab20-f07764781e63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscriptions/e28zov4fw0v2/reactivate",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2ce488df-2cb9-5802-ab20-f07764781e63",
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "reactivateSubscription-providerRejected",
+      "operation": "reactivateSubscription"
+    },
+    {
+      "callId": "2ce488df-2cb9-5802-ab20-f07764781e63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscriptions/e28zov4fw0v2/reactivate",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2ce488df-2cb9-5802-ab20-f07764781e63",
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "reactivateSubscription-rateLimit",
+      "operation": "reactivateSubscription"
+    },
+    {
+      "callId": "2ce488df-2cb9-5802-ab20-f07764781e63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscriptions/e28zov4fw0v2/reactivate",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2ce488df-2cb9-5802-ab20-f07764781e63",
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "reactivateSubscription-unavailable",
+      "operation": "reactivateSubscription"
+    },
+    {
+      "callId": "2ce488df-2cb9-5802-ab20-f07764781e63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscriptions/e28zov4fw0v2/reactivate",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2ce488df-2cb9-5802-ab20-f07764781e63",
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "reactivateSubscription-serverError",
+      "operation": "reactivateSubscription"
+    },
+    {
+      "callId": "2ce488df-2cb9-5802-ab20-f07764781e63",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscriptions/e28zov4fw0v2/reactivate",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2ce488df-2cb9-5802-ab20-f07764781e63",
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "reactivateSubscription-transportFailure",
+      "operation": "reactivateSubscription"
+    },
+    {
+      "callId": "2ce488df-2cb9-5802-ab20-f07764781e63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscriptions/e28zov4fw0v2/reactivate",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 422
+        },
+        {
+          "body": "{\"id\":\"e28zov4fw0v2\",\"state\":\"active\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "reactivated",
+        "failureKind": "",
+        "output": {
+          "id": "e28zov4fw0v2",
+          "state": "active"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2ce488df-2cb9-5802-ab20-f07764781e63",
+      "input": {
+        "subscriptionId": "e28zov4fw0v2"
+      },
+      "name": "reactivateSubscription-already",
+      "operation": "reactivateSubscription"
+    },
+    {
+      "callId": "2ce488df-2cb9-5802-ab20-f07764781e63",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "state": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2ce488df-2cb9-5802-ab20-f07764781e63",
+      "input": {
+        "subscriptionId": "bad id"
+      },
+      "name": "reactivateSubscription-defect",
+      "operation": "reactivateSubscription"
     }
   ],
   "schemaVersion": 1

@@ -28,8 +28,12 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			mutationContext.AdvanceAttempt()
 		}
 	}, actions: map[string]conformanceOperationInvocation{
-		"getAccount":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetAccount(), reference),
-		"listAccounts":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListAccounts(), reference),
-		"createAccount": newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CreateAccount(), reference, scenario.CallID),
+		"getAccount":             newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetAccount(), reference),
+		"listAccounts":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListAccounts(), reference),
+		"createAccount":          newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CreateAccount(), reference, scenario.CallID),
+		"listSubscriptions":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSubscriptions(), reference),
+		"getSubscription":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetSubscription(), reference),
+		"cancelSubscription":     newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CancelSubscription(), reference, scenario.CallID),
+		"reactivateSubscription": newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.ReactivateSubscription(), reference, scenario.CallID),
 	}}
 }
