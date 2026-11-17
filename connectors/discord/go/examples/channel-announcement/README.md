@@ -1,7 +1,8 @@
 # Discord channel-announcement example
 
-This example runs one operation-only Flow, `DiscordChannelAnnouncement`, from
-Dex Web **Start Flow** and uses every Discord operation:
+This example runs three operation-only Flows, `DiscordChannelAnnouncement`, `DiscordChannelLifecycle`, and `DiscordMemberModeration`, from
+Dex Web **Start Flow** and exercises channel reads, message reads and sends,
+reactions, and bounded message listings:
 
 1. `RecordAnnouncementRequest` validates the typed start input, applies the
    default `📣` reaction, and persists the request in the
@@ -12,7 +13,8 @@ Dex Web **Start Flow** and uses every Discord operation:
    makes a retried post return the first message instead of a duplicate, and
    `AnnouncementPosted` records the message.
 4. `ReactToAnnouncement` calls `discord.NewAddReactionStep`.
-5. `ReadBackAnnouncementChannel` calls `discord.NewListChannelMessagesStep` for
+5. `GetAnnouncementMessage` calls `discord.NewGetMessageStep` to read the post by ID.
+6. `ReadBackAnnouncementChannel` calls `discord.NewListChannelMessagesStep` for
    the 10 newest messages, and `CompleteAnnouncement` completes with
    `isConfirmed` set when the posted message is among them.
 
@@ -31,6 +33,10 @@ dexcli visualize ./examples/channel-announcement/flow/workflow.go \
   --schema-version 2.0 \
   --json \
   --out ./build/channel-announcement
+dexcli visualize ./examples/channel-announcement/flow/channel_lifecycle.go \
+  --schema-version 2.0 --lint app --json --out ./build/channel-lifecycle
+dexcli visualize ./examples/channel-announcement/flow/member_moderation.go \
+  --schema-version 2.0 --lint app --json --out ./build/member-moderation
 ```
 
 The command must report `valid: true`. Inside this repository it also warns
@@ -49,11 +55,11 @@ mkdir -p /tmp/discord-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/discord/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/discord/go \
-  --version v0.3.0 --tag connectors/discord/go/v0.3.0 \
+  --version v0.4.0 --tag connectors/discord/go/v0.4.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/discord-release/connector-release.json \
   --digest-output /tmp/discord-release/connector-release.json.sha256
-dexcli dev \
+dexcli dev -open=false \
   --flow-rendering-dir "$PWD/connectors/discord/go/build" \
   --connector-release-override discord=/tmp/discord-release
 ```
@@ -94,6 +100,10 @@ The run completes with the channel name, the posted message ID, and
 `isConfirmed: true`, and the channel shows the message with the bot's
 reaction. A channel ID that is not 17 to 20 digits or blank text fails the
 Flow before Discord is called.
+
+`DiscordChannelLifecycle` demonstrates channel Create, Update, Get Many, and Delete in one run. Grant the bot **Manage Channels** under **Server Settings > Roles**, then start it with a server ID copied through Discord Developer Mode and `{"guildId":"200000000000000001","name":"dex-updates","topic":"Dex updates"}`. It creates a temporary text channel, updates its topic, lists visible channels, and deletes only the channel ID returned by its create Step. Use a disposable test server because deleting a channel cannot be undone. A create result without a confirmed ID can select `uncertain`; inspect the server for a possible channel before starting another run.
+
+`DiscordMemberModeration` demonstrates Member Get Many, Role Add/Remove, Timeout, Kick, Ban, and Unban. In **Bot > Privileged Gateway Intents**, enable **Server Members Intent** for the list call. Grant the bot the needed Ban Members, Kick Members, Manage Roles, and Moderate Members permissions under **Server Settings > Roles** and place its role above the test member and test role. Start the Flow in a disposable server with `{"guildId":"200000000000000001","userId":"400000000000000001","roleId":"500000000000000001","timeoutUntil":"2026-11-18T12:00:00Z"}`, replacing every ID and the timestamp with current test values. This Flow removes the member and leaves them outside the server after unbanning; use a test account only.
 
 ## Test
 

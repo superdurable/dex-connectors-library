@@ -21,6 +21,10 @@ func TestContractInspectionFlowIdentityAndMapping(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, dex.SkipWaitImmediately(), wait)
 	mock := deelmock.New(t, ConnectionName)
-	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
+	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection()), NewContractListingFlow(mock.Connection())})
 	require.NoError(t, err)
+	listingInput := deel.ListContractsInput{Limit: 10}
+	require.Equal(t, listingInput, mapContractListingInput(listingInput))
+	require.Equal(t, ContractListingFlowType, dex.GetFinalFlowType(NewContractListingFlow(mock.Connection())))
+	require.Equal(t, "StartContractListing", dex.GetFinalStepType[deel.ListContractsInput](startContractListing{}))
 }

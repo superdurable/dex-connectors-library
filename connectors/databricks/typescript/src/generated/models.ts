@@ -10,9 +10,9 @@ import type { CredentialProvider } from '@superdurable/connectors-sdk';
 export interface Config {
   /** Required Databricks workspace root as an absolute HTTPS URL, for example https://dbc-xxxx.cloud.databricks.com. Copy the host from the signed-in workspace browser address; no default or blank value is valid. Use the same workspace that issued the token. */
   baseUrl: string;
-  /** Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow job run reads. Runtime value in milliseconds. */
+  /** Maximum duration of one Jobs API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow workspace responses. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete job run response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large job run metadata. */
+  /** Maximum complete Jobs API response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large job or run pages. */
   maxResponseBytes?: number;
 }
 

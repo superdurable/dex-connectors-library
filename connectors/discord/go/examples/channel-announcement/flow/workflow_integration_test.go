@@ -248,7 +248,7 @@ func newAnnouncementIntegrationHarness(t *testing.T, providerURL string) (*Flow,
 func newAnnouncementIntegrationHarnessWithConnection(t *testing.T, connection discord.Connection) (*Flow, *announcementIntegrationHarness) {
 	t.Helper()
 	flow := NewFlow(connection)
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, NewChannelLifecycleFlow(connection), NewMemberModerationFlow(connection)})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)

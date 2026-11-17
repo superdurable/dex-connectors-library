@@ -40,11 +40,27 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListContracts() sdkgo.Query[ListContractsInput, ContractPage]
+	ListContractTasks() sdkgo.Query[ListContractTasksInput, ContractTaskList]
+	ListContractAmendments() sdkgo.Query[ListContractAmendmentsInput, ContractAmendmentPage]
+	ListTerminationReasons() sdkgo.Query[ListTerminationReasonsInput, TerminationReasonPage]
 	GetContract() sdkgo.Query[GetContractInput, ContractStatus]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListContracts() sdkgo.Query[ListContractsInput, ContractPage] {
+	return operations.client.ListContracts()
+}
+func (operations clientOperations) ListContractTasks() sdkgo.Query[ListContractTasksInput, ContractTaskList] {
+	return operations.client.ListContractTasks()
+}
+func (operations clientOperations) ListContractAmendments() sdkgo.Query[ListContractAmendmentsInput, ContractAmendmentPage] {
+	return operations.client.ListContractAmendments()
+}
+func (operations clientOperations) ListTerminationReasons() sdkgo.Query[ListTerminationReasonsInput, TerminationReasonPage] {
+	return operations.client.ListTerminationReasons()
+}
 func (operations clientOperations) GetContract() sdkgo.Query[GetContractInput, ContractStatus] {
 	return operations.client.GetContract()
 }
@@ -184,6 +200,302 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_token is required")
 	}
 	return nil
+}
+
+const ListContractsBranchListed sdkgo.BranchID = "listed"
+const ListContractsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListContractsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListContractsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListContractsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listContracts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListContractsBranchListed, Description: "Deel returned a contract page."},
+		{ID: ListContractsBranchProviderRejected, Description: "Deel rejected the list request.", Optional: true},
+		{ID: ListContractsBranchInvalidResponse, Description: "Deel returned malformed or oversized JSON.", Optional: true},
+		{ID: ListContractsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListContractsResult = sdkgo.QueryResult[ContractPage]
+
+type ListContractsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=deel"`
+	operationID                    struct{}                                        `connector:"operationId=listContracts"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListContractsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListContractsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListContractsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListContractsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListContractsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ContractPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListContractsStep[IN any](config ListContractsStepConfig[IN]) sdkgo.QueryStep[IN, ListContractsInput, ContractPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("deel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListContractsInput, ContractPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListContracts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListContractsResult] {
+			branches := make([]sdkgo.BranchTarget[ListContractsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListContractsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListContractsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListContractsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListContractsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListContractTasksBranchListed sdkgo.BranchID = "listed"
+const ListContractTasksBranchNotFound sdkgo.BranchID = "notFound"
+const ListContractTasksBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListContractTasksBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListContractTasksBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListContractTasksDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listContractTasks"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListContractTasksBranchListed, Description: "Deel returned contract tasks."},
+		{ID: ListContractTasksBranchNotFound, Description: "Deel did not expose the contract.", Optional: true},
+		{ID: ListContractTasksBranchProviderRejected, Description: "Deel rejected the task request.", Optional: true},
+		{ID: ListContractTasksBranchInvalidResponse, Description: "Deel returned malformed or oversized JSON.", Optional: true},
+		{ID: ListContractTasksBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListContractTasksResult = sdkgo.QueryResult[ContractTaskList]
+
+type ListContractTasksStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=deel"`
+	operationID                    struct{}                                            `connector:"operationId=listContractTasks"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListContractTasksInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListContractTasksResult]               `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListContractTasksResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListContractTasksResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListContractTasksResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListContractTasksResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ContractTaskList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewListContractTasksStep[IN any](config ListContractTasksStepConfig[IN]) sdkgo.QueryStep[IN, ListContractTasksInput, ContractTaskList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("deel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListContractTasksInput, ContractTaskList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListContractTasks(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListContractTasksResult] {
+			branches := make([]sdkgo.BranchTarget[ListContractTasksResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListContractTasksBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListContractTasksBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListContractTasksBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListContractTasksBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListContractTasksBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListContractAmendmentsBranchListed sdkgo.BranchID = "listed"
+const ListContractAmendmentsBranchNotFound sdkgo.BranchID = "notFound"
+const ListContractAmendmentsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListContractAmendmentsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListContractAmendmentsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListContractAmendmentsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listContractAmendments"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListContractAmendmentsBranchListed, Description: "Deel returned an amendment page."},
+		{ID: ListContractAmendmentsBranchNotFound, Description: "Deel did not expose the contract.", Optional: true},
+		{ID: ListContractAmendmentsBranchProviderRejected, Description: "Deel rejected the amendment request.", Optional: true},
+		{ID: ListContractAmendmentsBranchInvalidResponse, Description: "Deel returned malformed or oversized JSON.", Optional: true},
+		{ID: ListContractAmendmentsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListContractAmendmentsResult = sdkgo.QueryResult[ContractAmendmentPage]
+
+type ListContractAmendmentsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                 `connector:"connectorId=deel"`
+	operationID                    struct{}                                                 `connector:"operationId=listContractAmendments"`
+	StepType                       string                                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                     Connection                                               `connector:"connection"`
+	ConnectionName                 string                                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListContractAmendmentsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListContractAmendmentsResult]               `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListContractAmendmentsResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListContractAmendmentsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListContractAmendmentsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListContractAmendmentsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ContractAmendmentPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewListContractAmendmentsStep[IN any](config ListContractAmendmentsStepConfig[IN]) sdkgo.QueryStep[IN, ListContractAmendmentsInput, ContractAmendmentPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("deel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListContractAmendmentsInput, ContractAmendmentPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListContractAmendments(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListContractAmendmentsResult] {
+			branches := make([]sdkgo.BranchTarget[ListContractAmendmentsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListContractAmendmentsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListContractAmendmentsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListContractAmendmentsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListContractAmendmentsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListContractAmendmentsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListTerminationReasonsBranchListed sdkgo.BranchID = "listed"
+const ListTerminationReasonsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTerminationReasonsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTerminationReasonsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTerminationReasonsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTerminationReasons"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTerminationReasonsBranchListed, Description: "Deel returned termination reasons."},
+		{ID: ListTerminationReasonsBranchProviderRejected, Description: "Deel rejected the reason request.", Optional: true},
+		{ID: ListTerminationReasonsBranchInvalidResponse, Description: "Deel returned malformed or oversized JSON.", Optional: true},
+		{ID: ListTerminationReasonsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTerminationReasonsResult = sdkgo.QueryResult[TerminationReasonPage]
+
+type ListTerminationReasonsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                 `connector:"connectorId=deel"`
+	operationID                    struct{}                                                 `connector:"operationId=listTerminationReasons"`
+	StepType                       string                                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                     Connection                                               `connector:"connection"`
+	ConnectionName                 string                                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTerminationReasonsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTerminationReasonsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListTerminationReasonsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTerminationReasonsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTerminationReasonsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TerminationReasonPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewListTerminationReasonsStep[IN any](config ListTerminationReasonsStepConfig[IN]) sdkgo.QueryStep[IN, ListTerminationReasonsInput, TerminationReasonPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("deel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTerminationReasonsInput, TerminationReasonPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTerminationReasons(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTerminationReasonsResult] {
+			branches := make([]sdkgo.BranchTarget[ListTerminationReasonsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTerminationReasonsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTerminationReasonsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTerminationReasonsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTerminationReasonsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetContractBranchFound sdkgo.BranchID = "found"

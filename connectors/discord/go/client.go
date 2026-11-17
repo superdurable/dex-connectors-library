@@ -4,10 +4,7 @@
 // Package discord connects Dex applications to Discord channels through the
 // Discord HTTP API with a bot token.
 //
-// A Client exposes four operations: GetChannel reads one channel,
-// ListChannelMessages reads one bounded page of channel messages,
-// CreateMessage sends a bot text message, and AddReaction adds the bot's
-// reaction to a message.
+// A Client reads channels and messages, sends and deletes messages, and adds reactions.
 //
 // CreateMessage sends a nonce derived from the Step's idempotency key with
 // enforce_nonce, so Discord returns the message an earlier attempt created
@@ -22,6 +19,7 @@ package discord
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -163,6 +161,69 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 // GetChannel returns the channel read Query bound to this client.
 func (client *Client) GetChannel() GetChannelOperation { return GetChannelOperation{client: client} }
 
+// ListGuildChannels returns the server channel listing Query bound to this client.
+func (client *Client) ListGuildChannels() ListGuildChannelsOperation {
+	return ListGuildChannelsOperation{client: client}
+}
+
+// CreateGuildChannel returns the text channel creation Mutation bound to this client.
+func (client *Client) CreateGuildChannel() CreateGuildChannelOperation {
+	return CreateGuildChannelOperation{client: client}
+}
+
+// UpdateChannel returns the channel update Mutation bound to this client.
+func (client *Client) UpdateChannel() UpdateChannelOperation {
+	return UpdateChannelOperation{client: client}
+}
+
+// DeleteChannel returns the channel deletion Mutation bound to this client.
+func (client *Client) DeleteChannel() DeleteChannelOperation {
+	return DeleteChannelOperation{client: client}
+}
+
+// ListGuildMembers returns the server member listing Query bound to this client.
+func (client *Client) ListGuildMembers() ListGuildMembersOperation {
+	return ListGuildMembersOperation{client: client}
+}
+
+// BanGuildMember returns the member ban Mutation bound to this client.
+func (client *Client) BanGuildMember() BanGuildMemberOperation {
+	return BanGuildMemberOperation{client: client}
+}
+
+// KickGuildMember returns the member removal Mutation bound to this client.
+func (client *Client) KickGuildMember() KickGuildMemberOperation {
+	return KickGuildMemberOperation{client: client}
+}
+
+// AddGuildMemberRole returns the role add Mutation bound to this client.
+func (client *Client) AddGuildMemberRole() AddGuildMemberRoleOperation {
+	return AddGuildMemberRoleOperation{client: client}
+}
+
+// RemoveGuildMemberRole returns the role removal Mutation bound to this client.
+func (client *Client) RemoveGuildMemberRole() RemoveGuildMemberRoleOperation {
+	return RemoveGuildMemberRoleOperation{client: client}
+}
+
+// TimeoutGuildMember returns the absolute member timeout Mutation bound to this client.
+func (client *Client) TimeoutGuildMember() TimeoutGuildMemberOperation {
+	return TimeoutGuildMemberOperation{client: client}
+}
+
+// UnbanGuildMember returns the ban removal Mutation bound to this client.
+func (client *Client) UnbanGuildMember() UnbanGuildMemberOperation {
+	return UnbanGuildMemberOperation{client: client}
+}
+
+// GetMessage returns the single-message Query bound to this client.
+func (client *Client) GetMessage() GetMessageOperation { return GetMessageOperation{client: client} }
+
+// DeleteMessage returns the message deletion Mutation bound to this client.
+func (client *Client) DeleteMessage() DeleteMessageOperation {
+	return DeleteMessageOperation{client: client}
+}
+
 // ListChannelMessages returns the message page Query bound to this client.
 func (client *Client) ListChannelMessages() ListChannelMessagesOperation {
 	return ListChannelMessagesOperation{client: client}
@@ -200,11 +261,15 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request provid
 }
 
 func (client *Client) send(call sdkgo.Call, credentials Credentials, request providerRequest) (providerResponse, error) {
+	return client.sendWithContext(call.Context, credentials, request)
+}
+
+func (client *Client) sendWithContext(requestContext context.Context, credentials Credentials, request providerRequest) (providerResponse, error) {
 	var body io.Reader
 	if request.body != nil {
 		body = bytes.NewReader(request.body)
 	}
-	httpRequest, err := http.NewRequestWithContext(call.Context, request.method, client.baseURL+request.path, body)
+	httpRequest, err := http.NewRequestWithContext(requestContext, request.method, client.baseURL+request.path, body)
 	if err != nil {
 		return providerResponse{}, errRequestNotBuilt
 	}
