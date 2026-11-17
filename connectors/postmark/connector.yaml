@@ -6,7 +6,7 @@ metadata:
   description: Read and act through the Postmark public API.
   company: Postmark
   categories: [communication, developer-tools]
-  version: v0.3.0
+  version: v0.4.0
 spec:
   provider: postmark
   languages:
@@ -142,3 +142,41 @@ spec:
         messageId: 0ac29aee-e1cd-480d-b08d-4f48548ff48d
         subject: Welcome
         status: Sent
+  - name: sendEmail
+    goName: SendEmail
+    inputType: SendEmailInput
+    outputType: SentEmail
+    kind: mutation
+    description: Send one transactional email with a durable dispatch fence and call-specific read-back marker.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: sent
+      goName: Sent
+      description: Postmark accepted the email.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark definitively refused the email.
+      optional: true
+    - id: uncertain
+      goName: Uncertain
+      description: The capped send could not be confirmed from Postmark activity.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local email input or connection credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: sync
+      dispatchFence: true
+      repeatOnUnknown: limited
+      maxSends: 3
+    mocks:
+    - name: sendEmailDefault
+      branch: sent
+      description: Postmark accepted one transactional email.
+      default: true
+      output:
+        messageId: 0ac29aee-e1cd-480d-b08d-4f48548ff48d
+        to: recipient@example.com

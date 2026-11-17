@@ -1,7 +1,9 @@
 # Postmark outbound-lookup example
 
 This runnable Worker starts `PostmarkOutboundLookup` with typed `outboundlookup.Request`, calls
-`postmark.NewListOutboundMessagesStep`, and completes with `postmark.MessagePage`. The
+`postmark.NewListOutboundMessagesStep`, and completes with `postmark.MessagePage`. It also
+registers `PostmarkSendEmail`, which accepts `outboundlookup.SendRequest`, calls
+`postmark.NewSendEmailStep`, and returns `postmark.SentEmail`. The
 static Dex Web connection name is `postmark`. Optional failure branches are
 unwired and fail the Flow when selected.
 
@@ -29,7 +31,7 @@ mkdir -p /tmp/postmark-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/postmark/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/postmark/go \
-  --version v0.3.0 --tag connectors/postmark/go/v0.3.0 \
+  --version v0.4.0 --tag connectors/postmark/go/v0.4.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/postmark-release/connector-release.json \
   --digest-output /tmp/postmark-release/connector-release.json.sha256
@@ -51,4 +53,5 @@ go run ./examples/outbound-lookup
 
 Start `PostmarkOutboundLookup` in Dex Web with a JSON input matching `postmark.ListOutboundMessagesInput`.
 The mock backed real Dex test is `flow/workflow_mock_integration_test.go` and
-CI runs it with the integration tag.
+CI runs it with the integration tag. `TestMockBackedSendFlowWithRealDex` exercises
+the send Flow through the same real Worker and Client path.

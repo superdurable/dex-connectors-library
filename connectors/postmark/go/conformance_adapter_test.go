@@ -4,6 +4,7 @@
 package postmark
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -14,13 +15,36 @@ import (
 const conformanceEndpointPath = ""
 const conformanceFixturePathPrefix = ""
 
+type sendConformanceContext struct {
+	providerTestContext
+	attempt   int32
+	heartbeat json.RawMessage
+}
+
+func (context *sendConformanceContext) Attempt() int32 { return context.attempt }
+func (context *sendConformanceContext) RecordHeartbeat(value any) error {
+	encoded, err := json.Marshal(value)
+	if err == nil {
+		context.heartbeat = encoded
+	}
+	return err
+}
+func (context *sendConformanceContext) GetLastHeartbeatValue(target any) (bool, error) {
+	if len(context.heartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(context.heartbeat, target)
+}
+
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
 	connection := sdkgo.ConnectionRef{Provider: "postmark", Name: "postmark"}
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{connection: {APIKey: sdkgo.NewSecretString("test-secret-token")}}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+	sendContext := &sendConformanceContext{attempt: 1}
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { sendContext.attempt = int32(attempt) }, actions: map[string]conformanceOperationInvocation{
 		"listOutboundMessages": newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListOutboundMessages(), connection),
 		"getMessageDetails":    newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetMessageDetails(), connection),
+		"sendEmail":            newConformanceMutationInvocation(t, scenario.Input, sendContext, client.SendEmail(), connection, scenario.CallID),
 	}}
 }

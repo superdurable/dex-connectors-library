@@ -666,6 +666,736 @@
       },
       "name": "getMessageDetails-defect",
       "operation": "getMessageDetails"
+    },
+    {
+      "callId": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0,\"Message\":\"OK\",\"MessageID\":\"msg-1\",\"To\":\"recipient@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "2cb733dd-b22c-5e0b-821f-a28b5465206b"
+            },
+            "Subject": "Welcome",
+            "TextBody": "Hello",
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+          "providerId": "msg-1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "MessageID": "msg-1",
+          "To": "recipient@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+      "input": {
+        "from": "sender@example.com",
+        "subject": "Welcome",
+        "textBody": "Hello",
+        "to": "recipient@example.com"
+      },
+      "name": "sendEmail-success",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":300,\"Message\":\"Invalid email\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "2cb733dd-b22c-5e0b-821f-a28b5465206b"
+            },
+            "Subject": "Welcome",
+            "TextBody": "Hello",
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "MessageID": "",
+          "To": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+      "input": {
+        "from": "sender@example.com",
+        "subject": "Welcome",
+        "textBody": "Hello",
+        "to": "recipient@example.com"
+      },
+      "name": "sendEmail-provider-rejected",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "2cb733dd-b22c-5e0b-821f-a28b5465206b"
+            },
+            "Subject": "Welcome",
+            "TextBody": "Hello",
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+      "input": {
+        "from": "sender@example.com",
+        "subject": "Welcome",
+        "textBody": "Hello",
+        "to": "recipient@example.com"
+      },
+      "name": "sendEmail-rate-limited",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "2cb733dd-b22c-5e0b-821f-a28b5465206b"
+            },
+            "Subject": "Welcome",
+            "TextBody": "Hello",
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+      "input": {
+        "from": "sender@example.com",
+        "subject": "Welcome",
+        "textBody": "Hello",
+        "to": "recipient@example.com"
+      },
+      "name": "sendEmail-service-unavailable",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "2cb733dd-b22c-5e0b-821f-a28b5465206b"
+            },
+            "Subject": "Welcome",
+            "TextBody": "Hello",
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+      "input": {
+        "from": "sender@example.com",
+        "subject": "Welcome",
+        "textBody": "Hello",
+        "to": "recipient@example.com"
+      },
+      "name": "sendEmail-unknown-5xx",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "2cb733dd-b22c-5e0b-821f-a28b5465206b"
+            },
+            "Subject": "Welcome",
+            "TextBody": "Hello",
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+      "input": {
+        "from": "sender@example.com",
+        "subject": "Welcome",
+        "textBody": "Hello",
+        "to": "recipient@example.com"
+      },
+      "name": "sendEmail-transport",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "MessageID": "",
+          "To": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+      "input": {
+        "from": "",
+        "subject": "Welcome",
+        "textBody": "Hello",
+        "to": "recipient@example.com"
+      },
+      "name": "sendEmail-defect",
+      "operation": "sendEmail"
+    },
+    {
+      "attempts": 2,
+      "callId": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "2cb733dd-b22c-5e0b-821f-a28b5465206b"
+            },
+            "Subject": "Welcome",
+            "TextBody": "Hello",
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"TotalCount\":1,\"Messages\":[{\"MessageID\":\"msg-1\",\"Subject\":\"Welcome\",\"To\":[{\"Email\":\"recipient@example.com\",\"Name\":null}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/outbound",
+          "query": {
+            "count": [
+              "50"
+            ],
+            "metadata_dex_call_id": [
+              "2cb733dd-b22c-5e0b-821f-a28b5465206b"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "MessageID": "msg-1",
+          "To": "recipient@example.com"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+      "input": {
+        "from": "sender@example.com",
+        "subject": "Welcome",
+        "textBody": "Hello",
+        "to": "recipient@example.com"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendEmail-confirm-after-unknown",
+      "operation": "sendEmail"
+    },
+    {
+      "attempts": 4,
+      "callId": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "2cb733dd-b22c-5e0b-821f-a28b5465206b"
+            },
+            "Subject": "Welcome",
+            "TextBody": "Hello",
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"TotalCount\":0,\"Messages\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/outbound",
+          "query": {
+            "count": [
+              "50"
+            ],
+            "metadata_dex_call_id": [
+              "2cb733dd-b22c-5e0b-821f-a28b5465206b"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "2cb733dd-b22c-5e0b-821f-a28b5465206b"
+            },
+            "Subject": "Welcome",
+            "TextBody": "Hello",
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"TotalCount\":0,\"Messages\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/outbound",
+          "query": {
+            "count": [
+              "50"
+            ],
+            "metadata_dex_call_id": [
+              "2cb733dd-b22c-5e0b-821f-a28b5465206b"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "2cb733dd-b22c-5e0b-821f-a28b5465206b"
+            },
+            "Subject": "Welcome",
+            "TextBody": "Hello",
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"TotalCount\":0,\"Messages\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/outbound",
+          "query": {
+            "count": [
+              "50"
+            ],
+            "metadata_dex_call_id": [
+              "2cb733dd-b22c-5e0b-821f-a28b5465206b"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "MessageID": "",
+          "To": ""
+        },
+        "requestCount": 6,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+      "input": {
+        "from": "sender@example.com",
+        "subject": "Welcome",
+        "textBody": "Hello",
+        "to": "recipient@example.com"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 5,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 3,
+            "callId": "2cb733dd-b22c-5e0b-821f-a28b5465206b",
+            "sendCount": 3,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendEmail-cap-uncertain",
+      "operation": "sendEmail"
     }
   ],
   "schemaVersion": 1

@@ -24,6 +24,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[postmark.MessageDetails](`{"messageId":"0ac29aee-e1cd-480d-b08d-4f48548ff48d","subject":"Welcome","status":"Sent"}`)
 			return err
 		}},
+		{name: "sendEmail/sendEmailDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.SentEmail](`{"messageId":"0ac29aee-e1cd-480d-b08d-4f48548ff48d","to":"recipient@example.com"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +43,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetMessageDetails().Definition().Operation.OperationID != "getMessageDetails" {
 		t.Errorf("getMessageDetails mock has another definition")
+	}
+	if mock.SendEmail().Definition().Operation.OperationID != "sendEmail" {
+		t.Errorf("sendEmail mock has another definition")
 	}
 }

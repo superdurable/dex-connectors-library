@@ -20,6 +20,7 @@ type Mock struct {
 	connection           postmark.Connection
 	listOutboundMessages *connectormock.Query[postmark.ListOutboundMessagesInput, postmark.MessagePage]
 	getMessageDetails    *connectormock.Query[postmark.GetMessageDetailsInput, postmark.MessageDetails]
+	sendEmail            *connectormock.Mutation[postmark.SendEmailInput, postmark.SentEmail]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -29,9 +30,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock := &Mock{
 		listOutboundMessages: connectormock.NewQuery[postmark.ListOutboundMessagesInput, postmark.MessagePage](t, postmark.ListOutboundMessagesDefinition),
 		getMessageDetails:    connectormock.NewQuery[postmark.GetMessageDetailsInput, postmark.MessageDetails](t, postmark.GetMessageDetailsDefinition),
+		sendEmail:            connectormock.NewMutation[postmark.SendEmailInput, postmark.SentEmail](t, postmark.SendEmailDefinition),
 	}
 	mock.listOutboundMessages.Default(ListOutboundMessagesDefault())
 	mock.getMessageDetails.Default(GetMessageDetailsDefault())
+	mock.sendEmail.Default(SendEmailDefault())
 	connection, err := postmark.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "postmark", Name: connectionName})
 	if err != nil {
 		t.Fatalf("postmark mock connection: %v", err)
@@ -53,6 +56,11 @@ func (mock *Mock) GetMessageDetails() *connectormock.Query[postmark.GetMessageDe
 	return mock.getMessageDetails
 }
 
+// SendEmail returns the sendEmail script.
+func (mock *Mock) SendEmail() *connectormock.Mutation[postmark.SendEmailInput, postmark.SentEmail] {
+	return mock.sendEmail
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListOutboundMessages() sdkgo.Query[postmark.ListOutboundMessagesInput, postmark.MessagePage] {
@@ -60,6 +68,9 @@ func (operations mockOperations) ListOutboundMessages() sdkgo.Query[postmark.Lis
 }
 func (operations mockOperations) GetMessageDetails() sdkgo.Query[postmark.GetMessageDetailsInput, postmark.MessageDetails] {
 	return operations.mock.getMessageDetails
+}
+func (operations mockOperations) SendEmail() sdkgo.Mutation[postmark.SendEmailInput, postmark.SentEmail] {
+	return operations.mock.sendEmail
 }
 
 // ListOutboundMessagesListed selects the listed branch: Postmark returned the requested result.
@@ -138,3 +149,37 @@ func GetMessageDetailsGetMessageDetailsDefault() connectormock.Case[postmark.Mes
 func GetMessageDetailsDefault() connectormock.Case[postmark.MessageDetails] {
 	return GetMessageDetailsGetMessageDetailsDefault()
 }
+
+// SendEmailSent selects the sent branch: Postmark accepted the email.
+func SendEmailSent(value postmark.SentEmail, failure *sdkgo.Failure) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Branch(postmark.SendEmailBranchSent, value, failure)
+}
+
+// SendEmailProviderRejected selects the providerRejected branch: Postmark definitively refused the email.
+func SendEmailProviderRejected(value postmark.SentEmail, failure *sdkgo.Failure) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Branch(postmark.SendEmailBranchProviderRejected, value, failure)
+}
+
+// SendEmailUncertain returns an uncertain sendEmail outcome.
+func SendEmailUncertain(value postmark.SentEmail, failure sdkgo.Failure) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendEmailDefect selects the defect branch: Local email input or connection credentials are invalid.
+func SendEmailDefect(value postmark.SentEmail, failure *sdkgo.Failure) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Branch(postmark.SendEmailBranchDefect, value, failure)
+}
+
+// SendEmailRetry asks Dex to retry the sendEmail Step, after the delay when it is positive.
+func SendEmailRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Retry[postmark.SentEmail](failure, after)
+}
+
+// SendEmailSendEmailDefault is the manifest mock sendEmailDefault: Postmark accepted one transactional email.
+func SendEmailSendEmailDefault() connectormock.Case[postmark.SentEmail] {
+	value := connectormock.MustDecodeOutput[postmark.SentEmail](`{"messageId":"0ac29aee-e1cd-480d-b08d-4f48548ff48d","to":"recipient@example.com"}`)
+	return connectormock.Branch(postmark.SendEmailBranchSent, value, nil)
+}
+
+// SendEmailDefault is the manifest default, sendEmailDefault, which New installs.
+func SendEmailDefault() connectormock.Case[postmark.SentEmail] { return SendEmailSendEmailDefault() }
