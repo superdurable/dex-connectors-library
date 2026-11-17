@@ -24,7 +24,8 @@ import (
 func TestCampaignDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := microsoftadvertisingmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	inspectionFlow := NewCampaignInspectionFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, inspectionFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -57,4 +58,14 @@ func TestCampaignDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "123456789", output.Campaigns[0].ID)
 	require.Equal(t, "Sample Search", output.Campaigns[0].Name)
 	require.Len(t, mock.ListCampaigns().Calls(), 1)
+	inspectionID := "microsoftadvertising-campaigninspection-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, inspectionFlow, inspectionID, microsoftadvertising.GetCampaignInput{AccountID: "12345", CampaignID: "98765"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	inspection, err := client.WaitForFlow(ctx, inspectionID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, inspection.Status, inspection.ErrorMessage)
+	var campaign microsoftadvertising.CampaignSummary
+	require.NoError(t, inspection.DecodeSingleOutput(&campaign))
+	require.Equal(t, "98765", campaign.ID)
+	require.Len(t, mock.GetCampaign().Calls(), 1)
 }

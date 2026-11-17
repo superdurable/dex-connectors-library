@@ -17,8 +17,12 @@ import (
 
 // Mock is a scripted microsoft-advertising connection. Script each operation through its accessor.
 type Mock struct {
-	connection    microsoftadvertising.Connection
-	listCampaigns *connectormock.Query[microsoftadvertising.ListCampaignsInput, microsoftadvertising.CampaignsPage]
+	connection     microsoftadvertising.Connection
+	getCampaign    *connectormock.Query[microsoftadvertising.GetCampaignInput, microsoftadvertising.CampaignSummary]
+	createCampaign *connectormock.Mutation[microsoftadvertising.CreateCampaignInput, microsoftadvertising.CampaignMutationResult]
+	updateCampaign *connectormock.Mutation[microsoftadvertising.UpdateCampaignInput, microsoftadvertising.CampaignMutationResult]
+	deleteCampaign *connectormock.Mutation[microsoftadvertising.DeleteCampaignInput, microsoftadvertising.CampaignMutationResult]
+	listCampaigns  *connectormock.Query[microsoftadvertising.ListCampaignsInput, microsoftadvertising.CampaignsPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +30,16 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listCampaigns: connectormock.NewQuery[microsoftadvertising.ListCampaignsInput, microsoftadvertising.CampaignsPage](t, microsoftadvertising.ListCampaignsDefinition),
+		getCampaign:    connectormock.NewQuery[microsoftadvertising.GetCampaignInput, microsoftadvertising.CampaignSummary](t, microsoftadvertising.GetCampaignDefinition),
+		createCampaign: connectormock.NewMutation[microsoftadvertising.CreateCampaignInput, microsoftadvertising.CampaignMutationResult](t, microsoftadvertising.CreateCampaignDefinition),
+		updateCampaign: connectormock.NewMutation[microsoftadvertising.UpdateCampaignInput, microsoftadvertising.CampaignMutationResult](t, microsoftadvertising.UpdateCampaignDefinition),
+		deleteCampaign: connectormock.NewMutation[microsoftadvertising.DeleteCampaignInput, microsoftadvertising.CampaignMutationResult](t, microsoftadvertising.DeleteCampaignDefinition),
+		listCampaigns:  connectormock.NewQuery[microsoftadvertising.ListCampaignsInput, microsoftadvertising.CampaignsPage](t, microsoftadvertising.ListCampaignsDefinition),
 	}
+	mock.getCampaign.Default(GetCampaignDefault())
+	mock.createCampaign.Default(CreateCampaignDefault())
+	mock.updateCampaign.Default(UpdateCampaignDefault())
+	mock.deleteCampaign.Default(DeleteCampaignDefault())
 	mock.listCampaigns.Default(ListCampaignsDefault())
 	connection, err := microsoftadvertising.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "microsoft-advertising", Name: connectionName})
 	if err != nil {
@@ -40,6 +52,26 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() microsoftadvertising.Connection { return mock.connection }
 
+// GetCampaign returns the getCampaign script.
+func (mock *Mock) GetCampaign() *connectormock.Query[microsoftadvertising.GetCampaignInput, microsoftadvertising.CampaignSummary] {
+	return mock.getCampaign
+}
+
+// CreateCampaign returns the createCampaign script.
+func (mock *Mock) CreateCampaign() *connectormock.Mutation[microsoftadvertising.CreateCampaignInput, microsoftadvertising.CampaignMutationResult] {
+	return mock.createCampaign
+}
+
+// UpdateCampaign returns the updateCampaign script.
+func (mock *Mock) UpdateCampaign() *connectormock.Mutation[microsoftadvertising.UpdateCampaignInput, microsoftadvertising.CampaignMutationResult] {
+	return mock.updateCampaign
+}
+
+// DeleteCampaign returns the deleteCampaign script.
+func (mock *Mock) DeleteCampaign() *connectormock.Mutation[microsoftadvertising.DeleteCampaignInput, microsoftadvertising.CampaignMutationResult] {
+	return mock.deleteCampaign
+}
+
 // ListCampaigns returns the listCampaigns script.
 func (mock *Mock) ListCampaigns() *connectormock.Query[microsoftadvertising.ListCampaignsInput, microsoftadvertising.CampaignsPage] {
 	return mock.listCampaigns
@@ -47,8 +79,169 @@ func (mock *Mock) ListCampaigns() *connectormock.Query[microsoftadvertising.List
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetCampaign() sdkgo.Query[microsoftadvertising.GetCampaignInput, microsoftadvertising.CampaignSummary] {
+	return operations.mock.getCampaign
+}
+func (operations mockOperations) CreateCampaign() sdkgo.Mutation[microsoftadvertising.CreateCampaignInput, microsoftadvertising.CampaignMutationResult] {
+	return operations.mock.createCampaign
+}
+func (operations mockOperations) UpdateCampaign() sdkgo.Mutation[microsoftadvertising.UpdateCampaignInput, microsoftadvertising.CampaignMutationResult] {
+	return operations.mock.updateCampaign
+}
+func (operations mockOperations) DeleteCampaign() sdkgo.Mutation[microsoftadvertising.DeleteCampaignInput, microsoftadvertising.CampaignMutationResult] {
+	return operations.mock.deleteCampaign
+}
 func (operations mockOperations) ListCampaigns() sdkgo.Query[microsoftadvertising.ListCampaignsInput, microsoftadvertising.CampaignsPage] {
 	return operations.mock.listCampaigns
+}
+
+// GetCampaignFound selects the found branch: Microsoft Advertising returned the campaign.
+func GetCampaignFound(value microsoftadvertising.CampaignSummary, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.CampaignSummary] {
+	return connectormock.Branch(microsoftadvertising.GetCampaignBranchFound, value, failure)
+}
+
+// GetCampaignNotFound selects the notFound branch: The campaign is absent.
+func GetCampaignNotFound(value microsoftadvertising.CampaignSummary, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.CampaignSummary] {
+	return connectormock.Branch(microsoftadvertising.GetCampaignBranchNotFound, value, failure)
+}
+
+// GetCampaignProviderRejected selects the providerRejected branch: Microsoft Advertising rejected the lookup.
+func GetCampaignProviderRejected(value microsoftadvertising.CampaignSummary, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.CampaignSummary] {
+	return connectormock.Branch(microsoftadvertising.GetCampaignBranchProviderRejected, value, failure)
+}
+
+// GetCampaignInvalidResponse selects the invalidResponse branch: Microsoft Advertising returned invalid campaign JSON.
+func GetCampaignInvalidResponse(value microsoftadvertising.CampaignSummary, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.CampaignSummary] {
+	return connectormock.Branch(microsoftadvertising.GetCampaignBranchInvalidResponse, value, failure)
+}
+
+// GetCampaignDefect selects the defect branch: The ID or connection is invalid.
+func GetCampaignDefect(value microsoftadvertising.CampaignSummary, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.CampaignSummary] {
+	return connectormock.Branch(microsoftadvertising.GetCampaignBranchDefect, value, failure)
+}
+
+// GetCampaignRetry asks Dex to retry the getCampaign Step, after the delay when it is positive.
+func GetCampaignRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[microsoftadvertising.CampaignSummary] {
+	return connectormock.Retry[microsoftadvertising.CampaignSummary](failure, after)
+}
+
+// GetCampaignFoundDefault is the manifest mock foundDefault: One search campaign is found.
+func GetCampaignFoundDefault() connectormock.Case[microsoftadvertising.CampaignSummary] {
+	value := connectormock.MustDecodeOutput[microsoftadvertising.CampaignSummary](`{"id":"98765","name":"Sample Search","campaignType":"Search","status":"Active"}`)
+	return connectormock.Branch(microsoftadvertising.GetCampaignBranchFound, value, nil)
+}
+
+// GetCampaignDefault is the manifest default, foundDefault, which New installs.
+func GetCampaignDefault() connectormock.Case[microsoftadvertising.CampaignSummary] {
+	return GetCampaignFoundDefault()
+}
+
+// CreateCampaignCreated selects the created branch: Microsoft Advertising returned the new campaign ID.
+func CreateCampaignCreated(value microsoftadvertising.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	return connectormock.Branch(microsoftadvertising.CreateCampaignBranchCreated, value, failure)
+}
+
+// CreateCampaignProviderRejected selects the providerRejected branch: Microsoft Advertising rejected the campaign.
+func CreateCampaignProviderRejected(value microsoftadvertising.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	return connectormock.Branch(microsoftadvertising.CreateCampaignBranchProviderRejected, value, failure)
+}
+
+// CreateCampaignUncertain returns an uncertain createCampaign outcome.
+func CreateCampaignUncertain(value microsoftadvertising.CampaignMutationResult, failure sdkgo.Failure) connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateCampaignDefect selects the defect branch: The input or connection is invalid.
+func CreateCampaignDefect(value microsoftadvertising.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	return connectormock.Branch(microsoftadvertising.CreateCampaignBranchDefect, value, failure)
+}
+
+// CreateCampaignRetry asks Dex to retry the createCampaign Step, after the delay when it is positive.
+func CreateCampaignRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	return connectormock.Retry[microsoftadvertising.CampaignMutationResult](failure, after)
+}
+
+// CreateCampaignCreatedDefault is the manifest mock createdDefault: One paused search campaign was created.
+func CreateCampaignCreatedDefault() connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	value := connectormock.MustDecodeOutput[microsoftadvertising.CampaignMutationResult](`{"campaignId":"98765"}`)
+	return connectormock.Branch(microsoftadvertising.CreateCampaignBranchCreated, value, nil)
+}
+
+// CreateCampaignDefault is the manifest default, createdDefault, which New installs.
+func CreateCampaignDefault() connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	return CreateCampaignCreatedDefault()
+}
+
+// UpdateCampaignUpdated selects the updated branch: Microsoft Advertising accepted the campaign changes.
+func UpdateCampaignUpdated(value microsoftadvertising.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	return connectormock.Branch(microsoftadvertising.UpdateCampaignBranchUpdated, value, failure)
+}
+
+// UpdateCampaignProviderRejected selects the providerRejected branch: Microsoft Advertising rejected the changes.
+func UpdateCampaignProviderRejected(value microsoftadvertising.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	return connectormock.Branch(microsoftadvertising.UpdateCampaignBranchProviderRejected, value, failure)
+}
+
+// UpdateCampaignInvalidResponse selects the invalidResponse branch: Microsoft Advertising returned invalid update JSON.
+func UpdateCampaignInvalidResponse(value microsoftadvertising.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	return connectormock.Branch(microsoftadvertising.UpdateCampaignBranchInvalidResponse, value, failure)
+}
+
+// UpdateCampaignDefect selects the defect branch: The input or connection is invalid.
+func UpdateCampaignDefect(value microsoftadvertising.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	return connectormock.Branch(microsoftadvertising.UpdateCampaignBranchDefect, value, failure)
+}
+
+// UpdateCampaignRetry asks Dex to retry the updateCampaign Step, after the delay when it is positive.
+func UpdateCampaignRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	return connectormock.Retry[microsoftadvertising.CampaignMutationResult](failure, after)
+}
+
+// UpdateCampaignUpdatedDefault is the manifest mock updatedDefault: One campaign was updated.
+func UpdateCampaignUpdatedDefault() connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	value := connectormock.MustDecodeOutput[microsoftadvertising.CampaignMutationResult](`{"campaignId":"98765"}`)
+	return connectormock.Branch(microsoftadvertising.UpdateCampaignBranchUpdated, value, nil)
+}
+
+// UpdateCampaignDefault is the manifest default, updatedDefault, which New installs.
+func UpdateCampaignDefault() connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	return UpdateCampaignUpdatedDefault()
+}
+
+// DeleteCampaignDeleted selects the deleted branch: Microsoft Advertising accepted the deletion.
+func DeleteCampaignDeleted(value microsoftadvertising.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	return connectormock.Branch(microsoftadvertising.DeleteCampaignBranchDeleted, value, failure)
+}
+
+// DeleteCampaignProviderRejected selects the providerRejected branch: Microsoft Advertising rejected the deletion.
+func DeleteCampaignProviderRejected(value microsoftadvertising.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	return connectormock.Branch(microsoftadvertising.DeleteCampaignBranchProviderRejected, value, failure)
+}
+
+// DeleteCampaignInvalidResponse selects the invalidResponse branch: Microsoft Advertising returned invalid deletion JSON.
+func DeleteCampaignInvalidResponse(value microsoftadvertising.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	return connectormock.Branch(microsoftadvertising.DeleteCampaignBranchInvalidResponse, value, failure)
+}
+
+// DeleteCampaignDefect selects the defect branch: The input or connection is invalid.
+func DeleteCampaignDefect(value microsoftadvertising.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	return connectormock.Branch(microsoftadvertising.DeleteCampaignBranchDefect, value, failure)
+}
+
+// DeleteCampaignRetry asks Dex to retry the deleteCampaign Step, after the delay when it is positive.
+func DeleteCampaignRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	return connectormock.Retry[microsoftadvertising.CampaignMutationResult](failure, after)
+}
+
+// DeleteCampaignDeletedDefault is the manifest mock deletedDefault: One campaign was deleted.
+func DeleteCampaignDeletedDefault() connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	value := connectormock.MustDecodeOutput[microsoftadvertising.CampaignMutationResult](`{"campaignId":"98765"}`)
+	return connectormock.Branch(microsoftadvertising.DeleteCampaignBranchDeleted, value, nil)
+}
+
+// DeleteCampaignDefault is the manifest default, deletedDefault, which New installs.
+func DeleteCampaignDefault() connectormock.Case[microsoftadvertising.CampaignMutationResult] {
+	return DeleteCampaignDeletedDefault()
 }
 
 // ListCampaignsListed selects the listed branch: Microsoft Advertising returned the account's campaigns.

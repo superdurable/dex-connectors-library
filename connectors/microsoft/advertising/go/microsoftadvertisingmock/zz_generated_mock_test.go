@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getCampaign/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.CampaignSummary](`{"id":"98765","name":"Sample Search","campaignType":"Search","status":"Active"}`)
+			return err
+		}},
+		{name: "createCampaign/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.CampaignMutationResult](`{"campaignId":"98765"}`)
+			return err
+		}},
+		{name: "updateCampaign/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.CampaignMutationResult](`{"campaignId":"98765"}`)
+			return err
+		}},
+		{name: "deleteCampaign/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.CampaignMutationResult](`{"campaignId":"98765"}`)
+			return err
+		}},
 		{name: "listCampaigns/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[microsoftadvertising.CampaignsPage](`{"campaigns":[{"id":"123456789","name":"Sample Search","campaignType":"Search","status":"Active"}]}`)
 			return err
@@ -30,6 +46,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetCampaign().Definition().Operation.OperationID != "getCampaign" {
+		t.Errorf("getCampaign mock has another definition")
+	}
+	if mock.CreateCampaign().Definition().Operation.OperationID != "createCampaign" {
+		t.Errorf("createCampaign mock has another definition")
+	}
+	if mock.UpdateCampaign().Definition().Operation.OperationID != "updateCampaign" {
+		t.Errorf("updateCampaign mock has another definition")
+	}
+	if mock.DeleteCampaign().Definition().Operation.OperationID != "deleteCampaign" {
+		t.Errorf("deleteCampaign mock has another definition")
+	}
 	if mock.ListCampaigns().Definition().Operation.OperationID != "listCampaigns" {
 		t.Errorf("listCampaigns mock has another definition")
 	}

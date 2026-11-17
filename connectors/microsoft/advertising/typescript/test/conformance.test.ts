@@ -2,13 +2,16 @@
 // SPDX-License-Identifier: MIT
 
 import { it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import { ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { MicrosoftAdvertisingClient } from '../src/client.js';
 import { ListCampaignsInputSchema } from '../src/generated/models.js';
-import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
+import { answerRecordedRequest, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/microsoft/advertising/scenarios.json', import.meta.url));
+const fixtureURL = new URL('../../../../../conformance/connectors/microsoft/advertising/scenarios.json', import.meta.url);
+const scenarios = (JSON.parse(readFileSync(fixtureURL, 'utf8')).scenarios as Scenario[])
+  .filter(scenario => scenario.operation === 'listCampaigns');
 const connection = { provider: 'microsoft-advertising', name: 'microsoft-advertising' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeMicrosoftAdvertising, ''));
 

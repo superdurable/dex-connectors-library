@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: microsoft-advertising
   displayName: Microsoft Advertising
-  description: List campaigns in a Microsoft Advertising account through the v13 REST API.
+  description: Read and manage campaigns in a Microsoft Advertising account through the v13 REST API.
   company: Microsoft
   categories: [marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: microsoft-advertising
   languages:
@@ -101,6 +101,87 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, interaction_required, consent_required]
   operations:
+    - name: getCampaign
+      goName: GetCampaign
+      inputType: GetCampaignInput
+      outputType: CampaignSummary
+      kind: query
+      description: Read one campaign by ID in an account.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Microsoft Advertising returned the campaign.}
+        - {id: notFound, goName: NotFound, description: The campaign is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Advertising returned invalid campaign JSON., optional: true}
+        - {id: defect, goName: Defect, description: The ID or connection is invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One search campaign is found.
+          output: {id: '98765', name: Sample Search, campaignType: Search, status: Active}
+    - name: createCampaign
+      goName: CreateCampaign
+      inputType: CreateCampaignInput
+      outputType: CampaignMutationResult
+      kind: mutation
+      description: Create one paused search campaign with its daily budget.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Microsoft Advertising returned the new campaign ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the campaign., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The create outcome could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One paused search campaign was created.
+          output: {campaignId: '98765'}
+    - name: updateCampaign
+      goName: UpdateCampaign
+      inputType: UpdateCampaignInput
+      outputType: CampaignMutationResult
+      kind: mutation
+      description: Set a campaign name, status, or daily budget.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Microsoft Advertising accepted the campaign changes.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the changes., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Advertising returned invalid update JSON., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One campaign was updated.
+          output: {campaignId: '98765'}
+    - name: deleteCampaign
+      goName: DeleteCampaign
+      inputType: DeleteCampaignInput
+      outputType: CampaignMutationResult
+      kind: mutation
+      description: Delete one campaign by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Microsoft Advertising accepted the deletion.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Advertising returned invalid deletion JSON., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One campaign was deleted.
+          output: {campaignId: '98765'}
     - name: listCampaigns
       goName: ListCampaigns
       inputType: ListCampaignsInput

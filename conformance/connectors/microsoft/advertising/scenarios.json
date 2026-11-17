@@ -543,6 +543,1669 @@
       },
       "name": "listCampaigns-defect",
       "operation": "listCampaigns"
+    },
+    {
+      "callId": "b07-get-1",
+      "exchanges": [
+        {
+          "body": "{\"Campaigns\":[{\"Id\":\"98765\",\"Name\":\"Launch\",\"CampaignType\":\"Search\",\"Status\":\"Paused\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Campaigns/QueryByIds",
+          "requestBody": {
+            "AccountId": "12345",
+            "CampaignIds": [
+              "98765"
+            ],
+            "CampaignType": "App Audience Hotel ObjectiveBased PerformanceMax Search Shopping"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "campaignType": "Search",
+          "id": "98765",
+          "name": "Launch",
+          "status": "Paused"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765"
+      },
+      "name": "getCampaign-found",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "b07-get-2",
+      "exchanges": [
+        {
+          "body": "{\"Campaigns\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Campaigns/QueryByIds",
+          "requestBody": {
+            "AccountId": "12345",
+            "CampaignIds": [
+              "98765"
+            ],
+            "CampaignType": "App Audience Hotel ObjectiveBased PerformanceMax Search Shopping"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "campaignType": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765"
+      },
+      "name": "getCampaign-not-found",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "b07-get-3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Campaigns/QueryByIds",
+          "requestBody": {
+            "AccountId": "12345",
+            "CampaignIds": [
+              "98765"
+            ],
+            "CampaignType": "App Audience Hotel ObjectiveBased PerformanceMax Search Shopping"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "campaignType": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765"
+      },
+      "name": "getCampaign-provider-rejected",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "b07-get-4",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Campaigns/QueryByIds",
+          "requestBody": {
+            "AccountId": "12345",
+            "CampaignIds": [
+              "98765"
+            ],
+            "CampaignType": "App Audience Hotel ObjectiveBased PerformanceMax Search Shopping"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "campaignType": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765"
+      },
+      "name": "getCampaign-invalid-response",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "b07-get-5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "campaignType": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "invalid",
+        "campaignId": "98765"
+      },
+      "name": "getCampaign-defect",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "b07-get-6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Campaigns/QueryByIds",
+          "requestBody": {
+            "AccountId": "12345",
+            "CampaignIds": [
+              "98765"
+            ],
+            "CampaignType": "App Audience Hotel ObjectiveBased PerformanceMax Search Shopping"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765"
+      },
+      "name": "getCampaign-429",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "b07-get-7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Campaigns/QueryByIds",
+          "requestBody": {
+            "AccountId": "12345",
+            "CampaignIds": [
+              "98765"
+            ],
+            "CampaignType": "App Audience Hotel ObjectiveBased PerformanceMax Search Shopping"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765"
+      },
+      "name": "getCampaign-500",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "b07-get-8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Campaigns/QueryByIds",
+          "requestBody": {
+            "AccountId": "12345",
+            "CampaignIds": [
+              "98765"
+            ],
+            "CampaignType": "App Audience Hotel ObjectiveBased PerformanceMax Search Shopping"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765"
+      },
+      "name": "getCampaign-transport",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+      "exchanges": [
+        {
+          "body": "{\"CampaignIds\":[\"98765\"],\"PartialErrors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Campaigns",
+          "requestBody": {
+            "AccountId": "12345",
+            "Campaigns": [
+              {
+                "BudgetType": "DailyBudgetStandard",
+                "CampaignType": "Search",
+                "DailyBudget": 10,
+                "Name": "Launch",
+                "Status": "Paused",
+                "TimeZone": "PacificTimeUSCanadaTijuana"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+          "providerId": "98765",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "campaignId": "98765"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+      "input": {
+        "accountId": "12345",
+        "dailyBudget": 10,
+        "name": "Launch",
+        "timeZone": "PacificTimeUSCanadaTijuana"
+      },
+      "name": "createCampaign-created",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Campaigns",
+          "requestBody": {
+            "AccountId": "12345",
+            "Campaigns": [
+              {
+                "BudgetType": "DailyBudgetStandard",
+                "CampaignType": "Search",
+                "DailyBudget": 10,
+                "Name": "Launch",
+                "Status": "Paused",
+                "TimeZone": "PacificTimeUSCanadaTijuana"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "campaignId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+      "input": {
+        "accountId": "12345",
+        "dailyBudget": 10,
+        "name": "Launch",
+        "timeZone": "PacificTimeUSCanadaTijuana"
+      },
+      "name": "createCampaign-provider-rejected",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "campaignId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+      "input": {
+        "accountId": "invalid",
+        "dailyBudget": 10,
+        "name": "Launch",
+        "timeZone": "PacificTimeUSCanadaTijuana"
+      },
+      "name": "createCampaign-defect",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Campaigns",
+          "requestBody": {
+            "AccountId": "12345",
+            "Campaigns": [
+              {
+                "BudgetType": "DailyBudgetStandard",
+                "CampaignType": "Search",
+                "DailyBudget": 10,
+                "Name": "Launch",
+                "Status": "Paused",
+                "TimeZone": "PacificTimeUSCanadaTijuana"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+      "input": {
+        "accountId": "12345",
+        "dailyBudget": 10,
+        "name": "Launch",
+        "timeZone": "PacificTimeUSCanadaTijuana"
+      },
+      "name": "createCampaign-429",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Campaigns",
+          "requestBody": {
+            "AccountId": "12345",
+            "Campaigns": [
+              {
+                "BudgetType": "DailyBudgetStandard",
+                "CampaignType": "Search",
+                "DailyBudget": 10,
+                "Name": "Launch",
+                "Status": "Paused",
+                "TimeZone": "PacificTimeUSCanadaTijuana"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+      "input": {
+        "accountId": "12345",
+        "dailyBudget": 10,
+        "name": "Launch",
+        "timeZone": "PacificTimeUSCanadaTijuana"
+      },
+      "name": "createCampaign-503",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Campaigns",
+          "requestBody": {
+            "AccountId": "12345",
+            "Campaigns": [
+              {
+                "BudgetType": "DailyBudgetStandard",
+                "CampaignType": "Search",
+                "DailyBudget": 10,
+                "Name": "Launch",
+                "Status": "Paused",
+                "TimeZone": "PacificTimeUSCanadaTijuana"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+      "input": {
+        "accountId": "12345",
+        "dailyBudget": 10,
+        "name": "Launch",
+        "timeZone": "PacificTimeUSCanadaTijuana"
+      },
+      "name": "createCampaign-500",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Campaigns",
+          "requestBody": {
+            "AccountId": "12345",
+            "Campaigns": [
+              {
+                "BudgetType": "DailyBudgetStandard",
+                "CampaignType": "Search",
+                "DailyBudget": 10,
+                "Name": "Launch",
+                "Status": "Paused",
+                "TimeZone": "PacificTimeUSCanadaTijuana"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+      "input": {
+        "accountId": "12345",
+        "dailyBudget": 10,
+        "name": "Launch",
+        "timeZone": "PacificTimeUSCanadaTijuana"
+      },
+      "name": "createCampaign-transport",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+      "exchanges": [
+        {
+          "body": "{\"Campaigns\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Campaigns/QueryByAccountId",
+          "requestBody": {
+            "AccountId": "12345",
+            "CampaignType": "App Audience Hotel ObjectiveBased PerformanceMax Search Shopping"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "campaignId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+      "input": {
+        "accountId": "12345",
+        "dailyBudget": 10,
+        "name": "Launch",
+        "timeZone": "PacificTimeUSCanadaTijuana"
+      },
+      "name": "createCampaign-uncertain",
+      "operation": "createCampaign",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
+        "sendCount": 3,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "9ecf0050-2df6-5edb-a02c-60b5ef8a7578",
+      "exchanges": [
+        {
+          "body": "{\"PartialErrors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/CampaignManagement/v13/Campaigns",
+          "requestBody": {
+            "AccountId": "12345",
+            "Campaigns": [
+              {
+                "DailyBudget": 12,
+                "Id": "98765",
+                "Name": "Launch 2",
+                "Status": "Paused"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "campaignId": "98765"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ecf0050-2df6-5edb-a02c-60b5ef8a7578",
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765",
+        "dailyBudget": 12,
+        "name": "Launch 2",
+        "status": "Paused"
+      },
+      "name": "updateCampaign-updated",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "9ecf0050-2df6-5edb-a02c-60b5ef8a7578",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/CampaignManagement/v13/Campaigns",
+          "requestBody": {
+            "AccountId": "12345",
+            "Campaigns": [
+              {
+                "Id": "98765",
+                "Status": "Paused"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "campaignId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ecf0050-2df6-5edb-a02c-60b5ef8a7578",
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765",
+        "status": "Paused"
+      },
+      "name": "updateCampaign-provider-rejected",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "9ecf0050-2df6-5edb-a02c-60b5ef8a7578",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/CampaignManagement/v13/Campaigns",
+          "requestBody": {
+            "AccountId": "12345",
+            "Campaigns": [
+              {
+                "Id": "98765",
+                "Status": "Paused"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "campaignId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ecf0050-2df6-5edb-a02c-60b5ef8a7578",
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765",
+        "status": "Paused"
+      },
+      "name": "updateCampaign-invalid-response",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "9ecf0050-2df6-5edb-a02c-60b5ef8a7578",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "campaignId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ecf0050-2df6-5edb-a02c-60b5ef8a7578",
+      "input": {
+        "accountId": "invalid",
+        "campaignId": "98765",
+        "status": "Paused"
+      },
+      "name": "updateCampaign-defect",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "9ecf0050-2df6-5edb-a02c-60b5ef8a7578",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/CampaignManagement/v13/Campaigns",
+          "requestBody": {
+            "AccountId": "12345",
+            "Campaigns": [
+              {
+                "Id": "98765",
+                "Status": "Paused"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ecf0050-2df6-5edb-a02c-60b5ef8a7578",
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765",
+        "status": "Paused"
+      },
+      "name": "updateCampaign-429",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "9ecf0050-2df6-5edb-a02c-60b5ef8a7578",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/CampaignManagement/v13/Campaigns",
+          "requestBody": {
+            "AccountId": "12345",
+            "Campaigns": [
+              {
+                "Id": "98765",
+                "Status": "Paused"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ecf0050-2df6-5edb-a02c-60b5ef8a7578",
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765",
+        "status": "Paused"
+      },
+      "name": "updateCampaign-500",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "9ecf0050-2df6-5edb-a02c-60b5ef8a7578",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/CampaignManagement/v13/Campaigns",
+          "requestBody": {
+            "AccountId": "12345",
+            "Campaigns": [
+              {
+                "Id": "98765",
+                "Status": "Paused"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ecf0050-2df6-5edb-a02c-60b5ef8a7578",
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765",
+        "status": "Paused"
+      },
+      "name": "updateCampaign-transport",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "75349d63-a3df-5fd3-b376-6667f04638f6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/CampaignManagement/v13/Campaigns",
+          "requestBody": {
+            "AccountId": "12345",
+            "CampaignIds": [
+              "98765"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "campaignId": "98765"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75349d63-a3df-5fd3-b376-6667f04638f6",
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765"
+      },
+      "name": "deleteCampaign-deleted",
+      "operation": "deleteCampaign"
+    },
+    {
+      "callId": "75349d63-a3df-5fd3-b376-6667f04638f6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/CampaignManagement/v13/Campaigns",
+          "requestBody": {
+            "AccountId": "12345",
+            "CampaignIds": [
+              "98765"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "campaignId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75349d63-a3df-5fd3-b376-6667f04638f6",
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765"
+      },
+      "name": "deleteCampaign-provider-rejected",
+      "operation": "deleteCampaign"
+    },
+    {
+      "callId": "75349d63-a3df-5fd3-b376-6667f04638f6",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/CampaignManagement/v13/Campaigns",
+          "requestBody": {
+            "AccountId": "12345",
+            "CampaignIds": [
+              "98765"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "campaignId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75349d63-a3df-5fd3-b376-6667f04638f6",
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765"
+      },
+      "name": "deleteCampaign-invalid-response",
+      "operation": "deleteCampaign"
+    },
+    {
+      "callId": "75349d63-a3df-5fd3-b376-6667f04638f6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "campaignId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75349d63-a3df-5fd3-b376-6667f04638f6",
+      "input": {
+        "accountId": "invalid",
+        "campaignId": "98765"
+      },
+      "name": "deleteCampaign-defect",
+      "operation": "deleteCampaign"
+    },
+    {
+      "callId": "75349d63-a3df-5fd3-b376-6667f04638f6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/CampaignManagement/v13/Campaigns",
+          "requestBody": {
+            "AccountId": "12345",
+            "CampaignIds": [
+              "98765"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75349d63-a3df-5fd3-b376-6667f04638f6",
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765"
+      },
+      "name": "deleteCampaign-429",
+      "operation": "deleteCampaign"
+    },
+    {
+      "callId": "75349d63-a3df-5fd3-b376-6667f04638f6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/CampaignManagement/v13/Campaigns",
+          "requestBody": {
+            "AccountId": "12345",
+            "CampaignIds": [
+              "98765"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75349d63-a3df-5fd3-b376-6667f04638f6",
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765"
+      },
+      "name": "deleteCampaign-500",
+      "operation": "deleteCampaign"
+    },
+    {
+      "callId": "75349d63-a3df-5fd3-b376-6667f04638f6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/CampaignManagement/v13/Campaigns",
+          "requestBody": {
+            "AccountId": "12345",
+            "CampaignIds": [
+              "98765"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75349d63-a3df-5fd3-b376-6667f04638f6",
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765"
+      },
+      "name": "deleteCampaign-transport",
+      "operation": "deleteCampaign"
     }
   ],
   "schemaVersion": 1
