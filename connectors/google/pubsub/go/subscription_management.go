@@ -47,6 +47,7 @@ type ListSubscriptionsInput struct {
 
 // GetSubscriptionInput identifies a subscription.
 type GetSubscriptionInput struct {
+	// Name is the full subscription resource name.
 	Name string `json:"name"`
 }
 
@@ -72,11 +73,13 @@ type UpdateSubscriptionLabelsInput struct {
 
 // DeleteSubscriptionInput identifies one subscription to delete.
 type DeleteSubscriptionInput struct {
+	// Name is the full subscription resource name.
 	Name string `json:"name"`
 }
 
 // DeletedSubscription confirms the requested resource name.
 type DeletedSubscription struct {
+	// Name is the requested subscription resource name.
 	Name string `json:"name"`
 }
 

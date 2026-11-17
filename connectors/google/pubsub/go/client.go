@@ -6,6 +6,7 @@ package pubsub
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -74,6 +75,10 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 }
 
 func (client *Client) request(call sdkgo.Call, method, path string, body []byte) providerResponse {
+	return client.requestWithContext(call.Context, call, method, path, body)
+}
+
+func (client *Client) requestWithContext(dispatchContext context.Context, call sdkgo.Call, method, path string, body []byte) providerResponse {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	if sdkgo.IsReauthorizationRequired(err) {
 		return providerResponse{err: errCredential}
@@ -88,7 +93,7 @@ func (client *Client) request(call sdkgo.Call, method, path string, body []byte)
 	if !providerhttp.IsHeaderSafeCredential(accessToken) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, method, client.baseURL+path, bytes.NewReader(body))
+	request, err := http.NewRequestWithContext(dispatchContext, method, client.baseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}

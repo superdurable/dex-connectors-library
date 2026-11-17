@@ -6,6 +6,8 @@ This runnable Go Flow lists topics in one project through the `google-pubsub` De
 
 `SubscriptionDetailFlow` reads one pull subscription with `GetSubscriptionInput{Name: "projects/sample-project/subscriptions/events-reader"}`. It runs in the same real Dex integration test.
 
+`PublishFlow` publishes a UTF-8 text message with `PublishMessageInput{Topic: "projects/sample-project/topics/events", Text: "event"}` and retains the returned message ID. Its mock-backed path is exercised through the same real Dex test.
+
 From the connector's `go/` directory run `GOWORK=off go test ./...`. Generate and lint FDG 2.0 with `dexcli visualize go/examples/topics/flow/workflow.go --schema-version 2.0 --lint app --json --out /tmp/google-pubsub-fdg --open=false` from the connector directory. With `dexcli dev` running, set `DEX_FLOW_SERVICE_ADDRESS` and run `GOWORK=off go test -tags=integration ./examples/topics/flow -run TestTopicsUsesDefaultMockWithRealDex` to exercise the checked-in mock through a real Worker and Client.
 
 With the Google PubSub OAuth connection saved in Dex Web, run `GOWORK=off go run ./examples/topics` to start the Worker. Live Google PubSub authorization has not been exercised here.

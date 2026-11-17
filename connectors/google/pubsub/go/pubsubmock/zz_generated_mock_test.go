@@ -16,6 +16,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "publishMessage/publishedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.PublishedMessage](`{"messageId":"1234567890"}`)
+			return err
+		}},
+		{name: "pullMessages/pulledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.PulledMessages](`{"receivedMessages":[{"ackId":"sample-ack-id","message":{"messageId":"1234567890","data":"ZXZlbnQ="}}]}`)
+			return err
+		}},
+		{name: "acknowledgeMessages/acknowledgedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.AcknowledgedMessages](`{"acknowledgedCount":1}`)
+			return err
+		}},
 		{name: "listSubscriptions/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[pubsub.SubscriptionsPage](`{"subscriptions":[{"name":"projects/sample-project/subscriptions/events-reader","topic":"projects/sample-project/topics/events","ackDeadlineSeconds":10}],"nextPageToken":""}`)
 			return err
@@ -66,6 +78,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.PublishMessage().Definition().Operation.OperationID != "publishMessage" {
+		t.Errorf("publishMessage mock has another definition")
+	}
+	if mock.PullMessages().Definition().Operation.OperationID != "pullMessages" {
+		t.Errorf("pullMessages mock has another definition")
+	}
+	if mock.AcknowledgeMessages().Definition().Operation.OperationID != "acknowledgeMessages" {
+		t.Errorf("acknowledgeMessages mock has another definition")
+	}
 	if mock.ListSubscriptions().Definition().Operation.OperationID != "listSubscriptions" {
 		t.Errorf("listSubscriptions mock has another definition")
 	}
