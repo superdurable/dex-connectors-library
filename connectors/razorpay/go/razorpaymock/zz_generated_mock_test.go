@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listPayments/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.PaymentPage](`{"payments":[{"id":"pay_DG4ZdRK8ZnXC3k","status":"captured","amount":100,"currencyCode":"INR"}],"count":1}`)
+			return err
+		}},
+		{name: "capturePayment/capturedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.PaymentStatus](`{"id":"pay_DG4ZdRK8ZnXC3k","status":"captured","amount":100,"currencyCode":"INR"}`)
+			return err
+		}},
 		{name: "listOrders/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[razorpay.OrderPage](`{"orders":[{"id":"order_RB58MiP5SPFYyM","status":"created","amount":5000,"currencyCode":"INR","receipt":"receipt-1"}],"count":1}`)
 			return err
@@ -42,6 +50,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListPayments().Definition().Operation.OperationID != "listPayments" {
+		t.Errorf("listPayments mock has another definition")
+	}
+	if mock.CapturePayment().Definition().Operation.OperationID != "capturePayment" {
+		t.Errorf("capturePayment mock has another definition")
+	}
 	if mock.ListOrders().Definition().Operation.OperationID != "listOrders" {
 		t.Errorf("listOrders mock has another definition")
 	}

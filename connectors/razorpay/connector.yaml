@@ -60,6 +60,45 @@ spec:
         - Sign in to the Razorpay Dashboard, select Test or Live Mode, then open Account & Settings > API Keys > Generate Key. Copy the Key ID beginning rzp_test_ or rzp_live_ and its paired opaque Key Secret into Dex Web secret key_id and key_secret. Blank is invalid. Regenerate the pair on the same page to rotate it; Test and Live keys cannot be mixed.
         - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Find the non-secret pay_ payment ID on the Dashboard Payments page or from an API response and pass it as paymentId; blank is invalid. The payment amount returned is in currency subunits.
   operations:
+    - name: listPayments
+      goName: ListPayments
+      inputType: ListPaymentsInput
+      outputType: PaymentPage
+      kind: query
+      description: List one bounded page of payment statuses.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Razorpay returned a payment page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected the payment list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Razorpay returned unusable payment data., optional: true}
+        - {id: defect, goName: Defect, description: The page input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample payment page was returned.
+          output: {payments: [{id: pay_DG4ZdRK8ZnXC3k, status: captured, amount: 100, currencyCode: INR}], count: 1}
+    - name: capturePayment
+      goName: CapturePayment
+      inputType: CapturePaymentInput
+      outputType: PaymentStatus
+      kind: mutation
+      description: Capture one authorized payment for its full amount.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: captured, goName: Captured, description: The payment is captured for the requested amount.}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected capture., optional: true}
+        - {id: defect, goName: Defect, description: The payment input or credentials are invalid., optional: true}
+      mocks:
+        - name: capturedDefault
+          branch: captured
+          default: true
+          description: One sample payment was captured.
+          output: {id: pay_DG4ZdRK8ZnXC3k, status: captured, amount: 100, currencyCode: INR}
     - name: listOrders
       goName: ListOrders
       inputType: ListOrdersInput

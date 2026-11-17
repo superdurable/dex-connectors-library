@@ -41,6 +41,8 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListPayments() sdkgo.Query[ListPaymentsInput, PaymentPage]
+	CapturePayment() sdkgo.Mutation[CapturePaymentInput, PaymentStatus]
 	ListOrders() sdkgo.Query[ListOrdersInput, OrderPage]
 	GetOrder() sdkgo.Query[GetOrderInput, OrderSummary]
 	CreateOrder() sdkgo.Mutation[CreateOrderInput, OrderSummary]
@@ -49,6 +51,12 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListPayments() sdkgo.Query[ListPaymentsInput, PaymentPage] {
+	return operations.client.ListPayments()
+}
+func (operations clientOperations) CapturePayment() sdkgo.Mutation[CapturePaymentInput, PaymentStatus] {
+	return operations.client.CapturePayment()
+}
 func (operations clientOperations) ListOrders() sdkgo.Query[ListOrdersInput, OrderPage] {
 	return operations.client.ListOrders()
 }
@@ -202,6 +210,143 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential key_secret is required")
 	}
 	return nil
+}
+
+const ListPaymentsBranchListed sdkgo.BranchID = "listed"
+const ListPaymentsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListPaymentsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListPaymentsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListPaymentsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listPayments"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListPaymentsBranchListed, Description: "Razorpay returned a payment page."},
+		{ID: ListPaymentsBranchProviderRejected, Description: "Razorpay conclusively rejected the payment list.", Optional: true},
+		{ID: ListPaymentsBranchInvalidResponse, Description: "Razorpay returned unusable payment data.", Optional: true},
+		{ID: ListPaymentsBranchDefect, Description: "The page input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListPaymentsResult = sdkgo.QueryResult[PaymentPage]
+
+type ListPaymentsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=razorpay"`
+	operationID                    struct{}                                       `connector:"operationId=listPayments"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListPaymentsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListPaymentsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListPaymentsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListPaymentsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListPaymentsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PaymentPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListPaymentsStep[IN any](config ListPaymentsStepConfig[IN]) sdkgo.QueryStep[IN, ListPaymentsInput, PaymentPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("razorpay connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPaymentsInput, PaymentPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListPayments(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListPaymentsResult] {
+			branches := make([]sdkgo.BranchTarget[ListPaymentsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListPaymentsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListPaymentsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListPaymentsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListPaymentsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CapturePaymentBranchCaptured sdkgo.BranchID = "captured"
+const CapturePaymentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CapturePaymentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CapturePaymentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "capturePayment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CapturePaymentBranchCaptured, Description: "The payment is captured for the requested amount."},
+		{ID: CapturePaymentBranchProviderRejected, Description: "Razorpay conclusively rejected capture.", Optional: true},
+		{ID: CapturePaymentBranchDefect, Description: "The payment input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CapturePaymentResult = sdkgo.MutationResult[PaymentStatus]
+
+type CapturePaymentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=razorpay"`
+	operationID                       struct{}                                            `connector:"operationId=capturePayment"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) CapturePaymentInput                        `connector:"mapToOperationInput"`
+	Captured                          sdkgo.Target[CapturePaymentResult]                  `connector:"branch=captured"`
+	ProviderRejected                  sdkgo.Target[CapturePaymentResult]                  `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CapturePaymentResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentStatus]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewCapturePaymentStep[IN any](config CapturePaymentStepConfig[IN]) sdkgo.MutationStep[IN, CapturePaymentInput, PaymentStatus] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("razorpay connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CapturePaymentInput, PaymentStatus]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CapturePayment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CapturePaymentResult] {
+			branches := make([]sdkgo.BranchTarget[CapturePaymentResult], 0, 3)
+			if config.Captured.HasStep() {
+				branches = append(branches, config.Captured.BranchTarget(CapturePaymentBranchCaptured))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CapturePaymentBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CapturePaymentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListOrdersBranchListed sdkgo.BranchID = "listed"

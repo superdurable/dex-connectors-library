@@ -1475,6 +1475,778 @@
       },
       "name": "createOrder-duplicatePending",
       "operation": "createOrder"
+    },
+    {
+      "callId": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "exchanges": [
+        {
+          "body": "{\"entity\":\"collection\",\"count\":1,\"items\":[{\"id\":\"pay_DG4ZdRK8ZnXC3k\",\"entity\":\"payment\",\"status\":\"captured\",\"amount\":100,\"currency\":\"INR\",\"email\":\"private@example.com\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "count": 1,
+          "payments": [
+            {
+              "amount": 100,
+              "currencyCode": "INR",
+              "id": "pay_DG4ZdRK8ZnXC3k",
+              "status": "captured"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listPayments-listed",
+      "operation": "listPayments"
+    },
+    {
+      "callId": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "count": 0,
+          "payments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listPayments-providerRejected",
+      "operation": "listPayments"
+    },
+    {
+      "callId": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "count": 0,
+          "payments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listPayments-invalidResponse",
+      "operation": "listPayments"
+    },
+    {
+      "callId": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "count": 0,
+          "payments": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 0,
+        "skip": 1
+      },
+      "name": "listPayments-defect",
+      "operation": "listPayments"
+    },
+    {
+      "callId": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listPayments-rateLimit",
+      "operation": "listPayments"
+    },
+    {
+      "callId": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listPayments-serviceUnavailable",
+      "operation": "listPayments"
+    },
+    {
+      "callId": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listPayments-serverError",
+      "operation": "listPayments"
+    },
+    {
+      "callId": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listPayments-transportFailure",
+      "operation": "listPayments"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"pay_DG4ZdRK8ZnXC3k\",\"entity\":\"payment\",\"status\":\"captured\",\"amount\":100,\"currency\":\"INR\",\"email\":\"private@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k/capture",
+          "requestBody": {
+            "amount": 100,
+            "currency": "INR"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "captured",
+        "failureKind": "",
+        "output": {
+          "amount": 100,
+          "currencyCode": "INR",
+          "id": "pay_DG4ZdRK8ZnXC3k",
+          "status": "captured"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "input": {
+        "amount": 100,
+        "currencyCode": "INR",
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "capturePayment-captured",
+      "operation": "capturePayment"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k/capture",
+          "requestBody": {
+            "amount": 100,
+            "currency": "INR"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "input": {
+        "amount": 100,
+        "currencyCode": "INR",
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "capturePayment-providerRejected",
+      "operation": "capturePayment"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "input": {
+        "amount": 0,
+        "currencyCode": "INR",
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "capturePayment-defect",
+      "operation": "capturePayment"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k/capture",
+          "requestBody": {
+            "amount": 100,
+            "currency": "INR"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "input": {
+        "amount": 100,
+        "currencyCode": "INR",
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "capturePayment-rateLimit",
+      "operation": "capturePayment"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k/capture",
+          "requestBody": {
+            "amount": 100,
+            "currency": "INR"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "input": {
+        "amount": 100,
+        "currencyCode": "INR",
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "capturePayment-serviceUnavailable",
+      "operation": "capturePayment"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k/capture",
+          "requestBody": {
+            "amount": 100,
+            "currency": "INR"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "input": {
+        "amount": 100,
+        "currencyCode": "INR",
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "capturePayment-serverError",
+      "operation": "capturePayment"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k/capture",
+          "requestBody": {
+            "amount": 100,
+            "currency": "INR"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "input": {
+        "amount": 100,
+        "currencyCode": "INR",
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "capturePayment-transportFailure",
+      "operation": "capturePayment"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k/capture",
+          "requestBody": {
+            "amount": 100,
+            "currency": "INR"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"id\":\"pay_DG4ZdRK8ZnXC3k\",\"entity\":\"payment\",\"status\":\"captured\",\"amount\":100,\"currency\":\"INR\",\"email\":\"private@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "captured",
+        "failureKind": "",
+        "output": {
+          "amount": 100,
+          "currencyCode": "INR",
+          "id": "pay_DG4ZdRK8ZnXC3k",
+          "status": "captured"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "input": {
+        "amount": 100,
+        "currencyCode": "INR",
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "capturePayment-alreadyCaptured",
+      "operation": "capturePayment"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k/capture",
+          "requestBody": {
+            "amount": 100,
+            "currency": "INR"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"id\":\"pay_DG4ZdRK8ZnXC3k\",\"entity\":\"payment\",\"status\":\"captured\",\"amount\":200,\"currency\":\"INR\",\"email\":\"private@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "input": {
+        "amount": 100,
+        "currencyCode": "INR",
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "capturePayment-wrongAmount",
+      "operation": "capturePayment"
     }
   ],
   "schemaVersion": 1
