@@ -284,7 +284,7 @@ func (CreateContactOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateContac
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates one contact, reading back by exact email and name after an ambiguous send.
+// Invoke creates one contact under a persisted send cap.
 func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateContactInput) sdkgo.MutationAttempt[CreatedContact] {
 	if !validContactWrite(input.Name, input.Email, input.Phone) {
 		return contactMutationBranch[CreatedContact]("createContact", CreateContactBranchDefect, sdkgo.FailureValidation, "contact fields are invalid")
@@ -295,15 +295,6 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 		return contactMutationBranch[CreatedContact]("createContact", CreateContactBranchDefect, sdkgo.FailureLocalDefect, "dispatch checkpoint is unavailable")
 	}
 	decision := fence.Decide()
-	if decision.MaximumPriorSends > 0 || decision.Kind != singledispatch.SendAllowed {
-		contact, found, readError := operation.client.readBackContact(call, input)
-		if found {
-			return sdkgo.NewMutationBranch(CreateContactBranchCreated, CreatedContact{ID: contact.ID}, nil, sdkgo.Receipt{})
-		}
-		if readError != nil {
-			return sdkgo.NewMutationRetry[CreatedContact](contactFailure("createContact", sdkgo.FailureAvailability, "contact read-back is unavailable"), 0)
-		}
-	}
 	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(CreatedContact{}, contactFailure("createContact", sdkgo.FailureTransport, "contact creation may have succeeded"), sdkgo.Receipt{})
 	}
@@ -353,25 +344,6 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 		return sdkgo.NewMutationUncertain(CreatedContact{}, contactFailure("createContact", sdkgo.FailureProtocol, "Odoo accepted contact creation without a valid ID"), sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(CreateContactBranchCreated, CreatedContact{ID: ids[0]}, nil, sdkgo.Receipt{})
-}
-
-func (client *Client) readBackContact(call sdkgo.Call, input CreateContactInput) (Contact, bool, error) {
-	if input.Email == "" {
-		return Contact{}, false, nil
-	}
-	body, _ := json.Marshal(map[string]any{"domain": [][]any{{"email", "=", input.Email}, {"name", "=", input.Name}}, "fields": []string{"id", "name", "email", "phone"}, "limit": 2})
-	response := client.callModel(call, call.Context, "res.partner", "search_read", body)
-	if response.err != nil || response.status != http.StatusOK {
-		return Contact{}, false, errors.New("contact read-back failed")
-	}
-	contacts, err := decodeContacts(response.body)
-	if err != nil {
-		return Contact{}, false, err
-	}
-	if len(contacts) == 1 && contacts[0].Email == input.Email && contacts[0].Name == input.Name && contacts[0].Phone == input.Phone {
-		return contacts[0], true, nil
-	}
-	return Contact{}, false, nil
 }
 
 func validContactWrite(name, email, phone string) bool {

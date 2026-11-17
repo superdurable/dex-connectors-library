@@ -9,9 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"reflect"
 	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -57,13 +55,13 @@ type GetRecordInput struct {
 	Fields []string `json:"fields"`
 }
 
-// CreateRecordInput supplies a model row and optional read-back selector.
+// CreateRecordInput supplies a model row.
 type CreateRecordInput struct {
 	// Model is a supported Odoo model name.
 	Model string `json:"model"`
 	// Values contains non-secret JSON field values.
 	Values map[string]json.RawMessage `json:"values"`
-	// ReadBackField is a field with a stable value to search after ambiguous sends; blank disables read-back.
+	// ReadBackField is ignored; a caller-selected field cannot prove which request created a row.
 	ReadBackField string `json:"readBackField,omitempty"`
 }
 
@@ -244,10 +242,10 @@ func (CreateRecordOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateRecordI
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates one row, optionally reading it back by a stable field after an ambiguous send.
+// Invoke creates one row under a persisted send cap.
 func (operation CreateRecordOperation) Invoke(call sdkgo.Call, input CreateRecordInput) sdkgo.MutationAttempt[CreatedRecord] {
-	if !validOdooModel(input.Model) || !validOdooValues(input.Values) || (input.ReadBackField != "" && (!validOdooField(input.ReadBackField) || len(input.Values[input.ReadBackField]) == 0)) {
-		return contactMutationBranch[CreatedRecord]("createRecord", CreateRecordBranchDefect, sdkgo.FailureValidation, "model, values, or read-back field is invalid")
+	if !validOdooModel(input.Model) || !validOdooValues(input.Values) {
+		return contactMutationBranch[CreatedRecord]("createRecord", CreateRecordBranchDefect, sdkgo.FailureValidation, "model or values are invalid")
 	}
 	body, _ := json.Marshal(map[string]any{"vals_list": []any{input.Values}})
 	fence, err := singledispatch.NewFence(call, CreateRecordDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
@@ -255,15 +253,6 @@ func (operation CreateRecordOperation) Invoke(call sdkgo.Call, input CreateRecor
 		return contactMutationBranch[CreatedRecord]("createRecord", CreateRecordBranchDefect, sdkgo.FailureLocalDefect, "dispatch checkpoint is unavailable")
 	}
 	decision := fence.Decide()
-	if decision.MaximumPriorSends > 0 || decision.Kind != singledispatch.SendAllowed {
-		id, readError := operation.client.readBackRecord(call, input)
-		if id > 0 {
-			return sdkgo.NewMutationBranch(CreateRecordBranchCreated, CreatedRecord{ID: id}, nil, sdkgo.Receipt{})
-		}
-		if readError != nil {
-			return sdkgo.NewMutationRetry[CreatedRecord](contactFailure("createRecord", sdkgo.FailureAvailability, "record read-back is unavailable"), 0)
-		}
-	}
 	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(CreatedRecord{}, contactFailure("createRecord", sdkgo.FailureTransport, "record creation may have succeeded"), sdkgo.Receipt{})
 	}
@@ -313,43 +302,6 @@ func (operation CreateRecordOperation) Invoke(call sdkgo.Call, input CreateRecor
 		return sdkgo.NewMutationUncertain(CreatedRecord{}, contactFailure("createRecord", sdkgo.FailureProtocol, "Odoo accepted creation without a valid ID"), sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(CreateRecordBranchCreated, CreatedRecord{ID: ids[0]}, nil, sdkgo.Receipt{})
-}
-
-func (client *Client) readBackRecord(call sdkgo.Call, input CreateRecordInput) (int64, error) {
-	if input.ReadBackField == "" {
-		return 0, nil
-	}
-	var target any
-	if json.Unmarshal(input.Values[input.ReadBackField], &target) != nil {
-		return 0, errors.New("read-back value is invalid")
-	}
-	fields := make([]string, 0, len(input.Values))
-	for field := range input.Values {
-		fields = append(fields, field)
-	}
-	sort.Strings(fields)
-	body, _ := json.Marshal(map[string]any{"domain": [][]any{{input.ReadBackField, "=", target}}, "fields": selectedOdooFields(fields), "limit": 2})
-	response := client.callModel(call, call.Context, input.Model, "search_read", body)
-	if response.err != nil || response.status != http.StatusOK {
-		return 0, errors.New("record read-back failed")
-	}
-	records, err := decodeRecords(response.body, fields, 2)
-	if err != nil {
-		return 0, err
-	}
-	if len(records) != 1 {
-		return 0, nil
-	}
-	for field, expected := range input.Values {
-		var actualValue, expectedValue any
-		if json.Unmarshal(records[0].Fields[field], &actualValue) != nil || json.Unmarshal(expected, &expectedValue) != nil {
-			return 0, errors.New("record read-back comparison failed")
-		}
-		if !reflect.DeepEqual(actualValue, expectedValue) {
-			return 0, nil
-		}
-	}
-	return records[0].ID, nil
 }
 
 // UpdateRecordOperation sets selected model fields.

@@ -204,7 +204,7 @@ func (CreateOpportunityOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateOp
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates an opportunity and reads back after an ambiguous send when email is present.
+// Invoke creates an opportunity under a persisted send cap.
 func (operation CreateOpportunityOperation) Invoke(call sdkgo.Call, input CreateOpportunityInput) sdkgo.MutationAttempt[CreatedOpportunity] {
 	if !validOpportunityWrite(input.Name, input.EmailFrom, input.Phone) {
 		return contactMutationBranch[CreatedOpportunity]("createOpportunity", CreateOpportunityBranchDefect, sdkgo.FailureValidation, "opportunity fields are invalid")
@@ -215,15 +215,6 @@ func (operation CreateOpportunityOperation) Invoke(call sdkgo.Call, input Create
 		return contactMutationBranch[CreatedOpportunity]("createOpportunity", CreateOpportunityBranchDefect, sdkgo.FailureLocalDefect, "dispatch checkpoint is unavailable")
 	}
 	decision := fence.Decide()
-	if decision.MaximumPriorSends > 0 || decision.Kind != singledispatch.SendAllowed {
-		found, readError := operation.client.readBackOpportunity(call, input)
-		if found.ID > 0 {
-			return sdkgo.NewMutationBranch(CreateOpportunityBranchCreated, CreatedOpportunity{ID: found.ID}, nil, sdkgo.Receipt{})
-		}
-		if readError != nil {
-			return sdkgo.NewMutationRetry[CreatedOpportunity](contactFailure("createOpportunity", sdkgo.FailureAvailability, "opportunity read-back is unavailable"), 0)
-		}
-	}
 	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(CreatedOpportunity{}, contactFailure("createOpportunity", sdkgo.FailureTransport, "opportunity creation may have succeeded"), sdkgo.Receipt{})
 	}
@@ -273,25 +264,6 @@ func (operation CreateOpportunityOperation) Invoke(call sdkgo.Call, input Create
 		return sdkgo.NewMutationUncertain(CreatedOpportunity{}, contactFailure("createOpportunity", sdkgo.FailureProtocol, "Odoo accepted creation without a valid ID"), sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(CreateOpportunityBranchCreated, CreatedOpportunity{ID: ids[0]}, nil, sdkgo.Receipt{})
-}
-
-func (client *Client) readBackOpportunity(call sdkgo.Call, input CreateOpportunityInput) (Opportunity, error) {
-	if input.EmailFrom == "" {
-		return Opportunity{}, nil
-	}
-	body, _ := json.Marshal(map[string]any{"domain": [][]any{{"type", "=", "opportunity"}, {"email_from", "=", input.EmailFrom}, {"name", "=", input.Name}}, "fields": []string{"id", "name", "email_from", "phone"}, "limit": 2})
-	response := client.callModel(call, call.Context, "crm.lead", "search_read", body)
-	if response.err != nil || response.status != http.StatusOK {
-		return Opportunity{}, errors.New("opportunity read-back failed")
-	}
-	records, err := decodeOpportunities(response.body)
-	if err != nil {
-		return Opportunity{}, err
-	}
-	if len(records) == 1 && records[0].Name == input.Name && records[0].EmailFrom == input.EmailFrom && records[0].Phone == input.Phone {
-		return records[0], nil
-	}
-	return Opportunity{}, nil
 }
 
 // UpdateOpportunityOperation replaces common CRM opportunity fields.
