@@ -18,6 +18,10 @@ import (
 // Mock is a scripted copper connection. Script each operation through its accessor.
 type Mock struct {
 	connection       copper.Connection
+	createPerson     *connectormock.Mutation[copper.CreatePersonInput, copper.PersonMetadata]
+	getPerson        *connectormock.Query[copper.GetPersonInput, copper.PersonMetadata]
+	updatePerson     *connectormock.Mutation[copper.UpdatePersonInput, copper.PersonMetadata]
+	deletePerson     *connectormock.Mutation[copper.DeletePersonInput, copper.DeletePersonOutput]
 	listLeadStatuses *connectormock.Query[copper.ListLeadStatusesInput, copper.LeadStatusesList]
 	getLead          *connectormock.Query[copper.GetLeadInput, copper.LeadMetadata]
 }
@@ -27,9 +31,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		createPerson:     connectormock.NewMutation[copper.CreatePersonInput, copper.PersonMetadata](t, copper.CreatePersonDefinition),
+		getPerson:        connectormock.NewQuery[copper.GetPersonInput, copper.PersonMetadata](t, copper.GetPersonDefinition),
+		updatePerson:     connectormock.NewMutation[copper.UpdatePersonInput, copper.PersonMetadata](t, copper.UpdatePersonDefinition),
+		deletePerson:     connectormock.NewMutation[copper.DeletePersonInput, copper.DeletePersonOutput](t, copper.DeletePersonDefinition),
 		listLeadStatuses: connectormock.NewQuery[copper.ListLeadStatusesInput, copper.LeadStatusesList](t, copper.ListLeadStatusesDefinition),
 		getLead:          connectormock.NewQuery[copper.GetLeadInput, copper.LeadMetadata](t, copper.GetLeadDefinition),
 	}
+	mock.createPerson.Default(CreatePersonDefault())
+	mock.getPerson.Default(GetPersonDefault())
+	mock.updatePerson.Default(UpdatePersonDefault())
+	mock.deletePerson.Default(DeletePersonDefault())
 	mock.listLeadStatuses.Default(ListLeadStatusesDefault())
 	mock.getLead.Default(GetLeadDefault())
 	connection, err := copper.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "copper", Name: connectionName})
@@ -43,6 +55,26 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() copper.Connection { return mock.connection }
 
+// CreatePerson returns the createPerson script.
+func (mock *Mock) CreatePerson() *connectormock.Mutation[copper.CreatePersonInput, copper.PersonMetadata] {
+	return mock.createPerson
+}
+
+// GetPerson returns the getPerson script.
+func (mock *Mock) GetPerson() *connectormock.Query[copper.GetPersonInput, copper.PersonMetadata] {
+	return mock.getPerson
+}
+
+// UpdatePerson returns the updatePerson script.
+func (mock *Mock) UpdatePerson() *connectormock.Mutation[copper.UpdatePersonInput, copper.PersonMetadata] {
+	return mock.updatePerson
+}
+
+// DeletePerson returns the deletePerson script.
+func (mock *Mock) DeletePerson() *connectormock.Mutation[copper.DeletePersonInput, copper.DeletePersonOutput] {
+	return mock.deletePerson
+}
+
 // ListLeadStatuses returns the listLeadStatuses script.
 func (mock *Mock) ListLeadStatuses() *connectormock.Query[copper.ListLeadStatusesInput, copper.LeadStatusesList] {
 	return mock.listLeadStatuses
@@ -55,11 +87,170 @@ func (mock *Mock) GetLead() *connectormock.Query[copper.GetLeadInput, copper.Lea
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreatePerson() sdkgo.Mutation[copper.CreatePersonInput, copper.PersonMetadata] {
+	return operations.mock.createPerson
+}
+func (operations mockOperations) GetPerson() sdkgo.Query[copper.GetPersonInput, copper.PersonMetadata] {
+	return operations.mock.getPerson
+}
+func (operations mockOperations) UpdatePerson() sdkgo.Mutation[copper.UpdatePersonInput, copper.PersonMetadata] {
+	return operations.mock.updatePerson
+}
+func (operations mockOperations) DeletePerson() sdkgo.Mutation[copper.DeletePersonInput, copper.DeletePersonOutput] {
+	return operations.mock.deletePerson
+}
 func (operations mockOperations) ListLeadStatuses() sdkgo.Query[copper.ListLeadStatusesInput, copper.LeadStatusesList] {
 	return operations.mock.listLeadStatuses
 }
 func (operations mockOperations) GetLead() sdkgo.Query[copper.GetLeadInput, copper.LeadMetadata] {
 	return operations.mock.getLead
+}
+
+// CreatePersonCreated selects the created branch: Copper created the person.
+func CreatePersonCreated(value copper.PersonMetadata, failure *sdkgo.Failure) connectormock.Case[copper.PersonMetadata] {
+	return connectormock.Branch(copper.CreatePersonBranchCreated, value, failure)
+}
+
+// CreatePersonProviderRejected selects the providerRejected branch: Copper rejected creation.
+func CreatePersonProviderRejected(value copper.PersonMetadata, failure *sdkgo.Failure) connectormock.Case[copper.PersonMetadata] {
+	return connectormock.Branch(copper.CreatePersonBranchProviderRejected, value, failure)
+}
+
+// CreatePersonUncertain returns an uncertain createPerson outcome.
+func CreatePersonUncertain(value copper.PersonMetadata, failure sdkgo.Failure) connectormock.Case[copper.PersonMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreatePersonDefect selects the defect branch: Input or credentials are invalid.
+func CreatePersonDefect(value copper.PersonMetadata, failure *sdkgo.Failure) connectormock.Case[copper.PersonMetadata] {
+	return connectormock.Branch(copper.CreatePersonBranchDefect, value, failure)
+}
+
+// CreatePersonRetry asks Dex to retry the createPerson Step, after the delay when it is positive.
+func CreatePersonRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.PersonMetadata] {
+	return connectormock.Retry[copper.PersonMetadata](failure, after)
+}
+
+// CreatePersonCreatedDefault is the manifest mock createdDefault: A sample person is created.
+func CreatePersonCreatedDefault() connectormock.Case[copper.PersonMetadata] {
+	value := connectormock.MustDecodeOutput[copper.PersonMetadata](`{"id":26443553,"name":"Sample Person","email":"sample@example.com"}`)
+	return connectormock.Branch(copper.CreatePersonBranchCreated, value, nil)
+}
+
+// CreatePersonDefault is the manifest default, createdDefault, which New installs.
+func CreatePersonDefault() connectormock.Case[copper.PersonMetadata] {
+	return CreatePersonCreatedDefault()
+}
+
+// GetPersonFound selects the found branch: Copper returned the person.
+func GetPersonFound(value copper.PersonMetadata, failure *sdkgo.Failure) connectormock.Case[copper.PersonMetadata] {
+	return connectormock.Branch(copper.GetPersonBranchFound, value, failure)
+}
+
+// GetPersonNotFound selects the notFound branch: No person matches the ID.
+func GetPersonNotFound(value copper.PersonMetadata, failure *sdkgo.Failure) connectormock.Case[copper.PersonMetadata] {
+	return connectormock.Branch(copper.GetPersonBranchNotFound, value, failure)
+}
+
+// GetPersonProviderRejected selects the providerRejected branch: Copper rejected the lookup.
+func GetPersonProviderRejected(value copper.PersonMetadata, failure *sdkgo.Failure) connectormock.Case[copper.PersonMetadata] {
+	return connectormock.Branch(copper.GetPersonBranchProviderRejected, value, failure)
+}
+
+// GetPersonInvalidResponse selects the invalidResponse branch: Copper returned invalid person JSON.
+func GetPersonInvalidResponse(value copper.PersonMetadata, failure *sdkgo.Failure) connectormock.Case[copper.PersonMetadata] {
+	return connectormock.Branch(copper.GetPersonBranchInvalidResponse, value, failure)
+}
+
+// GetPersonDefect selects the defect branch: Input or credentials are invalid.
+func GetPersonDefect(value copper.PersonMetadata, failure *sdkgo.Failure) connectormock.Case[copper.PersonMetadata] {
+	return connectormock.Branch(copper.GetPersonBranchDefect, value, failure)
+}
+
+// GetPersonRetry asks Dex to retry the getPerson Step, after the delay when it is positive.
+func GetPersonRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.PersonMetadata] {
+	return connectormock.Retry[copper.PersonMetadata](failure, after)
+}
+
+// GetPersonFoundDefault is the manifest mock foundDefault: One sample person is returned.
+func GetPersonFoundDefault() connectormock.Case[copper.PersonMetadata] {
+	value := connectormock.MustDecodeOutput[copper.PersonMetadata](`{"id":26443553,"name":"Sample Person","email":"sample@example.com"}`)
+	return connectormock.Branch(copper.GetPersonBranchFound, value, nil)
+}
+
+// GetPersonDefault is the manifest default, foundDefault, which New installs.
+func GetPersonDefault() connectormock.Case[copper.PersonMetadata] { return GetPersonFoundDefault() }
+
+// UpdatePersonUpdated selects the updated branch: Copper updated the person.
+func UpdatePersonUpdated(value copper.PersonMetadata, failure *sdkgo.Failure) connectormock.Case[copper.PersonMetadata] {
+	return connectormock.Branch(copper.UpdatePersonBranchUpdated, value, failure)
+}
+
+// UpdatePersonNotFound selects the notFound branch: No person matches the ID.
+func UpdatePersonNotFound(value copper.PersonMetadata, failure *sdkgo.Failure) connectormock.Case[copper.PersonMetadata] {
+	return connectormock.Branch(copper.UpdatePersonBranchNotFound, value, failure)
+}
+
+// UpdatePersonProviderRejected selects the providerRejected branch: Copper rejected the update.
+func UpdatePersonProviderRejected(value copper.PersonMetadata, failure *sdkgo.Failure) connectormock.Case[copper.PersonMetadata] {
+	return connectormock.Branch(copper.UpdatePersonBranchProviderRejected, value, failure)
+}
+
+// UpdatePersonDefect selects the defect branch: Input or credentials are invalid.
+func UpdatePersonDefect(value copper.PersonMetadata, failure *sdkgo.Failure) connectormock.Case[copper.PersonMetadata] {
+	return connectormock.Branch(copper.UpdatePersonBranchDefect, value, failure)
+}
+
+// UpdatePersonRetry asks Dex to retry the updatePerson Step, after the delay when it is positive.
+func UpdatePersonRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.PersonMetadata] {
+	return connectormock.Retry[copper.PersonMetadata](failure, after)
+}
+
+// UpdatePersonUpdatedDefault is the manifest mock updatedDefault: A sample person is updated.
+func UpdatePersonUpdatedDefault() connectormock.Case[copper.PersonMetadata] {
+	value := connectormock.MustDecodeOutput[copper.PersonMetadata](`{"id":26443553,"name":"Sample Person","details":"Updated"}`)
+	return connectormock.Branch(copper.UpdatePersonBranchUpdated, value, nil)
+}
+
+// UpdatePersonDefault is the manifest default, updatedDefault, which New installs.
+func UpdatePersonDefault() connectormock.Case[copper.PersonMetadata] {
+	return UpdatePersonUpdatedDefault()
+}
+
+// DeletePersonDeleted selects the deleted branch: Copper deleted the person.
+func DeletePersonDeleted(value copper.DeletePersonOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeletePersonOutput] {
+	return connectormock.Branch(copper.DeletePersonBranchDeleted, value, failure)
+}
+
+// DeletePersonNotFound selects the notFound branch: No person matches the ID.
+func DeletePersonNotFound(value copper.DeletePersonOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeletePersonOutput] {
+	return connectormock.Branch(copper.DeletePersonBranchNotFound, value, failure)
+}
+
+// DeletePersonProviderRejected selects the providerRejected branch: Copper rejected the deletion.
+func DeletePersonProviderRejected(value copper.DeletePersonOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeletePersonOutput] {
+	return connectormock.Branch(copper.DeletePersonBranchProviderRejected, value, failure)
+}
+
+// DeletePersonDefect selects the defect branch: Input or credentials are invalid.
+func DeletePersonDefect(value copper.DeletePersonOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeletePersonOutput] {
+	return connectormock.Branch(copper.DeletePersonBranchDefect, value, failure)
+}
+
+// DeletePersonRetry asks Dex to retry the deletePerson Step, after the delay when it is positive.
+func DeletePersonRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.DeletePersonOutput] {
+	return connectormock.Retry[copper.DeletePersonOutput](failure, after)
+}
+
+// DeletePersonDeletedDefault is the manifest mock deletedDefault: A sample person is deleted.
+func DeletePersonDeletedDefault() connectormock.Case[copper.DeletePersonOutput] {
+	value := connectormock.MustDecodeOutput[copper.DeletePersonOutput](`{"id":26443553,"deleted":true}`)
+	return connectormock.Branch(copper.DeletePersonBranchDeleted, value, nil)
+}
+
+// DeletePersonDefault is the manifest default, deletedDefault, which New installs.
+func DeletePersonDefault() connectormock.Case[copper.DeletePersonOutput] {
+	return DeletePersonDeletedDefault()
 }
 
 // ListLeadStatusesListed selects the listed branch: Copper returned lead statuses.

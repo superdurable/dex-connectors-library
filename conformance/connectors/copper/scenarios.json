@@ -665,6 +665,1345 @@
       },
       "name": "getLead-transportFailure",
       "operation": "getLead"
+    },
+    {
+      "callId": "5a0962cd-e682-5761-ba21-464c5034c25e",
+      "exchanges": [
+        {
+          "body": "{\"id\":26443553,\"name\":\"Sample Person\",\"emails\":[{\"email\":\"sample@example.com\",\"category\":\"work\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/people",
+          "requestBody": {
+            "emails": [
+              {
+                "category": "work",
+                "email": "sample@example.com"
+              }
+            ],
+            "name": "Sample Person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5a0962cd-e682-5761-ba21-464c5034c25e",
+          "providerId": "26443553",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "email": "sample@example.com",
+          "id": 26443553,
+          "name": "Sample Person"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5a0962cd-e682-5761-ba21-464c5034c25e",
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Person"
+      },
+      "name": "createPerson-success",
+      "operation": "createPerson"
+    },
+    {
+      "callId": "5a0962cd-e682-5761-ba21-464c5034c25e",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/people",
+          "requestBody": {
+            "emails": [
+              {
+                "category": "work",
+                "email": "sample@example.com"
+              }
+            ],
+            "name": "Sample Person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5a0962cd-e682-5761-ba21-464c5034c25e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5a0962cd-e682-5761-ba21-464c5034c25e",
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Person"
+      },
+      "name": "createPerson-providerRejected",
+      "operation": "createPerson"
+    },
+    {
+      "callId": "5a0962cd-e682-5761-ba21-464c5034c25e",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/people",
+          "requestBody": {
+            "emails": [
+              {
+                "category": "work",
+                "email": "sample@example.com"
+              }
+            ],
+            "name": "Sample Person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5a0962cd-e682-5761-ba21-464c5034c25e",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5a0962cd-e682-5761-ba21-464c5034c25e",
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Person"
+      },
+      "name": "createPerson-rateLimit",
+      "operation": "createPerson"
+    },
+    {
+      "callId": "5a0962cd-e682-5761-ba21-464c5034c25e",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/people",
+          "requestBody": {
+            "emails": [
+              {
+                "category": "work",
+                "email": "sample@example.com"
+              }
+            ],
+            "name": "Sample Person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5a0962cd-e682-5761-ba21-464c5034c25e",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5a0962cd-e682-5761-ba21-464c5034c25e",
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Person"
+      },
+      "name": "createPerson-serverUnavailable",
+      "operation": "createPerson"
+    },
+    {
+      "callId": "5a0962cd-e682-5761-ba21-464c5034c25e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/people",
+          "requestBody": {
+            "emails": [
+              {
+                "category": "work",
+                "email": "sample@example.com"
+              }
+            ],
+            "name": "Sample Person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5a0962cd-e682-5761-ba21-464c5034c25e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5a0962cd-e682-5761-ba21-464c5034c25e",
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Person"
+      },
+      "name": "createPerson-transportFailure",
+      "operation": "createPerson"
+    },
+    {
+      "callId": "5a0962cd-e682-5761-ba21-464c5034c25e",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/people/search",
+          "requestBody": {
+            "email": "sample@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "5a0962cd-e682-5761-ba21-464c5034c25e",
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Person"
+      },
+      "name": "createPerson-uncertain",
+      "operation": "createPerson",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "5a0962cd-e682-5761-ba21-464c5034c25e",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "f323b1b9-9d6b-42f0-ac69-daf466d8a660",
+      "exchanges": [
+        {
+          "body": "{\"id\":26443553,\"name\":\"Sample Person\",\"emails\":[{\"email\":\"sample@example.com\",\"category\":\"work\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/people/26443553",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "email": "sample@example.com",
+          "id": 26443553,
+          "name": "Sample Person"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "personId": "26443553"
+      },
+      "name": "getPerson-success",
+      "operation": "getPerson"
+    },
+    {
+      "callId": "f323b1b9-9d6b-42f0-ac69-daf466d8a660",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"not_found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/people/26443553",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "personId": "26443553"
+      },
+      "name": "getPerson-notFound",
+      "operation": "getPerson"
+    },
+    {
+      "callId": "f323b1b9-9d6b-42f0-ac69-daf466d8a660",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/people/26443553",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "personId": "26443553"
+      },
+      "name": "getPerson-invalidResponse",
+      "operation": "getPerson"
+    },
+    {
+      "callId": "f323b1b9-9d6b-42f0-ac69-daf466d8a660",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/people/26443553",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "personId": "26443553"
+      },
+      "name": "getPerson-providerRejected",
+      "operation": "getPerson"
+    },
+    {
+      "callId": "f323b1b9-9d6b-42f0-ac69-daf466d8a660",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/people/26443553",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "personId": "26443553"
+      },
+      "name": "getPerson-rateLimit",
+      "operation": "getPerson"
+    },
+    {
+      "callId": "f323b1b9-9d6b-42f0-ac69-daf466d8a660",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/people/26443553",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "personId": "26443553"
+      },
+      "name": "getPerson-serverUnavailable",
+      "operation": "getPerson"
+    },
+    {
+      "callId": "f323b1b9-9d6b-42f0-ac69-daf466d8a660",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/people/26443553",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "personId": "26443553"
+      },
+      "name": "getPerson-transportFailure",
+      "operation": "getPerson"
+    },
+    {
+      "callId": "642d35e4-7753-5078-8e72-0e1d7a38c512",
+      "exchanges": [
+        {
+          "body": "{\"id\":26443553,\"name\":\"Sample Person\",\"details\":\"Updated\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/people/26443553",
+          "requestBody": {
+            "details": "Updated",
+            "name": "Sample Person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "details": "Updated",
+          "id": 26443553,
+          "name": "Sample Person"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "642d35e4-7753-5078-8e72-0e1d7a38c512",
+      "input": {
+        "details": "Updated",
+        "name": "Sample Person",
+        "personId": "26443553"
+      },
+      "name": "updatePerson-success",
+      "operation": "updatePerson"
+    },
+    {
+      "callId": "642d35e4-7753-5078-8e72-0e1d7a38c512",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"not_found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/people/26443553",
+          "requestBody": {
+            "details": "Updated",
+            "name": "Sample Person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "642d35e4-7753-5078-8e72-0e1d7a38c512",
+      "input": {
+        "details": "Updated",
+        "name": "Sample Person",
+        "personId": "26443553"
+      },
+      "name": "updatePerson-notFound",
+      "operation": "updatePerson"
+    },
+    {
+      "callId": "642d35e4-7753-5078-8e72-0e1d7a38c512",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/people/26443553",
+          "requestBody": {
+            "details": "Updated",
+            "name": "Sample Person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "642d35e4-7753-5078-8e72-0e1d7a38c512",
+      "input": {
+        "details": "Updated",
+        "name": "Sample Person",
+        "personId": "26443553"
+      },
+      "name": "updatePerson-providerRejected",
+      "operation": "updatePerson"
+    },
+    {
+      "callId": "642d35e4-7753-5078-8e72-0e1d7a38c512",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/people/26443553",
+          "requestBody": {
+            "details": "Updated",
+            "name": "Sample Person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "642d35e4-7753-5078-8e72-0e1d7a38c512",
+      "input": {
+        "details": "Updated",
+        "name": "Sample Person",
+        "personId": "26443553"
+      },
+      "name": "updatePerson-rateLimit",
+      "operation": "updatePerson"
+    },
+    {
+      "callId": "642d35e4-7753-5078-8e72-0e1d7a38c512",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/people/26443553",
+          "requestBody": {
+            "details": "Updated",
+            "name": "Sample Person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "642d35e4-7753-5078-8e72-0e1d7a38c512",
+      "input": {
+        "details": "Updated",
+        "name": "Sample Person",
+        "personId": "26443553"
+      },
+      "name": "updatePerson-serverUnavailable",
+      "operation": "updatePerson"
+    },
+    {
+      "callId": "642d35e4-7753-5078-8e72-0e1d7a38c512",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/people/26443553",
+          "requestBody": {
+            "details": "Updated",
+            "name": "Sample Person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "642d35e4-7753-5078-8e72-0e1d7a38c512",
+      "input": {
+        "details": "Updated",
+        "name": "Sample Person",
+        "personId": "26443553"
+      },
+      "name": "updatePerson-transportFailure",
+      "operation": "updatePerson"
+    },
+    {
+      "callId": "28232112-be93-5b82-90ff-e2d022da132a",
+      "exchanges": [
+        {
+          "body": "{\"id\":26443553,\"is_deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/people/26443553",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": 26443553
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "28232112-be93-5b82-90ff-e2d022da132a",
+      "input": {
+        "personId": "26443553"
+      },
+      "name": "deletePerson-success",
+      "operation": "deletePerson"
+    },
+    {
+      "callId": "28232112-be93-5b82-90ff-e2d022da132a",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"not_found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/people/26443553",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "28232112-be93-5b82-90ff-e2d022da132a",
+      "input": {
+        "personId": "26443553"
+      },
+      "name": "deletePerson-notFound",
+      "operation": "deletePerson"
+    },
+    {
+      "callId": "28232112-be93-5b82-90ff-e2d022da132a",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/people/26443553",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "28232112-be93-5b82-90ff-e2d022da132a",
+      "input": {
+        "personId": "26443553"
+      },
+      "name": "deletePerson-providerRejected",
+      "operation": "deletePerson"
+    },
+    {
+      "callId": "28232112-be93-5b82-90ff-e2d022da132a",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/people/26443553",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "28232112-be93-5b82-90ff-e2d022da132a",
+      "input": {
+        "personId": "26443553"
+      },
+      "name": "deletePerson-rateLimit",
+      "operation": "deletePerson"
+    },
+    {
+      "callId": "28232112-be93-5b82-90ff-e2d022da132a",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/people/26443553",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "28232112-be93-5b82-90ff-e2d022da132a",
+      "input": {
+        "personId": "26443553"
+      },
+      "name": "deletePerson-serverUnavailable",
+      "operation": "deletePerson"
+    },
+    {
+      "callId": "28232112-be93-5b82-90ff-e2d022da132a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/people/26443553",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "28232112-be93-5b82-90ff-e2d022da132a",
+      "input": {
+        "personId": "26443553"
+      },
+      "name": "deletePerson-transportFailure",
+      "operation": "deletePerson"
     }
   ],
   "schemaVersion": 1

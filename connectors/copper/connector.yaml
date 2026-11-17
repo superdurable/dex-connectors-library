@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: copper
   displayName: Copper CRM
-  description: Read Copper lead statuses and lead identity without custom fields.
+  description: Read Copper leads and manage people without custom fields.
   company: Copper
   categories: [crm-sales]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   languages:
     python:
@@ -60,6 +60,87 @@ spec:
         - Use the Copper login email address of the user who generated the key. Save it in user_email as a full email address; the key and user must match.
         - Copper sends the secret key and owner email in request headers. Revoke the key at Settings > Integrations > API Keys when retired. Leave configuration fields blank for the displayed defaults.
   operations:
+    - name: createPerson
+      goName: CreatePerson
+      inputType: CreatePersonInput
+      outputType: PersonMetadata
+      kind: mutation
+      description: Create a Copper person with a name and work email.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Copper created the person.}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Creation may have succeeded but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample person is created.
+          output: {id: 26443553, name: Sample Person, email: sample@example.com}
+    - name: getPerson
+      goName: GetPerson
+      inputType: GetPersonInput
+      outputType: PersonMetadata
+      kind: query
+      description: Read a Copper person by numeric ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Copper returned the person.}
+        - {id: notFound, goName: NotFound, description: No person matches the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Copper returned invalid person JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample person is returned.
+          output: {id: 26443553, name: Sample Person, email: sample@example.com}
+    - name: updatePerson
+      goName: UpdatePerson
+      inputType: UpdatePersonInput
+      outputType: PersonMetadata
+      kind: mutation
+      description: Replace a Copper person's name and details without changing other fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Copper updated the person.}
+        - {id: notFound, goName: NotFound, description: No person matches the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample person is updated.
+          output: {id: 26443553, name: Sample Person, details: Updated}
+    - name: deletePerson
+      goName: DeletePerson
+      inputType: DeletePersonInput
+      outputType: DeletePersonOutput
+      kind: mutation
+      description: Permanently delete a Copper person by numeric ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Copper deleted the person.}
+        - {id: notFound, goName: NotFound, description: No person matches the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample person is deleted.
+          output: {id: 26443553, deleted: true}
     - name: listLeadStatuses
       goName: ListLeadStatuses
       inputType: ListLeadStatusesInput
