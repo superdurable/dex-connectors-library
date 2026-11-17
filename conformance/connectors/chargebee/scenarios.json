@@ -278,6 +278,1528 @@
       },
       "name": "getSubscription-transportFailure",
       "operation": "getSubscription"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"list\":[{\"subscription\":{\"id\":\"sub_123456\",\"status\":\"active\",\"currency_code\":\"USD\"}}],\"next_offset\":\"cursor-2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextOffset": "cursor-2",
+          "subscriptions": [
+            {
+              "currencyCode": "USD",
+              "id": "sub_123456",
+              "status": "active"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listSubscriptions-success",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "subscriptions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listSubscriptions-providerRejected",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "subscriptions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listSubscriptions-invalidResponse",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listSubscriptions-429",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listSubscriptions-503",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listSubscriptions-500",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listSubscriptions-transportFailure",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"customer\":{\"id\":\"customer-1\",\"email\":\"member@example.com\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/customer-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "email": "member@example.com",
+          "id": "customer-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "getCustomer-success",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/customer-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "getCustomer-providerRejected",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/customer-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "getCustomer-invalidResponse",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/customer-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "getCustomer-429",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/customer-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "getCustomer-503",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/customer-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "getCustomer-500",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/customer-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "getCustomer-transportFailure",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/customer-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "getCustomer-notFound",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"list\":[{\"customer\":{\"id\":\"customer-1\",\"email\":\"member@example.com\"}}],\"next_offset\":\"cursor-2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "customers": [
+            {
+              "email": "member@example.com",
+              "id": "customer-1"
+            }
+          ],
+          "nextOffset": "cursor-2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listCustomers-success",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "customers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listCustomers-providerRejected",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "customers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listCustomers-invalidResponse",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listCustomers-429",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listCustomers-503",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listCustomers-500",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listCustomers-transportFailure",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"invoice\":{\"id\":\"invoice-1\",\"status\":\"paid\",\"currency_code\":\"USD\",\"total\":1000}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices/invoice-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "currencyCode": "USD",
+          "id": "invoice-1",
+          "status": "paid",
+          "total": 1000
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "invoice-1"
+      },
+      "name": "getInvoice-success",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices/invoice-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": "",
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "invoice-1"
+      },
+      "name": "getInvoice-providerRejected",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices/invoice-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": "",
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "invoice-1"
+      },
+      "name": "getInvoice-invalidResponse",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices/invoice-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "invoice-1"
+      },
+      "name": "getInvoice-429",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices/invoice-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "invoice-1"
+      },
+      "name": "getInvoice-503",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices/invoice-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "invoice-1"
+      },
+      "name": "getInvoice-500",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices/invoice-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "invoice-1"
+      },
+      "name": "getInvoice-transportFailure",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices/invoice-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": "",
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "invoice-1"
+      },
+      "name": "getInvoice-notFound",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"list\":[{\"invoice\":{\"id\":\"invoice-1\",\"status\":\"paid\",\"currency_code\":\"USD\",\"total\":1000}}],\"next_offset\":\"cursor-2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "invoices": [
+            {
+              "currencyCode": "USD",
+              "id": "invoice-1",
+              "status": "paid",
+              "total": 1000
+            }
+          ],
+          "nextOffset": "cursor-2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listInvoices-success",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "invoices": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listInvoices-providerRejected",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "invoices": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listInvoices-invalidResponse",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listInvoices-429",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listInvoices-503",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listInvoices-500",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWNoYXJnZWJlZS1hcGktdG9rZW46"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "offset": "cursor-1"
+      },
+      "name": "listInvoices-transportFailure",
+      "operation": "listInvoices"
     }
   ],
   "schemaVersion": 1
