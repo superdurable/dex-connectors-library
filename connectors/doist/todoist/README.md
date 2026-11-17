@@ -1,6 +1,6 @@
 # Todoist Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/doist/todoist/go@v0.4.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/doist/todoist/go@v0.4.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/doist/todoist`.
 
@@ -34,7 +34,7 @@ Completed tasks are outside the get-active-task operation's scope.
 
 ## Python package
 
-Install `dex-connector-doist-todoist==0.1.0` for the five typed Todoist
+Install `dex-connector-doist-todoist==0.1.1` for the five typed Todoist
 operations in Python. The [Python package README](python/README.md) describes
 provider outcomes and the [runnable CRUD Flow](python/examples/task_crud/README.md)
 that creates, reads, updates, lists, and deletes one disposable task. Its
@@ -43,7 +43,7 @@ Todoist authorization and provider behavior have not been verified.
 
 ## TypeScript package
 
-Install `@superdurable/connector-doist-todoist@0.1.1` for the same five task operations. The [TypeScript package README](typescript/README.md) and [runnable task CRUD Flow](typescript/examples/task-crud/flow/workflow.ts) cover its Dex connection and task lifecycle. Go-recorded scenarios verify provider request and outcome parity; live Todoist behavior remains unverified.
+Install `@superdurable/connector-doist-todoist@0.1.2` for the same five task operations. The [TypeScript package README](typescript/README.md) and [runnable task CRUD Flow](typescript/examples/task-crud/flow/workflow.ts) cover its Dex connection and task lifecycle. Go-recorded scenarios verify provider request and outcome parity; live Todoist behavior remains unverified.
 
 ## Partial updates
 
@@ -88,7 +88,7 @@ that mismatches the requested fields, also reads GET `/tasks/{task_id}`, as does
 a create response with a task ID but unusable fields. Other calls use GET/POST
 `/tasks` for list/create, or GET/POST/DELETE `/tasks/{task_id}` for
 read/update/delete. Steps use
-async durability and a 30-second Execute timeout. `createTask` keeps five attempts within two minutes; reads, update, and delete use the one-hour default retry budget.
+async durability and a 30-second Execute timeout. `createTask` keeps five attempts within two minutes, of which at most its send cap send the POST; reads, update, and delete use the one-hour default retry budget. The update and delete Step factories also expose `MaxSends`, which has no effect because those operations repeat safely without a Fence.
 An unwired optional branch fails the Flow.
 
 The connector ends its requests inside the attempt deadline it observes on the
@@ -101,8 +101,9 @@ that time, and every request, including a read-back, within five sixths; the
 rest covers recording the result. These limits also cut a longer `Timeout` or
 caller-supplied `http.Client.Timeout`. A request with less than a tenth of the
 attempt time left is not sent: the attempt retries, except that a skipped
-create read-back selects `uncertain`. A create POST cut off by its limit
-therefore selects `uncertain`, and an update cut off by its limit retries.
+create read-back selects `uncertain`. A create POST cut off by its limit has
+an unknown outcome, so it resends up to the send cap described below, and an
+update cut off by its limit retries.
 Credentials are resolved once per attempt, before its first request, and a
 read-back reuses them. A residual risk remains: a heavily loaded engine may not
 record the result within the margin, and a custom transport that ignores the
@@ -114,12 +115,13 @@ The existing get/update pair has the following contract:
 | --- | --- | --- |
 | Valid HTTP 2xx | `found` | `updated` when every specified field matches the returned task |
 | HTTP 404 | `notFound` | `notFound` |
-| HTTP 409 | `providerRejected` with failure kind `CONFLICT` | `providerRejected` with failure kind `CONFLICT` |
+| HTTP 400, 401, 403, 411, 413, 414, 415, or 422 | `providerRejected` | `providerRejected` |
+| HTTP 409 | `providerRejected` with failure kind `CONFLICT` | Retry with failure kind `CONFLICT` |
 | HTTP 429 | Retry, honoring `Retry-After` | Retry, honoring `Retry-After` |
 | HTTP 408, 5xx, transport failure | Retry | Retry |
 | Malformed, oversized, or mismatched HTTP 2xx | `invalidResponse` | Read by task ID; see below |
 | Interrupted HTTP 2xx body | Retry | Read by task ID, as for a malformed answer |
-| Other status, including redirects | `providerRejected` | `providerRejected` |
+| Other status, including redirects | `providerRejected` | Retry, because only a definite refusal is terminal for a write |
 | Invalid input | `defect`, before dispatch | `defect`, before dispatch |
 | Credentials missing from project storage, needing reauthorization, not selected for this scope, rejected by the credential broker, or invalid | `defect`, before dispatch | `defect`, before dispatch |
 | Any other credential resolution failure, such as a store read failure or broker timeout | Retry, before dispatch | Retry, before dispatch |
@@ -130,8 +132,8 @@ The update's read by task ID is classified like the update's own answer:
 | --- | --- |
 | Valid task whose specified fields match | `updated` |
 | HTTP 404 (completed or deleted task) | `notFound` |
-| HTTP 408, 429, 5xx, transport failure, or an unusable or mismatched 2xx | Retry the absolute replacement |
-| Any other status, such as 401, 403, 400, 409, or a redirect | `providerRejected` with the read's failure kind |
+| HTTP 400, 401, 403, 411, 413, 414, 415, or 422 | `providerRejected` with the read's failure kind |
+| Any other answer, such as 408, 409, 429, 5xx, a redirect, a transport failure, or an unusable or mismatched 2xx | Retry the absolute replacement |
 
 The update Mutation's stable key is derived from the Dex Call ID. Replacing
 specified fields with the same absolute values is replayable; Todoist provider
@@ -161,27 +163,42 @@ previously processed POST but does not provide those guarantees for API v1.
 Any HTTP 2xx with a valid task selects `created` with the task as Todoist
 returned it. The API v1 reference documents no rule that the answer echoes the
 request, so the returned content, description, and project ID are the stored
-values and are not compared with the input. A 2xx without a valid task ID
-selects `uncertain`, because the task may exist and its ID is unknown. Invalid input and
-the credential failures above select `defect` before dispatch; any other
-credential resolution failure retries. A transport failure with trace
-evidence that the request never left the process (a DNS, connect, or TLS
-failure before any connection was obtained), HTTP 429, and HTTP 503 retry with
-the same identity. Any other transport failure, including a lost response or a
-custom transport that reports no connection trace, HTTP 408/500 or another
-ambiguous server error, and HTTP 409 select `uncertain`. None of these answers
-carries a task ID, and a task cannot be found by request without changing
-user-visible task fields. Todoist does not document whether 409 means a request
-ID was already processed; its failure kind is `CONFLICT`. Other definite
-rejections select `providerRejected`. No exactly-once guarantee is made.
+values and are not compared with the input. Invalid input and the credential
+failures above select `defect` before dispatch; any other credential resolution
+failure retries.
 
-A 2xx with a valid task ID but other missing or malformed fields is different:
-the task was accepted and its ID is known. The connector confirms it by GET
-`/tasks/{task_id}` in the same attempt, never by resending the creation. A
-valid task with that ID selects `created`. Any other read answer, including
-404, 403, 429, 5xx, a transport failure, an unusable body, or no time left in
-the attempt, selects `uncertain`, because a retry would create again. The
-`uncertain` result carries no `Task`; the task ID appears only in its safe
+`createTask` is a `limited` Mutation behind the SDK single-dispatch Fence, with
+`execution.maxSends` 3, overridable per Step with the factory's `MaxSends`.
+The Fence checkpoints each send in the Step heartbeat; when no checkpoint was
+persisted, it counts every earlier attempt as a possible send, which still
+bounds sends by the cap. A transport failure with trace evidence that the
+request never left the process (a DNS, connect, or TLS failure before any
+connection was obtained), too little attempt time to start the POST, HTTP 429,
+and HTTP 503 record that nothing was processed and retry with the same
+identity. HTTP 400, 401, 403, 404, 411, 413, 414, 415, and 422 are definite
+refusals: the first send selects `providerRejected` and is never resent. Any
+other answer is unknown: a lost response or a custom transport that reports no
+connection trace, HTTP 408, 409 (failure kind `CONFLICT`; Todoist does not
+document whether it means the request ID was already processed), another
+status, any other 5xx, and a 2xx without a valid task ID. An unknown outcome
+resends the POST with the same `X-Request-ID` while fewer than the cap's sends
+may have taken effect, and selects `uncertain` at the cap. A refusal or
+credential defect after a possible earlier send also selects `uncertain`,
+because the earlier send may have created the task. Todoist offers no lookup
+by request ID, so without a task ID no read-back can confirm the creation. No
+exactly-once guarantee is made; up to the cap's number of duplicate tasks is
+the accepted risk of an unknown outcome.
+
+A 2xx with a valid task ID is different: the task was accepted and its ID is
+known, so the connector saves the ID in the checkpoint and never resends the
+creation. When other fields are missing or malformed, it confirms the task by
+GET `/tasks/{task_id}` in the same attempt. A valid task with that ID selects
+`created`. Any other read answer, including 404, 403, 429, 5xx, a transport
+failure, an unusable body, or no time left in the attempt, selects
+`uncertain`. A later attempt that finds a saved task ID reads that task
+instead of sending: a valid task selects `created`, a 408, 429, 5xx, or
+transport failure retries the read, and any other answer selects `uncertain`.
+The `uncertain` result carries no `Task`; the task ID appears only in its safe
 failure message, so treat it as unconfirmed rather than as a readable ID.
 Do not reconcile ownership by title alone. Creating another Flow is another
 logical creation with another request ID.
@@ -190,8 +207,9 @@ logical creation with another request ID.
 its subtasks**, as defined by Todoist. Any HTTP 2xx selects `deleted`; 404 selects
 `alreadyAbsent`, meaning missing or inaccessible, possibly after an earlier
 successful attempt. It does not prove this caller performed the original
-delete. Transport loss, 408/5xx, and 429 safely retry the same task ID. Other
-errors select `providerRejected`. `DeleteTaskOutcome.TaskID` identifies the
+delete. HTTP 400, 401, 403, 411, 413, 414, 415, and 422 select
+`providerRejected`; any other answer, including transport loss, 408, 409,
+429, 5xx, and redirects, safely retries the same task ID. `DeleteTaskOutcome.TaskID` identifies the
 requested target. Both deletion branches should be wired when an application
 wants confirmed absence to complete its process.
 

@@ -1,6 +1,6 @@
 # Todoist Python connector
 
-Install `dex-connector-doist-todoist==0.1.0` with a compatible Dex Python SDK.
+Install `dex-connector-doist-todoist==0.1.1` with a compatible Dex Python SDK.
 This package implements `getTask`, `updateTaskContent`, `listTasks`,
 `createTask`, and `deleteTask` from the Todoist connector manifest. It uses the
 same operation and branch identities as the Go connector. The generated models,
@@ -18,14 +18,19 @@ safe task fields.
 
 ## Provider outcomes
 
-Reads and absolute updates retry transport failures, HTTP 408, 429, and 5xx.
-`createTask` retries only failures known not to have sent the request, HTTP 429,
-and HTTP 503. An ambiguous create response selects `uncertain`. A created task
-ID with unusable fields is read back once within the attempt, without repeating
-the POST. `updateTaskContent` reads back a malformed or mismatched success and
-retries the safe absolute replacement if it remains unconfirmed. Delete retries
-transient failures; a 404 selects `alreadyAbsent`. Optional branches left
-unwired by an application fail its Flow.
+Reads retry transport failures, HTTP 408, 429, and 5xx. Writes select a
+refusal branch only for HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422.
+`createTask` runs behind the SDK single-dispatch Fence with
+`max_sends=call.max_sends` (3 by default): a failure known not to have sent the
+request, HTTP 429, and HTTP 503 retry, and any other unknown outcome, such as a
+lost response, 409, or 5xx, resends the same `X-Request-ID` below the cap and
+selects `uncertain` at the cap. A returned task ID is saved in the checkpoint
+and never resent; with unusable fields it is read back once within the
+attempt, and a later attempt reads it back instead of sending.
+`updateTaskContent` reads back a malformed or mismatched success and retries
+the safe absolute replacement on any unknown outcome. Delete retries any
+unknown outcome; a 404 selects `alreadyAbsent`. Optional branches left unwired
+by an application fail its Flow.
 
 `UpdateTaskInput.content=None` preserves the title, while
 `UpdateTaskInput.description=""` clears the description. A `ListTasksInput`

@@ -6,17 +6,17 @@ metadata:
   description: List, read, create, update, and delete Todoist tasks through typed Dex Steps.
   company: Doist
   categories: [productivity, project-management]
-  version: v0.4.0
+  version: v0.4.1
 spec:
   provider: todoist
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-doist-todoist
       operations: [getTask, updateTaskContent, listTasks, createTask, deleteTask]
       triggers: []
     typescript:
-      version: v0.1.1
+      version: v0.1.2
       package: '@superdurable/connector-doist-todoist'
       operations: [getTask, updateTaskContent, listTasks, createTask, deleteTask]
       triggers: []
@@ -153,13 +153,13 @@ spec:
       inputType: CreateTaskInput
       outputType: Task
       kind: mutation
-      description: Create a task with content and optional description or project; omitted project uses Inbox. Sends a stable X-Request-ID.
+      description: Create a task with content and optional description or project; omitted project uses Inbox. Sends a stable X-Request-ID and resends an unknown outcome up to the send cap.
       idempotency: required
       authorization: required
       branches:
         - {id: created, goName: Created, description: Todoist confirmed creation and returned the task ID.}
         - {id: providerRejected, goName: ProviderRejected, description: Todoist conclusively rejected creation., optional: true}
-        - {id: uncertain, goName: Uncertain, description: "A creation that may have been sent may have applied, but Todoist returned no usable task and the request ID has no documented replay guarantee.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap is reached, or Todoist accepted a task ID that could not be read back, so the task may exist; the connector does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", optional: true}
       execution:
         executeMethodTimeout: 30s

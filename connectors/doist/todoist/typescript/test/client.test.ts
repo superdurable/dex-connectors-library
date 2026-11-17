@@ -5,6 +5,7 @@ import { expect, it } from 'vitest';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
 import { TodoistClient } from '../src/client.js';
+import { AttemptContext } from './attempt-context.js';
 
 const call = {
   id: 'body-limit', context: { flowId: 'body-limit', cancellationSignal: new AbortController().signal },
@@ -40,7 +41,7 @@ it.each([
   const client = new TodoistClient({}, { resolve: async () => ({ apiToken: new SecretString('inert-token') }) }, {
     send: async () => { requestCount++; return { status: 400, headers: {}, body: Buffer.from('') }; },
   });
-  const mutationCall = { ...call, idempotencyKey: '12345678-1234-1234-1234-123456789abc' } as Call;
+  const mutationCall = { ...call, id: '3f1d6a52-0c3e-5b8e-9a41-2f7d6c1b9e04', context: new AttemptContext(), idempotencyKey: '12345678-1234-1234-1234-123456789abc' } as unknown as Call;
   const update = await client.updateTaskContent().invoke(mutationCall, { taskId: 'task-123', content });
   const create = await client.createTask().invoke(mutationCall, { content });
   expect(update.kind).toBe('branch');

@@ -4,8 +4,8 @@
 
 import asyncio
 import socket
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 from typing import Any
 
 import dex_connectors.sdk as sdk
@@ -20,6 +20,7 @@ from dex_connectors.doist_todoist import (
     GetTaskInput,
     UpdateTaskInput,
 )
+from tests.attempt_context import AttemptContext
 
 CONNECTION = sdk.ConnectionRef("todoist", "todoist")
 
@@ -34,11 +35,13 @@ class _MissingCredentials:
         raise LookupError("inert missing connection")
 
 
-def _call(operation: str) -> sdk.Call:
+def _call(operation: str, context: AttemptContext | None = None) -> sdk.Call:
     return sdk.Call(
-        sdk.CallID("call-1"),
+        sdk.CallID("3f1d6a52-0c3e-5b8e-9a41-2f7d6c1b9e04"),
         CONNECTION,
         sdk.OperationRef("todoist", operation),
+        context=context or AttemptContext(),
+        max_sends=3,
     )
 
 
@@ -82,7 +85,7 @@ async def test_refused_local_connection_retries_creation() -> None:
         operation = client.create_task()
         input = CreateTaskInput("Disposable task")
         call = _call("createTask")
-        call = sdk.Call(call.id, call.connection, call.operation, operation.idempotency_key(call.id, input))
+        call = replace(call, idempotency_key=operation.idempotency_key(call.id, input))
         answer = await operation.invoke(call, input)
         assert answer.kind == "retry"
         assert answer.failure is not None
@@ -106,14 +109,8 @@ async def test_expired_attempt_does_not_send_creation() -> None:
         )
         operation = client.create_task()
         input = CreateTaskInput("Disposable task")
-        base_call = _call("createTask")
-        call = sdk.Call(
-            base_call.id,
-            base_call.connection,
-            base_call.operation,
-            operation.idempotency_key(base_call.id, input),
-            context=SimpleNamespace(deadline=datetime.now(UTC) - timedelta(seconds=1)),
-        )
+        base_call = _call("createTask", AttemptContext(deadline=datetime.now(UTC) - timedelta(seconds=1)))
+        call = replace(base_call, idempotency_key=operation.idempotency_key(base_call.id, input))
         answer = await operation.invoke(call, input)
         assert answer.kind == "retry"
         assert answer.failure is not None
@@ -141,18 +138,16 @@ async def test_budget_timeout_distinguishes_dispatch(headers_started: bool) -> N
         )
         operation = client.create_task()
         input = CreateTaskInput("Disposable task")
-        base_call = _call("createTask")
-        call = sdk.Call(
-            base_call.id,
-            base_call.connection,
-            base_call.operation,
-            operation.idempotency_key(base_call.id, input),
-            context=SimpleNamespace(deadline=datetime.now(UTC) + timedelta(seconds=0.25)),
-        )
+        context = AttemptContext(deadline=datetime.now(UTC) + timedelta(seconds=0.25))
+        base_call = _call("createTask", context)
+        call = replace(base_call, idempotency_key=operation.idempotency_key(base_call.id, input))
         answer = await operation.invoke(call, input)
-        assert answer.kind == ("uncertain" if headers_started else "retry")
+        # Both retry below the send cap; only an undispatched send is recorded as canResend.
+        assert answer.kind == "retry"
         assert answer.failure is not None
         assert answer.failure.kind == sdk.FailureKind.TRANSPORT
+        assert context.marker is not None
+        assert context.marker.state == ("claimed" if headers_started else "canResend")
 
 
 @pytest.mark.asyncio
@@ -220,11 +215,8 @@ async def test_go_trim_space_accepts_ascii_information_separators(content: str) 
         create_operation = client.create_task()
         create_input = CreateTaskInput(content)
         base_call = _call("createTask")
-        create_call = sdk.Call(
-            base_call.id,
-            base_call.connection,
-            base_call.operation,
-            create_operation.idempotency_key(base_call.id, create_input),
+        create_call = replace(
+            base_call, idempotency_key=create_operation.idempotency_key(base_call.id, create_input)
         )
         created = await create_operation.invoke(create_call, create_input)
         updated = await client.update_task_content().invoke(
