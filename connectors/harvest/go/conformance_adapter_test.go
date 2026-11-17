@@ -37,17 +37,24 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		priorAttempt = marker.Attempt
 	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { context.attempt = int32(attempt) + priorAttempt }, actions: map[string]conformanceOperationInvocation{
-		"listClients":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListClients(), connection),
-		"getClient":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetClient(), connection),
-		"createClient":    newConformanceMutationInvocation(t, scenario.Input, context, client.CreateClient(), connection, scenario.CallID),
-		"updateClient":    newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateClient(), connection, scenario.CallID),
-		"deleteClient":    newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteClient(), connection, scenario.CallID),
-		"listProjects":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListProjects(), connection),
-		"getProject":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetProject(), connection),
-		"createProject":   newConformanceMutationInvocation(t, scenario.Input, context, client.CreateProject(), connection, scenario.CallID),
-		"updateProject":   newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateProject(), connection, scenario.CallID),
-		"deleteProject":   newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteProject(), connection, scenario.CallID),
-		"listTimeEntries": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTimeEntries(), connection),
+		"listClients":                      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListClients(), connection),
+		"getClient":                        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetClient(), connection),
+		"createClient":                     newConformanceMutationInvocation(t, scenario.Input, context, client.CreateClient(), connection, scenario.CallID),
+		"updateClient":                     newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateClient(), connection, scenario.CallID),
+		"deleteClient":                     newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteClient(), connection, scenario.CallID),
+		"listProjects":                     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListProjects(), connection),
+		"getProject":                       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetProject(), connection),
+		"createProject":                    newConformanceMutationInvocation(t, scenario.Input, context, client.CreateProject(), connection, scenario.CallID),
+		"updateProject":                    newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateProject(), connection, scenario.CallID),
+		"deleteProject":                    newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteProject(), connection, scenario.CallID),
+		"listTimeEntries":                  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTimeEntries(), connection),
+		"getTimeEntry":                     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTimeEntry(), connection),
+		"createTimeEntryByDuration":        newConformanceMutationInvocation(t, scenario.Input, context, client.CreateTimeEntryByDuration(), connection, scenario.CallID),
+		"createTimeEntryByStartEnd":        newConformanceMutationInvocation(t, scenario.Input, context, client.CreateTimeEntryByStartEnd(), connection, scenario.CallID),
+		"updateTimeEntry":                  newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateTimeEntry(), connection, scenario.CallID),
+		"deleteTimeEntry":                  newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteTimeEntry(), connection, scenario.CallID),
+		"deleteTimeEntryExternalReference": newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteTimeEntryExternalReference(), connection, scenario.CallID),
+		"stopTimeEntry":                    newConformanceMutationInvocation(t, scenario.Input, context, client.StopTimeEntry(), connection, scenario.CallID),
 	}}
 }
 

@@ -3896,6 +3896,2667 @@
           "state": "claimed"
         }
       }
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000064",
+      "exchanges": [
+        {
+          "body": "{\"id\":4001,\"project\":{\"id\":3001},\"hours\":2.5,\"spent_date\":\"2026-10-28\",\"is_running\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time_entries/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "hours": 2.5,
+          "id": 4001,
+          "project": {
+            "id": 3001
+          },
+          "spentDate": "2026-10-28"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 4001
+      },
+      "name": "getTimeEntry-success",
+      "operation": "getTimeEntry"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000065",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time_entries/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "hours": 0,
+          "id": 0,
+          "project": {
+            "id": 0
+          },
+          "spentDate": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 4001
+      },
+      "name": "getTimeEntry-rejected",
+      "operation": "getTimeEntry"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000066",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time_entries/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 4001
+      },
+      "name": "getTimeEntry-rate-limit",
+      "operation": "getTimeEntry"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000067",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time_entries/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 4001
+      },
+      "name": "getTimeEntry-server-error",
+      "operation": "getTimeEntry"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000068",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time_entries/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 4001
+      },
+      "name": "getTimeEntry-unavailable",
+      "operation": "getTimeEntry"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000069",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time_entries/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 4001
+      },
+      "name": "getTimeEntry-transport",
+      "operation": "getTimeEntry"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000070",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time_entries/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "hours": 0,
+          "id": 0,
+          "project": {
+            "id": 0
+          },
+          "spentDate": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 4001
+      },
+      "name": "getTimeEntry-not-found",
+      "operation": "getTimeEntry"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000071",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time_entries/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hours": 0,
+          "id": 0,
+          "project": {
+            "id": 0
+          },
+          "spentDate": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 4001
+      },
+      "name": "getTimeEntry-invalid",
+      "operation": "getTimeEntry"
+    },
+    {
+      "callId": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+      "exchanges": [
+        {
+          "body": "{\"id\":4001,\"project\":{\"id\":3001},\"hours\":2.5,\"spent_date\":\"2026-10-28\",\"is_running\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/time_entries",
+          "requestBody": {
+            "hours": 2.5,
+            "notes": "Work",
+            "project_id": 3001,
+            "spent_date": "2026-10-28",
+            "task_id": 5001
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+          "providerId": "4001",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "hours": 2.5,
+          "id": 4001,
+          "project": {
+            "id": 3001
+          },
+          "spentDate": "2026-10-28"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+      "input": {
+        "hours": 2.5,
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "taskId": 5001
+      },
+      "name": "createTimeEntryByDuration-success",
+      "operation": "createTimeEntryByDuration"
+    },
+    {
+      "callId": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/time_entries",
+          "requestBody": {
+            "hours": 2.5,
+            "notes": "Work",
+            "project_id": 3001,
+            "spent_date": "2026-10-28",
+            "task_id": 5001
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "hours": 0,
+          "id": 0,
+          "project": {
+            "id": 0
+          },
+          "spentDate": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+      "input": {
+        "hours": 2.5,
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "taskId": 5001
+      },
+      "name": "createTimeEntryByDuration-rejected",
+      "operation": "createTimeEntryByDuration"
+    },
+    {
+      "callId": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/time_entries",
+          "requestBody": {
+            "hours": 2.5,
+            "notes": "Work",
+            "project_id": 3001,
+            "spent_date": "2026-10-28",
+            "task_id": 5001
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+      "input": {
+        "hours": 2.5,
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "taskId": 5001
+      },
+      "name": "createTimeEntryByDuration-rate-limit",
+      "operation": "createTimeEntryByDuration"
+    },
+    {
+      "callId": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/time_entries",
+          "requestBody": {
+            "hours": 2.5,
+            "notes": "Work",
+            "project_id": 3001,
+            "spent_date": "2026-10-28",
+            "task_id": 5001
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+      "input": {
+        "hours": 2.5,
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "taskId": 5001
+      },
+      "name": "createTimeEntryByDuration-server-error",
+      "operation": "createTimeEntryByDuration"
+    },
+    {
+      "callId": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/time_entries",
+          "requestBody": {
+            "hours": 2.5,
+            "notes": "Work",
+            "project_id": 3001,
+            "spent_date": "2026-10-28",
+            "task_id": 5001
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+      "input": {
+        "hours": 2.5,
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "taskId": 5001
+      },
+      "name": "createTimeEntryByDuration-unavailable",
+      "operation": "createTimeEntryByDuration"
+    },
+    {
+      "callId": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/time_entries",
+          "requestBody": {
+            "hours": 2.5,
+            "notes": "Work",
+            "project_id": 3001,
+            "spent_date": "2026-10-28",
+            "task_id": 5001
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+      "input": {
+        "hours": 2.5,
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "taskId": 5001
+      },
+      "name": "createTimeEntryByDuration-transport",
+      "operation": "createTimeEntryByDuration"
+    },
+    {
+      "callId": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+      "exchanges": [
+        {
+          "body": "{\"id\":4001,\"project\":{\"id\":3001},\"hours\":2.5,\"spent_date\":\"2026-10-28\",\"is_running\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/time_entries",
+          "requestBody": {
+            "ended_time": "11:30",
+            "notes": "Work",
+            "project_id": 3001,
+            "spent_date": "2026-10-28",
+            "started_time": "09:00",
+            "task_id": 5001
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+          "providerId": "4001",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "hours": 2.5,
+          "id": 4001,
+          "project": {
+            "id": 3001
+          },
+          "spentDate": "2026-10-28"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+      "input": {
+        "endedTime": "11:30",
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "startedTime": "09:00",
+        "taskId": 5001
+      },
+      "name": "createTimeEntryByStartEnd-success",
+      "operation": "createTimeEntryByStartEnd"
+    },
+    {
+      "callId": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/time_entries",
+          "requestBody": {
+            "ended_time": "11:30",
+            "notes": "Work",
+            "project_id": 3001,
+            "spent_date": "2026-10-28",
+            "started_time": "09:00",
+            "task_id": 5001
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "hours": 0,
+          "id": 0,
+          "project": {
+            "id": 0
+          },
+          "spentDate": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+      "input": {
+        "endedTime": "11:30",
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "startedTime": "09:00",
+        "taskId": 5001
+      },
+      "name": "createTimeEntryByStartEnd-rejected",
+      "operation": "createTimeEntryByStartEnd"
+    },
+    {
+      "callId": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/time_entries",
+          "requestBody": {
+            "ended_time": "11:30",
+            "notes": "Work",
+            "project_id": 3001,
+            "spent_date": "2026-10-28",
+            "started_time": "09:00",
+            "task_id": 5001
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+      "input": {
+        "endedTime": "11:30",
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "startedTime": "09:00",
+        "taskId": 5001
+      },
+      "name": "createTimeEntryByStartEnd-rate-limit",
+      "operation": "createTimeEntryByStartEnd"
+    },
+    {
+      "callId": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/time_entries",
+          "requestBody": {
+            "ended_time": "11:30",
+            "notes": "Work",
+            "project_id": 3001,
+            "spent_date": "2026-10-28",
+            "started_time": "09:00",
+            "task_id": 5001
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+      "input": {
+        "endedTime": "11:30",
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "startedTime": "09:00",
+        "taskId": 5001
+      },
+      "name": "createTimeEntryByStartEnd-server-error",
+      "operation": "createTimeEntryByStartEnd"
+    },
+    {
+      "callId": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/time_entries",
+          "requestBody": {
+            "ended_time": "11:30",
+            "notes": "Work",
+            "project_id": 3001,
+            "spent_date": "2026-10-28",
+            "started_time": "09:00",
+            "task_id": 5001
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+      "input": {
+        "endedTime": "11:30",
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "startedTime": "09:00",
+        "taskId": 5001
+      },
+      "name": "createTimeEntryByStartEnd-unavailable",
+      "operation": "createTimeEntryByStartEnd"
+    },
+    {
+      "callId": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/time_entries",
+          "requestBody": {
+            "ended_time": "11:30",
+            "notes": "Work",
+            "project_id": 3001,
+            "spent_date": "2026-10-28",
+            "started_time": "09:00",
+            "task_id": 5001
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+      "input": {
+        "endedTime": "11:30",
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "startedTime": "09:00",
+        "taskId": 5001
+      },
+      "name": "createTimeEntryByStartEnd-transport",
+      "operation": "createTimeEntryByStartEnd"
+    },
+    {
+      "callId": "8c30fdee-cb7d-50c4-9be2-44aeed4dfc13",
+      "exchanges": [
+        {
+          "body": "{\"id\":4001,\"project\":{\"id\":3001},\"hours\":2.5,\"spent_date\":\"2026-10-28\",\"is_running\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/time_entries/4001",
+          "requestBody": {
+            "hours": 2.5,
+            "notes": "Work",
+            "project_id": 3001,
+            "spent_date": "2026-10-28",
+            "task_id": 5001
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "hours": 2.5,
+          "id": 4001,
+          "project": {
+            "id": 3001
+          },
+          "spentDate": "2026-10-28"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8c30fdee-cb7d-50c4-9be2-44aeed4dfc13",
+      "input": {
+        "hours": 2.5,
+        "id": 4001,
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "taskId": 5001
+      },
+      "name": "updateTimeEntry-success",
+      "operation": "updateTimeEntry"
+    },
+    {
+      "callId": "8c30fdee-cb7d-50c4-9be2-44aeed4dfc13",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/time_entries/4001",
+          "requestBody": {
+            "hours": 2.5,
+            "notes": "Work",
+            "project_id": 3001,
+            "spent_date": "2026-10-28",
+            "task_id": 5001
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hours": 0,
+          "id": 0,
+          "project": {
+            "id": 0
+          },
+          "spentDate": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8c30fdee-cb7d-50c4-9be2-44aeed4dfc13",
+      "input": {
+        "hours": 2.5,
+        "id": 4001,
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "taskId": 5001
+      },
+      "name": "updateTimeEntry-rejected",
+      "operation": "updateTimeEntry"
+    },
+    {
+      "callId": "8c30fdee-cb7d-50c4-9be2-44aeed4dfc13",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/time_entries/4001",
+          "requestBody": {
+            "hours": 2.5,
+            "notes": "Work",
+            "project_id": 3001,
+            "spent_date": "2026-10-28",
+            "task_id": 5001
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8c30fdee-cb7d-50c4-9be2-44aeed4dfc13",
+      "input": {
+        "hours": 2.5,
+        "id": 4001,
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "taskId": 5001
+      },
+      "name": "updateTimeEntry-rate-limit",
+      "operation": "updateTimeEntry"
+    },
+    {
+      "callId": "8c30fdee-cb7d-50c4-9be2-44aeed4dfc13",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/time_entries/4001",
+          "requestBody": {
+            "hours": 2.5,
+            "notes": "Work",
+            "project_id": 3001,
+            "spent_date": "2026-10-28",
+            "task_id": 5001
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8c30fdee-cb7d-50c4-9be2-44aeed4dfc13",
+      "input": {
+        "hours": 2.5,
+        "id": 4001,
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "taskId": 5001
+      },
+      "name": "updateTimeEntry-server-error",
+      "operation": "updateTimeEntry"
+    },
+    {
+      "callId": "8c30fdee-cb7d-50c4-9be2-44aeed4dfc13",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/time_entries/4001",
+          "requestBody": {
+            "hours": 2.5,
+            "notes": "Work",
+            "project_id": 3001,
+            "spent_date": "2026-10-28",
+            "task_id": 5001
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8c30fdee-cb7d-50c4-9be2-44aeed4dfc13",
+      "input": {
+        "hours": 2.5,
+        "id": 4001,
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "taskId": 5001
+      },
+      "name": "updateTimeEntry-unavailable",
+      "operation": "updateTimeEntry"
+    },
+    {
+      "callId": "8c30fdee-cb7d-50c4-9be2-44aeed4dfc13",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/time_entries/4001",
+          "requestBody": {
+            "hours": 2.5,
+            "notes": "Work",
+            "project_id": 3001,
+            "spent_date": "2026-10-28",
+            "task_id": 5001
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8c30fdee-cb7d-50c4-9be2-44aeed4dfc13",
+      "input": {
+        "hours": 2.5,
+        "id": 4001,
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "taskId": 5001
+      },
+      "name": "updateTimeEntry-transport",
+      "operation": "updateTimeEntry"
+    },
+    {
+      "callId": "8c30fdee-cb7d-50c4-9be2-44aeed4dfc13",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/time_entries/4001",
+          "requestBody": {
+            "hours": 2.5,
+            "notes": "Work",
+            "project_id": 3001,
+            "spent_date": "2026-10-28",
+            "task_id": 5001
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "hours": 0,
+          "id": 0,
+          "project": {
+            "id": 0
+          },
+          "spentDate": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8c30fdee-cb7d-50c4-9be2-44aeed4dfc13",
+      "input": {
+        "hours": 2.5,
+        "id": 4001,
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "taskId": 5001
+      },
+      "name": "updateTimeEntry-not-found",
+      "operation": "updateTimeEntry"
+    },
+    {
+      "callId": "3e53b20f-1b89-594b-b94f-058b76a6f638",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/time_entries/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": 4001
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3e53b20f-1b89-594b-b94f-058b76a6f638",
+      "input": {
+        "id": 4001
+      },
+      "name": "deleteTimeEntry-success",
+      "operation": "deleteTimeEntry"
+    },
+    {
+      "callId": "3e53b20f-1b89-594b-b94f-058b76a6f638",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/time_entries/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3e53b20f-1b89-594b-b94f-058b76a6f638",
+      "input": {
+        "id": 4001
+      },
+      "name": "deleteTimeEntry-rejected",
+      "operation": "deleteTimeEntry"
+    },
+    {
+      "callId": "3e53b20f-1b89-594b-b94f-058b76a6f638",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/time_entries/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3e53b20f-1b89-594b-b94f-058b76a6f638",
+      "input": {
+        "id": 4001
+      },
+      "name": "deleteTimeEntry-rate-limit",
+      "operation": "deleteTimeEntry"
+    },
+    {
+      "callId": "3e53b20f-1b89-594b-b94f-058b76a6f638",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/time_entries/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3e53b20f-1b89-594b-b94f-058b76a6f638",
+      "input": {
+        "id": 4001
+      },
+      "name": "deleteTimeEntry-server-error",
+      "operation": "deleteTimeEntry"
+    },
+    {
+      "callId": "3e53b20f-1b89-594b-b94f-058b76a6f638",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/time_entries/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3e53b20f-1b89-594b-b94f-058b76a6f638",
+      "input": {
+        "id": 4001
+      },
+      "name": "deleteTimeEntry-unavailable",
+      "operation": "deleteTimeEntry"
+    },
+    {
+      "callId": "3e53b20f-1b89-594b-b94f-058b76a6f638",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/time_entries/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3e53b20f-1b89-594b-b94f-058b76a6f638",
+      "input": {
+        "id": 4001
+      },
+      "name": "deleteTimeEntry-transport",
+      "operation": "deleteTimeEntry"
+    },
+    {
+      "callId": "3e53b20f-1b89-594b-b94f-058b76a6f638",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/time_entries/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3e53b20f-1b89-594b-b94f-058b76a6f638",
+      "input": {
+        "id": 4001
+      },
+      "name": "deleteTimeEntry-not-found",
+      "operation": "deleteTimeEntry"
+    },
+    {
+      "callId": "078da0b0-b031-5426-aaef-069e67c3daa3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/time_entries/4001/external_reference",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": 4001
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "078da0b0-b031-5426-aaef-069e67c3daa3",
+      "input": {
+        "id": 4001
+      },
+      "name": "deleteTimeEntryExternalReference-success",
+      "operation": "deleteTimeEntryExternalReference"
+    },
+    {
+      "callId": "078da0b0-b031-5426-aaef-069e67c3daa3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/time_entries/4001/external_reference",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "078da0b0-b031-5426-aaef-069e67c3daa3",
+      "input": {
+        "id": 4001
+      },
+      "name": "deleteTimeEntryExternalReference-rejected",
+      "operation": "deleteTimeEntryExternalReference"
+    },
+    {
+      "callId": "078da0b0-b031-5426-aaef-069e67c3daa3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/time_entries/4001/external_reference",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "078da0b0-b031-5426-aaef-069e67c3daa3",
+      "input": {
+        "id": 4001
+      },
+      "name": "deleteTimeEntryExternalReference-rate-limit",
+      "operation": "deleteTimeEntryExternalReference"
+    },
+    {
+      "callId": "078da0b0-b031-5426-aaef-069e67c3daa3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/time_entries/4001/external_reference",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "078da0b0-b031-5426-aaef-069e67c3daa3",
+      "input": {
+        "id": 4001
+      },
+      "name": "deleteTimeEntryExternalReference-server-error",
+      "operation": "deleteTimeEntryExternalReference"
+    },
+    {
+      "callId": "078da0b0-b031-5426-aaef-069e67c3daa3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/time_entries/4001/external_reference",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "078da0b0-b031-5426-aaef-069e67c3daa3",
+      "input": {
+        "id": 4001
+      },
+      "name": "deleteTimeEntryExternalReference-unavailable",
+      "operation": "deleteTimeEntryExternalReference"
+    },
+    {
+      "callId": "078da0b0-b031-5426-aaef-069e67c3daa3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/time_entries/4001/external_reference",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "078da0b0-b031-5426-aaef-069e67c3daa3",
+      "input": {
+        "id": 4001
+      },
+      "name": "deleteTimeEntryExternalReference-transport",
+      "operation": "deleteTimeEntryExternalReference"
+    },
+    {
+      "callId": "078da0b0-b031-5426-aaef-069e67c3daa3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/time_entries/4001/external_reference",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "078da0b0-b031-5426-aaef-069e67c3daa3",
+      "input": {
+        "id": 4001
+      },
+      "name": "deleteTimeEntryExternalReference-not-found",
+      "operation": "deleteTimeEntryExternalReference"
+    },
+    {
+      "callId": "db821d5f-5584-5bae-a3cb-6991dbf19c3a",
+      "exchanges": [
+        {
+          "body": "{\"id\":4001,\"project\":{\"id\":3001},\"hours\":2.5,\"spent_date\":\"2026-10-28\",\"is_running\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/time_entries/4001/stop",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "stopped",
+        "failureKind": "",
+        "output": {
+          "hours": 2.5,
+          "id": 4001,
+          "project": {
+            "id": 3001
+          },
+          "spentDate": "2026-10-28"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "db821d5f-5584-5bae-a3cb-6991dbf19c3a",
+      "input": {
+        "id": 4001
+      },
+      "name": "stopTimeEntry-success",
+      "operation": "stopTimeEntry"
+    },
+    {
+      "callId": "db821d5f-5584-5bae-a3cb-6991dbf19c3a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/time_entries/4001/stop",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hours": 0,
+          "id": 0,
+          "project": {
+            "id": 0
+          },
+          "spentDate": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "db821d5f-5584-5bae-a3cb-6991dbf19c3a",
+      "input": {
+        "id": 4001
+      },
+      "name": "stopTimeEntry-rejected",
+      "operation": "stopTimeEntry"
+    },
+    {
+      "callId": "db821d5f-5584-5bae-a3cb-6991dbf19c3a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/time_entries/4001/stop",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "db821d5f-5584-5bae-a3cb-6991dbf19c3a",
+      "input": {
+        "id": 4001
+      },
+      "name": "stopTimeEntry-rate-limit",
+      "operation": "stopTimeEntry"
+    },
+    {
+      "callId": "db821d5f-5584-5bae-a3cb-6991dbf19c3a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/time_entries/4001/stop",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "db821d5f-5584-5bae-a3cb-6991dbf19c3a",
+      "input": {
+        "id": 4001
+      },
+      "name": "stopTimeEntry-server-error",
+      "operation": "stopTimeEntry"
+    },
+    {
+      "callId": "db821d5f-5584-5bae-a3cb-6991dbf19c3a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/time_entries/4001/stop",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "db821d5f-5584-5bae-a3cb-6991dbf19c3a",
+      "input": {
+        "id": 4001
+      },
+      "name": "stopTimeEntry-unavailable",
+      "operation": "stopTimeEntry"
+    },
+    {
+      "callId": "db821d5f-5584-5bae-a3cb-6991dbf19c3a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/time_entries/4001/stop",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "db821d5f-5584-5bae-a3cb-6991dbf19c3a",
+      "input": {
+        "id": 4001
+      },
+      "name": "stopTimeEntry-transport",
+      "operation": "stopTimeEntry"
+    },
+    {
+      "callId": "db821d5f-5584-5bae-a3cb-6991dbf19c3a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/time_entries/4001/stop",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "hours": 0,
+          "id": 0,
+          "project": {
+            "id": 0
+          },
+          "spentDate": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "db821d5f-5584-5bae-a3cb-6991dbf19c3a",
+      "input": {
+        "id": 4001
+      },
+      "name": "stopTimeEntry-not-found",
+      "operation": "stopTimeEntry"
+    },
+    {
+      "callId": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "hours": 0,
+          "id": 0,
+          "project": {
+            "id": 0
+          },
+          "spentDate": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+      "input": {
+        "hours": 2.5,
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "taskId": 5001
+      },
+      "name": "createTimeEntryByDuration-send-cap-uncertain",
+      "operation": "createTimeEntryByDuration",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "hours": 0,
+          "id": 0,
+          "project": {
+            "id": 0
+          },
+          "spentDate": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+      "input": {
+        "endedTime": "11:30",
+        "notes": "Work",
+        "projectId": 3001,
+        "spentDate": "2026-10-28",
+        "startedTime": "09:00",
+        "taskId": 5001
+      },
+      "name": "createTimeEntryByStartEnd-send-cap-uncertain",
+      "operation": "createTimeEntryByStartEnd",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "attempts": 2,
+      "callId": "db821d5f-5584-5bae-a3cb-6991dbf19c3a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/time_entries/4001/stop",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"id\":4001,\"project\":{\"id\":3001},\"hours\":2.5,\"spent_date\":\"2026-10-28\",\"is_running\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time_entries/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "stopped",
+        "failureKind": "",
+        "output": {
+          "hours": 2.5,
+          "id": 4001,
+          "project": {
+            "id": 3001
+          },
+          "spentDate": "2026-10-28"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "db821d5f-5584-5bae-a3cb-6991dbf19c3a",
+      "input": {
+        "id": 4001
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "stopTimeEntry-reconcile-after-unknown",
+      "operation": "stopTimeEntry"
+    },
+    {
+      "attempts": 2,
+      "callId": "3e53b20f-1b89-594b-b94f-058b76a6f638",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/time_entries/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/time_entries/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": 4001
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3e53b20f-1b89-594b-b94f-058b76a6f638",
+      "input": {
+        "id": 4001
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "deleteTimeEntry-absence-after-unknown",
+      "operation": "deleteTimeEntry"
     }
   ],
   "schemaVersion": 1

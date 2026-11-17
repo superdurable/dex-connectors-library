@@ -17,7 +17,12 @@ func TestMapToListProjectsInput(t *testing.T) {
 }
 
 func TestMapToListClientsInput(t *testing.T) {
-	require.Equal(t, harvest.ListClientsInput{PerPage: 10}, MapToListClientsInput(harvest.ListTimeEntriesResult{}))
+	require.Equal(t, harvest.ListClientsInput{PerPage: 10}, MapToListClientsInput(harvest.GetTimeEntryResult{}))
+}
+
+func TestMapToGetTimeEntryInput(t *testing.T) {
+	input := harvest.ListTimeEntriesResult{Value: harvest.TimeEntryPage{TimeEntries: []harvest.TimeEntry{{ID: 4001}}}}
+	require.Equal(t, harvest.GetTimeEntryInput{ID: 4001}, MapToGetTimeEntryInput(input))
 }
 
 func TestMapToGetProjectInput(t *testing.T) {

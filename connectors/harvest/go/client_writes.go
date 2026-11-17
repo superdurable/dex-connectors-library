@@ -266,6 +266,10 @@ func invokeSafeHarvestWrite[T any](client *Client, call sdkgo.Call, operationID,
 		return retryClientMutation[T](operationID, sdkgo.FailureAvailability, "client write outcome is unknown", 0)
 	}
 	if response.StatusCode == http.StatusNotFound {
+		if method == http.MethodDelete && call.Context.Attempt() > 1 {
+			value, _ := decode(nil)
+			return sdkgo.NewMutationBranch(successBranch, value, nil, sdkgo.Receipt{})
+		}
 		return failedClientMutation[T](operationID, notFoundBranch, sdkgo.FailureNotFound, "client was not found")
 	}
 	if response.StatusCode >= 400 {

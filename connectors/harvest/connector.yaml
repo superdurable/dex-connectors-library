@@ -188,6 +188,147 @@ spec:
           branch: providerRejected
           description: "The connection token is invalid."
           failure: {kind: AUTHENTICATION, message: "Harvest rejected the token."}
+    - name: getTimeEntry
+      goName: GetTimeEntry
+      inputType: GetTimeEntryInput
+      outputType: TimeEntry
+      kind: query
+      description: Get time entry through the documented Harvest Time Entries API.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Harvest confirmed the time-entry result.}
+        - {id: notFound, goName: NotFound, description: The time entry does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          default: true
+          description: A Meridian time-entry result.
+          output: {id: 4001, project: {id: 3001}, hours: 2.5, spentDate: "2026-10-28"}
+    - name: createTimeEntryByDuration
+      goName: CreateTimeEntryByDuration
+      inputType: CreateTimeEntryByDurationInput
+      outputType: TimeEntry
+      kind: mutation
+      description: Create time entry by duration through the documented Harvest Time Entries API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, dispatchFence: true, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Harvest confirmed the time-entry result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A submitted time entry may have been created., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          default: true
+          description: A Meridian time-entry result.
+          output: {id: 4001, project: {id: 3001}, hours: 2.5, spentDate: "2026-10-28"}
+    - name: createTimeEntryByStartEnd
+      goName: CreateTimeEntryByStartEnd
+      inputType: CreateTimeEntryByStartEndInput
+      outputType: TimeEntry
+      kind: mutation
+      description: Create time entry by start end through the documented Harvest Time Entries API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, dispatchFence: true, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Harvest confirmed the time-entry result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A submitted time entry may have been created., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          default: true
+          description: A Meridian time-entry result.
+          output: {id: 4001, project: {id: 3001}, hours: 2.5, spentDate: "2026-10-28"}
+    - name: updateTimeEntry
+      goName: UpdateTimeEntry
+      inputType: UpdateTimeEntryInput
+      outputType: TimeEntry
+      kind: mutation
+      description: Update time entry through the documented Harvest Time Entries API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Harvest confirmed the time-entry result.}
+        - {id: notFound, goName: NotFound, description: The time entry does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          default: true
+          description: A Meridian time-entry result.
+          output: {id: 4001, project: {id: 3001}, hours: 2.5, spentDate: "2026-10-28"}
+    - name: deleteTimeEntry
+      goName: DeleteTimeEntry
+      inputType: DeleteTimeEntryInput
+      outputType: DeletedTimeEntry
+      kind: mutation
+      description: Delete time entry through the documented Harvest Time Entries API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Harvest confirmed the time-entry result.}
+        - {id: notFound, goName: NotFound, description: The time entry does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          default: true
+          description: A Meridian time-entry result.
+          output: {id: 4001}
+    - name: deleteTimeEntryExternalReference
+      goName: DeleteTimeEntryExternalReference
+      inputType: DeleteTimeEntryInput
+      outputType: DeletedTimeEntryExternalReference
+      kind: mutation
+      description: Delete time entry external reference through the documented Harvest Time Entries API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Harvest confirmed the time-entry result.}
+        - {id: notFound, goName: NotFound, description: The time entry does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          default: true
+          description: A Meridian time-entry result.
+          output: {id: 4001}
+    - name: stopTimeEntry
+      goName: StopTimeEntry
+      inputType: TimeEntryActionInput
+      outputType: TimeEntry
+      kind: mutation
+      description: Stop time entry through the documented Harvest Time Entries API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: stopped, goName: Stopped, description: Harvest confirmed the time-entry result.}
+        - {id: notFound, goName: NotFound, description: The time entry does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: stopped
+          default: true
+          description: A Meridian time-entry result.
+          output: {id: 4001, project: {id: 3001}, hours: 2.5, spentDate: "2026-10-28"}
     - name: getProject
       goName: GetProject
       inputType: GetProjectInput

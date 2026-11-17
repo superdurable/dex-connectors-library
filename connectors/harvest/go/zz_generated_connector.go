@@ -47,6 +47,13 @@ type Operations interface {
 	UpdateClient() sdkgo.Mutation[UpdateClientInput, ClientRecord]
 	DeleteClient() sdkgo.Mutation[DeleteClientInput, DeletedClient]
 	ListProjects() sdkgo.Query[ListProjectsInput, ProjectPage]
+	GetTimeEntry() sdkgo.Query[GetTimeEntryInput, TimeEntry]
+	CreateTimeEntryByDuration() sdkgo.Mutation[CreateTimeEntryByDurationInput, TimeEntry]
+	CreateTimeEntryByStartEnd() sdkgo.Mutation[CreateTimeEntryByStartEndInput, TimeEntry]
+	UpdateTimeEntry() sdkgo.Mutation[UpdateTimeEntryInput, TimeEntry]
+	DeleteTimeEntry() sdkgo.Mutation[DeleteTimeEntryInput, DeletedTimeEntry]
+	DeleteTimeEntryExternalReference() sdkgo.Mutation[DeleteTimeEntryInput, DeletedTimeEntryExternalReference]
+	StopTimeEntry() sdkgo.Mutation[TimeEntryActionInput, TimeEntry]
 	GetProject() sdkgo.Query[GetProjectInput, Project]
 	CreateProject() sdkgo.Mutation[CreateProjectInput, Project]
 	UpdateProject() sdkgo.Mutation[UpdateProjectInput, Project]
@@ -73,6 +80,27 @@ func (operations clientOperations) DeleteClient() sdkgo.Mutation[DeleteClientInp
 }
 func (operations clientOperations) ListProjects() sdkgo.Query[ListProjectsInput, ProjectPage] {
 	return operations.client.ListProjects()
+}
+func (operations clientOperations) GetTimeEntry() sdkgo.Query[GetTimeEntryInput, TimeEntry] {
+	return operations.client.GetTimeEntry()
+}
+func (operations clientOperations) CreateTimeEntryByDuration() sdkgo.Mutation[CreateTimeEntryByDurationInput, TimeEntry] {
+	return operations.client.CreateTimeEntryByDuration()
+}
+func (operations clientOperations) CreateTimeEntryByStartEnd() sdkgo.Mutation[CreateTimeEntryByStartEndInput, TimeEntry] {
+	return operations.client.CreateTimeEntryByStartEnd()
+}
+func (operations clientOperations) UpdateTimeEntry() sdkgo.Mutation[UpdateTimeEntryInput, TimeEntry] {
+	return operations.client.UpdateTimeEntry()
+}
+func (operations clientOperations) DeleteTimeEntry() sdkgo.Mutation[DeleteTimeEntryInput, DeletedTimeEntry] {
+	return operations.client.DeleteTimeEntry()
+}
+func (operations clientOperations) DeleteTimeEntryExternalReference() sdkgo.Mutation[DeleteTimeEntryInput, DeletedTimeEntryExternalReference] {
+	return operations.client.DeleteTimeEntryExternalReference()
+}
+func (operations clientOperations) StopTimeEntry() sdkgo.Mutation[TimeEntryActionInput, TimeEntry] {
+	return operations.client.StopTimeEntry()
 }
 func (operations clientOperations) GetProject() sdkgo.Query[GetProjectInput, Project] {
 	return operations.client.GetProject()
@@ -661,6 +689,523 @@ func NewListProjectsStep[IN any](config ListProjectsStepConfig[IN]) sdkgo.QueryS
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ListProjectsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetTimeEntryBranchFound sdkgo.BranchID = "found"
+const GetTimeEntryBranchNotFound sdkgo.BranchID = "notFound"
+const GetTimeEntryBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTimeEntryBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTimeEntryBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTimeEntryDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTimeEntry"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTimeEntryBranchFound, Description: "Harvest confirmed the time-entry result."},
+		{ID: GetTimeEntryBranchNotFound, Description: "The time entry does not exist.", Optional: true},
+		{ID: GetTimeEntryBranchProviderRejected, Description: "Harvest rejected the operation.", Optional: true},
+		{ID: GetTimeEntryBranchInvalidResponse, Description: "Harvest returned unusable JSON.", Optional: true},
+		{ID: GetTimeEntryBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTimeEntryResult = sdkgo.QueryResult[TimeEntry]
+
+type GetTimeEntryStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=harvest"`
+	operationID                    struct{}                                     `connector:"operationId=getTimeEntry"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetTimeEntryInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTimeEntryResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetTimeEntryResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetTimeEntryResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTimeEntryResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTimeEntryResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TimeEntry]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewGetTimeEntryStep[IN any](config GetTimeEntryStepConfig[IN]) sdkgo.QueryStep[IN, GetTimeEntryInput, TimeEntry] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetTimeEntryInput, TimeEntry]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTimeEntry(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTimeEntryResult] {
+			branches := make([]sdkgo.BranchTarget[GetTimeEntryResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTimeEntryBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetTimeEntryBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTimeEntryBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTimeEntryBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTimeEntryBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateTimeEntryByDurationBranchCreated sdkgo.BranchID = "created"
+const CreateTimeEntryByDurationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateTimeEntryByDurationBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateTimeEntryByDurationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateTimeEntryByDurationDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createTimeEntryByDuration"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateTimeEntryByDurationBranchCreated, Description: "Harvest confirmed the time-entry result."},
+		{ID: CreateTimeEntryByDurationBranchProviderRejected, Description: "Harvest rejected the operation.", Optional: true},
+		{ID: CreateTimeEntryByDurationBranchUncertain, Description: "A submitted time entry may have been created.", Optional: true},
+		{ID: CreateTimeEntryByDurationBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateTimeEntryByDurationResult = sdkgo.MutationResult[TimeEntry]
+
+type CreateTimeEntryByDurationStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                        `connector:"connectorId=harvest"`
+	operationID                       struct{}                                        `connector:"operationId=createTimeEntryByDuration"`
+	StepType                          string                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                        Connection                                      `connector:"connection"`
+	ConnectionName                    string                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateTimeEntryByDurationInput         `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateTimeEntryByDurationResult]   `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateTimeEntryByDurationResult]   `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateTimeEntryByDurationResult]   `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateTimeEntryByDurationResult]   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TimeEntry]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateTimeEntryByDurationStep[IN any](config CreateTimeEntryByDurationStepConfig[IN]) sdkgo.MutationStep[IN, CreateTimeEntryByDurationInput, TimeEntry] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateTimeEntryByDurationInput, TimeEntry]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateTimeEntryByDuration(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateTimeEntryByDurationResult] {
+			branches := make([]sdkgo.BranchTarget[CreateTimeEntryByDurationResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateTimeEntryByDurationBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateTimeEntryByDurationBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateTimeEntryByDurationBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateTimeEntryByDurationBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const CreateTimeEntryByStartEndBranchCreated sdkgo.BranchID = "created"
+const CreateTimeEntryByStartEndBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateTimeEntryByStartEndBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateTimeEntryByStartEndBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateTimeEntryByStartEndDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createTimeEntryByStartEnd"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateTimeEntryByStartEndBranchCreated, Description: "Harvest confirmed the time-entry result."},
+		{ID: CreateTimeEntryByStartEndBranchProviderRejected, Description: "Harvest rejected the operation.", Optional: true},
+		{ID: CreateTimeEntryByStartEndBranchUncertain, Description: "A submitted time entry may have been created.", Optional: true},
+		{ID: CreateTimeEntryByStartEndBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateTimeEntryByStartEndResult = sdkgo.MutationResult[TimeEntry]
+
+type CreateTimeEntryByStartEndStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                        `connector:"connectorId=harvest"`
+	operationID                       struct{}                                        `connector:"operationId=createTimeEntryByStartEnd"`
+	StepType                          string                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                        Connection                                      `connector:"connection"`
+	ConnectionName                    string                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateTimeEntryByStartEndInput         `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateTimeEntryByStartEndResult]   `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateTimeEntryByStartEndResult]   `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateTimeEntryByStartEndResult]   `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateTimeEntryByStartEndResult]   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TimeEntry]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateTimeEntryByStartEndStep[IN any](config CreateTimeEntryByStartEndStepConfig[IN]) sdkgo.MutationStep[IN, CreateTimeEntryByStartEndInput, TimeEntry] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateTimeEntryByStartEndInput, TimeEntry]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateTimeEntryByStartEnd(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateTimeEntryByStartEndResult] {
+			branches := make([]sdkgo.BranchTarget[CreateTimeEntryByStartEndResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateTimeEntryByStartEndBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateTimeEntryByStartEndBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateTimeEntryByStartEndBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateTimeEntryByStartEndBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateTimeEntryBranchUpdated sdkgo.BranchID = "updated"
+const UpdateTimeEntryBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateTimeEntryBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateTimeEntryBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateTimeEntryDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateTimeEntry"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateTimeEntryBranchUpdated, Description: "Harvest confirmed the time-entry result."},
+		{ID: UpdateTimeEntryBranchNotFound, Description: "The time entry does not exist.", Optional: true},
+		{ID: UpdateTimeEntryBranchProviderRejected, Description: "Harvest rejected the operation.", Optional: true},
+		{ID: UpdateTimeEntryBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateTimeEntryResult = sdkgo.MutationResult[TimeEntry]
+
+type UpdateTimeEntryStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                        `connector:"connectorId=harvest"`
+	operationID                       struct{}                                        `connector:"operationId=updateTimeEntry"`
+	StepType                          string                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                        Connection                                      `connector:"connection"`
+	ConnectionName                    string                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateTimeEntryInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateTimeEntryResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateTimeEntryResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateTimeEntryResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateTimeEntryResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TimeEntry]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateTimeEntryStep[IN any](config UpdateTimeEntryStepConfig[IN]) sdkgo.MutationStep[IN, UpdateTimeEntryInput, TimeEntry] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateTimeEntryInput, TimeEntry]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateTimeEntry(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateTimeEntryResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateTimeEntryResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateTimeEntryBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateTimeEntryBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateTimeEntryBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateTimeEntryBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteTimeEntryBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteTimeEntryBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteTimeEntryBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteTimeEntryBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteTimeEntryDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteTimeEntry"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteTimeEntryBranchDeleted, Description: "Harvest confirmed the time-entry result."},
+		{ID: DeleteTimeEntryBranchNotFound, Description: "The time entry does not exist.", Optional: true},
+		{ID: DeleteTimeEntryBranchProviderRejected, Description: "Harvest rejected the operation.", Optional: true},
+		{ID: DeleteTimeEntryBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteTimeEntryResult = sdkgo.MutationResult[DeletedTimeEntry]
+
+type DeleteTimeEntryStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=harvest"`
+	operationID                       struct{}                                               `connector:"operationId=deleteTimeEntry"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteTimeEntryInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteTimeEntryResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteTimeEntryResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteTimeEntryResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteTimeEntryResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedTimeEntry]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteTimeEntryStep[IN any](config DeleteTimeEntryStepConfig[IN]) sdkgo.MutationStep[IN, DeleteTimeEntryInput, DeletedTimeEntry] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteTimeEntryInput, DeletedTimeEntry]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteTimeEntry(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteTimeEntryResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteTimeEntryResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteTimeEntryBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteTimeEntryBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteTimeEntryBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteTimeEntryBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteTimeEntryExternalReferenceBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteTimeEntryExternalReferenceBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteTimeEntryExternalReferenceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteTimeEntryExternalReferenceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteTimeEntryExternalReferenceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteTimeEntryExternalReference"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteTimeEntryExternalReferenceBranchDeleted, Description: "Harvest confirmed the time-entry result."},
+		{ID: DeleteTimeEntryExternalReferenceBranchNotFound, Description: "The time entry does not exist.", Optional: true},
+		{ID: DeleteTimeEntryExternalReferenceBranchProviderRejected, Description: "Harvest rejected the operation.", Optional: true},
+		{ID: DeleteTimeEntryExternalReferenceBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteTimeEntryExternalReferenceResult = sdkgo.MutationResult[DeletedTimeEntryExternalReference]
+
+type DeleteTimeEntryExternalReferenceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                                `connector:"connectorId=harvest"`
+	operationID                       struct{}                                                                `connector:"operationId=deleteTimeEntryExternalReference"`
+	StepType                          string                                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                                   `connector:"annotations"`
+	Connection                        Connection                                                              `connector:"connection"`
+	ConnectionName                    string                                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteTimeEntryInput                                           `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteTimeEntryExternalReferenceResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteTimeEntryExternalReferenceResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteTimeEntryExternalReferenceResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteTimeEntryExternalReferenceResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedTimeEntryExternalReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                        `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteTimeEntryExternalReferenceStep[IN any](config DeleteTimeEntryExternalReferenceStepConfig[IN]) sdkgo.MutationStep[IN, DeleteTimeEntryInput, DeletedTimeEntryExternalReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteTimeEntryInput, DeletedTimeEntryExternalReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteTimeEntryExternalReference(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteTimeEntryExternalReferenceResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteTimeEntryExternalReferenceResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteTimeEntryExternalReferenceBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteTimeEntryExternalReferenceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteTimeEntryExternalReferenceBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteTimeEntryExternalReferenceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const StopTimeEntryBranchStopped sdkgo.BranchID = "stopped"
+const StopTimeEntryBranchNotFound sdkgo.BranchID = "notFound"
+const StopTimeEntryBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const StopTimeEntryBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var StopTimeEntryDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "stopTimeEntry"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: StopTimeEntryBranchStopped, Description: "Harvest confirmed the time-entry result."},
+		{ID: StopTimeEntryBranchNotFound, Description: "The time entry does not exist.", Optional: true},
+		{ID: StopTimeEntryBranchProviderRejected, Description: "Harvest rejected the operation.", Optional: true},
+		{ID: StopTimeEntryBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type StopTimeEntryResult = sdkgo.MutationResult[TimeEntry]
+
+type StopTimeEntryStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                        `connector:"connectorId=harvest"`
+	operationID                       struct{}                                        `connector:"operationId=stopTimeEntry"`
+	StepType                          string                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                        Connection                                      `connector:"connection"`
+	ConnectionName                    string                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) TimeEntryActionInput                   `connector:"mapToOperationInput"`
+	Stopped                           sdkgo.Target[StopTimeEntryResult]               `connector:"branch=stopped"`
+	NotFound                          sdkgo.Target[StopTimeEntryResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[StopTimeEntryResult]               `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[StopTimeEntryResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TimeEntry]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewStopTimeEntryStep[IN any](config StopTimeEntryStepConfig[IN]) sdkgo.MutationStep[IN, TimeEntryActionInput, TimeEntry] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, TimeEntryActionInput, TimeEntry]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.StopTimeEntry(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[StopTimeEntryResult] {
+			branches := make([]sdkgo.BranchTarget[StopTimeEntryResult], 0, 4)
+			if config.Stopped.HasStep() {
+				branches = append(branches, config.Stopped.BranchTarget(StopTimeEntryBranchStopped))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(StopTimeEntryBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(StopTimeEntryBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(StopTimeEntryBranchDefect))
 			}
 			return branches
 		}(),

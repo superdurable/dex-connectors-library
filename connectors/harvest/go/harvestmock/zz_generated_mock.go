@@ -17,18 +17,25 @@ import (
 
 // Mock is a scripted harvest connection. Script each operation through its accessor.
 type Mock struct {
-	connection      harvest.Connection
-	listClients     *connectormock.Query[harvest.ListClientsInput, harvest.ClientPage]
-	getClient       *connectormock.Query[harvest.GetClientInput, harvest.ClientRecord]
-	createClient    *connectormock.Mutation[harvest.CreateClientInput, harvest.ClientRecord]
-	updateClient    *connectormock.Mutation[harvest.UpdateClientInput, harvest.ClientRecord]
-	deleteClient    *connectormock.Mutation[harvest.DeleteClientInput, harvest.DeletedClient]
-	listProjects    *connectormock.Query[harvest.ListProjectsInput, harvest.ProjectPage]
-	getProject      *connectormock.Query[harvest.GetProjectInput, harvest.Project]
-	createProject   *connectormock.Mutation[harvest.CreateProjectInput, harvest.Project]
-	updateProject   *connectormock.Mutation[harvest.UpdateProjectInput, harvest.Project]
-	deleteProject   *connectormock.Mutation[harvest.DeleteProjectInput, harvest.DeletedProject]
-	listTimeEntries *connectormock.Query[harvest.ListTimeEntriesInput, harvest.TimeEntryPage]
+	connection                       harvest.Connection
+	listClients                      *connectormock.Query[harvest.ListClientsInput, harvest.ClientPage]
+	getClient                        *connectormock.Query[harvest.GetClientInput, harvest.ClientRecord]
+	createClient                     *connectormock.Mutation[harvest.CreateClientInput, harvest.ClientRecord]
+	updateClient                     *connectormock.Mutation[harvest.UpdateClientInput, harvest.ClientRecord]
+	deleteClient                     *connectormock.Mutation[harvest.DeleteClientInput, harvest.DeletedClient]
+	listProjects                     *connectormock.Query[harvest.ListProjectsInput, harvest.ProjectPage]
+	getTimeEntry                     *connectormock.Query[harvest.GetTimeEntryInput, harvest.TimeEntry]
+	createTimeEntryByDuration        *connectormock.Mutation[harvest.CreateTimeEntryByDurationInput, harvest.TimeEntry]
+	createTimeEntryByStartEnd        *connectormock.Mutation[harvest.CreateTimeEntryByStartEndInput, harvest.TimeEntry]
+	updateTimeEntry                  *connectormock.Mutation[harvest.UpdateTimeEntryInput, harvest.TimeEntry]
+	deleteTimeEntry                  *connectormock.Mutation[harvest.DeleteTimeEntryInput, harvest.DeletedTimeEntry]
+	deleteTimeEntryExternalReference *connectormock.Mutation[harvest.DeleteTimeEntryInput, harvest.DeletedTimeEntryExternalReference]
+	stopTimeEntry                    *connectormock.Mutation[harvest.TimeEntryActionInput, harvest.TimeEntry]
+	getProject                       *connectormock.Query[harvest.GetProjectInput, harvest.Project]
+	createProject                    *connectormock.Mutation[harvest.CreateProjectInput, harvest.Project]
+	updateProject                    *connectormock.Mutation[harvest.UpdateProjectInput, harvest.Project]
+	deleteProject                    *connectormock.Mutation[harvest.DeleteProjectInput, harvest.DeletedProject]
+	listTimeEntries                  *connectormock.Query[harvest.ListTimeEntriesInput, harvest.TimeEntryPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -36,17 +43,24 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listClients:     connectormock.NewQuery[harvest.ListClientsInput, harvest.ClientPage](t, harvest.ListClientsDefinition),
-		getClient:       connectormock.NewQuery[harvest.GetClientInput, harvest.ClientRecord](t, harvest.GetClientDefinition),
-		createClient:    connectormock.NewMutation[harvest.CreateClientInput, harvest.ClientRecord](t, harvest.CreateClientDefinition),
-		updateClient:    connectormock.NewMutation[harvest.UpdateClientInput, harvest.ClientRecord](t, harvest.UpdateClientDefinition),
-		deleteClient:    connectormock.NewMutation[harvest.DeleteClientInput, harvest.DeletedClient](t, harvest.DeleteClientDefinition),
-		listProjects:    connectormock.NewQuery[harvest.ListProjectsInput, harvest.ProjectPage](t, harvest.ListProjectsDefinition),
-		getProject:      connectormock.NewQuery[harvest.GetProjectInput, harvest.Project](t, harvest.GetProjectDefinition),
-		createProject:   connectormock.NewMutation[harvest.CreateProjectInput, harvest.Project](t, harvest.CreateProjectDefinition),
-		updateProject:   connectormock.NewMutation[harvest.UpdateProjectInput, harvest.Project](t, harvest.UpdateProjectDefinition),
-		deleteProject:   connectormock.NewMutation[harvest.DeleteProjectInput, harvest.DeletedProject](t, harvest.DeleteProjectDefinition),
-		listTimeEntries: connectormock.NewQuery[harvest.ListTimeEntriesInput, harvest.TimeEntryPage](t, harvest.ListTimeEntriesDefinition),
+		listClients:                      connectormock.NewQuery[harvest.ListClientsInput, harvest.ClientPage](t, harvest.ListClientsDefinition),
+		getClient:                        connectormock.NewQuery[harvest.GetClientInput, harvest.ClientRecord](t, harvest.GetClientDefinition),
+		createClient:                     connectormock.NewMutation[harvest.CreateClientInput, harvest.ClientRecord](t, harvest.CreateClientDefinition),
+		updateClient:                     connectormock.NewMutation[harvest.UpdateClientInput, harvest.ClientRecord](t, harvest.UpdateClientDefinition),
+		deleteClient:                     connectormock.NewMutation[harvest.DeleteClientInput, harvest.DeletedClient](t, harvest.DeleteClientDefinition),
+		listProjects:                     connectormock.NewQuery[harvest.ListProjectsInput, harvest.ProjectPage](t, harvest.ListProjectsDefinition),
+		getTimeEntry:                     connectormock.NewQuery[harvest.GetTimeEntryInput, harvest.TimeEntry](t, harvest.GetTimeEntryDefinition),
+		createTimeEntryByDuration:        connectormock.NewMutation[harvest.CreateTimeEntryByDurationInput, harvest.TimeEntry](t, harvest.CreateTimeEntryByDurationDefinition),
+		createTimeEntryByStartEnd:        connectormock.NewMutation[harvest.CreateTimeEntryByStartEndInput, harvest.TimeEntry](t, harvest.CreateTimeEntryByStartEndDefinition),
+		updateTimeEntry:                  connectormock.NewMutation[harvest.UpdateTimeEntryInput, harvest.TimeEntry](t, harvest.UpdateTimeEntryDefinition),
+		deleteTimeEntry:                  connectormock.NewMutation[harvest.DeleteTimeEntryInput, harvest.DeletedTimeEntry](t, harvest.DeleteTimeEntryDefinition),
+		deleteTimeEntryExternalReference: connectormock.NewMutation[harvest.DeleteTimeEntryInput, harvest.DeletedTimeEntryExternalReference](t, harvest.DeleteTimeEntryExternalReferenceDefinition),
+		stopTimeEntry:                    connectormock.NewMutation[harvest.TimeEntryActionInput, harvest.TimeEntry](t, harvest.StopTimeEntryDefinition),
+		getProject:                       connectormock.NewQuery[harvest.GetProjectInput, harvest.Project](t, harvest.GetProjectDefinition),
+		createProject:                    connectormock.NewMutation[harvest.CreateProjectInput, harvest.Project](t, harvest.CreateProjectDefinition),
+		updateProject:                    connectormock.NewMutation[harvest.UpdateProjectInput, harvest.Project](t, harvest.UpdateProjectDefinition),
+		deleteProject:                    connectormock.NewMutation[harvest.DeleteProjectInput, harvest.DeletedProject](t, harvest.DeleteProjectDefinition),
+		listTimeEntries:                  connectormock.NewQuery[harvest.ListTimeEntriesInput, harvest.TimeEntryPage](t, harvest.ListTimeEntriesDefinition),
 	}
 	mock.listClients.Default(ListClientsDefault())
 	mock.getClient.Default(GetClientDefault())
@@ -54,6 +68,13 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.updateClient.Default(UpdateClientDefault())
 	mock.deleteClient.Default(DeleteClientDefault())
 	mock.listProjects.Default(ListProjectsDefault())
+	mock.getTimeEntry.Default(GetTimeEntryDefault())
+	mock.createTimeEntryByDuration.Default(CreateTimeEntryByDurationDefault())
+	mock.createTimeEntryByStartEnd.Default(CreateTimeEntryByStartEndDefault())
+	mock.updateTimeEntry.Default(UpdateTimeEntryDefault())
+	mock.deleteTimeEntry.Default(DeleteTimeEntryDefault())
+	mock.deleteTimeEntryExternalReference.Default(DeleteTimeEntryExternalReferenceDefault())
+	mock.stopTimeEntry.Default(StopTimeEntryDefault())
 	mock.getProject.Default(GetProjectDefault())
 	mock.createProject.Default(CreateProjectDefault())
 	mock.updateProject.Default(UpdateProjectDefault())
@@ -100,6 +121,41 @@ func (mock *Mock) ListProjects() *connectormock.Query[harvest.ListProjectsInput,
 	return mock.listProjects
 }
 
+// GetTimeEntry returns the getTimeEntry script.
+func (mock *Mock) GetTimeEntry() *connectormock.Query[harvest.GetTimeEntryInput, harvest.TimeEntry] {
+	return mock.getTimeEntry
+}
+
+// CreateTimeEntryByDuration returns the createTimeEntryByDuration script.
+func (mock *Mock) CreateTimeEntryByDuration() *connectormock.Mutation[harvest.CreateTimeEntryByDurationInput, harvest.TimeEntry] {
+	return mock.createTimeEntryByDuration
+}
+
+// CreateTimeEntryByStartEnd returns the createTimeEntryByStartEnd script.
+func (mock *Mock) CreateTimeEntryByStartEnd() *connectormock.Mutation[harvest.CreateTimeEntryByStartEndInput, harvest.TimeEntry] {
+	return mock.createTimeEntryByStartEnd
+}
+
+// UpdateTimeEntry returns the updateTimeEntry script.
+func (mock *Mock) UpdateTimeEntry() *connectormock.Mutation[harvest.UpdateTimeEntryInput, harvest.TimeEntry] {
+	return mock.updateTimeEntry
+}
+
+// DeleteTimeEntry returns the deleteTimeEntry script.
+func (mock *Mock) DeleteTimeEntry() *connectormock.Mutation[harvest.DeleteTimeEntryInput, harvest.DeletedTimeEntry] {
+	return mock.deleteTimeEntry
+}
+
+// DeleteTimeEntryExternalReference returns the deleteTimeEntryExternalReference script.
+func (mock *Mock) DeleteTimeEntryExternalReference() *connectormock.Mutation[harvest.DeleteTimeEntryInput, harvest.DeletedTimeEntryExternalReference] {
+	return mock.deleteTimeEntryExternalReference
+}
+
+// StopTimeEntry returns the stopTimeEntry script.
+func (mock *Mock) StopTimeEntry() *connectormock.Mutation[harvest.TimeEntryActionInput, harvest.TimeEntry] {
+	return mock.stopTimeEntry
+}
+
 // GetProject returns the getProject script.
 func (mock *Mock) GetProject() *connectormock.Query[harvest.GetProjectInput, harvest.Project] {
 	return mock.getProject
@@ -144,6 +200,27 @@ func (operations mockOperations) DeleteClient() sdkgo.Mutation[harvest.DeleteCli
 }
 func (operations mockOperations) ListProjects() sdkgo.Query[harvest.ListProjectsInput, harvest.ProjectPage] {
 	return operations.mock.listProjects
+}
+func (operations mockOperations) GetTimeEntry() sdkgo.Query[harvest.GetTimeEntryInput, harvest.TimeEntry] {
+	return operations.mock.getTimeEntry
+}
+func (operations mockOperations) CreateTimeEntryByDuration() sdkgo.Mutation[harvest.CreateTimeEntryByDurationInput, harvest.TimeEntry] {
+	return operations.mock.createTimeEntryByDuration
+}
+func (operations mockOperations) CreateTimeEntryByStartEnd() sdkgo.Mutation[harvest.CreateTimeEntryByStartEndInput, harvest.TimeEntry] {
+	return operations.mock.createTimeEntryByStartEnd
+}
+func (operations mockOperations) UpdateTimeEntry() sdkgo.Mutation[harvest.UpdateTimeEntryInput, harvest.TimeEntry] {
+	return operations.mock.updateTimeEntry
+}
+func (operations mockOperations) DeleteTimeEntry() sdkgo.Mutation[harvest.DeleteTimeEntryInput, harvest.DeletedTimeEntry] {
+	return operations.mock.deleteTimeEntry
+}
+func (operations mockOperations) DeleteTimeEntryExternalReference() sdkgo.Mutation[harvest.DeleteTimeEntryInput, harvest.DeletedTimeEntryExternalReference] {
+	return operations.mock.deleteTimeEntryExternalReference
+}
+func (operations mockOperations) StopTimeEntry() sdkgo.Mutation[harvest.TimeEntryActionInput, harvest.TimeEntry] {
+	return operations.mock.stopTimeEntry
 }
 func (operations mockOperations) GetProject() sdkgo.Query[harvest.GetProjectInput, harvest.Project] {
 	return operations.mock.getProject
@@ -382,6 +459,261 @@ func ListProjectsInvalidKey() connectormock.Case[harvest.ProjectPage] {
 // ListProjectsDefault is the manifest default, defaultAnswer, which New installs.
 func ListProjectsDefault() connectormock.Case[harvest.ProjectPage] {
 	return ListProjectsDefaultAnswer()
+}
+
+// GetTimeEntryFound selects the found branch: Harvest confirmed the time-entry result.
+func GetTimeEntryFound(value harvest.TimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Branch(harvest.GetTimeEntryBranchFound, value, failure)
+}
+
+// GetTimeEntryNotFound selects the notFound branch: The time entry does not exist.
+func GetTimeEntryNotFound(value harvest.TimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Branch(harvest.GetTimeEntryBranchNotFound, value, failure)
+}
+
+// GetTimeEntryProviderRejected selects the providerRejected branch: Harvest rejected the operation.
+func GetTimeEntryProviderRejected(value harvest.TimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Branch(harvest.GetTimeEntryBranchProviderRejected, value, failure)
+}
+
+// GetTimeEntryInvalidResponse selects the invalidResponse branch: Harvest returned unusable JSON.
+func GetTimeEntryInvalidResponse(value harvest.TimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Branch(harvest.GetTimeEntryBranchInvalidResponse, value, failure)
+}
+
+// GetTimeEntryDefect selects the defect branch: Local input or credentials are invalid.
+func GetTimeEntryDefect(value harvest.TimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Branch(harvest.GetTimeEntryBranchDefect, value, failure)
+}
+
+// GetTimeEntryRetry asks Dex to retry the getTimeEntry Step, after the delay when it is positive.
+func GetTimeEntryRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Retry[harvest.TimeEntry](failure, after)
+}
+
+// GetTimeEntryDefaultAnswer is the manifest mock defaultAnswer: A Meridian time-entry result.
+func GetTimeEntryDefaultAnswer() connectormock.Case[harvest.TimeEntry] {
+	value := connectormock.MustDecodeOutput[harvest.TimeEntry](`{"id":4001,"project":{"id":3001},"hours":2.5,"spentDate":"2026-10-28"}`)
+	return connectormock.Branch(harvest.GetTimeEntryBranchFound, value, nil)
+}
+
+// GetTimeEntryDefault is the manifest default, defaultAnswer, which New installs.
+func GetTimeEntryDefault() connectormock.Case[harvest.TimeEntry] { return GetTimeEntryDefaultAnswer() }
+
+// CreateTimeEntryByDurationCreated selects the created branch: Harvest confirmed the time-entry result.
+func CreateTimeEntryByDurationCreated(value harvest.TimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Branch(harvest.CreateTimeEntryByDurationBranchCreated, value, failure)
+}
+
+// CreateTimeEntryByDurationProviderRejected selects the providerRejected branch: Harvest rejected the operation.
+func CreateTimeEntryByDurationProviderRejected(value harvest.TimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Branch(harvest.CreateTimeEntryByDurationBranchProviderRejected, value, failure)
+}
+
+// CreateTimeEntryByDurationUncertain returns an uncertain createTimeEntryByDuration outcome.
+func CreateTimeEntryByDurationUncertain(value harvest.TimeEntry, failure sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateTimeEntryByDurationDefect selects the defect branch: Local input or credentials are invalid.
+func CreateTimeEntryByDurationDefect(value harvest.TimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Branch(harvest.CreateTimeEntryByDurationBranchDefect, value, failure)
+}
+
+// CreateTimeEntryByDurationRetry asks Dex to retry the createTimeEntryByDuration Step, after the delay when it is positive.
+func CreateTimeEntryByDurationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Retry[harvest.TimeEntry](failure, after)
+}
+
+// CreateTimeEntryByDurationDefaultAnswer is the manifest mock defaultAnswer: A Meridian time-entry result.
+func CreateTimeEntryByDurationDefaultAnswer() connectormock.Case[harvest.TimeEntry] {
+	value := connectormock.MustDecodeOutput[harvest.TimeEntry](`{"id":4001,"project":{"id":3001},"hours":2.5,"spentDate":"2026-10-28"}`)
+	return connectormock.Branch(harvest.CreateTimeEntryByDurationBranchCreated, value, nil)
+}
+
+// CreateTimeEntryByDurationDefault is the manifest default, defaultAnswer, which New installs.
+func CreateTimeEntryByDurationDefault() connectormock.Case[harvest.TimeEntry] {
+	return CreateTimeEntryByDurationDefaultAnswer()
+}
+
+// CreateTimeEntryByStartEndCreated selects the created branch: Harvest confirmed the time-entry result.
+func CreateTimeEntryByStartEndCreated(value harvest.TimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Branch(harvest.CreateTimeEntryByStartEndBranchCreated, value, failure)
+}
+
+// CreateTimeEntryByStartEndProviderRejected selects the providerRejected branch: Harvest rejected the operation.
+func CreateTimeEntryByStartEndProviderRejected(value harvest.TimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Branch(harvest.CreateTimeEntryByStartEndBranchProviderRejected, value, failure)
+}
+
+// CreateTimeEntryByStartEndUncertain returns an uncertain createTimeEntryByStartEnd outcome.
+func CreateTimeEntryByStartEndUncertain(value harvest.TimeEntry, failure sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateTimeEntryByStartEndDefect selects the defect branch: Local input or credentials are invalid.
+func CreateTimeEntryByStartEndDefect(value harvest.TimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Branch(harvest.CreateTimeEntryByStartEndBranchDefect, value, failure)
+}
+
+// CreateTimeEntryByStartEndRetry asks Dex to retry the createTimeEntryByStartEnd Step, after the delay when it is positive.
+func CreateTimeEntryByStartEndRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Retry[harvest.TimeEntry](failure, after)
+}
+
+// CreateTimeEntryByStartEndDefaultAnswer is the manifest mock defaultAnswer: A Meridian time-entry result.
+func CreateTimeEntryByStartEndDefaultAnswer() connectormock.Case[harvest.TimeEntry] {
+	value := connectormock.MustDecodeOutput[harvest.TimeEntry](`{"id":4001,"project":{"id":3001},"hours":2.5,"spentDate":"2026-10-28"}`)
+	return connectormock.Branch(harvest.CreateTimeEntryByStartEndBranchCreated, value, nil)
+}
+
+// CreateTimeEntryByStartEndDefault is the manifest default, defaultAnswer, which New installs.
+func CreateTimeEntryByStartEndDefault() connectormock.Case[harvest.TimeEntry] {
+	return CreateTimeEntryByStartEndDefaultAnswer()
+}
+
+// UpdateTimeEntryUpdated selects the updated branch: Harvest confirmed the time-entry result.
+func UpdateTimeEntryUpdated(value harvest.TimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Branch(harvest.UpdateTimeEntryBranchUpdated, value, failure)
+}
+
+// UpdateTimeEntryNotFound selects the notFound branch: The time entry does not exist.
+func UpdateTimeEntryNotFound(value harvest.TimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Branch(harvest.UpdateTimeEntryBranchNotFound, value, failure)
+}
+
+// UpdateTimeEntryProviderRejected selects the providerRejected branch: Harvest rejected the operation.
+func UpdateTimeEntryProviderRejected(value harvest.TimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Branch(harvest.UpdateTimeEntryBranchProviderRejected, value, failure)
+}
+
+// UpdateTimeEntryDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateTimeEntryDefect(value harvest.TimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Branch(harvest.UpdateTimeEntryBranchDefect, value, failure)
+}
+
+// UpdateTimeEntryRetry asks Dex to retry the updateTimeEntry Step, after the delay when it is positive.
+func UpdateTimeEntryRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Retry[harvest.TimeEntry](failure, after)
+}
+
+// UpdateTimeEntryDefaultAnswer is the manifest mock defaultAnswer: A Meridian time-entry result.
+func UpdateTimeEntryDefaultAnswer() connectormock.Case[harvest.TimeEntry] {
+	value := connectormock.MustDecodeOutput[harvest.TimeEntry](`{"id":4001,"project":{"id":3001},"hours":2.5,"spentDate":"2026-10-28"}`)
+	return connectormock.Branch(harvest.UpdateTimeEntryBranchUpdated, value, nil)
+}
+
+// UpdateTimeEntryDefault is the manifest default, defaultAnswer, which New installs.
+func UpdateTimeEntryDefault() connectormock.Case[harvest.TimeEntry] {
+	return UpdateTimeEntryDefaultAnswer()
+}
+
+// DeleteTimeEntryDeleted selects the deleted branch: Harvest confirmed the time-entry result.
+func DeleteTimeEntryDeleted(value harvest.DeletedTimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedTimeEntry] {
+	return connectormock.Branch(harvest.DeleteTimeEntryBranchDeleted, value, failure)
+}
+
+// DeleteTimeEntryNotFound selects the notFound branch: The time entry does not exist.
+func DeleteTimeEntryNotFound(value harvest.DeletedTimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedTimeEntry] {
+	return connectormock.Branch(harvest.DeleteTimeEntryBranchNotFound, value, failure)
+}
+
+// DeleteTimeEntryProviderRejected selects the providerRejected branch: Harvest rejected the operation.
+func DeleteTimeEntryProviderRejected(value harvest.DeletedTimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedTimeEntry] {
+	return connectormock.Branch(harvest.DeleteTimeEntryBranchProviderRejected, value, failure)
+}
+
+// DeleteTimeEntryDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteTimeEntryDefect(value harvest.DeletedTimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedTimeEntry] {
+	return connectormock.Branch(harvest.DeleteTimeEntryBranchDefect, value, failure)
+}
+
+// DeleteTimeEntryRetry asks Dex to retry the deleteTimeEntry Step, after the delay when it is positive.
+func DeleteTimeEntryRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.DeletedTimeEntry] {
+	return connectormock.Retry[harvest.DeletedTimeEntry](failure, after)
+}
+
+// DeleteTimeEntryDefaultAnswer is the manifest mock defaultAnswer: A Meridian time-entry result.
+func DeleteTimeEntryDefaultAnswer() connectormock.Case[harvest.DeletedTimeEntry] {
+	value := connectormock.MustDecodeOutput[harvest.DeletedTimeEntry](`{"id":4001}`)
+	return connectormock.Branch(harvest.DeleteTimeEntryBranchDeleted, value, nil)
+}
+
+// DeleteTimeEntryDefault is the manifest default, defaultAnswer, which New installs.
+func DeleteTimeEntryDefault() connectormock.Case[harvest.DeletedTimeEntry] {
+	return DeleteTimeEntryDefaultAnswer()
+}
+
+// DeleteTimeEntryExternalReferenceDeleted selects the deleted branch: Harvest confirmed the time-entry result.
+func DeleteTimeEntryExternalReferenceDeleted(value harvest.DeletedTimeEntryExternalReference, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedTimeEntryExternalReference] {
+	return connectormock.Branch(harvest.DeleteTimeEntryExternalReferenceBranchDeleted, value, failure)
+}
+
+// DeleteTimeEntryExternalReferenceNotFound selects the notFound branch: The time entry does not exist.
+func DeleteTimeEntryExternalReferenceNotFound(value harvest.DeletedTimeEntryExternalReference, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedTimeEntryExternalReference] {
+	return connectormock.Branch(harvest.DeleteTimeEntryExternalReferenceBranchNotFound, value, failure)
+}
+
+// DeleteTimeEntryExternalReferenceProviderRejected selects the providerRejected branch: Harvest rejected the operation.
+func DeleteTimeEntryExternalReferenceProviderRejected(value harvest.DeletedTimeEntryExternalReference, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedTimeEntryExternalReference] {
+	return connectormock.Branch(harvest.DeleteTimeEntryExternalReferenceBranchProviderRejected, value, failure)
+}
+
+// DeleteTimeEntryExternalReferenceDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteTimeEntryExternalReferenceDefect(value harvest.DeletedTimeEntryExternalReference, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedTimeEntryExternalReference] {
+	return connectormock.Branch(harvest.DeleteTimeEntryExternalReferenceBranchDefect, value, failure)
+}
+
+// DeleteTimeEntryExternalReferenceRetry asks Dex to retry the deleteTimeEntryExternalReference Step, after the delay when it is positive.
+func DeleteTimeEntryExternalReferenceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.DeletedTimeEntryExternalReference] {
+	return connectormock.Retry[harvest.DeletedTimeEntryExternalReference](failure, after)
+}
+
+// DeleteTimeEntryExternalReferenceDefaultAnswer is the manifest mock defaultAnswer: A Meridian time-entry result.
+func DeleteTimeEntryExternalReferenceDefaultAnswer() connectormock.Case[harvest.DeletedTimeEntryExternalReference] {
+	value := connectormock.MustDecodeOutput[harvest.DeletedTimeEntryExternalReference](`{"id":4001}`)
+	return connectormock.Branch(harvest.DeleteTimeEntryExternalReferenceBranchDeleted, value, nil)
+}
+
+// DeleteTimeEntryExternalReferenceDefault is the manifest default, defaultAnswer, which New installs.
+func DeleteTimeEntryExternalReferenceDefault() connectormock.Case[harvest.DeletedTimeEntryExternalReference] {
+	return DeleteTimeEntryExternalReferenceDefaultAnswer()
+}
+
+// StopTimeEntryStopped selects the stopped branch: Harvest confirmed the time-entry result.
+func StopTimeEntryStopped(value harvest.TimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Branch(harvest.StopTimeEntryBranchStopped, value, failure)
+}
+
+// StopTimeEntryNotFound selects the notFound branch: The time entry does not exist.
+func StopTimeEntryNotFound(value harvest.TimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Branch(harvest.StopTimeEntryBranchNotFound, value, failure)
+}
+
+// StopTimeEntryProviderRejected selects the providerRejected branch: Harvest rejected the operation.
+func StopTimeEntryProviderRejected(value harvest.TimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Branch(harvest.StopTimeEntryBranchProviderRejected, value, failure)
+}
+
+// StopTimeEntryDefect selects the defect branch: Local input or credentials are invalid.
+func StopTimeEntryDefect(value harvest.TimeEntry, failure *sdkgo.Failure) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Branch(harvest.StopTimeEntryBranchDefect, value, failure)
+}
+
+// StopTimeEntryRetry asks Dex to retry the stopTimeEntry Step, after the delay when it is positive.
+func StopTimeEntryRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.TimeEntry] {
+	return connectormock.Retry[harvest.TimeEntry](failure, after)
+}
+
+// StopTimeEntryDefaultAnswer is the manifest mock defaultAnswer: A Meridian time-entry result.
+func StopTimeEntryDefaultAnswer() connectormock.Case[harvest.TimeEntry] {
+	value := connectormock.MustDecodeOutput[harvest.TimeEntry](`{"id":4001,"project":{"id":3001},"hours":2.5,"spentDate":"2026-10-28"}`)
+	return connectormock.Branch(harvest.StopTimeEntryBranchStopped, value, nil)
+}
+
+// StopTimeEntryDefault is the manifest default, defaultAnswer, which New installs.
+func StopTimeEntryDefault() connectormock.Case[harvest.TimeEntry] {
+	return StopTimeEntryDefaultAnswer()
 }
 
 // GetProjectFound selects the found branch: Harvest returned the project.

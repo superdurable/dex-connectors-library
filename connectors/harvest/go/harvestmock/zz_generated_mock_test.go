@@ -37,6 +37,34 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[harvest.ProjectPage](`{"projects":[{"id":3001,"name":"Meridian Website","isActive":true}]}`)
 			return err
 		}},
+		{name: "getTimeEntry/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.TimeEntry](`{"id":4001,"project":{"id":3001},"hours":2.5,"spentDate":"2026-10-28"}`)
+			return err
+		}},
+		{name: "createTimeEntryByDuration/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.TimeEntry](`{"id":4001,"project":{"id":3001},"hours":2.5,"spentDate":"2026-10-28"}`)
+			return err
+		}},
+		{name: "createTimeEntryByStartEnd/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.TimeEntry](`{"id":4001,"project":{"id":3001},"hours":2.5,"spentDate":"2026-10-28"}`)
+			return err
+		}},
+		{name: "updateTimeEntry/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.TimeEntry](`{"id":4001,"project":{"id":3001},"hours":2.5,"spentDate":"2026-10-28"}`)
+			return err
+		}},
+		{name: "deleteTimeEntry/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.DeletedTimeEntry](`{"id":4001}`)
+			return err
+		}},
+		{name: "deleteTimeEntryExternalReference/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.DeletedTimeEntryExternalReference](`{"id":4001}`)
+			return err
+		}},
+		{name: "stopTimeEntry/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.TimeEntry](`{"id":4001,"project":{"id":3001},"hours":2.5,"spentDate":"2026-10-28"}`)
+			return err
+		}},
 		{name: "getProject/defaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[harvest.Project](`{"id":3001,"name":"Meridian Website","isActive":true}`)
 			return err
@@ -81,6 +109,27 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListProjects().Definition().Operation.OperationID != "listProjects" {
 		t.Errorf("listProjects mock has another definition")
+	}
+	if mock.GetTimeEntry().Definition().Operation.OperationID != "getTimeEntry" {
+		t.Errorf("getTimeEntry mock has another definition")
+	}
+	if mock.CreateTimeEntryByDuration().Definition().Operation.OperationID != "createTimeEntryByDuration" {
+		t.Errorf("createTimeEntryByDuration mock has another definition")
+	}
+	if mock.CreateTimeEntryByStartEnd().Definition().Operation.OperationID != "createTimeEntryByStartEnd" {
+		t.Errorf("createTimeEntryByStartEnd mock has another definition")
+	}
+	if mock.UpdateTimeEntry().Definition().Operation.OperationID != "updateTimeEntry" {
+		t.Errorf("updateTimeEntry mock has another definition")
+	}
+	if mock.DeleteTimeEntry().Definition().Operation.OperationID != "deleteTimeEntry" {
+		t.Errorf("deleteTimeEntry mock has another definition")
+	}
+	if mock.DeleteTimeEntryExternalReference().Definition().Operation.OperationID != "deleteTimeEntryExternalReference" {
+		t.Errorf("deleteTimeEntryExternalReference mock has another definition")
+	}
+	if mock.StopTimeEntry().Definition().Operation.OperationID != "stopTimeEntry" {
+		t.Errorf("stopTimeEntry mock has another definition")
 	}
 	if mock.GetProject().Definition().Operation.OperationID != "getProject" {
 		t.Errorf("getProject mock has another definition")

@@ -63,6 +63,7 @@ func TestMockAnswersWithRealDex(t *testing.T) {
 	require.Len(t, mock.ListProjects().Calls(), 1)
 	require.Len(t, mock.GetProject().Calls(), 1)
 	require.Len(t, mock.ListTimeEntries().Calls(), 1)
+	require.Len(t, mock.GetTimeEntry().Calls(), 1)
 	require.Len(t, mock.ListClients().Calls(), 1)
 	require.Len(t, outcome.Clients, 1)
 }

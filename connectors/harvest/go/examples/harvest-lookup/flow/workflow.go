@@ -18,6 +18,7 @@ const ConnectionName = "harvest"
 const firstStepType = "ReadHarvestFirst"
 const projectStepType = "ReadHarvestProject"
 const secondStepType = "ReadHarvestSecond"
+const timeEntryStepType = "ReadHarvestTimeEntry"
 const clientStepType = "ReadHarvestClients"
 
 // Request is the typed Start Flow input.
@@ -72,7 +73,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStep(afterProject{}),
 		dex.DefineStep(harvest.NewListTimeEntriesStep(harvest.ListTimeEntriesStepConfig[harvest.GetProjectResult]{StepType: secondStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "harvest-lookup", GroupLabel: "Harvest lookup", Explanation: "Read the related Harvest resource."}, MapToOperationInput: MapToListTimeEntriesInput, Listed: sdkgo.GoTo(afterTimeEntries{})})),
 		dex.DefineStep(afterTimeEntries{}),
-		dex.DefineStep(harvest.NewListClientsStep(harvest.ListClientsStepConfig[harvest.ListTimeEntriesResult]{StepType: clientStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "harvest-lookup", GroupLabel: "Harvest lookup", Explanation: "Read Harvest clients."}, MapToOperationInput: MapToListClientsInput, Listed: sdkgo.GoTo(completeLookup{})})),
+		dex.DefineStep(harvest.NewGetTimeEntryStep(harvest.GetTimeEntryStepConfig[harvest.ListTimeEntriesResult]{StepType: timeEntryStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "harvest-lookup", GroupLabel: "Harvest lookup", Explanation: "Read the first listed time entry."}, MapToOperationInput: MapToGetTimeEntryInput, Found: sdkgo.GoTo(afterTimeEntry{})})),
+		dex.DefineStep(afterTimeEntry{}),
+		dex.DefineStep(harvest.NewListClientsStep(harvest.ListClientsStepConfig[harvest.GetTimeEntryResult]{StepType: clientStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "harvest-lookup", GroupLabel: "Harvest lookup", Explanation: "Read Harvest clients."}, MapToOperationInput: MapToListClientsInput, Listed: sdkgo.GoTo(completeLookup{})})),
 		dex.DefineStep(completeLookup{}),
 	}
 }
@@ -95,8 +98,16 @@ func MapToListTimeEntriesInput(_ harvest.GetProjectResult) harvest.ListTimeEntri
 	return harvest.ListTimeEntriesInput{PerPage: 10}
 }
 
+// MapToGetTimeEntryInput selects the first time entry for a detail read.
+func MapToGetTimeEntryInput(input harvest.ListTimeEntriesResult) harvest.GetTimeEntryInput {
+	if len(input.Value.TimeEntries) == 0 {
+		return harvest.GetTimeEntryInput{}
+	}
+	return harvest.GetTimeEntryInput{ID: input.Value.TimeEntries[0].ID}
+}
+
 // MapToListClientsInput selects a bounded client page after the time read.
-func MapToListClientsInput(_ harvest.ListTimeEntriesResult) harvest.ListClientsInput {
+func MapToListClientsInput(_ harvest.GetTimeEntryResult) harvest.ListClientsInput {
 	return harvest.ListClientsInput{PerPage: 10}
 }
 
@@ -142,7 +153,18 @@ type afterTimeEntries struct {
 
 func (afterTimeEntries) GetStepType() string { return "AfterHarvestTimeEntries" }
 func (afterTimeEntries) Execute(_ dex.Context, result harvest.ListTimeEntriesResult) (*dex.StepDecision, error) {
-	return dex.GoTo(sdkgo.StepRef[harvest.ListTimeEntriesResult](clientStepType), result), nil
+	return dex.GoTo(sdkgo.StepRef[harvest.ListTimeEntriesResult](timeEntryStepType), result), nil
+}
+
+// dex:group group-id:harvest-lookup group-label:"Harvest lookup"
+// dex:explanation text:"Choose the Harvest client read."
+type afterTimeEntry struct {
+	dex.StepDefaultsNoWaitFor[harvest.GetTimeEntryResult]
+}
+
+func (afterTimeEntry) GetStepType() string { return "AfterHarvestTimeEntry" }
+func (afterTimeEntry) Execute(_ dex.Context, result harvest.GetTimeEntryResult) (*dex.StepDecision, error) {
+	return dex.GoTo(sdkgo.StepRef[harvest.GetTimeEntryResult](clientStepType), result), nil
 }
 
 // dex:group group-id:harvest-lookup group-label:"Harvest lookup"
