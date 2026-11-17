@@ -59,7 +59,110 @@ spec:
         - For updateTask, find assignedToId in the project member list (GET /projects/{projectId}/members), sectionId in the project board or GET /sections, and provide due as an RFC 3339 timestamp such as 2026-11-18T00:00:00Z. Omit each field to leave its current value unchanged.
         - For comments, open a task's Comments view or GET /tasks/{taskId}/comments to find positive taskId and commentId values; blank IDs are invalid. CreateComment text is nonempty Markdown, not a secret; blank is invalid. Page and items are positive integers with zero selecting provider defaults.
         - For labels, open a project's Tags view or GET /projects/{projectId}/labels for positive projectId and labelId values. GET /tasks/{taskId}/task_labels returns the distinct positive taskLabelId attachment ID for removal. Blank IDs are invalid; the task must belong to the label's project.
+        - For task checklists, open a task's checklist view or GET /tasks/{taskId}/checklists for positive taskId and checklistId values. Blank IDs or names are invalid. Page and items are positive integers with zero selecting provider defaults; updateChecklist name replaces the current name.
   operations:
+    - name: listTaskChecklists
+      goName: ListTaskChecklists
+      inputType: ListTaskChecklistsInput
+      outputType: TaskChecklistsPage
+      kind: query
+      description: Read one page of checklists attached to a task.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: MeisterTask returned the checklist outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: MeisterTask returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample checklist outcome is available.
+          output: {checklists: [{id: '20', taskId: '15', name: Steps}], page: 1}
+    - name: getChecklist
+      goName: GetChecklist
+      inputType: GetChecklistInput
+      outputType: ChecklistSummary
+      kind: query
+      description: Read one task checklist's identity and name.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: MeisterTask returned the checklist outcome.}
+        - {id: notFound, goName: NotFound, description: MeisterTask did not expose the checklist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: MeisterTask returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample checklist outcome is available.
+          output: {id: '20', taskId: '15', name: Steps}
+    - name: updateChecklist
+      goName: UpdateChecklist
+      inputType: UpdateChecklistInput
+      outputType: ChecklistSummary
+      kind: mutation
+      description: Rename one task checklist.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: MeisterTask returned the checklist outcome.}
+        - {id: notFound, goName: NotFound, description: MeisterTask did not expose the checklist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: MeisterTask returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample checklist outcome is available.
+          output: {id: '20', taskId: '15', name: Updated Steps}
+    - name: deleteChecklist
+      goName: DeleteChecklist
+      inputType: DeleteChecklistInput
+      outputType: DeletedChecklist
+      kind: mutation
+      description: Delete one task checklist.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: MeisterTask returned the checklist outcome.}
+        - {id: notFound, goName: NotFound, description: MeisterTask did not expose the checklist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample checklist outcome is available.
+          output: {checklistId: '20'}
+    - name: createTaskChecklist
+      goName: CreateTaskChecklist
+      inputType: CreateTaskChecklistInput
+      outputType: ChecklistSummary
+      kind: mutation
+      description: Create a named checklist on a task.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, dispatchFence: true, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: MeisterTask returned the checklist outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Creation may have succeeded; inspect task checklists before manual retry., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample checklist outcome is available.
+          output: {id: '20', taskId: '15', name: Steps}
     - name: listProjectLabels
       goName: ListProjectLabels
       inputType: ListProjectLabelsInput

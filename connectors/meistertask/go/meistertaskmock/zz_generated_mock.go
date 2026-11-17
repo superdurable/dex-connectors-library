@@ -17,27 +17,32 @@ import (
 
 // Mock is a scripted meistertask connection. Script each operation through its accessor.
 type Mock struct {
-	connection        meistertask.Connection
-	listProjectLabels *connectormock.Query[meistertask.ListProjectLabelsInput, meistertask.ProjectLabels]
-	listTaskLabels    *connectormock.Query[meistertask.ListTaskLabelsInput, meistertask.TaskLabels]
-	removeTaskLabel   *connectormock.Mutation[meistertask.RemoveTaskLabelInput, meistertask.RemovedTaskLabel]
-	addTaskLabel      *connectormock.Mutation[meistertask.AddTaskLabelInput, meistertask.TaskLabelSummary]
-	listComments      *connectormock.Query[meistertask.ListCommentsInput, meistertask.CommentsPage]
-	getComment        *connectormock.Query[meistertask.GetCommentInput, meistertask.CommentSummary]
-	deleteComment     *connectormock.Mutation[meistertask.DeleteCommentInput, meistertask.DeletedComment]
-	createComment     *connectormock.Mutation[meistertask.CreateCommentInput, meistertask.CommentSummary]
-	listSections      *connectormock.Query[meistertask.ListSectionsInput, meistertask.SectionsPage]
-	getSection        *connectormock.Query[meistertask.GetSectionInput, meistertask.SectionSummary]
-	updateSection     *connectormock.Mutation[meistertask.UpdateSectionInput, meistertask.SectionSummary]
-	createSection     *connectormock.Mutation[meistertask.CreateSectionInput, meistertask.SectionSummary]
-	listProjects      *connectormock.Query[meistertask.ListProjectsInput, meistertask.ProjectsPage]
-	getProject        *connectormock.Query[meistertask.GetProjectInput, meistertask.ProjectSummary]
-	updateProject     *connectormock.Mutation[meistertask.UpdateProjectInput, meistertask.ProjectSummary]
-	createProject     *connectormock.Mutation[meistertask.CreateProjectInput, meistertask.ProjectSummary]
-	listTasks         *connectormock.Query[meistertask.ListTasksInput, meistertask.TasksPage]
-	getTask           *connectormock.Query[meistertask.GetTaskInput, meistertask.TaskSummary]
-	updateTask        *connectormock.Mutation[meistertask.UpdateTaskInput, meistertask.TaskSummary]
-	createTask        *connectormock.Mutation[meistertask.CreateTaskInput, meistertask.TaskSummary]
+	connection          meistertask.Connection
+	listTaskChecklists  *connectormock.Query[meistertask.ListTaskChecklistsInput, meistertask.TaskChecklistsPage]
+	getChecklist        *connectormock.Query[meistertask.GetChecklistInput, meistertask.ChecklistSummary]
+	updateChecklist     *connectormock.Mutation[meistertask.UpdateChecklistInput, meistertask.ChecklistSummary]
+	deleteChecklist     *connectormock.Mutation[meistertask.DeleteChecklistInput, meistertask.DeletedChecklist]
+	createTaskChecklist *connectormock.Mutation[meistertask.CreateTaskChecklistInput, meistertask.ChecklistSummary]
+	listProjectLabels   *connectormock.Query[meistertask.ListProjectLabelsInput, meistertask.ProjectLabels]
+	listTaskLabels      *connectormock.Query[meistertask.ListTaskLabelsInput, meistertask.TaskLabels]
+	removeTaskLabel     *connectormock.Mutation[meistertask.RemoveTaskLabelInput, meistertask.RemovedTaskLabel]
+	addTaskLabel        *connectormock.Mutation[meistertask.AddTaskLabelInput, meistertask.TaskLabelSummary]
+	listComments        *connectormock.Query[meistertask.ListCommentsInput, meistertask.CommentsPage]
+	getComment          *connectormock.Query[meistertask.GetCommentInput, meistertask.CommentSummary]
+	deleteComment       *connectormock.Mutation[meistertask.DeleteCommentInput, meistertask.DeletedComment]
+	createComment       *connectormock.Mutation[meistertask.CreateCommentInput, meistertask.CommentSummary]
+	listSections        *connectormock.Query[meistertask.ListSectionsInput, meistertask.SectionsPage]
+	getSection          *connectormock.Query[meistertask.GetSectionInput, meistertask.SectionSummary]
+	updateSection       *connectormock.Mutation[meistertask.UpdateSectionInput, meistertask.SectionSummary]
+	createSection       *connectormock.Mutation[meistertask.CreateSectionInput, meistertask.SectionSummary]
+	listProjects        *connectormock.Query[meistertask.ListProjectsInput, meistertask.ProjectsPage]
+	getProject          *connectormock.Query[meistertask.GetProjectInput, meistertask.ProjectSummary]
+	updateProject       *connectormock.Mutation[meistertask.UpdateProjectInput, meistertask.ProjectSummary]
+	createProject       *connectormock.Mutation[meistertask.CreateProjectInput, meistertask.ProjectSummary]
+	listTasks           *connectormock.Query[meistertask.ListTasksInput, meistertask.TasksPage]
+	getTask             *connectormock.Query[meistertask.GetTaskInput, meistertask.TaskSummary]
+	updateTask          *connectormock.Mutation[meistertask.UpdateTaskInput, meistertask.TaskSummary]
+	createTask          *connectormock.Mutation[meistertask.CreateTaskInput, meistertask.TaskSummary]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -45,27 +50,37 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listProjectLabels: connectormock.NewQuery[meistertask.ListProjectLabelsInput, meistertask.ProjectLabels](t, meistertask.ListProjectLabelsDefinition),
-		listTaskLabels:    connectormock.NewQuery[meistertask.ListTaskLabelsInput, meistertask.TaskLabels](t, meistertask.ListTaskLabelsDefinition),
-		removeTaskLabel:   connectormock.NewMutation[meistertask.RemoveTaskLabelInput, meistertask.RemovedTaskLabel](t, meistertask.RemoveTaskLabelDefinition),
-		addTaskLabel:      connectormock.NewMutation[meistertask.AddTaskLabelInput, meistertask.TaskLabelSummary](t, meistertask.AddTaskLabelDefinition),
-		listComments:      connectormock.NewQuery[meistertask.ListCommentsInput, meistertask.CommentsPage](t, meistertask.ListCommentsDefinition),
-		getComment:        connectormock.NewQuery[meistertask.GetCommentInput, meistertask.CommentSummary](t, meistertask.GetCommentDefinition),
-		deleteComment:     connectormock.NewMutation[meistertask.DeleteCommentInput, meistertask.DeletedComment](t, meistertask.DeleteCommentDefinition),
-		createComment:     connectormock.NewMutation[meistertask.CreateCommentInput, meistertask.CommentSummary](t, meistertask.CreateCommentDefinition),
-		listSections:      connectormock.NewQuery[meistertask.ListSectionsInput, meistertask.SectionsPage](t, meistertask.ListSectionsDefinition),
-		getSection:        connectormock.NewQuery[meistertask.GetSectionInput, meistertask.SectionSummary](t, meistertask.GetSectionDefinition),
-		updateSection:     connectormock.NewMutation[meistertask.UpdateSectionInput, meistertask.SectionSummary](t, meistertask.UpdateSectionDefinition),
-		createSection:     connectormock.NewMutation[meistertask.CreateSectionInput, meistertask.SectionSummary](t, meistertask.CreateSectionDefinition),
-		listProjects:      connectormock.NewQuery[meistertask.ListProjectsInput, meistertask.ProjectsPage](t, meistertask.ListProjectsDefinition),
-		getProject:        connectormock.NewQuery[meistertask.GetProjectInput, meistertask.ProjectSummary](t, meistertask.GetProjectDefinition),
-		updateProject:     connectormock.NewMutation[meistertask.UpdateProjectInput, meistertask.ProjectSummary](t, meistertask.UpdateProjectDefinition),
-		createProject:     connectormock.NewMutation[meistertask.CreateProjectInput, meistertask.ProjectSummary](t, meistertask.CreateProjectDefinition),
-		listTasks:         connectormock.NewQuery[meistertask.ListTasksInput, meistertask.TasksPage](t, meistertask.ListTasksDefinition),
-		getTask:           connectormock.NewQuery[meistertask.GetTaskInput, meistertask.TaskSummary](t, meistertask.GetTaskDefinition),
-		updateTask:        connectormock.NewMutation[meistertask.UpdateTaskInput, meistertask.TaskSummary](t, meistertask.UpdateTaskDefinition),
-		createTask:        connectormock.NewMutation[meistertask.CreateTaskInput, meistertask.TaskSummary](t, meistertask.CreateTaskDefinition),
+		listTaskChecklists:  connectormock.NewQuery[meistertask.ListTaskChecklistsInput, meistertask.TaskChecklistsPage](t, meistertask.ListTaskChecklistsDefinition),
+		getChecklist:        connectormock.NewQuery[meistertask.GetChecklistInput, meistertask.ChecklistSummary](t, meistertask.GetChecklistDefinition),
+		updateChecklist:     connectormock.NewMutation[meistertask.UpdateChecklistInput, meistertask.ChecklistSummary](t, meistertask.UpdateChecklistDefinition),
+		deleteChecklist:     connectormock.NewMutation[meistertask.DeleteChecklistInput, meistertask.DeletedChecklist](t, meistertask.DeleteChecklistDefinition),
+		createTaskChecklist: connectormock.NewMutation[meistertask.CreateTaskChecklistInput, meistertask.ChecklistSummary](t, meistertask.CreateTaskChecklistDefinition),
+		listProjectLabels:   connectormock.NewQuery[meistertask.ListProjectLabelsInput, meistertask.ProjectLabels](t, meistertask.ListProjectLabelsDefinition),
+		listTaskLabels:      connectormock.NewQuery[meistertask.ListTaskLabelsInput, meistertask.TaskLabels](t, meistertask.ListTaskLabelsDefinition),
+		removeTaskLabel:     connectormock.NewMutation[meistertask.RemoveTaskLabelInput, meistertask.RemovedTaskLabel](t, meistertask.RemoveTaskLabelDefinition),
+		addTaskLabel:        connectormock.NewMutation[meistertask.AddTaskLabelInput, meistertask.TaskLabelSummary](t, meistertask.AddTaskLabelDefinition),
+		listComments:        connectormock.NewQuery[meistertask.ListCommentsInput, meistertask.CommentsPage](t, meistertask.ListCommentsDefinition),
+		getComment:          connectormock.NewQuery[meistertask.GetCommentInput, meistertask.CommentSummary](t, meistertask.GetCommentDefinition),
+		deleteComment:       connectormock.NewMutation[meistertask.DeleteCommentInput, meistertask.DeletedComment](t, meistertask.DeleteCommentDefinition),
+		createComment:       connectormock.NewMutation[meistertask.CreateCommentInput, meistertask.CommentSummary](t, meistertask.CreateCommentDefinition),
+		listSections:        connectormock.NewQuery[meistertask.ListSectionsInput, meistertask.SectionsPage](t, meistertask.ListSectionsDefinition),
+		getSection:          connectormock.NewQuery[meistertask.GetSectionInput, meistertask.SectionSummary](t, meistertask.GetSectionDefinition),
+		updateSection:       connectormock.NewMutation[meistertask.UpdateSectionInput, meistertask.SectionSummary](t, meistertask.UpdateSectionDefinition),
+		createSection:       connectormock.NewMutation[meistertask.CreateSectionInput, meistertask.SectionSummary](t, meistertask.CreateSectionDefinition),
+		listProjects:        connectormock.NewQuery[meistertask.ListProjectsInput, meistertask.ProjectsPage](t, meistertask.ListProjectsDefinition),
+		getProject:          connectormock.NewQuery[meistertask.GetProjectInput, meistertask.ProjectSummary](t, meistertask.GetProjectDefinition),
+		updateProject:       connectormock.NewMutation[meistertask.UpdateProjectInput, meistertask.ProjectSummary](t, meistertask.UpdateProjectDefinition),
+		createProject:       connectormock.NewMutation[meistertask.CreateProjectInput, meistertask.ProjectSummary](t, meistertask.CreateProjectDefinition),
+		listTasks:           connectormock.NewQuery[meistertask.ListTasksInput, meistertask.TasksPage](t, meistertask.ListTasksDefinition),
+		getTask:             connectormock.NewQuery[meistertask.GetTaskInput, meistertask.TaskSummary](t, meistertask.GetTaskDefinition),
+		updateTask:          connectormock.NewMutation[meistertask.UpdateTaskInput, meistertask.TaskSummary](t, meistertask.UpdateTaskDefinition),
+		createTask:          connectormock.NewMutation[meistertask.CreateTaskInput, meistertask.TaskSummary](t, meistertask.CreateTaskDefinition),
 	}
+	mock.listTaskChecklists.Default(ListTaskChecklistsDefault())
+	mock.getChecklist.Default(GetChecklistDefault())
+	mock.updateChecklist.Default(UpdateChecklistDefault())
+	mock.deleteChecklist.Default(DeleteChecklistDefault())
+	mock.createTaskChecklist.Default(CreateTaskChecklistDefault())
 	mock.listProjectLabels.Default(ListProjectLabelsDefault())
 	mock.listTaskLabels.Default(ListTaskLabelsDefault())
 	mock.removeTaskLabel.Default(RemoveTaskLabelDefault())
@@ -96,6 +111,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() meistertask.Connection { return mock.connection }
+
+// ListTaskChecklists returns the listTaskChecklists script.
+func (mock *Mock) ListTaskChecklists() *connectormock.Query[meistertask.ListTaskChecklistsInput, meistertask.TaskChecklistsPage] {
+	return mock.listTaskChecklists
+}
+
+// GetChecklist returns the getChecklist script.
+func (mock *Mock) GetChecklist() *connectormock.Query[meistertask.GetChecklistInput, meistertask.ChecklistSummary] {
+	return mock.getChecklist
+}
+
+// UpdateChecklist returns the updateChecklist script.
+func (mock *Mock) UpdateChecklist() *connectormock.Mutation[meistertask.UpdateChecklistInput, meistertask.ChecklistSummary] {
+	return mock.updateChecklist
+}
+
+// DeleteChecklist returns the deleteChecklist script.
+func (mock *Mock) DeleteChecklist() *connectormock.Mutation[meistertask.DeleteChecklistInput, meistertask.DeletedChecklist] {
+	return mock.deleteChecklist
+}
+
+// CreateTaskChecklist returns the createTaskChecklist script.
+func (mock *Mock) CreateTaskChecklist() *connectormock.Mutation[meistertask.CreateTaskChecklistInput, meistertask.ChecklistSummary] {
+	return mock.createTaskChecklist
+}
 
 // ListProjectLabels returns the listProjectLabels script.
 func (mock *Mock) ListProjectLabels() *connectormock.Query[meistertask.ListProjectLabelsInput, meistertask.ProjectLabels] {
@@ -199,6 +239,21 @@ func (mock *Mock) CreateTask() *connectormock.Mutation[meistertask.CreateTaskInp
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListTaskChecklists() sdkgo.Query[meistertask.ListTaskChecklistsInput, meistertask.TaskChecklistsPage] {
+	return operations.mock.listTaskChecklists
+}
+func (operations mockOperations) GetChecklist() sdkgo.Query[meistertask.GetChecklistInput, meistertask.ChecklistSummary] {
+	return operations.mock.getChecklist
+}
+func (operations mockOperations) UpdateChecklist() sdkgo.Mutation[meistertask.UpdateChecklistInput, meistertask.ChecklistSummary] {
+	return operations.mock.updateChecklist
+}
+func (operations mockOperations) DeleteChecklist() sdkgo.Mutation[meistertask.DeleteChecklistInput, meistertask.DeletedChecklist] {
+	return operations.mock.deleteChecklist
+}
+func (operations mockOperations) CreateTaskChecklist() sdkgo.Mutation[meistertask.CreateTaskChecklistInput, meistertask.ChecklistSummary] {
+	return operations.mock.createTaskChecklist
+}
 func (operations mockOperations) ListProjectLabels() sdkgo.Query[meistertask.ListProjectLabelsInput, meistertask.ProjectLabels] {
 	return operations.mock.listProjectLabels
 }
@@ -258,6 +313,196 @@ func (operations mockOperations) UpdateTask() sdkgo.Mutation[meistertask.UpdateT
 }
 func (operations mockOperations) CreateTask() sdkgo.Mutation[meistertask.CreateTaskInput, meistertask.TaskSummary] {
 	return operations.mock.createTask
+}
+
+// ListTaskChecklistsListed selects the listed branch: MeisterTask returned the checklist outcome.
+func ListTaskChecklistsListed(value meistertask.TaskChecklistsPage, failure *sdkgo.Failure) connectormock.Case[meistertask.TaskChecklistsPage] {
+	return connectormock.Branch(meistertask.ListTaskChecklistsBranchListed, value, failure)
+}
+
+// ListTaskChecklistsProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func ListTaskChecklistsProviderRejected(value meistertask.TaskChecklistsPage, failure *sdkgo.Failure) connectormock.Case[meistertask.TaskChecklistsPage] {
+	return connectormock.Branch(meistertask.ListTaskChecklistsBranchProviderRejected, value, failure)
+}
+
+// ListTaskChecklistsInvalidResponse selects the invalidResponse branch: MeisterTask returned malformed or oversized JSON.
+func ListTaskChecklistsInvalidResponse(value meistertask.TaskChecklistsPage, failure *sdkgo.Failure) connectormock.Case[meistertask.TaskChecklistsPage] {
+	return connectormock.Branch(meistertask.ListTaskChecklistsBranchInvalidResponse, value, failure)
+}
+
+// ListTaskChecklistsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListTaskChecklistsDefect(value meistertask.TaskChecklistsPage, failure *sdkgo.Failure) connectormock.Case[meistertask.TaskChecklistsPage] {
+	return connectormock.Branch(meistertask.ListTaskChecklistsBranchDefect, value, failure)
+}
+
+// ListTaskChecklistsRetry asks Dex to retry the listTaskChecklists Step, after the delay when it is positive.
+func ListTaskChecklistsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.TaskChecklistsPage] {
+	return connectormock.Retry[meistertask.TaskChecklistsPage](failure, after)
+}
+
+// ListTaskChecklistsListedDefault is the manifest mock listedDefault: A sample checklist outcome is available.
+func ListTaskChecklistsListedDefault() connectormock.Case[meistertask.TaskChecklistsPage] {
+	value := connectormock.MustDecodeOutput[meistertask.TaskChecklistsPage](`{"checklists":[{"id":"20","taskId":"15","name":"Steps"}],"page":1}`)
+	return connectormock.Branch(meistertask.ListTaskChecklistsBranchListed, value, nil)
+}
+
+// ListTaskChecklistsDefault is the manifest default, listedDefault, which New installs.
+func ListTaskChecklistsDefault() connectormock.Case[meistertask.TaskChecklistsPage] {
+	return ListTaskChecklistsListedDefault()
+}
+
+// GetChecklistFound selects the found branch: MeisterTask returned the checklist outcome.
+func GetChecklistFound(value meistertask.ChecklistSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ChecklistSummary] {
+	return connectormock.Branch(meistertask.GetChecklistBranchFound, value, failure)
+}
+
+// GetChecklistNotFound selects the notFound branch: MeisterTask did not expose the checklist.
+func GetChecklistNotFound(value meistertask.ChecklistSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ChecklistSummary] {
+	return connectormock.Branch(meistertask.GetChecklistBranchNotFound, value, failure)
+}
+
+// GetChecklistProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func GetChecklistProviderRejected(value meistertask.ChecklistSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ChecklistSummary] {
+	return connectormock.Branch(meistertask.GetChecklistBranchProviderRejected, value, failure)
+}
+
+// GetChecklistInvalidResponse selects the invalidResponse branch: MeisterTask returned malformed or oversized JSON.
+func GetChecklistInvalidResponse(value meistertask.ChecklistSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ChecklistSummary] {
+	return connectormock.Branch(meistertask.GetChecklistBranchInvalidResponse, value, failure)
+}
+
+// GetChecklistDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetChecklistDefect(value meistertask.ChecklistSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ChecklistSummary] {
+	return connectormock.Branch(meistertask.GetChecklistBranchDefect, value, failure)
+}
+
+// GetChecklistRetry asks Dex to retry the getChecklist Step, after the delay when it is positive.
+func GetChecklistRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.ChecklistSummary] {
+	return connectormock.Retry[meistertask.ChecklistSummary](failure, after)
+}
+
+// GetChecklistFoundDefault is the manifest mock foundDefault: A sample checklist outcome is available.
+func GetChecklistFoundDefault() connectormock.Case[meistertask.ChecklistSummary] {
+	value := connectormock.MustDecodeOutput[meistertask.ChecklistSummary](`{"id":"20","taskId":"15","name":"Steps"}`)
+	return connectormock.Branch(meistertask.GetChecklistBranchFound, value, nil)
+}
+
+// GetChecklistDefault is the manifest default, foundDefault, which New installs.
+func GetChecklistDefault() connectormock.Case[meistertask.ChecklistSummary] {
+	return GetChecklistFoundDefault()
+}
+
+// UpdateChecklistUpdated selects the updated branch: MeisterTask returned the checklist outcome.
+func UpdateChecklistUpdated(value meistertask.ChecklistSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ChecklistSummary] {
+	return connectormock.Branch(meistertask.UpdateChecklistBranchUpdated, value, failure)
+}
+
+// UpdateChecklistNotFound selects the notFound branch: MeisterTask did not expose the checklist.
+func UpdateChecklistNotFound(value meistertask.ChecklistSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ChecklistSummary] {
+	return connectormock.Branch(meistertask.UpdateChecklistBranchNotFound, value, failure)
+}
+
+// UpdateChecklistProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func UpdateChecklistProviderRejected(value meistertask.ChecklistSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ChecklistSummary] {
+	return connectormock.Branch(meistertask.UpdateChecklistBranchProviderRejected, value, failure)
+}
+
+// UpdateChecklistInvalidResponse selects the invalidResponse branch: MeisterTask returned malformed or oversized JSON.
+func UpdateChecklistInvalidResponse(value meistertask.ChecklistSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ChecklistSummary] {
+	return connectormock.Branch(meistertask.UpdateChecklistBranchInvalidResponse, value, failure)
+}
+
+// UpdateChecklistDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateChecklistDefect(value meistertask.ChecklistSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ChecklistSummary] {
+	return connectormock.Branch(meistertask.UpdateChecklistBranchDefect, value, failure)
+}
+
+// UpdateChecklistRetry asks Dex to retry the updateChecklist Step, after the delay when it is positive.
+func UpdateChecklistRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.ChecklistSummary] {
+	return connectormock.Retry[meistertask.ChecklistSummary](failure, after)
+}
+
+// UpdateChecklistUpdatedDefault is the manifest mock updatedDefault: A sample checklist outcome is available.
+func UpdateChecklistUpdatedDefault() connectormock.Case[meistertask.ChecklistSummary] {
+	value := connectormock.MustDecodeOutput[meistertask.ChecklistSummary](`{"id":"20","taskId":"15","name":"Updated Steps"}`)
+	return connectormock.Branch(meistertask.UpdateChecklistBranchUpdated, value, nil)
+}
+
+// UpdateChecklistDefault is the manifest default, updatedDefault, which New installs.
+func UpdateChecklistDefault() connectormock.Case[meistertask.ChecklistSummary] {
+	return UpdateChecklistUpdatedDefault()
+}
+
+// DeleteChecklistDeleted selects the deleted branch: MeisterTask returned the checklist outcome.
+func DeleteChecklistDeleted(value meistertask.DeletedChecklist, failure *sdkgo.Failure) connectormock.Case[meistertask.DeletedChecklist] {
+	return connectormock.Branch(meistertask.DeleteChecklistBranchDeleted, value, failure)
+}
+
+// DeleteChecklistNotFound selects the notFound branch: MeisterTask did not expose the checklist.
+func DeleteChecklistNotFound(value meistertask.DeletedChecklist, failure *sdkgo.Failure) connectormock.Case[meistertask.DeletedChecklist] {
+	return connectormock.Branch(meistertask.DeleteChecklistBranchNotFound, value, failure)
+}
+
+// DeleteChecklistProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func DeleteChecklistProviderRejected(value meistertask.DeletedChecklist, failure *sdkgo.Failure) connectormock.Case[meistertask.DeletedChecklist] {
+	return connectormock.Branch(meistertask.DeleteChecklistBranchProviderRejected, value, failure)
+}
+
+// DeleteChecklistDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteChecklistDefect(value meistertask.DeletedChecklist, failure *sdkgo.Failure) connectormock.Case[meistertask.DeletedChecklist] {
+	return connectormock.Branch(meistertask.DeleteChecklistBranchDefect, value, failure)
+}
+
+// DeleteChecklistRetry asks Dex to retry the deleteChecklist Step, after the delay when it is positive.
+func DeleteChecklistRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.DeletedChecklist] {
+	return connectormock.Retry[meistertask.DeletedChecklist](failure, after)
+}
+
+// DeleteChecklistDeletedDefault is the manifest mock deletedDefault: A sample checklist outcome is available.
+func DeleteChecklistDeletedDefault() connectormock.Case[meistertask.DeletedChecklist] {
+	value := connectormock.MustDecodeOutput[meistertask.DeletedChecklist](`{"checklistId":"20"}`)
+	return connectormock.Branch(meistertask.DeleteChecklistBranchDeleted, value, nil)
+}
+
+// DeleteChecklistDefault is the manifest default, deletedDefault, which New installs.
+func DeleteChecklistDefault() connectormock.Case[meistertask.DeletedChecklist] {
+	return DeleteChecklistDeletedDefault()
+}
+
+// CreateTaskChecklistCreated selects the created branch: MeisterTask returned the checklist outcome.
+func CreateTaskChecklistCreated(value meistertask.ChecklistSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ChecklistSummary] {
+	return connectormock.Branch(meistertask.CreateTaskChecklistBranchCreated, value, failure)
+}
+
+// CreateTaskChecklistProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func CreateTaskChecklistProviderRejected(value meistertask.ChecklistSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ChecklistSummary] {
+	return connectormock.Branch(meistertask.CreateTaskChecklistBranchProviderRejected, value, failure)
+}
+
+// CreateTaskChecklistUncertain returns an uncertain createTaskChecklist outcome.
+func CreateTaskChecklistUncertain(value meistertask.ChecklistSummary, failure sdkgo.Failure) connectormock.Case[meistertask.ChecklistSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateTaskChecklistDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateTaskChecklistDefect(value meistertask.ChecklistSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ChecklistSummary] {
+	return connectormock.Branch(meistertask.CreateTaskChecklistBranchDefect, value, failure)
+}
+
+// CreateTaskChecklistRetry asks Dex to retry the createTaskChecklist Step, after the delay when it is positive.
+func CreateTaskChecklistRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.ChecklistSummary] {
+	return connectormock.Retry[meistertask.ChecklistSummary](failure, after)
+}
+
+// CreateTaskChecklistCreatedDefault is the manifest mock createdDefault: A sample checklist outcome is available.
+func CreateTaskChecklistCreatedDefault() connectormock.Case[meistertask.ChecklistSummary] {
+	value := connectormock.MustDecodeOutput[meistertask.ChecklistSummary](`{"id":"20","taskId":"15","name":"Steps"}`)
+	return connectormock.Branch(meistertask.CreateTaskChecklistBranchCreated, value, nil)
+}
+
+// CreateTaskChecklistDefault is the manifest default, createdDefault, which New installs.
+func CreateTaskChecklistDefault() connectormock.Case[meistertask.ChecklistSummary] {
+	return CreateTaskChecklistCreatedDefault()
 }
 
 // ListProjectLabelsListed selects the listed branch: MeisterTask returned the label outcome.
