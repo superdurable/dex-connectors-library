@@ -1739,6 +1739,536 @@
       },
       "name": "cancelAgreement-unavailableDiscovery",
       "operation": "cancelAgreement"
+    },
+    {
+      "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"http://127.0.0.1:12345/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"reminder-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH/reminders",
+          "requestBody": {
+            "recipientParticipantIds": [
+              "participant-123"
+            ],
+            "status": "ACTIVE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+          "providerId": "reminder-123",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "reminderId": "reminder-123"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+        "recipientParticipantIds": [
+          "participant-123"
+        ]
+      },
+      "name": "createAgreementReminder-created",
+      "operation": "createAgreementReminder"
+    },
+    {
+      "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"http://127.0.0.1:12345/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH/reminders",
+          "requestBody": {
+            "recipientParticipantIds": [
+              "participant-123"
+            ],
+            "status": "ACTIVE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "reminderId": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+        "recipientParticipantIds": [
+          "participant-123"
+        ]
+      },
+      "name": "createAgreementReminder-providerRejected",
+      "operation": "createAgreementReminder"
+    },
+    {
+      "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"http://127.0.0.1:12345/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH/reminders",
+          "requestBody": {
+            "recipientParticipantIds": [
+              "participant-123"
+            ],
+            "status": "ACTIVE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "reminderId": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+        "recipientParticipantIds": [
+          "participant-123"
+        ]
+      },
+      "name": "createAgreementReminder-uncertain",
+      "operation": "createAgreementReminder"
+    },
+    {
+      "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "reminderId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+      "input": {
+        "agreementId": "bad/ID",
+        "recipientParticipantIds": [
+          "participant-123"
+        ]
+      },
+      "name": "createAgreementReminder-defect",
+      "operation": "createAgreementReminder"
+    },
+    {
+      "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"http://127.0.0.1:12345/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH/reminders",
+          "requestBody": {
+            "recipientParticipantIds": [
+              "participant-123"
+            ],
+            "status": "ACTIVE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+          "state": "canResend"
+        },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+        "recipientParticipantIds": [
+          "participant-123"
+        ]
+      },
+      "name": "createAgreementReminder-rateLimit",
+      "operation": "createAgreementReminder"
+    },
+    {
+      "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"http://127.0.0.1:12345/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH/reminders",
+          "requestBody": {
+            "recipientParticipantIds": [
+              "participant-123"
+            ],
+            "status": "ACTIVE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+          "state": "canResend"
+        },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+        "recipientParticipantIds": [
+          "participant-123"
+        ]
+      },
+      "name": "createAgreementReminder-unavailable",
+      "operation": "createAgreementReminder"
+    },
+    {
+      "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"http://127.0.0.1:12345/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH/reminders",
+          "requestBody": {
+            "recipientParticipantIds": [
+              "participant-123"
+            ],
+            "status": "ACTIVE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+        "recipientParticipantIds": [
+          "participant-123"
+        ]
+      },
+      "name": "createAgreementReminder-transportFailure",
+      "operation": "createAgreementReminder"
+    },
+    {
+      "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+        "recipientParticipantIds": [
+          "participant-123"
+        ]
+      },
+      "name": "createAgreementReminder-discoveryRateLimit",
+      "operation": "createAgreementReminder"
+    },
+    {
+      "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+        "recipientParticipantIds": [
+          "participant-123"
+        ]
+      },
+      "name": "createAgreementReminder-discoveryUnavailable",
+      "operation": "createAgreementReminder"
     }
   ],
   "schemaVersion": 1

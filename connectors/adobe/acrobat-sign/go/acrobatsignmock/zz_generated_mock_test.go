@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createAgreementReminder/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[acrobatsign.CreatedAgreementReminder](`{"reminderId":"SAMPLE_REMINDER_ID"}`)
+			return err
+		}},
 		{name: "cancelAgreement/cancelledDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[acrobatsign.CancelledAgreement](`{"agreementId":"3AAABLblqZNOTREALAGREEMENTID5_BjiH","status":"CANCELLED"}`)
 			return err
@@ -42,6 +46,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateAgreementReminder().Definition().Operation.OperationID != "createAgreementReminder" {
+		t.Errorf("createAgreementReminder mock has another definition")
+	}
 	if mock.CancelAgreement().Definition().Operation.OperationID != "cancelAgreement" {
 		t.Errorf("cancelAgreement mock has another definition")
 	}

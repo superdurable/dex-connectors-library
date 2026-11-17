@@ -40,6 +40,7 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateAgreementReminder() sdkgo.Mutation[CreateAgreementReminderInput, CreatedAgreementReminder]
 	CancelAgreement() sdkgo.Mutation[CancelAgreementInput, CancelledAgreement]
 	GetAgreement() sdkgo.Query[GetAgreementInput, AgreementStatus]
 	ListAgreements() sdkgo.Query[ListAgreementsInput, AgreementPage]
@@ -48,6 +49,9 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateAgreementReminder() sdkgo.Mutation[CreateAgreementReminderInput, CreatedAgreementReminder] {
+	return operations.client.CreateAgreementReminder()
+}
 func (operations clientOperations) CancelAgreement() sdkgo.Mutation[CancelAgreementInput, CancelledAgreement] {
 	return operations.client.CancelAgreement()
 }
@@ -198,6 +202,82 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
+const CreateAgreementReminderBranchCreated sdkgo.BranchID = "created"
+const CreateAgreementReminderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateAgreementReminderBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateAgreementReminderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateAgreementReminderDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createAgreementReminder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateAgreementReminderBranchCreated, Description: "Acrobat Sign created the reminder."},
+		{ID: CreateAgreementReminderBranchProviderRejected, Description: "Acrobat Sign conclusively rejected the reminder.", Optional: true},
+		{ID: CreateAgreementReminderBranchUncertain, Description: "The reminder may have been created but could not be confirmed.", Optional: true},
+		{ID: CreateAgreementReminderBranchDefect, Description: "The agreement or participant IDs are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateAgreementReminderResult = sdkgo.MutationResult[CreatedAgreementReminder]
+
+type CreateAgreementReminderStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                       `connector:"connectorId=adobe-acrobat-sign"`
+	operationID                       struct{}                                                       `connector:"operationId=createAgreementReminder"`
+	StepType                          string                                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                          `connector:"annotations"`
+	Connection                        Connection                                                     `connector:"connection"`
+	ConnectionName                    string                                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateAgreementReminderInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateAgreementReminderResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateAgreementReminderResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateAgreementReminderResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateAgreementReminderResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedAgreementReminder]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                               `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateAgreementReminderStep[IN any](config CreateAgreementReminderStepConfig[IN]) sdkgo.MutationStep[IN, CreateAgreementReminderInput, CreatedAgreementReminder] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adobe-acrobat-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateAgreementReminderInput, CreatedAgreementReminder]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateAgreementReminder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateAgreementReminderResult] {
+			branches := make([]sdkgo.BranchTarget[CreateAgreementReminderResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateAgreementReminderBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateAgreementReminderBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateAgreementReminderBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateAgreementReminderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
 const CancelAgreementBranchCancelled sdkgo.BranchID = "cancelled"
 const CancelAgreementBranchNotFound sdkgo.BranchID = "notFound"
 const CancelAgreementBranchProviderRejected sdkgo.BranchID = "providerRejected"
@@ -218,6 +298,7 @@ var CancelAgreementDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type CancelAgreementResult = sdkgo.MutationResult[CancelledAgreement]
@@ -443,6 +524,7 @@ var UpdateAgreementVisibilityDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateAgreementVisibilityResult = sdkgo.MutationResult[AgreementVisibility]

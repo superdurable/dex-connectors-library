@@ -18,6 +18,7 @@ import (
 // Mock is a scripted adobe-acrobat-sign connection. Script each operation through its accessor.
 type Mock struct {
 	connection                acrobatsign.Connection
+	createAgreementReminder   *connectormock.Mutation[acrobatsign.CreateAgreementReminderInput, acrobatsign.CreatedAgreementReminder]
 	cancelAgreement           *connectormock.Mutation[acrobatsign.CancelAgreementInput, acrobatsign.CancelledAgreement]
 	getAgreement              *connectormock.Query[acrobatsign.GetAgreementInput, acrobatsign.AgreementStatus]
 	listAgreements            *connectormock.Query[acrobatsign.ListAgreementsInput, acrobatsign.AgreementPage]
@@ -29,11 +30,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		createAgreementReminder:   connectormock.NewMutation[acrobatsign.CreateAgreementReminderInput, acrobatsign.CreatedAgreementReminder](t, acrobatsign.CreateAgreementReminderDefinition),
 		cancelAgreement:           connectormock.NewMutation[acrobatsign.CancelAgreementInput, acrobatsign.CancelledAgreement](t, acrobatsign.CancelAgreementDefinition),
 		getAgreement:              connectormock.NewQuery[acrobatsign.GetAgreementInput, acrobatsign.AgreementStatus](t, acrobatsign.GetAgreementDefinition),
 		listAgreements:            connectormock.NewQuery[acrobatsign.ListAgreementsInput, acrobatsign.AgreementPage](t, acrobatsign.ListAgreementsDefinition),
 		updateAgreementVisibility: connectormock.NewMutation[acrobatsign.UpdateAgreementVisibilityInput, acrobatsign.AgreementVisibility](t, acrobatsign.UpdateAgreementVisibilityDefinition),
 	}
+	mock.createAgreementReminder.Default(CreateAgreementReminderDefault())
 	mock.cancelAgreement.Default(CancelAgreementDefault())
 	mock.getAgreement.Default(GetAgreementDefault())
 	mock.listAgreements.Default(ListAgreementsDefault())
@@ -48,6 +51,11 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() acrobatsign.Connection { return mock.connection }
+
+// CreateAgreementReminder returns the createAgreementReminder script.
+func (mock *Mock) CreateAgreementReminder() *connectormock.Mutation[acrobatsign.CreateAgreementReminderInput, acrobatsign.CreatedAgreementReminder] {
+	return mock.createAgreementReminder
+}
 
 // CancelAgreement returns the cancelAgreement script.
 func (mock *Mock) CancelAgreement() *connectormock.Mutation[acrobatsign.CancelAgreementInput, acrobatsign.CancelledAgreement] {
@@ -71,6 +79,9 @@ func (mock *Mock) UpdateAgreementVisibility() *connectormock.Mutation[acrobatsig
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateAgreementReminder() sdkgo.Mutation[acrobatsign.CreateAgreementReminderInput, acrobatsign.CreatedAgreementReminder] {
+	return operations.mock.createAgreementReminder
+}
 func (operations mockOperations) CancelAgreement() sdkgo.Mutation[acrobatsign.CancelAgreementInput, acrobatsign.CancelledAgreement] {
 	return operations.mock.cancelAgreement
 }
@@ -82,6 +93,42 @@ func (operations mockOperations) ListAgreements() sdkgo.Query[acrobatsign.ListAg
 }
 func (operations mockOperations) UpdateAgreementVisibility() sdkgo.Mutation[acrobatsign.UpdateAgreementVisibilityInput, acrobatsign.AgreementVisibility] {
 	return operations.mock.updateAgreementVisibility
+}
+
+// CreateAgreementReminderCreated selects the created branch: Acrobat Sign created the reminder.
+func CreateAgreementReminderCreated(value acrobatsign.CreatedAgreementReminder, failure *sdkgo.Failure) connectormock.Case[acrobatsign.CreatedAgreementReminder] {
+	return connectormock.Branch(acrobatsign.CreateAgreementReminderBranchCreated, value, failure)
+}
+
+// CreateAgreementReminderProviderRejected selects the providerRejected branch: Acrobat Sign conclusively rejected the reminder.
+func CreateAgreementReminderProviderRejected(value acrobatsign.CreatedAgreementReminder, failure *sdkgo.Failure) connectormock.Case[acrobatsign.CreatedAgreementReminder] {
+	return connectormock.Branch(acrobatsign.CreateAgreementReminderBranchProviderRejected, value, failure)
+}
+
+// CreateAgreementReminderUncertain returns an uncertain createAgreementReminder outcome.
+func CreateAgreementReminderUncertain(value acrobatsign.CreatedAgreementReminder, failure sdkgo.Failure) connectormock.Case[acrobatsign.CreatedAgreementReminder] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateAgreementReminderDefect selects the defect branch: The agreement or participant IDs are invalid.
+func CreateAgreementReminderDefect(value acrobatsign.CreatedAgreementReminder, failure *sdkgo.Failure) connectormock.Case[acrobatsign.CreatedAgreementReminder] {
+	return connectormock.Branch(acrobatsign.CreateAgreementReminderBranchDefect, value, failure)
+}
+
+// CreateAgreementReminderRetry asks Dex to retry the createAgreementReminder Step, after the delay when it is positive.
+func CreateAgreementReminderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[acrobatsign.CreatedAgreementReminder] {
+	return connectormock.Retry[acrobatsign.CreatedAgreementReminder](failure, after)
+}
+
+// CreateAgreementReminderCreatedDefault is the manifest mock createdDefault: A sample reminder was created.
+func CreateAgreementReminderCreatedDefault() connectormock.Case[acrobatsign.CreatedAgreementReminder] {
+	value := connectormock.MustDecodeOutput[acrobatsign.CreatedAgreementReminder](`{"reminderId":"SAMPLE_REMINDER_ID"}`)
+	return connectormock.Branch(acrobatsign.CreateAgreementReminderBranchCreated, value, nil)
+}
+
+// CreateAgreementReminderDefault is the manifest default, createdDefault, which New installs.
+func CreateAgreementReminderDefault() connectormock.Case[acrobatsign.CreatedAgreementReminder] {
+	return CreateAgreementReminderCreatedDefault()
 }
 
 // CancelAgreementCancelled selects the cancelled branch: The agreement is cancelled or was already cancelled.

@@ -6,6 +6,7 @@ package acrobatsign
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -86,7 +87,15 @@ func (client *Client) put(call sdkgo.Call, path string, body []byte) providerRes
 	return client.request(call, http.MethodPut, path, body)
 }
 
+func (client *Client) postWithContext(requestContext context.Context, call sdkgo.Call, path string, body []byte) providerResponse {
+	return client.requestWithContext(requestContext, call, http.MethodPost, path, body)
+}
+
 func (client *Client) request(call sdkgo.Call, method, path string, body []byte) providerResponse {
+	return client.requestWithContext(call.Context, call, method, path, body)
+}
+
+func (client *Client) requestWithContext(requestContext context.Context, call sdkgo.Call, method, path string, body []byte) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -99,7 +108,7 @@ func (client *Client) request(call sdkgo.Call, method, path string, body []byte)
 	if accessPoint.err != nil || accessPoint.status != http.StatusOK {
 		return accessPoint.providerResponse
 	}
-	return client.requestToURL(call, method, accessPoint.apiURL+"/api/rest/v6"+path, integrationKey, body)
+	return client.requestToURLWithContext(requestContext, call, method, accessPoint.apiURL+"/api/rest/v6"+path, integrationKey, body)
 }
 
 type accessPointResult struct {
@@ -139,7 +148,11 @@ func (client *Client) getFromURL(call sdkgo.Call, requestURL string, integration
 }
 
 func (client *Client) requestToURL(call sdkgo.Call, method, requestURL, integrationKey string, body []byte) providerResponse {
-	request, err := http.NewRequestWithContext(call.Context, method, requestURL, bytes.NewReader(body))
+	return client.requestToURLWithContext(call.Context, call, method, requestURL, integrationKey, body)
+}
+
+func (client *Client) requestToURLWithContext(requestContext context.Context, call sdkgo.Call, method, requestURL, integrationKey string, body []byte) providerResponse {
+	request, err := http.NewRequestWithContext(requestContext, method, requestURL, bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
