@@ -26,6 +26,7 @@ const (
 	getAnnouncementChannelStepType      = "GetAnnouncementChannel"
 	postAnnouncementMessageStepType     = "PostAnnouncementMessage"
 	reactToAnnouncementStepType         = "ReactToAnnouncement"
+	getAnnouncementMessageStepType      = "GetAnnouncementMessage"
 	readBackAnnouncementChannelStepType = "ReadBackAnnouncementChannel"
 	defaultReactionEmoji                = "📣"
 	// readBackPageSize bounds the read-back page; the announcement is among the newest messages.
@@ -97,6 +98,14 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Added:               sdkgo.GoTo(announcementReacted{}),
 		})),
 		dex.DefineStep(announcementReacted{}),
+		dex.DefineStep(discord.NewGetMessageStep(discord.GetMessageStepConfig[discord.GetMessageInput]{
+			StepType: getAnnouncementMessageStepType, ConnectionName: ConnectionName,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "announcement-message-read", GroupLabel: "Announcement message", Explanation: "Read the posted message by its ID before scanning the channel page."},
+			Connection:          flow.connection,
+			MapToOperationInput: func(input discord.GetMessageInput) discord.GetMessageInput { return input },
+			Found:               sdkgo.GoTo(announcementMessageRead{}),
+		})),
+		dex.DefineStep(announcementMessageRead{}),
 		dex.DefineStep(discord.NewListChannelMessagesStep(discord.ListChannelMessagesStepConfig[discord.ListChannelMessagesInput]{
 			StepType: readBackAnnouncementChannelStepType, ConnectionName: ConnectionName,
 			Annotations:         sdkgo.StepAnnotations{GroupID: "announcement-confirmation", GroupLabel: "Announcement confirmation", Explanation: "Read the channel's newest messages back to confirm the announcement."},
@@ -267,6 +276,19 @@ type announcementReacted struct {
 func (announcementReacted) GetStepType() string { return "AnnouncementReacted" }
 
 func (announcementReacted) Execute(_ dex.Context, result discord.AddReactionResult) (*dex.StepDecision, error) {
+	readBack := discord.GetMessageInput{ChannelID: result.Value.ChannelID, MessageID: result.Value.MessageID}
+	return dex.GoTo(sdkgo.StepRef[discord.GetMessageInput](getAnnouncementMessageStepType), readBack), nil
+}
+
+// dex:group group-id:announcement-message-read group-label:"Announcement message"
+// dex:explanation text:"Confirm the posted message is addressable by ID before scanning the channel page."
+type announcementMessageRead struct {
+	dex.StepDefaultsNoWaitFor[discord.GetMessageResult]
+}
+
+func (announcementMessageRead) GetStepType() string { return "AnnouncementMessageRead" }
+
+func (announcementMessageRead) Execute(_ dex.Context, result discord.GetMessageResult) (*dex.StepDecision, error) {
 	readBack := discord.ListChannelMessagesInput{ChannelID: result.Value.ChannelID, Limit: readBackPageSize}
 	return dex.GoTo(sdkgo.StepRef[discord.ListChannelMessagesInput](readBackAnnouncementChannelStepType), readBack), nil
 }

@@ -18,6 +18,8 @@ import (
 // Mock is a scripted discord connection. Script each operation through its accessor.
 type Mock struct {
 	connection          discord.Connection
+	getMessage          *connectormock.Query[discord.GetMessageInput, discord.Message]
+	deleteMessage       *connectormock.Mutation[discord.DeleteMessageInput, discord.DeletedMessage]
 	getChannel          *connectormock.Query[discord.GetChannelInput, discord.Channel]
 	listChannelMessages *connectormock.Query[discord.ListChannelMessagesInput, discord.MessagePage]
 	createMessage       *connectormock.Mutation[discord.CreateMessageInput, discord.Message]
@@ -29,11 +31,15 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		getMessage:          connectormock.NewQuery[discord.GetMessageInput, discord.Message](t, discord.GetMessageDefinition),
+		deleteMessage:       connectormock.NewMutation[discord.DeleteMessageInput, discord.DeletedMessage](t, discord.DeleteMessageDefinition),
 		getChannel:          connectormock.NewQuery[discord.GetChannelInput, discord.Channel](t, discord.GetChannelDefinition),
 		listChannelMessages: connectormock.NewQuery[discord.ListChannelMessagesInput, discord.MessagePage](t, discord.ListChannelMessagesDefinition),
 		createMessage:       connectormock.NewMutation[discord.CreateMessageInput, discord.Message](t, discord.CreateMessageDefinition),
 		addReaction:         connectormock.NewMutation[discord.AddReactionInput, discord.AddedReaction](t, discord.AddReactionDefinition),
 	}
+	mock.getMessage.Default(GetMessageDefault())
+	mock.deleteMessage.Default(DeleteMessageDefault())
 	mock.getChannel.Default(GetChannelDefault())
 	mock.listChannelMessages.Default(ListChannelMessagesDefault())
 	mock.createMessage.Default(CreateMessageDefault())
@@ -48,6 +54,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() discord.Connection { return mock.connection }
+
+// GetMessage returns the getMessage script.
+func (mock *Mock) GetMessage() *connectormock.Query[discord.GetMessageInput, discord.Message] {
+	return mock.getMessage
+}
+
+// DeleteMessage returns the deleteMessage script.
+func (mock *Mock) DeleteMessage() *connectormock.Mutation[discord.DeleteMessageInput, discord.DeletedMessage] {
+	return mock.deleteMessage
+}
 
 // GetChannel returns the getChannel script.
 func (mock *Mock) GetChannel() *connectormock.Query[discord.GetChannelInput, discord.Channel] {
@@ -71,6 +87,12 @@ func (mock *Mock) AddReaction() *connectormock.Mutation[discord.AddReactionInput
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetMessage() sdkgo.Query[discord.GetMessageInput, discord.Message] {
+	return operations.mock.getMessage
+}
+func (operations mockOperations) DeleteMessage() sdkgo.Mutation[discord.DeleteMessageInput, discord.DeletedMessage] {
+	return operations.mock.deleteMessage
+}
 func (operations mockOperations) GetChannel() sdkgo.Query[discord.GetChannelInput, discord.Channel] {
 	return operations.mock.getChannel
 }
@@ -82,6 +104,81 @@ func (operations mockOperations) CreateMessage() sdkgo.Mutation[discord.CreateMe
 }
 func (operations mockOperations) AddReaction() sdkgo.Mutation[discord.AddReactionInput, discord.AddedReaction] {
 	return operations.mock.addReaction
+}
+
+// GetMessageFound selects the found branch: Discord returned the requested message.
+func GetMessageFound(value discord.Message, failure *sdkgo.Failure) connectormock.Case[discord.Message] {
+	return connectormock.Branch(discord.GetMessageBranchFound, value, failure)
+}
+
+// GetMessageNotFound selects the notFound branch: Discord found no channel or message with those IDs.
+func GetMessageNotFound(value discord.Message, failure *sdkgo.Failure) connectormock.Case[discord.Message] {
+	return connectormock.Branch(discord.GetMessageBranchNotFound, value, failure)
+}
+
+// GetMessageProviderRejected selects the providerRejected branch: Discord denied access to the message.
+func GetMessageProviderRejected(value discord.Message, failure *sdkgo.Failure) connectormock.Case[discord.Message] {
+	return connectormock.Branch(discord.GetMessageBranchProviderRejected, value, failure)
+}
+
+// GetMessageInvalidResponse selects the invalidResponse branch: Discord returned an invalid or oversized message response.
+func GetMessageInvalidResponse(value discord.Message, failure *sdkgo.Failure) connectormock.Case[discord.Message] {
+	return connectormock.Branch(discord.GetMessageBranchInvalidResponse, value, failure)
+}
+
+// GetMessageDefect selects the defect branch: Local input or credentials are invalid.
+func GetMessageDefect(value discord.Message, failure *sdkgo.Failure) connectormock.Case[discord.Message] {
+	return connectormock.Branch(discord.GetMessageBranchDefect, value, failure)
+}
+
+// GetMessageRetry asks Dex to retry the getMessage Step, after the delay when it is positive.
+func GetMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[discord.Message] {
+	return connectormock.Retry[discord.Message](failure, after)
+}
+
+// GetMessageAnnouncementMessage is the manifest mock announcementMessage: Read the announcement sent by the example Flow.
+func GetMessageAnnouncementMessage() connectormock.Case[discord.Message] {
+	value := connectormock.MustDecodeOutput[discord.Message](`{"id":"300000000000000001","channelId":"100000000000000001","author":{"id":"400000000000000001","username":"releasebot","isBot":true},"content":"Release today @everyone","timestamp":"2026-10-26T12:00:00Z","type":0}`)
+	return connectormock.Branch(discord.GetMessageBranchFound, value, nil)
+}
+
+// GetMessageDefault is the manifest default, announcementMessage, which New installs.
+func GetMessageDefault() connectormock.Case[discord.Message] { return GetMessageAnnouncementMessage() }
+
+// DeleteMessageDeleted selects the deleted branch: Discord deleted the message.
+func DeleteMessageDeleted(value discord.DeletedMessage, failure *sdkgo.Failure) connectormock.Case[discord.DeletedMessage] {
+	return connectormock.Branch(discord.DeleteMessageBranchDeleted, value, failure)
+}
+
+// DeleteMessageNotFound selects the notFound branch: Discord found no channel or message with those IDs.
+func DeleteMessageNotFound(value discord.DeletedMessage, failure *sdkgo.Failure) connectormock.Case[discord.DeletedMessage] {
+	return connectormock.Branch(discord.DeleteMessageBranchNotFound, value, failure)
+}
+
+// DeleteMessageProviderRejected selects the providerRejected branch: Discord denied deletion of the message.
+func DeleteMessageProviderRejected(value discord.DeletedMessage, failure *sdkgo.Failure) connectormock.Case[discord.DeletedMessage] {
+	return connectormock.Branch(discord.DeleteMessageBranchProviderRejected, value, failure)
+}
+
+// DeleteMessageDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteMessageDefect(value discord.DeletedMessage, failure *sdkgo.Failure) connectormock.Case[discord.DeletedMessage] {
+	return connectormock.Branch(discord.DeleteMessageBranchDefect, value, failure)
+}
+
+// DeleteMessageRetry asks Dex to retry the deleteMessage Step, after the delay when it is positive.
+func DeleteMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[discord.DeletedMessage] {
+	return connectormock.Retry[discord.DeletedMessage](failure, after)
+}
+
+// DeleteMessageDeletedAnnouncement is the manifest mock deletedAnnouncement: Delete the bot's announcement from the example Flow.
+func DeleteMessageDeletedAnnouncement() connectormock.Case[discord.DeletedMessage] {
+	value := connectormock.MustDecodeOutput[discord.DeletedMessage](`{"channelId":"100000000000000001","messageId":"300000000000000001"}`)
+	return connectormock.Branch(discord.DeleteMessageBranchDeleted, value, nil)
+}
+
+// DeleteMessageDefault is the manifest default, deletedAnnouncement, which New installs.
+func DeleteMessageDefault() connectormock.Case[discord.DeletedMessage] {
+	return DeleteMessageDeletedAnnouncement()
 }
 
 // GetChannelFound selects the found branch: The channel exists and the bot can view it.

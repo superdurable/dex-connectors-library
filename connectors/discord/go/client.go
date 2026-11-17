@@ -4,10 +4,7 @@
 // Package discord connects Dex applications to Discord channels through the
 // Discord HTTP API with a bot token.
 //
-// A Client exposes four operations: GetChannel reads one channel,
-// ListChannelMessages reads one bounded page of channel messages,
-// CreateMessage sends a bot text message, and AddReaction adds the bot's
-// reaction to a message.
+// A Client reads channels and messages, sends and deletes messages, and adds reactions.
 //
 // CreateMessage sends a nonce derived from the Step's idempotency key with
 // enforce_nonce, so Discord returns the message an earlier attempt created
@@ -162,6 +159,14 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 
 // GetChannel returns the channel read Query bound to this client.
 func (client *Client) GetChannel() GetChannelOperation { return GetChannelOperation{client: client} }
+
+// GetMessage returns the single-message Query bound to this client.
+func (client *Client) GetMessage() GetMessageOperation { return GetMessageOperation{client: client} }
+
+// DeleteMessage returns the message deletion Mutation bound to this client.
+func (client *Client) DeleteMessage() DeleteMessageOperation {
+	return DeleteMessageOperation{client: client}
+}
 
 // ListChannelMessages returns the message page Query bound to this client.
 func (client *Client) ListChannelMessages() ListChannelMessagesOperation {

@@ -1,7 +1,8 @@
 # Discord channel-announcement example
 
 This example runs one operation-only Flow, `DiscordChannelAnnouncement`, from
-Dex Web **Start Flow** and uses every Discord operation:
+Dex Web **Start Flow** and exercises channel reads, message reads and sends,
+reactions, and bounded message listings:
 
 1. `RecordAnnouncementRequest` validates the typed start input, applies the
    default `📣` reaction, and persists the request in the
@@ -12,7 +13,8 @@ Dex Web **Start Flow** and uses every Discord operation:
    makes a retried post return the first message instead of a duplicate, and
    `AnnouncementPosted` records the message.
 4. `ReactToAnnouncement` calls `discord.NewAddReactionStep`.
-5. `ReadBackAnnouncementChannel` calls `discord.NewListChannelMessagesStep` for
+5. `GetAnnouncementMessage` calls `discord.NewGetMessageStep` to read the post by ID.
+6. `ReadBackAnnouncementChannel` calls `discord.NewListChannelMessagesStep` for
    the 10 newest messages, and `CompleteAnnouncement` completes with
    `isConfirmed` set when the posted message is among them.
 

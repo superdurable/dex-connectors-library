@@ -1,6 +1,6 @@
 # Discord Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/discord/go@v0.3.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/discord/go@v0.4.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/discord`.
 
@@ -20,12 +20,19 @@ The TypeScript package is `@superdurable/connector-discord` at v0.1.0. It suppor
 | Factory | Kind | Input | Required branch | Optional branches |
 | --- | --- | --- | --- | --- |
 | `NewGetChannelStep` | Query | `GetChannelInput` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewGetMessageStep` | Query | `GetMessageInput` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewDeleteMessageStep` | Mutation | `DeleteMessageInput` | `deleted` | `notFound`, `providerRejected`, `defect` |
 | `NewListChannelMessagesStep` | Query | `ListChannelMessagesInput` | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `NewCreateMessageStep` | Mutation | `CreateMessageInput` | `created` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `NewAddReactionStep` | Mutation | `AddReactionInput` | `added` | `notFound`, `providerRejected`, `defect` |
 
 - `getChannel` reads `GET /channels/{channel.id}` and returns the channel's ID,
   type number, server ID, name, topic, and newest message ID.
+- `getMessage` reads one message by channel and message ID. The announcement
+  example reads its newly posted message back by ID.
+- `deleteMessage` deletes one message and accepts Discord's empty 204 response.
+  The bot may delete its own messages; deleting another author's message in a
+  server requires `MANAGE_MESSAGES` permission.
 - `listChannelMessages` reads one page of up to 100 messages (zero asks for
   Discord's 50), newest first. Set at most one of `BeforeMessageID`, such as the
   previous page's `OldestMessageID`, and `AfterMessageID`. `IsFull` reports a

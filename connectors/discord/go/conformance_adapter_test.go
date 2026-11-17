@@ -22,6 +22,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	require.NoError(t, err)
 	context := newStepDexContext("conformance")
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+		"getMessage":          newConformanceQueryInvocation(t, scenario.Input, context, client.GetMessage(), discordConnection),
+		"deleteMessage":       newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteMessage(), discordConnection, scenario.CallID),
 		"getChannel":          newConformanceQueryInvocation(t, scenario.Input, context, client.GetChannel(), discordConnection),
 		"listChannelMessages": newConformanceQueryInvocation(t, scenario.Input, context, client.ListChannelMessages(), discordConnection),
 		"createMessage":       newConformanceMutationInvocation(t, scenario.Input, context, client.CreateMessage(), discordConnection, scenario.CallID),

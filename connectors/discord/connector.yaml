@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: discord
   displayName: Discord
-  description: Read Discord channels and bounded pages of channel messages, send nonce-deduplicated bot messages, and add reactions.
+  description: Read Discord channels and messages, send and delete bot messages, and add reactions.
   company: Discord
   categories: [communication]
-  version: v0.3.0
+  version: v0.4.0
 spec:
   provider: discord
   languages:
@@ -54,6 +54,47 @@ spec:
         - Open OAuth2 > URL Generator, select the bot scope and the View Channels, Read Message History, Send Messages, and Add Reactions permissions, open the generated URL, and add the bot to the server whose channels the Flows use.
         - In Discord, enable User Settings > Advanced > Developer Mode, then right-click a channel and choose Copy Channel ID to find the 17 to 20 digit channel IDs that Flow input names.
   operations:
+    - name: getMessage
+      goName: GetMessage
+      inputType: GetMessageInput
+      outputType: Message
+      kind: query
+      description: Read one message in a channel by its snowflake ID.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Discord returned the requested message.}
+        - {id: notFound, goName: NotFound, description: Discord found no channel or message with those IDs., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Discord denied access to the message., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Discord returned an invalid or oversized message response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: announcementMessage
+          branch: found
+          description: Read the announcement sent by the example Flow.
+          default: true
+          output: {id: "300000000000000001", channelId: "100000000000000001", author: {id: "400000000000000001", username: releasebot, isBot: true}, content: "Release today @everyone", timestamp: "2026-10-26T12:00:00Z", type: 0}
+    - name: deleteMessage
+      goName: DeleteMessage
+      inputType: DeleteMessageInput
+      outputType: DeletedMessage
+      kind: mutation
+      description: Delete one message the bot sent or has permission to manage.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: Discord deleted the message.}
+        - {id: notFound, goName: NotFound, description: Discord found no channel or message with those IDs., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Discord denied deletion of the message., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: deletedAnnouncement
+          branch: deleted
+          description: Delete the bot's announcement from the example Flow.
+          default: true
+          output: {channelId: "100000000000000001", messageId: "300000000000000001"}
     - name: getChannel
       goName: GetChannel
       inputType: GetChannelInput

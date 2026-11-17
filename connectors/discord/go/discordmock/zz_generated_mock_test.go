@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getMessage/announcementMessage/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[discord.Message](`{"id":"300000000000000001","channelId":"100000000000000001","author":{"id":"400000000000000001","username":"releasebot","isBot":true},"content":"Release today @everyone","timestamp":"2026-10-26T12:00:00Z","type":0}`)
+			return err
+		}},
+		{name: "deleteMessage/deletedAnnouncement/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[discord.DeletedMessage](`{"channelId":"100000000000000001","messageId":"300000000000000001"}`)
+			return err
+		}},
 		{name: "getChannel/announcementChannel/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[discord.Channel](`{"id":"100000000000000001","type":0,"guildId":"200000000000000001","name":"announcements","topic":"Release news"}`)
 			return err
@@ -42,6 +50,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetMessage().Definition().Operation.OperationID != "getMessage" {
+		t.Errorf("getMessage mock has another definition")
+	}
+	if mock.DeleteMessage().Definition().Operation.OperationID != "deleteMessage" {
+		t.Errorf("deleteMessage mock has another definition")
+	}
 	if mock.GetChannel().Definition().Operation.OperationID != "getChannel" {
 		t.Errorf("getChannel mock has another definition")
 	}
