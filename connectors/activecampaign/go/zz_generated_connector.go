@@ -40,17 +40,217 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	UpsertEcommerceOrder() sdkgo.Mutation[UpsertEcommerceOrderInput, EcommerceOrderUpsertMetadata]
+	ListEcommerceOrders() sdkgo.Query[ListEcommerceOrdersInput, EcommerceOrdersPage]
+	GetEcommerceOrder() sdkgo.Query[GetEcommerceOrderInput, EcommerceOrderMetadata]
+	ListEcommerceOrderProducts() sdkgo.Query[ListEcommerceOrderProductsInput, EcommerceOrderProductsPage]
+	GetEcommerceOrderProduct() sdkgo.Query[GetEcommerceOrderProductInput, EcommerceOrderProductMetadata]
+	ListProductsForEcommerceOrder() sdkgo.Query[ListProductsForEcommerceOrderInput, EcommerceOrderProductsPage]
+	ListEcommerceCustomers() sdkgo.Query[ListEcommerceCustomersInput, EcommerceCustomersPage]
+	GetEcommerceCustomer() sdkgo.Query[GetEcommerceCustomerInput, EcommerceCustomerMetadata]
+	CreateEcommerceCustomer() sdkgo.Mutation[CreateEcommerceCustomerInput, EcommerceCustomerMetadata]
+	UpdateEcommerceCustomer() sdkgo.Mutation[UpdateEcommerceCustomerInput, EcommerceCustomerMetadata]
+	DeleteEcommerceCustomer() sdkgo.Mutation[DeleteEcommerceCustomerInput, EcommerceCustomerDeletion]
+	ListConnections() sdkgo.Query[ListConnectionsInput, ConnectionsPage]
+	GetConnection() sdkgo.Query[GetConnectionInput, ConnectionMetadata]
+	CreateConnection() sdkgo.Mutation[CreateConnectionInput, ConnectionMetadata]
+	UpdateConnection() sdkgo.Mutation[UpdateConnectionInput, ConnectionMetadata]
+	DeleteConnection() sdkgo.Mutation[DeleteConnectionInput, ConnectionDeletion]
+	ListAccountContacts() sdkgo.Query[ListAccountContactsInput, AccountContactsPage]
+	GetAccountContact() sdkgo.Query[GetAccountContactInput, AccountContactAssociation]
+	CreateAccountContact() sdkgo.Mutation[CreateAccountContactInput, AccountContactAssociation]
+	UpdateAccountContact() sdkgo.Mutation[UpdateAccountContactInput, AccountContactAssociation]
+	DeleteAccountContact() sdkgo.Mutation[DeleteAccountContactInput, AccountContactDeletion]
+	ListAccounts() sdkgo.Query[ListAccountsInput, AccountsPage]
+	GetAccount() sdkgo.Query[GetAccountInput, AccountMetadata]
+	CreateAccount() sdkgo.Mutation[CreateAccountInput, AccountMetadata]
+	UpdateAccount() sdkgo.Mutation[UpdateAccountInput, AccountMetadata]
+	DeleteAccount() sdkgo.Mutation[DeleteAccountInput, AccountDeletion]
+	ListContactListMemberships() sdkgo.Query[ListContactListMembershipsInput, ContactListMembershipsPage]
+	SubscribeContactToList() sdkgo.Mutation[SetContactListMembershipInput, ContactListMembership]
+	UnsubscribeContactFromList() sdkgo.Mutation[SetContactListMembershipInput, ContactListMembership]
+	ListContactTags() sdkgo.Query[ListContactTagsInput, ContactTagAssociations]
+	ApplyTagToContact() sdkgo.Mutation[ApplyTagToContactInput, ContactTagAssociation]
+	RemoveTagFromContact() sdkgo.Mutation[RemoveTagFromContactInput, ContactTagRemoval]
+	ListDealNotes() sdkgo.Query[ListDealNotesInput, DealNotesPage]
+	GetDealNote() sdkgo.Query[GetDealNoteInput, DealNoteMetadata]
+	CreateDealNote() sdkgo.Mutation[CreateDealNoteInput, DealNoteMetadata]
+	UpdateDealNote() sdkgo.Mutation[UpdateDealNoteInput, DealNoteMetadata]
+	ListDeals() sdkgo.Query[ListDealsInput, DealsPage]
+	GetDeal() sdkgo.Query[GetDealInput, DealMetadata]
+	CreateDeal() sdkgo.Mutation[CreateDealInput, DealMetadata]
+	UpdateDeal() sdkgo.Mutation[UpdateDealInput, DealMetadata]
+	DeleteDeal() sdkgo.Mutation[DeleteDealInput, DealDeletion]
+	ListTags() sdkgo.Query[ListTagsInput, TagsPage]
+	GetTag() sdkgo.Query[GetTagInput, TagMetadata]
+	CreateTag() sdkgo.Mutation[CreateTagInput, TagMetadata]
+	UpdateTag() sdkgo.Mutation[UpdateTagInput, TagMetadata]
+	DeleteTag() sdkgo.Mutation[DeleteTagInput, TagDeletion]
+	ListLists() sdkgo.Query[ListListsInput, ListsPage]
+	GetList() sdkgo.Query[GetListInput, ListMetadata]
 	ListContacts() sdkgo.Query[ListContactsInput, ContactsPage]
 	GetContact() sdkgo.Query[GetContactInput, ContactMetadata]
+	SyncContact() sdkgo.Mutation[SyncContactInput, ContactMetadata]
+	UpdateContact() sdkgo.Mutation[UpdateContactInput, ContactMetadata]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) UpsertEcommerceOrder() sdkgo.Mutation[UpsertEcommerceOrderInput, EcommerceOrderUpsertMetadata] {
+	return operations.client.UpsertEcommerceOrder()
+}
+func (operations clientOperations) ListEcommerceOrders() sdkgo.Query[ListEcommerceOrdersInput, EcommerceOrdersPage] {
+	return operations.client.ListEcommerceOrders()
+}
+func (operations clientOperations) GetEcommerceOrder() sdkgo.Query[GetEcommerceOrderInput, EcommerceOrderMetadata] {
+	return operations.client.GetEcommerceOrder()
+}
+func (operations clientOperations) ListEcommerceOrderProducts() sdkgo.Query[ListEcommerceOrderProductsInput, EcommerceOrderProductsPage] {
+	return operations.client.ListEcommerceOrderProducts()
+}
+func (operations clientOperations) GetEcommerceOrderProduct() sdkgo.Query[GetEcommerceOrderProductInput, EcommerceOrderProductMetadata] {
+	return operations.client.GetEcommerceOrderProduct()
+}
+func (operations clientOperations) ListProductsForEcommerceOrder() sdkgo.Query[ListProductsForEcommerceOrderInput, EcommerceOrderProductsPage] {
+	return operations.client.ListProductsForEcommerceOrder()
+}
+func (operations clientOperations) ListEcommerceCustomers() sdkgo.Query[ListEcommerceCustomersInput, EcommerceCustomersPage] {
+	return operations.client.ListEcommerceCustomers()
+}
+func (operations clientOperations) GetEcommerceCustomer() sdkgo.Query[GetEcommerceCustomerInput, EcommerceCustomerMetadata] {
+	return operations.client.GetEcommerceCustomer()
+}
+func (operations clientOperations) CreateEcommerceCustomer() sdkgo.Mutation[CreateEcommerceCustomerInput, EcommerceCustomerMetadata] {
+	return operations.client.CreateEcommerceCustomer()
+}
+func (operations clientOperations) UpdateEcommerceCustomer() sdkgo.Mutation[UpdateEcommerceCustomerInput, EcommerceCustomerMetadata] {
+	return operations.client.UpdateEcommerceCustomer()
+}
+func (operations clientOperations) DeleteEcommerceCustomer() sdkgo.Mutation[DeleteEcommerceCustomerInput, EcommerceCustomerDeletion] {
+	return operations.client.DeleteEcommerceCustomer()
+}
+func (operations clientOperations) ListConnections() sdkgo.Query[ListConnectionsInput, ConnectionsPage] {
+	return operations.client.ListConnections()
+}
+func (operations clientOperations) GetConnection() sdkgo.Query[GetConnectionInput, ConnectionMetadata] {
+	return operations.client.GetConnection()
+}
+func (operations clientOperations) CreateConnection() sdkgo.Mutation[CreateConnectionInput, ConnectionMetadata] {
+	return operations.client.CreateConnection()
+}
+func (operations clientOperations) UpdateConnection() sdkgo.Mutation[UpdateConnectionInput, ConnectionMetadata] {
+	return operations.client.UpdateConnection()
+}
+func (operations clientOperations) DeleteConnection() sdkgo.Mutation[DeleteConnectionInput, ConnectionDeletion] {
+	return operations.client.DeleteConnection()
+}
+func (operations clientOperations) ListAccountContacts() sdkgo.Query[ListAccountContactsInput, AccountContactsPage] {
+	return operations.client.ListAccountContacts()
+}
+func (operations clientOperations) GetAccountContact() sdkgo.Query[GetAccountContactInput, AccountContactAssociation] {
+	return operations.client.GetAccountContact()
+}
+func (operations clientOperations) CreateAccountContact() sdkgo.Mutation[CreateAccountContactInput, AccountContactAssociation] {
+	return operations.client.CreateAccountContact()
+}
+func (operations clientOperations) UpdateAccountContact() sdkgo.Mutation[UpdateAccountContactInput, AccountContactAssociation] {
+	return operations.client.UpdateAccountContact()
+}
+func (operations clientOperations) DeleteAccountContact() sdkgo.Mutation[DeleteAccountContactInput, AccountContactDeletion] {
+	return operations.client.DeleteAccountContact()
+}
+func (operations clientOperations) ListAccounts() sdkgo.Query[ListAccountsInput, AccountsPage] {
+	return operations.client.ListAccounts()
+}
+func (operations clientOperations) GetAccount() sdkgo.Query[GetAccountInput, AccountMetadata] {
+	return operations.client.GetAccount()
+}
+func (operations clientOperations) CreateAccount() sdkgo.Mutation[CreateAccountInput, AccountMetadata] {
+	return operations.client.CreateAccount()
+}
+func (operations clientOperations) UpdateAccount() sdkgo.Mutation[UpdateAccountInput, AccountMetadata] {
+	return operations.client.UpdateAccount()
+}
+func (operations clientOperations) DeleteAccount() sdkgo.Mutation[DeleteAccountInput, AccountDeletion] {
+	return operations.client.DeleteAccount()
+}
+func (operations clientOperations) ListContactListMemberships() sdkgo.Query[ListContactListMembershipsInput, ContactListMembershipsPage] {
+	return operations.client.ListContactListMemberships()
+}
+func (operations clientOperations) SubscribeContactToList() sdkgo.Mutation[SetContactListMembershipInput, ContactListMembership] {
+	return operations.client.SubscribeContactToList()
+}
+func (operations clientOperations) UnsubscribeContactFromList() sdkgo.Mutation[SetContactListMembershipInput, ContactListMembership] {
+	return operations.client.UnsubscribeContactFromList()
+}
+func (operations clientOperations) ListContactTags() sdkgo.Query[ListContactTagsInput, ContactTagAssociations] {
+	return operations.client.ListContactTags()
+}
+func (operations clientOperations) ApplyTagToContact() sdkgo.Mutation[ApplyTagToContactInput, ContactTagAssociation] {
+	return operations.client.ApplyTagToContact()
+}
+func (operations clientOperations) RemoveTagFromContact() sdkgo.Mutation[RemoveTagFromContactInput, ContactTagRemoval] {
+	return operations.client.RemoveTagFromContact()
+}
+func (operations clientOperations) ListDealNotes() sdkgo.Query[ListDealNotesInput, DealNotesPage] {
+	return operations.client.ListDealNotes()
+}
+func (operations clientOperations) GetDealNote() sdkgo.Query[GetDealNoteInput, DealNoteMetadata] {
+	return operations.client.GetDealNote()
+}
+func (operations clientOperations) CreateDealNote() sdkgo.Mutation[CreateDealNoteInput, DealNoteMetadata] {
+	return operations.client.CreateDealNote()
+}
+func (operations clientOperations) UpdateDealNote() sdkgo.Mutation[UpdateDealNoteInput, DealNoteMetadata] {
+	return operations.client.UpdateDealNote()
+}
+func (operations clientOperations) ListDeals() sdkgo.Query[ListDealsInput, DealsPage] {
+	return operations.client.ListDeals()
+}
+func (operations clientOperations) GetDeal() sdkgo.Query[GetDealInput, DealMetadata] {
+	return operations.client.GetDeal()
+}
+func (operations clientOperations) CreateDeal() sdkgo.Mutation[CreateDealInput, DealMetadata] {
+	return operations.client.CreateDeal()
+}
+func (operations clientOperations) UpdateDeal() sdkgo.Mutation[UpdateDealInput, DealMetadata] {
+	return operations.client.UpdateDeal()
+}
+func (operations clientOperations) DeleteDeal() sdkgo.Mutation[DeleteDealInput, DealDeletion] {
+	return operations.client.DeleteDeal()
+}
+func (operations clientOperations) ListTags() sdkgo.Query[ListTagsInput, TagsPage] {
+	return operations.client.ListTags()
+}
+func (operations clientOperations) GetTag() sdkgo.Query[GetTagInput, TagMetadata] {
+	return operations.client.GetTag()
+}
+func (operations clientOperations) CreateTag() sdkgo.Mutation[CreateTagInput, TagMetadata] {
+	return operations.client.CreateTag()
+}
+func (operations clientOperations) UpdateTag() sdkgo.Mutation[UpdateTagInput, TagMetadata] {
+	return operations.client.UpdateTag()
+}
+func (operations clientOperations) DeleteTag() sdkgo.Mutation[DeleteTagInput, TagDeletion] {
+	return operations.client.DeleteTag()
+}
+func (operations clientOperations) ListLists() sdkgo.Query[ListListsInput, ListsPage] {
+	return operations.client.ListLists()
+}
+func (operations clientOperations) GetList() sdkgo.Query[GetListInput, ListMetadata] {
+	return operations.client.GetList()
+}
 func (operations clientOperations) ListContacts() sdkgo.Query[ListContactsInput, ContactsPage] {
 	return operations.client.ListContacts()
 }
 func (operations clientOperations) GetContact() sdkgo.Query[GetContactInput, ContactMetadata] {
 	return operations.client.GetContact()
+}
+func (operations clientOperations) SyncContact() sdkgo.Mutation[SyncContactInput, ContactMetadata] {
+	return operations.client.SyncContact()
+}
+func (operations clientOperations) UpdateContact() sdkgo.Mutation[UpdateContactInput, ContactMetadata] {
+	return operations.client.UpdateContact()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -187,6 +387,3609 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const UpsertEcommerceOrderBranchUpserted sdkgo.BranchID = "upserted"
+const UpsertEcommerceOrderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpsertEcommerceOrderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpsertEcommerceOrderDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "upsertEcommerceOrder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpsertEcommerceOrderBranchUpserted, Description: "ActiveCampaign accepted the keyed order upsert."},
+		{ID: UpsertEcommerceOrderBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the order.", Optional: true},
+		{ID: UpsertEcommerceOrderBranchDefect, Description: "Local order input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpsertEcommerceOrderResult = sdkgo.MutationResult[EcommerceOrderUpsertMetadata]
+
+type UpsertEcommerceOrderStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                           `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                                           `connector:"operationId=upsertEcommerceOrder"`
+	StepType                          string                                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                              `connector:"annotations"`
+	Connection                        Connection                                                         `connector:"connection"`
+	ConnectionName                    string                                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpsertEcommerceOrderInput                                 `connector:"mapToOperationInput"`
+	Upserted                          sdkgo.Target[UpsertEcommerceOrderResult]                           `connector:"branch=upserted"`
+	ProviderRejected                  sdkgo.Target[UpsertEcommerceOrderResult]                           `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpsertEcommerceOrderResult]                           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EcommerceOrderUpsertMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                   `connector:"stepOptionsOverride"`
+}
+
+func NewUpsertEcommerceOrderStep[IN any](config UpsertEcommerceOrderStepConfig[IN]) sdkgo.MutationStep[IN, UpsertEcommerceOrderInput, EcommerceOrderUpsertMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpsertEcommerceOrderInput, EcommerceOrderUpsertMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpsertEcommerceOrder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpsertEcommerceOrderResult] {
+			branches := make([]sdkgo.BranchTarget[UpsertEcommerceOrderResult], 0, 3)
+			if config.Upserted.HasStep() {
+				branches = append(branches, config.Upserted.BranchTarget(UpsertEcommerceOrderBranchUpserted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpsertEcommerceOrderBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpsertEcommerceOrderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListEcommerceOrdersBranchListed sdkgo.BranchID = "listed"
+const ListEcommerceOrdersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListEcommerceOrdersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListEcommerceOrdersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListEcommerceOrdersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listEcommerceOrders"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListEcommerceOrdersBranchListed, Description: "ActiveCampaign returned the selected ecommerce data."},
+		{ID: ListEcommerceOrdersBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: ListEcommerceOrdersBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: ListEcommerceOrdersBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListEcommerceOrdersResult = sdkgo.QueryResult[EcommerceOrdersPage]
+
+type ListEcommerceOrdersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                               `connector:"operationId=listEcommerceOrders"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListEcommerceOrdersInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListEcommerceOrdersResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListEcommerceOrdersResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListEcommerceOrdersResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListEcommerceOrdersResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EcommerceOrdersPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewListEcommerceOrdersStep[IN any](config ListEcommerceOrdersStepConfig[IN]) sdkgo.QueryStep[IN, ListEcommerceOrdersInput, EcommerceOrdersPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListEcommerceOrdersInput, EcommerceOrdersPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListEcommerceOrders(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListEcommerceOrdersResult] {
+			branches := make([]sdkgo.BranchTarget[ListEcommerceOrdersResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListEcommerceOrdersBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListEcommerceOrdersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListEcommerceOrdersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListEcommerceOrdersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetEcommerceOrderBranchFound sdkgo.BranchID = "found"
+const GetEcommerceOrderBranchNotFound sdkgo.BranchID = "notFound"
+const GetEcommerceOrderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetEcommerceOrderBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetEcommerceOrderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetEcommerceOrderDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getEcommerceOrder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetEcommerceOrderBranchFound, Description: "ActiveCampaign returned the selected ecommerce data."},
+		{ID: GetEcommerceOrderBranchNotFound, Description: "No matching order or product exists.", Optional: true},
+		{ID: GetEcommerceOrderBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: GetEcommerceOrderBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: GetEcommerceOrderBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetEcommerceOrderResult = sdkgo.QueryResult[EcommerceOrderMetadata]
+
+type GetEcommerceOrderStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                  `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                                  `connector:"operationId=getEcommerceOrder"`
+	StepType                       string                                                    `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                     Connection                                                `connector:"connection"`
+	ConnectionName                 string                                                    `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetEcommerceOrderInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetEcommerceOrderResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetEcommerceOrderResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetEcommerceOrderResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetEcommerceOrderResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetEcommerceOrderResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EcommerceOrderMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewGetEcommerceOrderStep[IN any](config GetEcommerceOrderStepConfig[IN]) sdkgo.QueryStep[IN, GetEcommerceOrderInput, EcommerceOrderMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetEcommerceOrderInput, EcommerceOrderMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetEcommerceOrder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetEcommerceOrderResult] {
+			branches := make([]sdkgo.BranchTarget[GetEcommerceOrderResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetEcommerceOrderBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetEcommerceOrderBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetEcommerceOrderBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetEcommerceOrderBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetEcommerceOrderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListEcommerceOrderProductsBranchListed sdkgo.BranchID = "listed"
+const ListEcommerceOrderProductsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListEcommerceOrderProductsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListEcommerceOrderProductsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListEcommerceOrderProductsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listEcommerceOrderProducts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListEcommerceOrderProductsBranchListed, Description: "ActiveCampaign returned the selected ecommerce data."},
+		{ID: ListEcommerceOrderProductsBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: ListEcommerceOrderProductsBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: ListEcommerceOrderProductsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListEcommerceOrderProductsResult = sdkgo.QueryResult[EcommerceOrderProductsPage]
+
+type ListEcommerceOrderProductsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                      `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                                      `connector:"operationId=listEcommerceOrderProducts"`
+	StepType                       string                                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                         `connector:"annotations"`
+	Connection                     Connection                                                    `connector:"connection"`
+	ConnectionName                 string                                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListEcommerceOrderProductsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListEcommerceOrderProductsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListEcommerceOrderProductsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListEcommerceOrderProductsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListEcommerceOrderProductsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EcommerceOrderProductsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                              `connector:"stepOptionsOverride"`
+}
+
+func NewListEcommerceOrderProductsStep[IN any](config ListEcommerceOrderProductsStepConfig[IN]) sdkgo.QueryStep[IN, ListEcommerceOrderProductsInput, EcommerceOrderProductsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListEcommerceOrderProductsInput, EcommerceOrderProductsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListEcommerceOrderProducts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListEcommerceOrderProductsResult] {
+			branches := make([]sdkgo.BranchTarget[ListEcommerceOrderProductsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListEcommerceOrderProductsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListEcommerceOrderProductsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListEcommerceOrderProductsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListEcommerceOrderProductsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetEcommerceOrderProductBranchFound sdkgo.BranchID = "found"
+const GetEcommerceOrderProductBranchNotFound sdkgo.BranchID = "notFound"
+const GetEcommerceOrderProductBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetEcommerceOrderProductBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetEcommerceOrderProductBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetEcommerceOrderProductDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getEcommerceOrderProduct"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetEcommerceOrderProductBranchFound, Description: "ActiveCampaign returned the selected ecommerce data."},
+		{ID: GetEcommerceOrderProductBranchNotFound, Description: "No matching order or product exists.", Optional: true},
+		{ID: GetEcommerceOrderProductBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: GetEcommerceOrderProductBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: GetEcommerceOrderProductBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetEcommerceOrderProductResult = sdkgo.QueryResult[EcommerceOrderProductMetadata]
+
+type GetEcommerceOrderProductStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                         `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                                         `connector:"operationId=getEcommerceOrderProduct"`
+	StepType                       string                                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                            `connector:"annotations"`
+	Connection                     Connection                                                       `connector:"connection"`
+	ConnectionName                 string                                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetEcommerceOrderProductInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetEcommerceOrderProductResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetEcommerceOrderProductResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetEcommerceOrderProductResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetEcommerceOrderProductResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetEcommerceOrderProductResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EcommerceOrderProductMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetEcommerceOrderProductStep[IN any](config GetEcommerceOrderProductStepConfig[IN]) sdkgo.QueryStep[IN, GetEcommerceOrderProductInput, EcommerceOrderProductMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetEcommerceOrderProductInput, EcommerceOrderProductMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetEcommerceOrderProduct(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetEcommerceOrderProductResult] {
+			branches := make([]sdkgo.BranchTarget[GetEcommerceOrderProductResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetEcommerceOrderProductBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetEcommerceOrderProductBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetEcommerceOrderProductBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetEcommerceOrderProductBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetEcommerceOrderProductBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListProductsForEcommerceOrderBranchListed sdkgo.BranchID = "listed"
+const ListProductsForEcommerceOrderBranchNotFound sdkgo.BranchID = "notFound"
+const ListProductsForEcommerceOrderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListProductsForEcommerceOrderBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListProductsForEcommerceOrderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListProductsForEcommerceOrderDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listProductsForEcommerceOrder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListProductsForEcommerceOrderBranchListed, Description: "ActiveCampaign returned the selected ecommerce data."},
+		{ID: ListProductsForEcommerceOrderBranchNotFound, Description: "No matching order or product exists.", Optional: true},
+		{ID: ListProductsForEcommerceOrderBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: ListProductsForEcommerceOrderBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: ListProductsForEcommerceOrderBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListProductsForEcommerceOrderResult = sdkgo.QueryResult[EcommerceOrderProductsPage]
+
+type ListProductsForEcommerceOrderStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                      `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                                      `connector:"operationId=listProductsForEcommerceOrder"`
+	StepType                       string                                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                         `connector:"annotations"`
+	Connection                     Connection                                                    `connector:"connection"`
+	ConnectionName                 string                                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListProductsForEcommerceOrderInput                   `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListProductsForEcommerceOrderResult]             `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListProductsForEcommerceOrderResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListProductsForEcommerceOrderResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListProductsForEcommerceOrderResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListProductsForEcommerceOrderResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EcommerceOrderProductsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                              `connector:"stepOptionsOverride"`
+}
+
+func NewListProductsForEcommerceOrderStep[IN any](config ListProductsForEcommerceOrderStepConfig[IN]) sdkgo.QueryStep[IN, ListProductsForEcommerceOrderInput, EcommerceOrderProductsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListProductsForEcommerceOrderInput, EcommerceOrderProductsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListProductsForEcommerceOrder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListProductsForEcommerceOrderResult] {
+			branches := make([]sdkgo.BranchTarget[ListProductsForEcommerceOrderResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListProductsForEcommerceOrderBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListProductsForEcommerceOrderBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListProductsForEcommerceOrderBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListProductsForEcommerceOrderBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListProductsForEcommerceOrderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListEcommerceCustomersBranchListed sdkgo.BranchID = "listed"
+const ListEcommerceCustomersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListEcommerceCustomersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListEcommerceCustomersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListEcommerceCustomersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listEcommerceCustomers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListEcommerceCustomersBranchListed, Description: "ActiveCampaign completed the ecommerce customer operation."},
+		{ID: ListEcommerceCustomersBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: ListEcommerceCustomersBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: ListEcommerceCustomersBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListEcommerceCustomersResult = sdkgo.QueryResult[EcommerceCustomersPage]
+
+type ListEcommerceCustomersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                  `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                                  `connector:"operationId=listEcommerceCustomers"`
+	StepType                       string                                                    `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                     Connection                                                `connector:"connection"`
+	ConnectionName                 string                                                    `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListEcommerceCustomersInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListEcommerceCustomersResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListEcommerceCustomersResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListEcommerceCustomersResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListEcommerceCustomersResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EcommerceCustomersPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewListEcommerceCustomersStep[IN any](config ListEcommerceCustomersStepConfig[IN]) sdkgo.QueryStep[IN, ListEcommerceCustomersInput, EcommerceCustomersPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListEcommerceCustomersInput, EcommerceCustomersPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListEcommerceCustomers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListEcommerceCustomersResult] {
+			branches := make([]sdkgo.BranchTarget[ListEcommerceCustomersResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListEcommerceCustomersBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListEcommerceCustomersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListEcommerceCustomersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListEcommerceCustomersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetEcommerceCustomerBranchFound sdkgo.BranchID = "found"
+const GetEcommerceCustomerBranchNotFound sdkgo.BranchID = "notFound"
+const GetEcommerceCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetEcommerceCustomerBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetEcommerceCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetEcommerceCustomerDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getEcommerceCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetEcommerceCustomerBranchFound, Description: "ActiveCampaign completed the ecommerce customer operation."},
+		{ID: GetEcommerceCustomerBranchNotFound, Description: "No customer exists at the selected ID.", Optional: true},
+		{ID: GetEcommerceCustomerBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: GetEcommerceCustomerBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: GetEcommerceCustomerBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetEcommerceCustomerResult = sdkgo.QueryResult[EcommerceCustomerMetadata]
+
+type GetEcommerceCustomerStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                     `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                                     `connector:"operationId=getEcommerceCustomer"`
+	StepType                       string                                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                        `connector:"annotations"`
+	Connection                     Connection                                                   `connector:"connection"`
+	ConnectionName                 string                                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetEcommerceCustomerInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetEcommerceCustomerResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetEcommerceCustomerResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetEcommerceCustomerResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetEcommerceCustomerResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetEcommerceCustomerResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EcommerceCustomerMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+}
+
+func NewGetEcommerceCustomerStep[IN any](config GetEcommerceCustomerStepConfig[IN]) sdkgo.QueryStep[IN, GetEcommerceCustomerInput, EcommerceCustomerMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetEcommerceCustomerInput, EcommerceCustomerMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetEcommerceCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetEcommerceCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[GetEcommerceCustomerResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetEcommerceCustomerBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetEcommerceCustomerBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetEcommerceCustomerBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetEcommerceCustomerBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetEcommerceCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateEcommerceCustomerBranchCreated sdkgo.BranchID = "created"
+const CreateEcommerceCustomerBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateEcommerceCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateEcommerceCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateEcommerceCustomerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createEcommerceCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateEcommerceCustomerBranchCreated, Description: "ActiveCampaign completed the ecommerce customer operation."},
+		{ID: CreateEcommerceCustomerBranchUncertain, Description: "Bounded customer creation could not be confirmed.", Optional: true},
+		{ID: CreateEcommerceCustomerBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: CreateEcommerceCustomerBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateEcommerceCustomerResult = sdkgo.MutationResult[EcommerceCustomerMetadata]
+
+type CreateEcommerceCustomerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                        `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                                        `connector:"operationId=createEcommerceCustomer"`
+	StepType                          string                                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                           `connector:"annotations"`
+	Connection                        Connection                                                      `connector:"connection"`
+	ConnectionName                    string                                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateEcommerceCustomerInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateEcommerceCustomerResult]                     `connector:"branch=created"`
+	Uncertain                         sdkgo.Target[CreateEcommerceCustomerResult]                     `connector:"branch=uncertain,optional"`
+	ProviderRejected                  sdkgo.Target[CreateEcommerceCustomerResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateEcommerceCustomerResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EcommerceCustomerMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateEcommerceCustomerStep[IN any](config CreateEcommerceCustomerStepConfig[IN]) sdkgo.MutationStep[IN, CreateEcommerceCustomerInput, EcommerceCustomerMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateEcommerceCustomerInput, EcommerceCustomerMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateEcommerceCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateEcommerceCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[CreateEcommerceCustomerResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateEcommerceCustomerBranchCreated))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateEcommerceCustomerBranchUncertain))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateEcommerceCustomerBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateEcommerceCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateEcommerceCustomerBranchUpdated sdkgo.BranchID = "updated"
+const UpdateEcommerceCustomerBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateEcommerceCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateEcommerceCustomerBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateEcommerceCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateEcommerceCustomerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateEcommerceCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateEcommerceCustomerBranchUpdated, Description: "ActiveCampaign completed the ecommerce customer operation."},
+		{ID: UpdateEcommerceCustomerBranchNotFound, Description: "No customer exists at the selected ID.", Optional: true},
+		{ID: UpdateEcommerceCustomerBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: UpdateEcommerceCustomerBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateEcommerceCustomerBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateEcommerceCustomerResult = sdkgo.MutationResult[EcommerceCustomerMetadata]
+
+type UpdateEcommerceCustomerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                        `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                                        `connector:"operationId=updateEcommerceCustomer"`
+	StepType                          string                                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                           `connector:"annotations"`
+	Connection                        Connection                                                      `connector:"connection"`
+	ConnectionName                    string                                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateEcommerceCustomerInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateEcommerceCustomerResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateEcommerceCustomerResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateEcommerceCustomerResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateEcommerceCustomerResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateEcommerceCustomerResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EcommerceCustomerMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateEcommerceCustomerStep[IN any](config UpdateEcommerceCustomerStepConfig[IN]) sdkgo.MutationStep[IN, UpdateEcommerceCustomerInput, EcommerceCustomerMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateEcommerceCustomerInput, EcommerceCustomerMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateEcommerceCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateEcommerceCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateEcommerceCustomerResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateEcommerceCustomerBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateEcommerceCustomerBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateEcommerceCustomerBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateEcommerceCustomerBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateEcommerceCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteEcommerceCustomerBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteEcommerceCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteEcommerceCustomerBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteEcommerceCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteEcommerceCustomerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteEcommerceCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteEcommerceCustomerBranchDeleted, Description: "ActiveCampaign completed the ecommerce customer operation."},
+		{ID: DeleteEcommerceCustomerBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: DeleteEcommerceCustomerBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteEcommerceCustomerBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteEcommerceCustomerResult = sdkgo.MutationResult[EcommerceCustomerDeletion]
+
+type DeleteEcommerceCustomerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                        `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                                        `connector:"operationId=deleteEcommerceCustomer"`
+	StepType                          string                                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                           `connector:"annotations"`
+	Connection                        Connection                                                      `connector:"connection"`
+	ConnectionName                    string                                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteEcommerceCustomerInput                           `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteEcommerceCustomerResult]                     `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteEcommerceCustomerResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteEcommerceCustomerResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteEcommerceCustomerResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EcommerceCustomerDeletion]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteEcommerceCustomerStep[IN any](config DeleteEcommerceCustomerStepConfig[IN]) sdkgo.MutationStep[IN, DeleteEcommerceCustomerInput, EcommerceCustomerDeletion] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteEcommerceCustomerInput, EcommerceCustomerDeletion]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteEcommerceCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteEcommerceCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteEcommerceCustomerResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteEcommerceCustomerBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteEcommerceCustomerBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteEcommerceCustomerBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteEcommerceCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListConnectionsBranchListed sdkgo.BranchID = "listed"
+const ListConnectionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListConnectionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListConnectionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListConnectionsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listConnections"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListConnectionsBranchListed, Description: "ActiveCampaign completed the ecommerce connection operation."},
+		{ID: ListConnectionsBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: ListConnectionsBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: ListConnectionsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListConnectionsResult = sdkgo.QueryResult[ConnectionsPage]
+
+type ListConnectionsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                           `connector:"operationId=listConnections"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListConnectionsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListConnectionsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListConnectionsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListConnectionsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListConnectionsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ConnectionsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewListConnectionsStep[IN any](config ListConnectionsStepConfig[IN]) sdkgo.QueryStep[IN, ListConnectionsInput, ConnectionsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListConnectionsInput, ConnectionsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListConnections(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListConnectionsResult] {
+			branches := make([]sdkgo.BranchTarget[ListConnectionsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListConnectionsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListConnectionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListConnectionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListConnectionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetConnectionBranchFound sdkgo.BranchID = "found"
+const GetConnectionBranchNotFound sdkgo.BranchID = "notFound"
+const GetConnectionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetConnectionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetConnectionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetConnectionDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getConnection"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetConnectionBranchFound, Description: "ActiveCampaign completed the ecommerce connection operation."},
+		{ID: GetConnectionBranchNotFound, Description: "No connection exists at the selected ID.", Optional: true},
+		{ID: GetConnectionBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: GetConnectionBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: GetConnectionBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetConnectionResult = sdkgo.QueryResult[ConnectionMetadata]
+
+type GetConnectionStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                              `connector:"operationId=getConnection"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetConnectionInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetConnectionResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetConnectionResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetConnectionResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetConnectionResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetConnectionResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ConnectionMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewGetConnectionStep[IN any](config GetConnectionStepConfig[IN]) sdkgo.QueryStep[IN, GetConnectionInput, ConnectionMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetConnectionInput, ConnectionMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetConnection(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetConnectionResult] {
+			branches := make([]sdkgo.BranchTarget[GetConnectionResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetConnectionBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetConnectionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetConnectionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetConnectionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetConnectionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateConnectionBranchCreated sdkgo.BranchID = "created"
+const CreateConnectionBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateConnectionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateConnectionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateConnectionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createConnection"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateConnectionBranchCreated, Description: "ActiveCampaign completed the ecommerce connection operation."},
+		{ID: CreateConnectionBranchUncertain, Description: "Bounded connection creation could not be confirmed.", Optional: true},
+		{ID: CreateConnectionBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: CreateConnectionBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateConnectionResult = sdkgo.MutationResult[ConnectionMetadata]
+
+type CreateConnectionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                                 `connector:"operationId=createConnection"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateConnectionInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateConnectionResult]                     `connector:"branch=created"`
+	Uncertain                         sdkgo.Target[CreateConnectionResult]                     `connector:"branch=uncertain,optional"`
+	ProviderRejected                  sdkgo.Target[CreateConnectionResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateConnectionResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ConnectionMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateConnectionStep[IN any](config CreateConnectionStepConfig[IN]) sdkgo.MutationStep[IN, CreateConnectionInput, ConnectionMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateConnectionInput, ConnectionMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateConnection(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateConnectionResult] {
+			branches := make([]sdkgo.BranchTarget[CreateConnectionResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateConnectionBranchCreated))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateConnectionBranchUncertain))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateConnectionBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateConnectionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateConnectionBranchUpdated sdkgo.BranchID = "updated"
+const UpdateConnectionBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateConnectionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateConnectionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateConnectionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateConnectionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateConnection"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateConnectionBranchUpdated, Description: "ActiveCampaign completed the ecommerce connection operation."},
+		{ID: UpdateConnectionBranchNotFound, Description: "No connection exists at the selected ID.", Optional: true},
+		{ID: UpdateConnectionBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: UpdateConnectionBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateConnectionBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateConnectionResult = sdkgo.MutationResult[ConnectionMetadata]
+
+type UpdateConnectionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                                 `connector:"operationId=updateConnection"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateConnectionInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateConnectionResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateConnectionResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateConnectionResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateConnectionResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateConnectionResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ConnectionMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateConnectionStep[IN any](config UpdateConnectionStepConfig[IN]) sdkgo.MutationStep[IN, UpdateConnectionInput, ConnectionMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateConnectionInput, ConnectionMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateConnection(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateConnectionResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateConnectionResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateConnectionBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateConnectionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateConnectionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateConnectionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateConnectionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteConnectionBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteConnectionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteConnectionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteConnectionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteConnectionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteConnection"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteConnectionBranchDeleted, Description: "ActiveCampaign completed the ecommerce connection operation."},
+		{ID: DeleteConnectionBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: DeleteConnectionBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteConnectionBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteConnectionResult = sdkgo.MutationResult[ConnectionDeletion]
+
+type DeleteConnectionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                                 `connector:"operationId=deleteConnection"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteConnectionInput                           `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteConnectionResult]                     `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteConnectionResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteConnectionResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteConnectionResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ConnectionDeletion]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteConnectionStep[IN any](config DeleteConnectionStepConfig[IN]) sdkgo.MutationStep[IN, DeleteConnectionInput, ConnectionDeletion] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteConnectionInput, ConnectionDeletion]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteConnection(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteConnectionResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteConnectionResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteConnectionBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteConnectionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteConnectionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteConnectionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListAccountContactsBranchListed sdkgo.BranchID = "listed"
+const ListAccountContactsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListAccountContactsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListAccountContactsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListAccountContactsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listAccountContacts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListAccountContactsBranchListed, Description: "ActiveCampaign completed the contact-account link operation."},
+		{ID: ListAccountContactsBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: ListAccountContactsBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: ListAccountContactsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListAccountContactsResult = sdkgo.QueryResult[AccountContactsPage]
+
+type ListAccountContactsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                               `connector:"operationId=listAccountContacts"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListAccountContactsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListAccountContactsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListAccountContactsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListAccountContactsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListAccountContactsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AccountContactsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewListAccountContactsStep[IN any](config ListAccountContactsStepConfig[IN]) sdkgo.QueryStep[IN, ListAccountContactsInput, AccountContactsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListAccountContactsInput, AccountContactsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListAccountContacts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListAccountContactsResult] {
+			branches := make([]sdkgo.BranchTarget[ListAccountContactsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListAccountContactsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListAccountContactsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListAccountContactsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListAccountContactsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetAccountContactBranchFound sdkgo.BranchID = "found"
+const GetAccountContactBranchNotFound sdkgo.BranchID = "notFound"
+const GetAccountContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetAccountContactBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetAccountContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetAccountContactDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getAccountContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetAccountContactBranchFound, Description: "ActiveCampaign completed the contact-account link operation."},
+		{ID: GetAccountContactBranchNotFound, Description: "No link exists at the selected ID.", Optional: true},
+		{ID: GetAccountContactBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: GetAccountContactBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: GetAccountContactBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetAccountContactResult = sdkgo.QueryResult[AccountContactAssociation]
+
+type GetAccountContactStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                     `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                                     `connector:"operationId=getAccountContact"`
+	StepType                       string                                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                        `connector:"annotations"`
+	Connection                     Connection                                                   `connector:"connection"`
+	ConnectionName                 string                                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetAccountContactInput                              `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetAccountContactResult]                        `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetAccountContactResult]                        `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetAccountContactResult]                        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetAccountContactResult]                        `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetAccountContactResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AccountContactAssociation]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+}
+
+func NewGetAccountContactStep[IN any](config GetAccountContactStepConfig[IN]) sdkgo.QueryStep[IN, GetAccountContactInput, AccountContactAssociation] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetAccountContactInput, AccountContactAssociation]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetAccountContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetAccountContactResult] {
+			branches := make([]sdkgo.BranchTarget[GetAccountContactResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetAccountContactBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetAccountContactBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetAccountContactBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetAccountContactBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetAccountContactBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateAccountContactBranchCreated sdkgo.BranchID = "created"
+const CreateAccountContactBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateAccountContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateAccountContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateAccountContactDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createAccountContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateAccountContactBranchCreated, Description: "ActiveCampaign completed the contact-account link operation."},
+		{ID: CreateAccountContactBranchUncertain, Description: "Bounded link creation could not be confirmed.", Optional: true},
+		{ID: CreateAccountContactBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: CreateAccountContactBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateAccountContactResult = sdkgo.MutationResult[AccountContactAssociation]
+
+type CreateAccountContactStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                        `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                                        `connector:"operationId=createAccountContact"`
+	StepType                          string                                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                           `connector:"annotations"`
+	Connection                        Connection                                                      `connector:"connection"`
+	ConnectionName                    string                                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateAccountContactInput                              `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateAccountContactResult]                        `connector:"branch=created"`
+	Uncertain                         sdkgo.Target[CreateAccountContactResult]                        `connector:"branch=uncertain,optional"`
+	ProviderRejected                  sdkgo.Target[CreateAccountContactResult]                        `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateAccountContactResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AccountContactAssociation]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateAccountContactStep[IN any](config CreateAccountContactStepConfig[IN]) sdkgo.MutationStep[IN, CreateAccountContactInput, AccountContactAssociation] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateAccountContactInput, AccountContactAssociation]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateAccountContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateAccountContactResult] {
+			branches := make([]sdkgo.BranchTarget[CreateAccountContactResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateAccountContactBranchCreated))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateAccountContactBranchUncertain))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateAccountContactBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateAccountContactBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateAccountContactBranchUpdated sdkgo.BranchID = "updated"
+const UpdateAccountContactBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateAccountContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateAccountContactBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateAccountContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateAccountContactDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateAccountContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateAccountContactBranchUpdated, Description: "ActiveCampaign completed the contact-account link operation."},
+		{ID: UpdateAccountContactBranchNotFound, Description: "No link exists at the selected ID.", Optional: true},
+		{ID: UpdateAccountContactBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: UpdateAccountContactBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateAccountContactBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateAccountContactResult = sdkgo.MutationResult[AccountContactAssociation]
+
+type UpdateAccountContactStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                        `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                                        `connector:"operationId=updateAccountContact"`
+	StepType                          string                                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                           `connector:"annotations"`
+	Connection                        Connection                                                      `connector:"connection"`
+	ConnectionName                    string                                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateAccountContactInput                              `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateAccountContactResult]                        `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateAccountContactResult]                        `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateAccountContactResult]                        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateAccountContactResult]                        `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateAccountContactResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AccountContactAssociation]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateAccountContactStep[IN any](config UpdateAccountContactStepConfig[IN]) sdkgo.MutationStep[IN, UpdateAccountContactInput, AccountContactAssociation] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateAccountContactInput, AccountContactAssociation]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateAccountContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateAccountContactResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateAccountContactResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateAccountContactBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateAccountContactBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateAccountContactBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateAccountContactBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateAccountContactBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteAccountContactBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteAccountContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteAccountContactBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteAccountContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteAccountContactDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteAccountContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteAccountContactBranchDeleted, Description: "ActiveCampaign completed the contact-account link operation."},
+		{ID: DeleteAccountContactBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: DeleteAccountContactBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteAccountContactBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteAccountContactResult = sdkgo.MutationResult[AccountContactDeletion]
+
+type DeleteAccountContactStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                     `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                                     `connector:"operationId=deleteAccountContact"`
+	StepType                          string                                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                        `connector:"annotations"`
+	Connection                        Connection                                                   `connector:"connection"`
+	ConnectionName                    string                                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteAccountContactInput                           `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteAccountContactResult]                     `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteAccountContactResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteAccountContactResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteAccountContactResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AccountContactDeletion]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteAccountContactStep[IN any](config DeleteAccountContactStepConfig[IN]) sdkgo.MutationStep[IN, DeleteAccountContactInput, AccountContactDeletion] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteAccountContactInput, AccountContactDeletion]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteAccountContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteAccountContactResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteAccountContactResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteAccountContactBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteAccountContactBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteAccountContactBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteAccountContactBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListAccountsBranchListed sdkgo.BranchID = "listed"
+const ListAccountsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListAccountsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListAccountsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListAccountsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listAccounts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListAccountsBranchListed, Description: "ActiveCampaign completed the account operation."},
+		{ID: ListAccountsBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: ListAccountsBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: ListAccountsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListAccountsResult = sdkgo.QueryResult[AccountsPage]
+
+type ListAccountsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                        `connector:"operationId=listAccounts"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListAccountsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListAccountsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListAccountsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListAccountsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListAccountsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AccountsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListAccountsStep[IN any](config ListAccountsStepConfig[IN]) sdkgo.QueryStep[IN, ListAccountsInput, AccountsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListAccountsInput, AccountsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListAccounts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListAccountsResult] {
+			branches := make([]sdkgo.BranchTarget[ListAccountsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListAccountsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListAccountsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListAccountsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListAccountsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetAccountBranchFound sdkgo.BranchID = "found"
+const GetAccountBranchNotFound sdkgo.BranchID = "notFound"
+const GetAccountBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetAccountBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetAccountBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetAccountDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getAccount"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetAccountBranchFound, Description: "ActiveCampaign completed the account operation."},
+		{ID: GetAccountBranchNotFound, Description: "No account exists at the selected ID.", Optional: true},
+		{ID: GetAccountBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: GetAccountBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: GetAccountBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetAccountResult = sdkgo.QueryResult[AccountMetadata]
+
+type GetAccountStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                           `connector:"operationId=getAccount"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetAccountInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetAccountResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetAccountResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetAccountResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetAccountResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetAccountResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AccountMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewGetAccountStep[IN any](config GetAccountStepConfig[IN]) sdkgo.QueryStep[IN, GetAccountInput, AccountMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetAccountInput, AccountMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetAccount(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetAccountResult] {
+			branches := make([]sdkgo.BranchTarget[GetAccountResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetAccountBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetAccountBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetAccountBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetAccountBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetAccountBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateAccountBranchCreated sdkgo.BranchID = "created"
+const CreateAccountBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateAccountBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateAccountBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateAccountDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createAccount"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateAccountBranchCreated, Description: "ActiveCampaign completed the account operation."},
+		{ID: CreateAccountBranchUncertain, Description: "Bounded account creation could not be confirmed.", Optional: true},
+		{ID: CreateAccountBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: CreateAccountBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateAccountResult = sdkgo.MutationResult[AccountMetadata]
+
+type CreateAccountStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                              `connector:"operationId=createAccount"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateAccountInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateAccountResult]                     `connector:"branch=created"`
+	Uncertain                         sdkgo.Target[CreateAccountResult]                     `connector:"branch=uncertain,optional"`
+	ProviderRejected                  sdkgo.Target[CreateAccountResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateAccountResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AccountMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateAccountStep[IN any](config CreateAccountStepConfig[IN]) sdkgo.MutationStep[IN, CreateAccountInput, AccountMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateAccountInput, AccountMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateAccount(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateAccountResult] {
+			branches := make([]sdkgo.BranchTarget[CreateAccountResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateAccountBranchCreated))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateAccountBranchUncertain))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateAccountBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateAccountBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateAccountBranchUpdated sdkgo.BranchID = "updated"
+const UpdateAccountBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateAccountBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateAccountBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateAccountBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateAccountDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateAccount"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateAccountBranchUpdated, Description: "ActiveCampaign completed the account operation."},
+		{ID: UpdateAccountBranchNotFound, Description: "No account exists at the selected ID.", Optional: true},
+		{ID: UpdateAccountBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: UpdateAccountBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateAccountBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateAccountResult = sdkgo.MutationResult[AccountMetadata]
+
+type UpdateAccountStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                              `connector:"operationId=updateAccount"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateAccountInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateAccountResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateAccountResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateAccountResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateAccountResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateAccountResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AccountMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateAccountStep[IN any](config UpdateAccountStepConfig[IN]) sdkgo.MutationStep[IN, UpdateAccountInput, AccountMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateAccountInput, AccountMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateAccount(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateAccountResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateAccountResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateAccountBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateAccountBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateAccountBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateAccountBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateAccountBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteAccountBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteAccountBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteAccountBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteAccountBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteAccountDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteAccount"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteAccountBranchDeleted, Description: "ActiveCampaign completed the account operation."},
+		{ID: DeleteAccountBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: DeleteAccountBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteAccountBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteAccountResult = sdkgo.MutationResult[AccountDeletion]
+
+type DeleteAccountStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                              `connector:"operationId=deleteAccount"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteAccountInput                           `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteAccountResult]                     `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteAccountResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteAccountResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteAccountResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AccountDeletion]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteAccountStep[IN any](config DeleteAccountStepConfig[IN]) sdkgo.MutationStep[IN, DeleteAccountInput, AccountDeletion] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteAccountInput, AccountDeletion]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteAccount(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteAccountResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteAccountResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteAccountBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteAccountBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteAccountBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteAccountBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListContactListMembershipsBranchListed sdkgo.BranchID = "listed"
+const ListContactListMembershipsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListContactListMembershipsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListContactListMembershipsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListContactListMembershipsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listContactListMemberships"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListContactListMembershipsBranchListed, Description: "ActiveCampaign completed the list-membership operation."},
+		{ID: ListContactListMembershipsBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: ListContactListMembershipsBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: ListContactListMembershipsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListContactListMembershipsResult = sdkgo.QueryResult[ContactListMembershipsPage]
+
+type ListContactListMembershipsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                      `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                                      `connector:"operationId=listContactListMemberships"`
+	StepType                       string                                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                         `connector:"annotations"`
+	Connection                     Connection                                                    `connector:"connection"`
+	ConnectionName                 string                                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListContactListMembershipsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListContactListMembershipsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListContactListMembershipsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListContactListMembershipsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListContactListMembershipsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ContactListMembershipsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                              `connector:"stepOptionsOverride"`
+}
+
+func NewListContactListMembershipsStep[IN any](config ListContactListMembershipsStepConfig[IN]) sdkgo.QueryStep[IN, ListContactListMembershipsInput, ContactListMembershipsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListContactListMembershipsInput, ContactListMembershipsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListContactListMemberships(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListContactListMembershipsResult] {
+			branches := make([]sdkgo.BranchTarget[ListContactListMembershipsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListContactListMembershipsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListContactListMembershipsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListContactListMembershipsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListContactListMembershipsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SubscribeContactToListBranchSubscribed sdkgo.BranchID = "subscribed"
+const SubscribeContactToListBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SubscribeContactToListBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SubscribeContactToListBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SubscribeContactToListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SubscribeContactToListDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "subscribeContactToList"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SubscribeContactToListBranchSubscribed, Description: "ActiveCampaign completed the list-membership operation."},
+		{ID: SubscribeContactToListBranchUncertain, Description: "A bounded subscription change could not be confirmed.", Optional: true},
+		{ID: SubscribeContactToListBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: SubscribeContactToListBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: SubscribeContactToListBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SubscribeContactToListResult = sdkgo.MutationResult[ContactListMembership]
+
+type SubscribeContactToListStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                                    `connector:"operationId=subscribeContactToList"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) SetContactListMembershipInput                      `connector:"mapToOperationInput"`
+	Subscribed                        sdkgo.Target[SubscribeContactToListResult]                  `connector:"branch=subscribed"`
+	Uncertain                         sdkgo.Target[SubscribeContactToListResult]                  `connector:"branch=uncertain,optional"`
+	ProviderRejected                  sdkgo.Target[SubscribeContactToListResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[SubscribeContactToListResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[SubscribeContactToListResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactListMembership]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSubscribeContactToListStep[IN any](config SubscribeContactToListStepConfig[IN]) sdkgo.MutationStep[IN, SetContactListMembershipInput, ContactListMembership] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetContactListMembershipInput, ContactListMembership]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SubscribeContactToList(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SubscribeContactToListResult] {
+			branches := make([]sdkgo.BranchTarget[SubscribeContactToListResult], 0, 5)
+			if config.Subscribed.HasStep() {
+				branches = append(branches, config.Subscribed.BranchTarget(SubscribeContactToListBranchSubscribed))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SubscribeContactToListBranchUncertain))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SubscribeContactToListBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SubscribeContactToListBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SubscribeContactToListBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UnsubscribeContactFromListBranchUnsubscribed sdkgo.BranchID = "unsubscribed"
+const UnsubscribeContactFromListBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const UnsubscribeContactFromListBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UnsubscribeContactFromListBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UnsubscribeContactFromListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UnsubscribeContactFromListDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "unsubscribeContactFromList"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UnsubscribeContactFromListBranchUnsubscribed, Description: "ActiveCampaign completed the list-membership operation."},
+		{ID: UnsubscribeContactFromListBranchUncertain, Description: "A bounded subscription change could not be confirmed.", Optional: true},
+		{ID: UnsubscribeContactFromListBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: UnsubscribeContactFromListBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: UnsubscribeContactFromListBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type UnsubscribeContactFromListResult = sdkgo.MutationResult[ContactListMembership]
+
+type UnsubscribeContactFromListStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                                    `connector:"operationId=unsubscribeContactFromList"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) SetContactListMembershipInput                      `connector:"mapToOperationInput"`
+	Unsubscribed                      sdkgo.Target[UnsubscribeContactFromListResult]              `connector:"branch=unsubscribed"`
+	Uncertain                         sdkgo.Target[UnsubscribeContactFromListResult]              `connector:"branch=uncertain,optional"`
+	ProviderRejected                  sdkgo.Target[UnsubscribeContactFromListResult]              `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UnsubscribeContactFromListResult]              `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UnsubscribeContactFromListResult]              `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactListMembership]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewUnsubscribeContactFromListStep[IN any](config UnsubscribeContactFromListStepConfig[IN]) sdkgo.MutationStep[IN, SetContactListMembershipInput, ContactListMembership] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetContactListMembershipInput, ContactListMembership]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UnsubscribeContactFromList(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UnsubscribeContactFromListResult] {
+			branches := make([]sdkgo.BranchTarget[UnsubscribeContactFromListResult], 0, 5)
+			if config.Unsubscribed.HasStep() {
+				branches = append(branches, config.Unsubscribed.BranchTarget(UnsubscribeContactFromListBranchUnsubscribed))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(UnsubscribeContactFromListBranchUncertain))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UnsubscribeContactFromListBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UnsubscribeContactFromListBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UnsubscribeContactFromListBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const ListContactTagsBranchListed sdkgo.BranchID = "listed"
+const ListContactTagsBranchNotFound sdkgo.BranchID = "notFound"
+const ListContactTagsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListContactTagsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListContactTagsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListContactTagsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listContactTags"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListContactTagsBranchListed, Description: "ActiveCampaign completed the contact-tag operation."},
+		{ID: ListContactTagsBranchNotFound, Description: "The contact does not exist.", Optional: true},
+		{ID: ListContactTagsBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: ListContactTagsBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: ListContactTagsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListContactTagsResult = sdkgo.QueryResult[ContactTagAssociations]
+
+type ListContactTagsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                  `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                                  `connector:"operationId=listContactTags"`
+	StepType                       string                                                    `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                     Connection                                                `connector:"connection"`
+	ConnectionName                 string                                                    `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListContactTagsInput                             `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListContactTagsResult]                       `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListContactTagsResult]                       `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListContactTagsResult]                       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListContactTagsResult]                       `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListContactTagsResult]                       `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ContactTagAssociations]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewListContactTagsStep[IN any](config ListContactTagsStepConfig[IN]) sdkgo.QueryStep[IN, ListContactTagsInput, ContactTagAssociations] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListContactTagsInput, ContactTagAssociations]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListContactTags(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListContactTagsResult] {
+			branches := make([]sdkgo.BranchTarget[ListContactTagsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListContactTagsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListContactTagsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListContactTagsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListContactTagsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListContactTagsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ApplyTagToContactBranchApplied sdkgo.BranchID = "applied"
+const ApplyTagToContactBranchNotFound sdkgo.BranchID = "notFound"
+const ApplyTagToContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ApplyTagToContactBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ApplyTagToContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ApplyTagToContactDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "applyTagToContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ApplyTagToContactBranchApplied, Description: "ActiveCampaign completed the contact-tag operation."},
+		{ID: ApplyTagToContactBranchNotFound, Description: "The contact does not exist.", Optional: true},
+		{ID: ApplyTagToContactBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: ApplyTagToContactBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: ApplyTagToContactBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type ApplyTagToContactResult = sdkgo.MutationResult[ContactTagAssociation]
+
+type ApplyTagToContactStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                                    `connector:"operationId=applyTagToContact"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) ApplyTagToContactInput                             `connector:"mapToOperationInput"`
+	Applied                           sdkgo.Target[ApplyTagToContactResult]                       `connector:"branch=applied"`
+	NotFound                          sdkgo.Target[ApplyTagToContactResult]                       `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[ApplyTagToContactResult]                       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[ApplyTagToContactResult]                       `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[ApplyTagToContactResult]                       `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactTagAssociation]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+}
+
+func NewApplyTagToContactStep[IN any](config ApplyTagToContactStepConfig[IN]) sdkgo.MutationStep[IN, ApplyTagToContactInput, ContactTagAssociation] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ApplyTagToContactInput, ContactTagAssociation]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ApplyTagToContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ApplyTagToContactResult] {
+			branches := make([]sdkgo.BranchTarget[ApplyTagToContactResult], 0, 5)
+			if config.Applied.HasStep() {
+				branches = append(branches, config.Applied.BranchTarget(ApplyTagToContactBranchApplied))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ApplyTagToContactBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ApplyTagToContactBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ApplyTagToContactBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ApplyTagToContactBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RemoveTagFromContactBranchRemoved sdkgo.BranchID = "removed"
+const RemoveTagFromContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RemoveTagFromContactBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const RemoveTagFromContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RemoveTagFromContactDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "removeTagFromContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RemoveTagFromContactBranchRemoved, Description: "ActiveCampaign completed the contact-tag operation."},
+		{ID: RemoveTagFromContactBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: RemoveTagFromContactBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: RemoveTagFromContactBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type RemoveTagFromContactResult = sdkgo.MutationResult[ContactTagRemoval]
+
+type RemoveTagFromContactStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                                `connector:"operationId=removeTagFromContact"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) RemoveTagFromContactInput                      `connector:"mapToOperationInput"`
+	Removed                           sdkgo.Target[RemoveTagFromContactResult]                `connector:"branch=removed"`
+	ProviderRejected                  sdkgo.Target[RemoveTagFromContactResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[RemoveTagFromContactResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[RemoveTagFromContactResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactTagRemoval]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewRemoveTagFromContactStep[IN any](config RemoveTagFromContactStepConfig[IN]) sdkgo.MutationStep[IN, RemoveTagFromContactInput, ContactTagRemoval] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, RemoveTagFromContactInput, ContactTagRemoval]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RemoveTagFromContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RemoveTagFromContactResult] {
+			branches := make([]sdkgo.BranchTarget[RemoveTagFromContactResult], 0, 4)
+			if config.Removed.HasStep() {
+				branches = append(branches, config.Removed.BranchTarget(RemoveTagFromContactBranchRemoved))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RemoveTagFromContactBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(RemoveTagFromContactBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RemoveTagFromContactBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListDealNotesBranchListed sdkgo.BranchID = "listed"
+const ListDealNotesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListDealNotesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListDealNotesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListDealNotesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listDealNotes"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListDealNotesBranchListed, Description: "ActiveCampaign completed the note operation."},
+		{ID: ListDealNotesBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: ListDealNotesBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: ListDealNotesBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListDealNotesResult = sdkgo.QueryResult[DealNotesPage]
+
+type ListDealNotesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                         `connector:"operationId=listDealNotes"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListDealNotesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListDealNotesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListDealNotesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListDealNotesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListDealNotesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DealNotesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListDealNotesStep[IN any](config ListDealNotesStepConfig[IN]) sdkgo.QueryStep[IN, ListDealNotesInput, DealNotesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListDealNotesInput, DealNotesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListDealNotes(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListDealNotesResult] {
+			branches := make([]sdkgo.BranchTarget[ListDealNotesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListDealNotesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListDealNotesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListDealNotesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListDealNotesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetDealNoteBranchFound sdkgo.BranchID = "found"
+const GetDealNoteBranchNotFound sdkgo.BranchID = "notFound"
+const GetDealNoteBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetDealNoteBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetDealNoteBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetDealNoteDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getDealNote"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetDealNoteBranchFound, Description: "ActiveCampaign completed the note operation."},
+		{ID: GetDealNoteBranchNotFound, Description: "The deal or note does not exist.", Optional: true},
+		{ID: GetDealNoteBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: GetDealNoteBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: GetDealNoteBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetDealNoteResult = sdkgo.QueryResult[DealNoteMetadata]
+
+type GetDealNoteStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                            `connector:"operationId=getDealNote"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetDealNoteInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetDealNoteResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetDealNoteResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetDealNoteResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetDealNoteResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetDealNoteResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DealNoteMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewGetDealNoteStep[IN any](config GetDealNoteStepConfig[IN]) sdkgo.QueryStep[IN, GetDealNoteInput, DealNoteMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetDealNoteInput, DealNoteMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetDealNote(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetDealNoteResult] {
+			branches := make([]sdkgo.BranchTarget[GetDealNoteResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetDealNoteBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetDealNoteBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetDealNoteBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetDealNoteBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetDealNoteBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateDealNoteBranchCreated sdkgo.BranchID = "created"
+const CreateDealNoteBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateDealNoteBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateDealNoteBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateDealNoteBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateDealNoteDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createDealNote"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateDealNoteBranchCreated, Description: "ActiveCampaign completed the note operation."},
+		{ID: CreateDealNoteBranchUncertain, Description: "A bounded note create could not be confirmed.", Optional: true},
+		{ID: CreateDealNoteBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: CreateDealNoteBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: CreateDealNoteBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateDealNoteResult = sdkgo.MutationResult[DealNoteMetadata]
+
+type CreateDealNoteStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                               `connector:"operationId=createDealNote"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateDealNoteInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateDealNoteResult]                     `connector:"branch=created"`
+	Uncertain                         sdkgo.Target[CreateDealNoteResult]                     `connector:"branch=uncertain,optional"`
+	ProviderRejected                  sdkgo.Target[CreateDealNoteResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreateDealNoteResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CreateDealNoteResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DealNoteMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateDealNoteStep[IN any](config CreateDealNoteStepConfig[IN]) sdkgo.MutationStep[IN, CreateDealNoteInput, DealNoteMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateDealNoteInput, DealNoteMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateDealNote(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateDealNoteResult] {
+			branches := make([]sdkgo.BranchTarget[CreateDealNoteResult], 0, 5)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateDealNoteBranchCreated))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateDealNoteBranchUncertain))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateDealNoteBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateDealNoteBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateDealNoteBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateDealNoteBranchUpdated sdkgo.BranchID = "updated"
+const UpdateDealNoteBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateDealNoteBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateDealNoteBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateDealNoteBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateDealNoteDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateDealNote"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateDealNoteBranchUpdated, Description: "ActiveCampaign completed the note operation."},
+		{ID: UpdateDealNoteBranchNotFound, Description: "The deal or note does not exist.", Optional: true},
+		{ID: UpdateDealNoteBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: UpdateDealNoteBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateDealNoteBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateDealNoteResult = sdkgo.MutationResult[DealNoteMetadata]
+
+type UpdateDealNoteStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                               `connector:"operationId=updateDealNote"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateDealNoteInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateDealNoteResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateDealNoteResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateDealNoteResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateDealNoteResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateDealNoteResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DealNoteMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateDealNoteStep[IN any](config UpdateDealNoteStepConfig[IN]) sdkgo.MutationStep[IN, UpdateDealNoteInput, DealNoteMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateDealNoteInput, DealNoteMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateDealNote(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateDealNoteResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateDealNoteResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateDealNoteBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateDealNoteBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateDealNoteBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateDealNoteBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateDealNoteBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListDealsBranchListed sdkgo.BranchID = "listed"
+const ListDealsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListDealsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListDealsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListDealsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listDeals"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListDealsBranchListed, Description: "ActiveCampaign completed the deal operation."},
+		{ID: ListDealsBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: ListDealsBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: ListDealsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListDealsResult = sdkgo.QueryResult[DealsPage]
+
+type ListDealsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                     `connector:"operationId=listDeals"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListDealsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListDealsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListDealsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListDealsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListDealsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DealsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListDealsStep[IN any](config ListDealsStepConfig[IN]) sdkgo.QueryStep[IN, ListDealsInput, DealsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListDealsInput, DealsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListDeals(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListDealsResult] {
+			branches := make([]sdkgo.BranchTarget[ListDealsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListDealsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListDealsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListDealsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListDealsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetDealBranchFound sdkgo.BranchID = "found"
+const GetDealBranchNotFound sdkgo.BranchID = "notFound"
+const GetDealBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetDealBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetDealBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetDealDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getDeal"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetDealBranchFound, Description: "ActiveCampaign completed the deal operation."},
+		{ID: GetDealBranchNotFound, Description: "The deal ID does not exist.", Optional: true},
+		{ID: GetDealBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: GetDealBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: GetDealBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetDealResult = sdkgo.QueryResult[DealMetadata]
+
+type GetDealStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                        `connector:"operationId=getDeal"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetDealInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetDealResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetDealResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetDealResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetDealResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetDealResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DealMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetDealStep[IN any](config GetDealStepConfig[IN]) sdkgo.QueryStep[IN, GetDealInput, DealMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetDealInput, DealMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetDeal(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetDealResult] {
+			branches := make([]sdkgo.BranchTarget[GetDealResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetDealBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetDealBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetDealBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetDealBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetDealBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateDealBranchCreated sdkgo.BranchID = "created"
+const CreateDealBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateDealBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateDealBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateDealBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateDealDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createDeal"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateDealBranchCreated, Description: "ActiveCampaign completed the deal operation."},
+		{ID: CreateDealBranchUncertain, Description: "A bounded deal create could not be confirmed.", Optional: true},
+		{ID: CreateDealBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: CreateDealBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: CreateDealBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateDealResult = sdkgo.MutationResult[DealMetadata]
+
+type CreateDealStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                           `connector:"operationId=createDeal"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateDealInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateDealResult]                     `connector:"branch=created"`
+	Uncertain                         sdkgo.Target[CreateDealResult]                     `connector:"branch=uncertain,optional"`
+	ProviderRejected                  sdkgo.Target[CreateDealResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreateDealResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CreateDealResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DealMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateDealStep[IN any](config CreateDealStepConfig[IN]) sdkgo.MutationStep[IN, CreateDealInput, DealMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateDealInput, DealMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateDeal(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateDealResult] {
+			branches := make([]sdkgo.BranchTarget[CreateDealResult], 0, 5)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateDealBranchCreated))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateDealBranchUncertain))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateDealBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateDealBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateDealBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateDealBranchUpdated sdkgo.BranchID = "updated"
+const UpdateDealBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateDealBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateDealBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateDealBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateDealDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateDeal"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateDealBranchUpdated, Description: "ActiveCampaign updated the deal."},
+		{ID: UpdateDealBranchNotFound, Description: "The deal ID does not exist.", Optional: true},
+		{ID: UpdateDealBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: UpdateDealBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateDealBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateDealResult = sdkgo.MutationResult[DealMetadata]
+
+type UpdateDealStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                           `connector:"operationId=updateDeal"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateDealInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateDealResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateDealResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateDealResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateDealResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateDealResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DealMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateDealStep[IN any](config UpdateDealStepConfig[IN]) sdkgo.MutationStep[IN, UpdateDealInput, DealMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateDealInput, DealMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateDeal(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateDealResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateDealResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateDealBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateDealBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateDealBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateDealBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateDealBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteDealBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteDealBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteDealBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteDealBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteDealDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteDeal"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteDealBranchDeleted, Description: "ActiveCampaign deleted the deal."},
+		{ID: DeleteDealBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: DeleteDealBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteDealBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteDealResult = sdkgo.MutationResult[DealDeletion]
+
+type DeleteDealStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                           `connector:"operationId=deleteDeal"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteDealInput                           `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteDealResult]                     `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteDealResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteDealResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteDealResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DealDeletion]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteDealStep[IN any](config DeleteDealStepConfig[IN]) sdkgo.MutationStep[IN, DeleteDealInput, DealDeletion] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteDealInput, DealDeletion]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteDeal(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteDealResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteDealResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteDealBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteDealBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteDealBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteDealBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListTagsBranchListed sdkgo.BranchID = "listed"
+const ListTagsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTagsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTagsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTagsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTags"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTagsBranchListed, Description: "ActiveCampaign completed the tag operation."},
+		{ID: ListTagsBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: ListTagsBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: ListTagsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTagsResult = sdkgo.QueryResult[TagsPage]
+
+type ListTagsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                    `connector:"operationId=listTags"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTagsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTagsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListTagsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTagsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTagsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TagsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewListTagsStep[IN any](config ListTagsStepConfig[IN]) sdkgo.QueryStep[IN, ListTagsInput, TagsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTagsInput, TagsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTags(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTagsResult] {
+			branches := make([]sdkgo.BranchTarget[ListTagsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTagsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTagsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTagsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTagsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetTagBranchFound sdkgo.BranchID = "found"
+const GetTagBranchNotFound sdkgo.BranchID = "notFound"
+const GetTagBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTagBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTagBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTagDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTag"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTagBranchFound, Description: "ActiveCampaign completed the tag operation."},
+		{ID: GetTagBranchNotFound, Description: "The tag ID does not exist.", Optional: true},
+		{ID: GetTagBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: GetTagBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: GetTagBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTagResult = sdkgo.QueryResult[TagMetadata]
+
+type GetTagStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                       `connector:"operationId=getTag"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetTagInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTagResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetTagResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetTagResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTagResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTagResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TagMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewGetTagStep[IN any](config GetTagStepConfig[IN]) sdkgo.QueryStep[IN, GetTagInput, TagMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetTagInput, TagMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTag(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTagResult] {
+			branches := make([]sdkgo.BranchTarget[GetTagResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTagBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetTagBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTagBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTagBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTagBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateTagBranchCreated sdkgo.BranchID = "created"
+const CreateTagBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateTagBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateTagBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateTagDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createTag"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateTagBranchCreated, Description: "ActiveCampaign completed the tag operation."},
+		{ID: CreateTagBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: CreateTagBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: CreateTagBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CreateTagResult = sdkgo.MutationResult[TagMetadata]
+
+type CreateTagStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                          `connector:"operationId=createTag"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateTagInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateTagResult]                     `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateTagResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreateTagResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CreateTagResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TagMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewCreateTagStep[IN any](config CreateTagStepConfig[IN]) sdkgo.MutationStep[IN, CreateTagInput, TagMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateTagInput, TagMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateTag(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateTagResult] {
+			branches := make([]sdkgo.BranchTarget[CreateTagResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateTagBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateTagBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateTagBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateTagBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateTagBranchUpdated sdkgo.BranchID = "updated"
+const UpdateTagBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateTagBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateTagBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateTagBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateTagDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateTag"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateTagBranchUpdated, Description: "ActiveCampaign updated the tag definition."},
+		{ID: UpdateTagBranchNotFound, Description: "The tag ID does not exist.", Optional: true},
+		{ID: UpdateTagBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: UpdateTagBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateTagBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateTagResult = sdkgo.MutationResult[TagMetadata]
+
+type UpdateTagStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                          `connector:"operationId=updateTag"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateTagInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateTagResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateTagResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateTagResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateTagResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateTagResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TagMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateTagStep[IN any](config UpdateTagStepConfig[IN]) sdkgo.MutationStep[IN, UpdateTagInput, TagMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateTagInput, TagMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateTag(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateTagResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateTagResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateTagBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateTagBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateTagBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateTagBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateTagBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteTagBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteTagBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteTagBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteTagBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteTagDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteTag"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteTagBranchDeleted, Description: "ActiveCampaign deleted the tag definition."},
+		{ID: DeleteTagBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: DeleteTagBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteTagBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteTagResult = sdkgo.MutationResult[TagDeletion]
+
+type DeleteTagStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                          `connector:"operationId=deleteTag"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteTagInput                           `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteTagResult]                     `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteTagResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteTagResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteTagResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TagDeletion]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteTagStep[IN any](config DeleteTagStepConfig[IN]) sdkgo.MutationStep[IN, DeleteTagInput, TagDeletion] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteTagInput, TagDeletion]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteTag(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteTagResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteTagResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteTagBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteTagBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteTagBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteTagBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListListsBranchListed sdkgo.BranchID = "listed"
+const ListListsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListListsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListListsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListListsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listLists"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListListsBranchListed, Description: "ActiveCampaign returned the selected list page."},
+		{ID: ListListsBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: ListListsBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: ListListsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListListsResult = sdkgo.QueryResult[ListsPage]
+
+type ListListsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                     `connector:"operationId=listLists"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListListsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListListsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListListsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListListsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListListsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListListsStep[IN any](config ListListsStepConfig[IN]) sdkgo.QueryStep[IN, ListListsInput, ListsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListListsInput, ListsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListLists(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListListsResult] {
+			branches := make([]sdkgo.BranchTarget[ListListsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListListsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListListsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListListsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListListsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetListBranchFound sdkgo.BranchID = "found"
+const GetListBranchNotFound sdkgo.BranchID = "notFound"
+const GetListBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetListBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetListDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getList"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetListBranchFound, Description: "ActiveCampaign returned list metadata."},
+		{ID: GetListBranchNotFound, Description: "No list with this ID is visible to the API user.", Optional: true},
+		{ID: GetListBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: GetListBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: GetListBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetListResult = sdkgo.QueryResult[ListMetadata]
+
+type GetListStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                        `connector:"operationId=getList"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetListInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetListResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetListResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetListResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetListResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetListResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetListStep[IN any](config GetListStepConfig[IN]) sdkgo.QueryStep[IN, GetListInput, ListMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetListInput, ListMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetList(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetListResult] {
+			branches := make([]sdkgo.BranchTarget[GetListResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetListBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetListBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetListBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetListBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetListBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListContactsBranchListed sdkgo.BranchID = "listed"
@@ -329,6 +4132,156 @@ func NewGetContactStep[IN any](config GetContactStepConfig[IN]) sdkgo.QueryStep[
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetContactBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SyncContactBranchSynced sdkgo.BranchID = "synced"
+const SyncContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SyncContactBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SyncContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SyncContactDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "syncContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SyncContactBranchSynced, Description: "ActiveCampaign created or updated the contact."},
+		{ID: SyncContactBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the contact.", Optional: true},
+		{ID: SyncContactBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: SyncContactBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type SyncContactResult = sdkgo.MutationResult[ContactMetadata]
+
+type SyncContactStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                              `connector:"operationId=syncContact"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) SyncContactInput                             `connector:"mapToOperationInput"`
+	Synced                            sdkgo.Target[SyncContactResult]                       `connector:"branch=synced"`
+	ProviderRejected                  sdkgo.Target[SyncContactResult]                       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[SyncContactResult]                       `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[SyncContactResult]                       `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewSyncContactStep[IN any](config SyncContactStepConfig[IN]) sdkgo.MutationStep[IN, SyncContactInput, ContactMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SyncContactInput, ContactMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SyncContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SyncContactResult] {
+			branches := make([]sdkgo.BranchTarget[SyncContactResult], 0, 4)
+			if config.Synced.HasStep() {
+				branches = append(branches, config.Synced.BranchTarget(SyncContactBranchSynced))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SyncContactBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SyncContactBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SyncContactBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateContactBranchUpdated sdkgo.BranchID = "updated"
+const UpdateContactBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateContactBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateContactDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateContactBranchUpdated, Description: "ActiveCampaign updated the contact."},
+		{ID: UpdateContactBranchNotFound, Description: "No contact with this ID exists.", Optional: true},
+		{ID: UpdateContactBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the update.", Optional: true},
+		{ID: UpdateContactBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateContactBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateContactResult = sdkgo.MutationResult[ContactMetadata]
+
+type UpdateContactStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                              `connector:"operationId=updateContact"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateContactInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateContactResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateContactResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateContactResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateContactResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateContactResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateContactStep[IN any](config UpdateContactStepConfig[IN]) sdkgo.MutationStep[IN, UpdateContactInput, ContactMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateContactInput, ContactMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateContactResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateContactResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateContactBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateContactBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateContactBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateContactBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateContactBranchDefect))
 			}
 			return branches
 		}(),

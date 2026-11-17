@@ -532,6 +532,7 @@ func containsString(values []string, wanted string) bool {
 
 type refundDecisionHarness struct {
 	flow          *Flow
+	lifecycleFlow *RecordLifecycleFlow
 	cache         *blobcache.Cache
 	worker        *dex.Worker
 	workerResult  chan error
@@ -557,12 +558,14 @@ func newRefundDecisionHarnessWithConnection(t *testing.T, connection airtable.Co
 	t.Helper()
 	flow, err := NewFlow(connection, &integrationSettings)
 	require.NoError(t, err)
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	lifecycleFlow, err := NewRecordLifecycleFlow(connection, &integrationSettings)
+	require.NoError(t, err)
+	registry, err := dex.NewRegistry([]dex.Flow{flow, lifecycleFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
 	serverAddress := environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")
-	harness := &refundDecisionHarness{flow: flow, cache: cache, registry: registry, serverAddress: serverAddress}
+	harness := &refundDecisionHarness{flow: flow, lifecycleFlow: lifecycleFlow, cache: cache, registry: registry, serverAddress: serverAddress}
 	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{
 		FlowServiceAddress: serverAddress,
 	})

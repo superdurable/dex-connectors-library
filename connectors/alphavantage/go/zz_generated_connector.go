@@ -40,12 +40,28 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	SearchSymbols() sdkgo.Query[SymbolSearchInput, SymbolSearchOutput]
+	GetCurrencyExchangeRate() sdkgo.Query[CurrencyPairInput, CurrencyExchangeRateOutput]
+	GetMarketStatus() sdkgo.Query[MarketStatusInput, MarketStatusOutput]
+	GetTopGainersLosers() sdkgo.Query[MarketMoversInput, MarketMoversOutput]
 	GetGlobalQuote() sdkgo.Query[StockInput, GlobalQuoteOutput]
 	GetTimeSeriesDaily() sdkgo.Query[StockInput, DailySeriesOutput]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) SearchSymbols() sdkgo.Query[SymbolSearchInput, SymbolSearchOutput] {
+	return operations.client.SearchSymbols()
+}
+func (operations clientOperations) GetCurrencyExchangeRate() sdkgo.Query[CurrencyPairInput, CurrencyExchangeRateOutput] {
+	return operations.client.GetCurrencyExchangeRate()
+}
+func (operations clientOperations) GetMarketStatus() sdkgo.Query[MarketStatusInput, MarketStatusOutput] {
+	return operations.client.GetMarketStatus()
+}
+func (operations clientOperations) GetTopGainersLosers() sdkgo.Query[MarketMoversInput, MarketMoversOutput] {
+	return operations.client.GetTopGainersLosers()
+}
 func (operations clientOperations) GetGlobalQuote() sdkgo.Query[StockInput, GlobalQuoteOutput] {
 	return operations.client.GetGlobalQuote()
 }
@@ -188,6 +204,296 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const SearchSymbolsBranchFound sdkgo.BranchID = "found"
+const SearchSymbolsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SearchSymbolsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SearchSymbolsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SearchSymbolsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchSymbols"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SearchSymbolsBranchFound, Description: "Alpha Vantage returned matching symbols, possibly empty."},
+		{ID: SearchSymbolsBranchProviderRejected, Description: "The provider conclusively rejected the search.", Optional: true},
+		{ID: SearchSymbolsBranchInvalidResponse, Description: "The provider returned malformed or oversized data.", Optional: true},
+		{ID: SearchSymbolsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SearchSymbolsResult = sdkgo.QueryResult[SymbolSearchOutput]
+
+type SearchSymbolsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=alphavantage"`
+	operationID                    struct{}                                              `connector:"operationId=searchSymbols"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) SymbolSearchInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[SearchSymbolsResult]                     `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[SearchSymbolsResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[SearchSymbolsResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[SearchSymbolsResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SymbolSearchOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewSearchSymbolsStep[IN any](config SearchSymbolsStepConfig[IN]) sdkgo.QueryStep[IN, SymbolSearchInput, SymbolSearchOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("alphavantage connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SymbolSearchInput, SymbolSearchOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SearchSymbols(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SearchSymbolsResult] {
+			branches := make([]sdkgo.BranchTarget[SearchSymbolsResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(SearchSymbolsBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SearchSymbolsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SearchSymbolsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SearchSymbolsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetCurrencyExchangeRateBranchFound sdkgo.BranchID = "found"
+const GetCurrencyExchangeRateBranchNotFound sdkgo.BranchID = "notFound"
+const GetCurrencyExchangeRateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCurrencyExchangeRateBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCurrencyExchangeRateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCurrencyExchangeRateDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCurrencyExchangeRate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCurrencyExchangeRateBranchFound, Description: "Alpha Vantage returned an exchange rate."},
+		{ID: GetCurrencyExchangeRateBranchNotFound, Description: "No exchange rate exists for the currency pair.", Optional: true},
+		{ID: GetCurrencyExchangeRateBranchProviderRejected, Description: "The provider conclusively rejected the request.", Optional: true},
+		{ID: GetCurrencyExchangeRateBranchInvalidResponse, Description: "The provider returned malformed or oversized data.", Optional: true},
+		{ID: GetCurrencyExchangeRateBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCurrencyExchangeRateResult = sdkgo.QueryResult[CurrencyExchangeRateOutput]
+
+type GetCurrencyExchangeRateStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                      `connector:"connectorId=alphavantage"`
+	operationID                    struct{}                                                      `connector:"operationId=getCurrencyExchangeRate"`
+	StepType                       string                                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                         `connector:"annotations"`
+	Connection                     Connection                                                    `connector:"connection"`
+	ConnectionName                 string                                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) CurrencyPairInput                                    `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCurrencyExchangeRateResult]                   `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCurrencyExchangeRateResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCurrencyExchangeRateResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCurrencyExchangeRateResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCurrencyExchangeRateResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CurrencyExchangeRateOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                              `connector:"stepOptionsOverride"`
+}
+
+func NewGetCurrencyExchangeRateStep[IN any](config GetCurrencyExchangeRateStepConfig[IN]) sdkgo.QueryStep[IN, CurrencyPairInput, CurrencyExchangeRateOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("alphavantage connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, CurrencyPairInput, CurrencyExchangeRateOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCurrencyExchangeRate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCurrencyExchangeRateResult] {
+			branches := make([]sdkgo.BranchTarget[GetCurrencyExchangeRateResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCurrencyExchangeRateBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCurrencyExchangeRateBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCurrencyExchangeRateBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCurrencyExchangeRateBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCurrencyExchangeRateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetMarketStatusBranchFound sdkgo.BranchID = "found"
+const GetMarketStatusBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetMarketStatusBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetMarketStatusBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetMarketStatusDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getMarketStatus"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetMarketStatusBranchFound, Description: "Alpha Vantage returned trading venue statuses."},
+		{ID: GetMarketStatusBranchProviderRejected, Description: "The provider conclusively rejected the request.", Optional: true},
+		{ID: GetMarketStatusBranchInvalidResponse, Description: "The provider returned malformed or oversized data.", Optional: true},
+		{ID: GetMarketStatusBranchDefect, Description: "Connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetMarketStatusResult = sdkgo.QueryResult[MarketStatusOutput]
+
+type GetMarketStatusStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=alphavantage"`
+	operationID                    struct{}                                              `connector:"operationId=getMarketStatus"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) MarketStatusInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetMarketStatusResult]                   `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetMarketStatusResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetMarketStatusResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetMarketStatusResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[MarketStatusOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewGetMarketStatusStep[IN any](config GetMarketStatusStepConfig[IN]) sdkgo.QueryStep[IN, MarketStatusInput, MarketStatusOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("alphavantage connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, MarketStatusInput, MarketStatusOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetMarketStatus(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetMarketStatusResult] {
+			branches := make([]sdkgo.BranchTarget[GetMarketStatusResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetMarketStatusBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetMarketStatusBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetMarketStatusBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetMarketStatusBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetTopGainersLosersBranchFound sdkgo.BranchID = "found"
+const GetTopGainersLosersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTopGainersLosersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTopGainersLosersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTopGainersLosersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTopGainersLosers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTopGainersLosersBranchFound, Description: "Alpha Vantage returned market mover lists."},
+		{ID: GetTopGainersLosersBranchProviderRejected, Description: "The provider conclusively rejected the request.", Optional: true},
+		{ID: GetTopGainersLosersBranchInvalidResponse, Description: "The provider returned malformed or oversized data.", Optional: true},
+		{ID: GetTopGainersLosersBranchDefect, Description: "Connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTopGainersLosersResult = sdkgo.QueryResult[MarketMoversOutput]
+
+type GetTopGainersLosersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=alphavantage"`
+	operationID                    struct{}                                              `connector:"operationId=getTopGainersLosers"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) MarketMoversInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTopGainersLosersResult]               `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetTopGainersLosersResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTopGainersLosersResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTopGainersLosersResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[MarketMoversOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewGetTopGainersLosersStep[IN any](config GetTopGainersLosersStepConfig[IN]) sdkgo.QueryStep[IN, MarketMoversInput, MarketMoversOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("alphavantage connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, MarketMoversInput, MarketMoversOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTopGainersLosers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTopGainersLosersResult] {
+			branches := make([]sdkgo.BranchTarget[GetTopGainersLosersResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTopGainersLosersBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTopGainersLosersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTopGainersLosersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTopGainersLosersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetGlobalQuoteBranchFound sdkgo.BranchID = "found"

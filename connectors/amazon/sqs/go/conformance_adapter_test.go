@@ -5,7 +5,7 @@ package sqs
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
@@ -31,16 +31,26 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}
 	client.now = func() time.Time { return conformanceClock }
 	context := &conformanceDexContext{Context: context.Background(), step: "conformance"}
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(checkpoint []byte) { context.heartbeat = checkpoint })
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { context.attempt = priorAttempt + int32(attempt) }, actions: map[string]conformanceOperationInvocation{
+		"sendMessage":             newConformanceMutationInvocation(t, scenario.Input, context, client.SendMessage(), conformanceConnection, scenario.CallID),
 		"receiveMessages":         newConformanceMutationInvocation(t, scenario.Input, context, client.ReceiveMessages(), conformanceConnection, scenario.CallID),
 		"deleteMessage":           newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteMessage(), conformanceConnection, scenario.CallID),
 		"changeMessageVisibility": newConformanceMutationInvocation(t, scenario.Input, context, client.ChangeMessageVisibility(), conformanceConnection, scenario.CallID),
+		"listQueues":              newConformanceQueryInvocation(t, scenario.Input, context, client.ListQueues(), conformanceConnection),
+		"createQueue":             newConformanceMutationInvocation(t, scenario.Input, context, client.CreateQueue(), conformanceConnection, scenario.CallID),
+		"getQueueURL":             newConformanceQueryInvocation(t, scenario.Input, context, client.GetQueueURL(), conformanceConnection),
+		"getQueueAttributes":      newConformanceQueryInvocation(t, scenario.Input, context, client.GetQueueAttributes(), conformanceConnection),
+		"setQueueAttribute":       newConformanceMutationInvocation(t, scenario.Input, context, client.SetQueueAttribute(), conformanceConnection, scenario.CallID),
+		"deleteQueue":             newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteQueue(), conformanceConnection, scenario.CallID),
 	}}
 }
 
 type conformanceDexContext struct {
 	context.Context
-	step string
+	step      string
+	attempt   int32
+	heartbeat json.RawMessage
 }
 
 func (*conformanceDexContext) FlowID() string                        { return "registration-123" }
@@ -50,13 +60,22 @@ func (c *conformanceDexContext) StepExecutionID() string             { return c.
 func (*conformanceDexContext) FromStepExecutionID() string           { return "" }
 func (*conformanceDexContext) RecoveryError() *dex.RecoveryErrorInfo { return nil }
 func (*conformanceDexContext) FirstAttemptAt() time.Time             { return time.Unix(1, 0) }
-func (*conformanceDexContext) Attempt() int32                        { return 1 }
+func (c *conformanceDexContext) Attempt() int32                      { return c.attempt }
 func (*conformanceDexContext) HasTimerFired() bool                   { return false }
 func (*conformanceDexContext) HasTimerFiredByIndex(int) bool         { return false }
 func (*conformanceDexContext) WaitForMethodFailed() bool             { return false }
-func (*conformanceDexContext) RecordHeartbeat(any) error             { return nil }
-func (*conformanceDexContext) GetLastHeartbeatValue(any) (bool, error) {
-	return false, errors.New("no heartbeat")
+func (c *conformanceDexContext) RecordHeartbeat(value any) error {
+	encoded, err := json.Marshal(value)
+	if err == nil {
+		c.heartbeat = encoded
+	}
+	return err
+}
+func (c *conformanceDexContext) GetLastHeartbeatValue(target any) (bool, error) {
+	if len(c.heartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(c.heartbeat, target)
 }
 func (*conformanceDexContext) SetStepExecutionLocal(string, any) error         { return nil }
 func (*conformanceDexContext) GetStepExecutionLocal(string, any) (bool, error) { return false, nil }

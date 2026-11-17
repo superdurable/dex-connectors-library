@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: algolia
   displayName: Algolia
-  description: Search an index and replace a record by object ID.
+  description: Search and manage indexed records, and list indices.
   company: Algolia
   categories: [databases-storage, data-search]
-  version: v0.3.0
+  version: v0.4.0
 spec:
   provider: algolia
   languages:
@@ -51,14 +51,55 @@ spec:
         goName: APIKey
         type: secretString
         required: true
-        description: Secret Algolia API key from https://www.algolia.com/account/api-keys/restricted under Settings > Team and Access > API Keys > Restricted API Keys > Create API Key; grant search and addObject ACLs. Blank prevents requests.
+        description: Secret Algolia API key from https://www.algolia.com/account/api-keys/restricted under Settings > Team and Access > API Keys > Restricted API Keys > Create API Key; grant search, addObject, deleteObject, and listIndexes ACLs for the operations you use. Blank prevents requests.
     guide:
       startURL: https://www.algolia.com/account/api-keys/all
       steps:
         - Sign in at https://www.algolia.com and open Settings > Team and Access > API Keys at https://www.algolia.com/account/api-keys/all; copy the Application ID string.
-        - Open Restricted API Keys at https://www.algolia.com/account/api-keys/restricted, choose Create API Key, grant search and addObject ACLs for the intended index, and copy the secret key string.
+        - Open Restricted API Keys at https://www.algolia.com/account/api-keys/restricted, choose Create API Key, grant search, addObject, deleteObject, and listIndexes ACLs for the intended operations and indices, and copy the secret key string.
         - Enter application_id and secret api_key; leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: getObject
+      goName: GetObject
+      inputType: ObjectInput
+      outputType: ObjectRecord
+      kind: query
+      description: Retrieve one record by its stable object ID.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Algolia returned the record.}
+        - {id: missing, goName: Missing, description: No record has the specified object ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Algolia rejected the lookup or key., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Algolia returned malformed or oversized record data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: foundDefaultObject
+          branch: found
+          default: true
+          description: Meridian notebook record exists.
+          output: {objectID: "product-1", name: "Meridian notebook"}
+    - name: listIndices
+      goName: ListIndices
+      inputType: ListIndicesInput
+      outputType: IndexPage
+      kind: query
+      description: List one bounded page of indices in the Algolia application.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Algolia returned an index page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Algolia rejected the listing or key., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Algolia returned malformed or oversized index data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: listedDefaultIndices
+          branch: listed
+          default: true
+          description: Product index has example records.
+          output: {items: [{name: products, entries: 42}], nbPages: 1}
     - name: search
       goName: Search
       inputType: SearchInput
@@ -99,3 +140,43 @@ spec:
           description: Meridian notebook record is queued for indexing.
           default: true
           output: {objectID: "product-1", taskID: 1514562690001}
+    - name: partialUpdateObject
+      goName: PartialUpdateObject
+      inputType: PartialUpdateObjectInput
+      outputType: SavedObject
+      kind: mutation
+      description: Set selected string attributes of an existing record without replacing other attributes.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: Algolia queued the attribute update.}
+        - {id: providerRejected, goName: ProviderRejected, description: Algolia rejected the update or key., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Algolia returned malformed or oversized task data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: updatedDefaultObject
+          branch: updated
+          default: true
+          description: One record update is queued.
+          output: {objectID: "product-1", taskID: 1514562690002}
+    - name: deleteObject
+      goName: DeleteObject
+      inputType: ObjectInput
+      outputType: SavedObject
+      kind: mutation
+      description: Delete one record by stable object ID; repeated deletion has the same final state.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: Algolia queued the deletion task.}
+        - {id: providerRejected, goName: ProviderRejected, description: Algolia rejected the deletion or key., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Algolia returned malformed or oversized task data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: deletedDefaultObject
+          branch: deleted
+          default: true
+          description: One record deletion is queued.
+          output: {objectID: "product-1", taskID: 1514562690003}

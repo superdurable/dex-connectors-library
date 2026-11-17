@@ -16,8 +16,96 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createEmailIdentity/createdIdentity/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.CreatedEmailIdentity](`{"name":"example.com","identityType":"DOMAIN","verifiedForSending":false,"dkimTokens":["token-a","token-b","token-c"]}`)
+			return err
+		}},
 		{name: "getEmailIdentity/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[ses.EmailIdentityDetails](`{"name":"example.com","verificationStatus":"SUCCESS"}`)
+			return err
+		}},
+		{name: "listEmailIdentities/identityPage/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.EmailIdentityPage](`{"identities":[{"name":"example.com","verificationStatus":"SUCCESS","identityType":"DOMAIN","sendingEnabled":true}],"nextToken":"page-2"}`)
+			return err
+		}},
+		{name: "listEmailIdentities/identityPage/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.EmailIdentityPage](`{"identities":[{"name":"example.net","verificationStatus":"SUCCESS","identityType":"DOMAIN","sendingEnabled":true}],"nextToken":"page-3"}`)
+			return err
+		}},
+		{name: "listEmailIdentities/identityPage/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.EmailIdentityPage](`{"identities":[{"name":"example.org","verificationStatus":"SUCCESS","identityType":"DOMAIN","sendingEnabled":true}]}`)
+			return err
+		}},
+		{name: "deleteEmailIdentity/deletedIdentity/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.DeletedEmailIdentity](`{"name":"example.com"}`)
+			return err
+		}},
+		{name: "sendEmail/sentEmail/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.SentEmail](`{"messageId":"example-message-id"}`)
+			return err
+		}},
+		{name: "createEmailTemplate/createdTemplate/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.EmailTemplate](`{"name":"weekly-report","content":{"subject":"Weekly report","text":"Hello {{name}}"}}`)
+			return err
+		}},
+		{name: "getEmailTemplate/foundTemplate/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.EmailTemplate](`{"name":"weekly-report","content":{"subject":"Weekly report","text":"Hello {{name}}"}}`)
+			return err
+		}},
+		{name: "listEmailTemplates/templatePages/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.EmailTemplatePage](`{"templates":[{"name":"weekly-report","createdAt":"2026-10-25T09:00:00Z"}],"nextToken":"template-page-2"}`)
+			return err
+		}},
+		{name: "listEmailTemplates/templatePages/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.EmailTemplatePage](`{"templates":[{"name":"monthly-report","createdAt":"2026-10-24T09:00:00Z"}],"nextToken":"template-page-3"}`)
+			return err
+		}},
+		{name: "listEmailTemplates/templatePages/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.EmailTemplatePage](`{"templates":[{"name":"welcome","createdAt":"2026-10-23T09:00:00Z"}]}`)
+			return err
+		}},
+		{name: "updateEmailTemplate/updatedTemplate/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.EmailTemplate](`{"name":"weekly-report","content":{"subject":"Updated report","text":"Hello {{name}}"}}`)
+			return err
+		}},
+		{name: "deleteEmailTemplate/deletedTemplate/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.DeletedEmailTemplate](`{"name":"weekly-report"}`)
+			return err
+		}},
+		{name: "sendTemplatedEmail/sentTemplatedEmail/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.SentEmail](`{"messageId":"templated-example-message-id"}`)
+			return err
+		}},
+		{name: "createCustomVerificationEmailTemplate/createdCustomVerification/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.CustomVerificationEmailTemplate](`{"name":"verify-customer","fromEmailAddress":"sender@example.com","subject":"Verify your address","content":"Open the link to verify.","successRedirectionURL":"https://example.com/success","failureRedirectionURL":"https://example.com/failure"}`)
+			return err
+		}},
+		{name: "getCustomVerificationEmailTemplate/foundCustomVerification/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.CustomVerificationEmailTemplate](`{"name":"verify-customer","fromEmailAddress":"sender@example.com","subject":"Verify your address","content":"Open the link to verify.","successRedirectionURL":"https://example.com/success","failureRedirectionURL":"https://example.com/failure"}`)
+			return err
+		}},
+		{name: "listCustomVerificationEmailTemplates/customVerificationPages/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.CustomVerificationEmailTemplatePage](`{"templates":[{"name":"verify-customer","fromEmailAddress":"sender@example.com","subject":"Verify your address","successRedirectionURL":"https://example.com/success","failureRedirectionURL":"https://example.com/failure"}],"nextToken":"custom-page-2"}`)
+			return err
+		}},
+		{name: "listCustomVerificationEmailTemplates/customVerificationPages/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.CustomVerificationEmailTemplatePage](`{"templates":[{"name":"verify-partner","fromEmailAddress":"sender@example.com","subject":"Verify your partner address","successRedirectionURL":"https://example.com/success","failureRedirectionURL":"https://example.com/failure"}],"nextToken":"custom-page-3"}`)
+			return err
+		}},
+		{name: "listCustomVerificationEmailTemplates/customVerificationPages/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.CustomVerificationEmailTemplatePage](`{"templates":[{"name":"verify-member","fromEmailAddress":"sender@example.com","subject":"Verify your member address","successRedirectionURL":"https://example.com/success","failureRedirectionURL":"https://example.com/failure"}]}`)
+			return err
+		}},
+		{name: "updateCustomVerificationEmailTemplate/updatedCustomVerification/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.CustomVerificationEmailTemplate](`{"name":"verify-customer","fromEmailAddress":"sender@example.com","subject":"Confirm your address","content":"Open the link to confirm.","successRedirectionURL":"https://example.com/success","failureRedirectionURL":"https://example.com/failure"}`)
+			return err
+		}},
+		{name: "deleteCustomVerificationEmailTemplate/deletedCustomVerification/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.DeletedEmailTemplate](`{"name":"verify-customer"}`)
+			return err
+		}},
+		{name: "sendCustomVerificationEmail/sentCustomVerification/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.SentEmail](`{"messageId":"custom-verification-message-id"}`)
 			return err
 		}},
 	}
@@ -30,7 +118,55 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateEmailIdentity().Definition().Operation.OperationID != "createEmailIdentity" {
+		t.Errorf("createEmailIdentity mock has another definition")
+	}
 	if mock.GetEmailIdentity().Definition().Operation.OperationID != "getEmailIdentity" {
 		t.Errorf("getEmailIdentity mock has another definition")
+	}
+	if mock.ListEmailIdentities().Definition().Operation.OperationID != "listEmailIdentities" {
+		t.Errorf("listEmailIdentities mock has another definition")
+	}
+	if mock.DeleteEmailIdentity().Definition().Operation.OperationID != "deleteEmailIdentity" {
+		t.Errorf("deleteEmailIdentity mock has another definition")
+	}
+	if mock.SendEmail().Definition().Operation.OperationID != "sendEmail" {
+		t.Errorf("sendEmail mock has another definition")
+	}
+	if mock.CreateEmailTemplate().Definition().Operation.OperationID != "createEmailTemplate" {
+		t.Errorf("createEmailTemplate mock has another definition")
+	}
+	if mock.GetEmailTemplate().Definition().Operation.OperationID != "getEmailTemplate" {
+		t.Errorf("getEmailTemplate mock has another definition")
+	}
+	if mock.ListEmailTemplates().Definition().Operation.OperationID != "listEmailTemplates" {
+		t.Errorf("listEmailTemplates mock has another definition")
+	}
+	if mock.UpdateEmailTemplate().Definition().Operation.OperationID != "updateEmailTemplate" {
+		t.Errorf("updateEmailTemplate mock has another definition")
+	}
+	if mock.DeleteEmailTemplate().Definition().Operation.OperationID != "deleteEmailTemplate" {
+		t.Errorf("deleteEmailTemplate mock has another definition")
+	}
+	if mock.SendTemplatedEmail().Definition().Operation.OperationID != "sendTemplatedEmail" {
+		t.Errorf("sendTemplatedEmail mock has another definition")
+	}
+	if mock.CreateCustomVerificationEmailTemplate().Definition().Operation.OperationID != "createCustomVerificationEmailTemplate" {
+		t.Errorf("createCustomVerificationEmailTemplate mock has another definition")
+	}
+	if mock.GetCustomVerificationEmailTemplate().Definition().Operation.OperationID != "getCustomVerificationEmailTemplate" {
+		t.Errorf("getCustomVerificationEmailTemplate mock has another definition")
+	}
+	if mock.ListCustomVerificationEmailTemplates().Definition().Operation.OperationID != "listCustomVerificationEmailTemplates" {
+		t.Errorf("listCustomVerificationEmailTemplates mock has another definition")
+	}
+	if mock.UpdateCustomVerificationEmailTemplate().Definition().Operation.OperationID != "updateCustomVerificationEmailTemplate" {
+		t.Errorf("updateCustomVerificationEmailTemplate mock has another definition")
+	}
+	if mock.DeleteCustomVerificationEmailTemplate().Definition().Operation.OperationID != "deleteCustomVerificationEmailTemplate" {
+		t.Errorf("deleteCustomVerificationEmailTemplate mock has another definition")
+	}
+	if mock.SendCustomVerificationEmail().Definition().Operation.OperationID != "sendCustomVerificationEmail" {
+		t.Errorf("sendCustomVerificationEmail mock has another definition")
 	}
 }

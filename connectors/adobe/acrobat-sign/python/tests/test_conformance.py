@@ -14,7 +14,13 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/adobe/acrobat-sign/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(
+        ROOT / "conformance/connectors/adobe/acrobat-sign/scenarios.json"
+    )
+    if scenario["operation"] == "getAgreement"
+]
 CONNECTION = sdk.ConnectionRef("adobe-acrobat-sign", "adobe-acrobat-sign")
 TEST_CREDENTIALS = acrobat_sign.Credentials(sdk.SecretString("sample-acrobat-sign-integration-key"))
 ADAPTER = conformance.PythonOperationAdapter(

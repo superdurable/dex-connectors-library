@@ -1,6 +1,6 @@
 # Algolia index search example
 
-This runnable Flow searches an Algolia index from Dex Web Start Flow. The `searched` branch completes with a bounded hit page. Optional branches are unwired and fail the Flow. `ConnectionName` is statically `algolia`. Dex Web summary and display views show the completed provider outcome.
+This runnable Flow searches an Algolia index from Dex Web Start Flow, or retrieves a record when `objectID` is supplied. The `searched` branch completes with a bounded hit page; `found` completes with the record identity and optional name. Optional branches are unwired and fail the Flow. `ConnectionName` is statically `algolia`. Dex Web summary and display views show the completed provider outcome.
 
 ## Generate strict FDG 2.0
 
@@ -22,11 +22,11 @@ mkdir -p /tmp/algolia-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/algolia/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/algolia/go \
-  --version v0.3.0 --tag connectors/algolia/go/v0.3.0 \
+  --version v0.4.0 --tag connectors/algolia/go/v0.4.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/algolia-release/connector-release.json \
   --digest-output /tmp/algolia-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/algolia/go/build" --connector-release-override algolia=/tmp/algolia-release
+dexcli dev -open=false --flow-rendering-dir "$PWD/connectors/algolia/go/build" --connector-release-override algolia=/tmp/algolia-release
 ```
 
 Set the project environment described by [`projectconfig`](../../../../../sdkgo/projectconfig/README.md), then start the Worker:
@@ -42,7 +42,7 @@ Configure `algolia / algolia` in Dex Web Connections using the Application ID an
 {"indexName":"products","query":"notebook"}
 ```
 
-A blank query matches all records. The example requests up to ten hits.
+A blank query matches all records. The example requests up to ten hits. To retrieve one record instead, supply its `objectID` with the same `indexName`, as the mock-backed integration test demonstrates.
 
 ## Tests
 

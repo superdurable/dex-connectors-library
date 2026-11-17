@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: amazon-s3
   displayName: Amazon S3
-  description: List, inspect, and read bounded text from objects in Amazon S3 or an S3-compatible store such as Cloudflare R2 or MinIO, and store objects with retry-safe overwrite or create-only writes.
+  description: Manage buckets and bounded objects in Amazon S3 or an S3-compatible store such as Cloudflare R2 or MinIO.
   company: Amazon
   categories: [databases-storage, files-documents]
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: amazon-s3
   languages:
@@ -56,7 +56,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: "Maximum complete listObjects response in bytes, as a positive integer. A larger page selects invalidResponse; lower maxKeys before raising this, because a page is stored in Dex Flow state. Blank uses the displayed default."
+        description: "Maximum complete listObjects/listFolders/deleteFolder page or getObjectBytes payload in bytes, as a positive integer. A larger list page selects invalidResponse; a larger binary object selects tooLarge. Lower maxKeys or use smaller objects before raising this, because content is stored in Dex Flow state. Blank uses the displayed default."
         required: false
         default: 4194304
       - name: maxTextBytes
@@ -93,13 +93,162 @@ spec:
     guide:
       startURL: https://console.aws.amazon.com/iam
       steps:
-        - "Amazon S3: open IAM > Users > Create user and create a user only for Dex; do not use the account's root user. On Permissions, attach an inline policy that allows s3:ListBucket on arn:aws:s3:::your-bucket and s3:GetObject and s3:PutObject on arn:aws:s3:::your-bucket/*, so the key reaches nothing else. putObject's create-only mode also needs s3:GetObject to recognize its own earlier attempt, and headObject reads a missing key as notFound only with s3:ListBucket."
+        - "Amazon S3: open IAM > Users > Create user and create a user only for Dex; do not use the account's root user. On Permissions, attach an inline policy that allows s3:ListBucket on arn:aws:s3:::your-bucket and s3:GetObject, s3:PutObject, and s3:DeleteObject on arn:aws:s3:::your-bucket/*, so the key reaches nothing else. putObject's create-only mode also needs s3:GetObject to recognize its own earlier attempt, and headObject reads a missing key as notFound only with s3:ListBucket."
         - "Open the user > Security credentials > Access keys > Create access key, choose Other > Next, then Create access key. On the Retrieve access keys page choose Show, paste the Access key into access_key_id and the Secret access key into secret_access_key; AWS never shows the secret again. Leave session_token blank for these long-term keys."
         - "Set region to the bucket's AWS Region from https://console.aws.amazon.com/s3/buckets and leave endpoint blank. Optionally set defaultBucket so operations can leave bucket blank."
+        - "For listBuckets, optionally grant s3:ListAllMyBuckets on arn:aws:s3:::*. For createBucket and deleteBucket, optionally grant s3:CreateBucket and s3:DeleteBucket on the intended bucket ARNs; deletion requires an empty bucket. These grants are additional to the report-archive example's object permissions. Review the globally unique bucket name before creation."
+        - "For copyObject, grant s3:GetObject on the source object ARN and s3:PutObject on the destination object ARN. Its contentType and metadata replace source metadata; sourceETag may pin the source version. getObjectBytes needs s3:GetObject and keeps at most maxResponseBytes in Flow state."
+        - "createFolder writes an empty object under a slash-ending prefix and needs s3:PutObject. listFolders needs s3:ListBucket. deleteFolder recursively removes every current key beneath the chosen prefix and needs both s3:ListBucket and s3:DeleteObject; use a narrowly scoped temporary prefix for the example Flow."
         - "Cloudflare R2: open https://dash.cloudflare.com > R2 object storage > Account Details > API Tokens > Manage, choose Create Account API token with Object Read & Write scoped to the bucket, and copy the Access Key ID and Secret Access Key shown once. Set endpoint to https://<ACCOUNT_ID>.r2.cloudflarestorage.com and region to auto."
         - "MinIO: create a user or service account with a policy limited to the bucket, then set endpoint to the server's API address, keep addressingStyle at auto so requests use path addressing, and set region to the server's Region, which a default server leaves at us-east-1."
         - "To rotate, create a second access key, save it here, run a Flow, then open Actions > Deactivate and Actions > Delete on the old key. This release does not use IAM roles, instance profiles, or SSO; temporary credentials pasted with session_token stop working when they expire."
   operations:
+    - name: listBuckets
+      goName: ListBuckets
+      inputType: ListBucketsInput
+      outputType: ListBucketsOutput
+      kind: query
+      description: List one bounded page of buckets owned by the signing account.
+      idempotency: none
+      authorization: required
+      pagination: {inputField: continuationToken, nextField: nextContinuationToken}
+      branches:
+        - {id: listed, goName: Listed, description: S3 returned a page of buckets.}
+        - {id: providerRejected, goName: ProviderRejected, description: S3 conclusively rejected the bucket list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: S3 returned an invalid or oversized bucket list., optional: true}
+        - {id: defect, goName: Defect, description: Local input or configuration is invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: ownedBuckets
+          branch: listed
+          default: true
+          description: The AWS account owns several report and archive buckets.
+          pages:
+            - {buckets: [{name: acme-reports, creationDate: "2026-10-25T09:00:00Z", region: eu-west-1}], nextContinuationToken: bucket-page-2}
+            - {buckets: [{name: acme-archive, creationDate: "2026-10-24T09:00:00Z", region: eu-west-1}], nextContinuationToken: bucket-page-3}
+            - {buckets: [{name: acme-backups, creationDate: "2026-10-23T09:00:00Z", region: eu-west-1}]}
+    - name: createBucket
+      goName: CreateBucket
+      inputType: CreateBucketInput
+      outputType: CreatedBucket
+      kind: mutation
+      description: Create a general purpose bucket in the connection Region, with bounded sends and read-back after an unknown outcome.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: S3 accepted creation or a previous attempt was confirmed.}
+        - {id: providerRejected, goName: ProviderRejected, description: S3 refused the bucket name or permission., optional: true}
+        - {id: defect, goName: Defect, description: The bucket name or connection is invalid., optional: true}
+      execution:
+        repeatOnUnknown: limited
+        maxSends: 3
+        executeMethodTimeout: 30s
+        durability: sync
+        dispatchFence: true
+      mocks:
+        - name: createdBucket
+          branch: created
+          default: true
+          description: A new reports bucket was accepted.
+          output: {bucket: acme-reports, region: eu-west-1}
+    - name: deleteBucket
+      goName: DeleteBucket
+      inputType: DeleteBucketInput
+      outputType: DeletedBucket
+      kind: mutation
+      description: Delete an empty bucket; an already absent bucket is considered deleted.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: The empty bucket is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: "S3 refused deletion, including when the bucket is not empty.", optional: true}
+        - {id: defect, goName: Defect, description: The bucket name or connection is invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: deletedBucket
+          branch: deleted
+          default: true
+          description: An empty reports bucket was removed.
+          output: {bucket: acme-reports}
+    - name: createFolder
+      goName: CreateFolder
+      inputType: CreateFolderInput
+      outputType: CreatedFolder
+      kind: mutation
+      description: Create or replace a zero-byte folder marker at a key ending in a slash.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: The folder marker was stored.}
+        - {id: providerRejected, goName: ProviderRejected, description: S3 conclusively refused the marker write., optional: true}
+        - {id: defect, goName: Defect, description: The bucket or folder prefix is invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: createdFolder
+          branch: created
+          default: true
+          description: A reports folder marker was stored.
+          output: {bucket: acme-reports, prefix: reports/2026/}
+    - name: deleteFolder
+      goName: DeleteFolder
+      inputType: DeleteFolderInput
+      outputType: DeletedFolder
+      kind: mutation
+      description: Repeatedly list and delete all current objects under a folder prefix in bounded pages.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: No current object remains under the prefix.}
+        - {id: providerRejected, goName: ProviderRejected, description: S3 conclusively refused a list or delete., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: S3 returned an invalid or oversized list page., optional: true}
+        - {id: defect, goName: Defect, description: The bucket or folder prefix is invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: deletedFolder
+          branch: deleted
+          default: true
+          description: All current objects under reports/2026/ are absent.
+          output: {bucket: acme-reports, prefix: reports/2026/}
+    - name: listFolders
+      goName: ListFolders
+      inputType: ListFoldersInput
+      outputType: ListFoldersOutput
+      kind: query
+      description: List one bounded page of immediate child folder prefixes beneath a parent prefix.
+      idempotency: none
+      authorization: required
+      pagination: {inputField: continuationToken, nextField: nextContinuationToken}
+      branches:
+        - {id: listed, goName: Listed, description: One or more child folders or another page exists.}
+        - {id: notFound, goName: NotFound, description: No child folder matched and no page remains., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: S3 conclusively refused the listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: S3 returned an invalid or oversized page., optional: true}
+        - {id: defect, goName: Defect, description: The bucket or prefix is invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: childFolders
+          branch: listed
+          default: true
+          description: Three pages of report child folders are available.
+          pages:
+            - {bucket: acme-reports, parentPrefix: reports/, folders: [reports/2024/], isTruncated: true, nextContinuationToken: folders-page-2}
+            - {bucket: acme-reports, parentPrefix: reports/, folders: [reports/2025/], isTruncated: true, nextContinuationToken: folders-page-3}
+            - {bucket: acme-reports, parentPrefix: reports/, folders: [reports/2026/], isTruncated: false}
     - name: listObjects
       goName: ListObjects
       inputType: ListObjectsInput
@@ -212,6 +361,36 @@ spec:
           branch: providerRejected
           description: "Reading reports/ops-weekly.md without s3:GetObject permission is denied."
           failure: {kind: AUTHORIZATION, message: S3 denied the object read.}
+    - name: getObjectBytes
+      goName: GetObjectBytes
+      inputType: GetObjectBytesInput
+      outputType: ObjectBytes
+      kind: query
+      description: Read one complete bounded object as bytes, including non-text media types, storing base64-encoded bytes in Flow state.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: read, goName: Read, description: The complete object fits maxResponseBytes.}
+        - {id: notFound, goName: NotFound, description: The object does not exist., optional: true}
+        - {id: tooLarge, goName: TooLarge, description: The object exceeds maxResponseBytes., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: S3 returned incomplete or secret-bearing bytes., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: S3 conclusively refused the read., optional: true}
+        - {id: defect, goName: Defect, description: The object location or connection is invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: reportBytes
+          branch: read
+          default: true
+          description: A bounded Markdown report is returned as bytes.
+          output: {bucket: acme-reports, key: reports/ops-weekly.md, contentType: text/markdown, sizeBytes: 6, bytes: d2Vla2x5}
+        - name: bytesTooLarge
+          branch: tooLarge
+          description: An object beyond the response limit is refused.
+          output: {bucket: acme-reports, key: reports/large.bin, sizeBytes: 10485760}
+          failure: {kind: RESPONSE_TOO_LARGE, message: The object exceeds maxResponseBytes.}
     - name: putObject
       goName: PutObject
       inputType: PutObjectInput
@@ -243,3 +422,57 @@ spec:
           branch: providerRejected
           description: "Storing reports/ops-weekly.md without s3:PutObject permission is denied."
           failure: {kind: AUTHORIZATION, message: S3 denied the object write.}
+    - name: copyObject
+      goName: CopyObject
+      inputType: CopyObjectInput
+      outputType: CopiedObject
+      kind: mutation
+      description: Copy an object to a destination key with bounded sends, replacement metadata, and read-back by a Dex marker after an unknown result.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: copied, goName: Copied, description: S3 accepted the copy or read-back confirmed an earlier send.}
+        - {id: providerRejected, goName: ProviderRejected, description: S3 conclusively refused the source or destination., optional: true}
+        - {id: defect, goName: Defect, description: The object locations or copy metadata are invalid., optional: true}
+      execution:
+        repeatOnUnknown: limited
+        maxSends: 3
+        executeMethodTimeout: 30s
+        durability: sync
+        dispatchFence: true
+      mocks:
+        - name: copiedReport
+          branch: copied
+          default: true
+          description: A report was copied into the archive prefix.
+          output: {sourceBucket: acme-reports, sourceKey: reports/ops-weekly.md, destinationBucket: acme-archive, destinationKey: reports/ops-weekly.md, eTag: '"copied-report"'}
+        - name: copyDenied
+          branch: providerRejected
+          description: Copying without source read or destination write permission was denied.
+          failure: {kind: AUTHORIZATION, message: S3 denied the object copy.}
+    - name: deleteObject
+      goName: DeleteObject
+      inputType: DeleteObjectInput
+      outputType: DeletedObject
+      kind: mutation
+      description: Delete the current object at a key; repeating the same deletion leaves the key absent.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: S3 accepted the deletion.}
+        - {id: providerRejected, goName: ProviderRejected, description: S3 conclusively rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: The object key or connection is invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: deletedReport
+          branch: deleted
+          description: Deleting a report removes its current object.
+          default: true
+          output: {bucket: acme-reports, key: reports/ops-weekly.md}
+        - name: deleteDenied
+          branch: providerRejected
+          description: Deleting an object without s3:DeleteObject permission is denied.
+          failure: {kind: AUTHORIZATION, message: S3 denied the object deletion.}

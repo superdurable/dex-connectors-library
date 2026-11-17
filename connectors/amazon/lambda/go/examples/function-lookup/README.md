@@ -1,6 +1,6 @@
 # Go function lookup Flow
 
-This runnable Flow calls `getFunction` through the static `amazon-lambda` connection. It stores the selected `FunctionDetails` in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+This runnable Worker registers `AmazonLambdaFunctionLookup` for `getFunction` and `AmazonLambdaUpdateFunctionDescription` for `updateFunctionDescription` through the static `amazon-lambda` connection. Each Flow stores its `FunctionDetails` in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -8,6 +8,7 @@ From `connectors/amazon/lambda/go`, run:
 
 ```bash
 dexcli visualize ./examples/function-lookup/flow/workflow.go --schema-version 2.0 --json --out /tmp/amazon-lambda-function-lookup-fdg
+dexcli visualize ./examples/function-lookup/flow/update_function_description_workflow.go --schema-version 2.0 --json --out /tmp/amazon-lambda-update-description-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.
@@ -22,6 +23,6 @@ With the project's `DEX_PROJECT_*` environment set, run from `connectors/amazon/
 GOWORK=off go run ./examples/function-lookup
 ```
 
-Start `AmazonLambdaFunctionLookup` with a unique Flow ID and input `{"functionName":"example-function"}`. The Worker connects to Dex Server without an inbound listener.
+Start `AmazonLambdaFunctionLookup` with a unique Flow ID and input `{"functionName":"example-function"}`. To update a function, start `AmazonLambdaUpdateFunctionDescription` with a unique Flow ID and input `{"functionName":"example-function","description":"Example worker"}`. The Worker connects to Dex Server without an inbound listener.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`.

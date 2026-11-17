@@ -68,7 +68,7 @@ func newReportArchiveHarness(t *testing.T, providerClient *s3.Client) (*Flow, *r
 func newReportArchiveHarnessWithConnection(t *testing.T, connection s3.Connection) (*Flow, *reportArchiveHarness) {
 	t.Helper()
 	flow := NewFlow(connection)
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, NewBucketInventoryFlow(connection), NewObjectCopyFlow(connection), NewFolderLifecycleFlow(connection)})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)

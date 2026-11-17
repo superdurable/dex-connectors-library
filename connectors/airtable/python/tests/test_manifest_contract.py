@@ -104,6 +104,7 @@ def test_manifest_operations_branches_defaults_and_units() -> None:
 
 def test_mocks_match_manifest() -> None:
     manifest = yaml.safe_load((CONNECTOR_DIRECTORY / "connector.yaml").read_text())
+    python_operations = set(manifest["spec"]["languages"]["python"]["operations"])
     cases: dict[tuple[str, str], Case[Any]] = {
         ("listRecords", "standardRefundPolicy"): list_records_standard_refund_policy(),
         ("listRecords", "expiredPolicyOffset"): list_records_expired_policy_offset(),
@@ -120,6 +121,7 @@ def test_mocks_match_manifest() -> None:
     declared = {
         (operation["name"], mock["name"]): mock
         for operation in manifest["spec"]["operations"]
+        if operation["name"] in python_operations
         for mock in operation["mocks"]
     }
     assert set(declared) == set(cases)

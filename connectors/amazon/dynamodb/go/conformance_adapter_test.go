@@ -19,5 +19,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	credentials := Credentials{AccessKeyID: sdkgo.NewSecretString("AKIADYNAMOCONNECTOR"), SecretAccessKey: sdkgo.NewSecretString("dynamodb-test-secret"), SessionToken: sdkgo.NewSecretString("")}
 	client, err := New(Config{Endpoint: endpoint, Region: "eu-west-1"}, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport), signingTimeOption{now: func() time.Time { return time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC) }})
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{"getItem": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetItem(), reference)}}
+	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+		"getItem":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetItem(), reference),
+		"putItem":    newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.PutItem(), reference, scenario.CallID),
+		"updateItem": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateItem(), reference, scenario.CallID),
+		"deleteItem": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteItem(), reference, scenario.CallID),
+		"scanItems":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ScanItems(), reference),
+	}}
 }

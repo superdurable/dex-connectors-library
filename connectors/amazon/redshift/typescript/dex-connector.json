@@ -1,6 +1,6 @@
 {
   "connectorId": "amazon-redshift",
-  "releaseTag": "connectors/amazon/redshift/go/v0.1.0",
+  "releaseTag": "connectors/amazon/redshift/go/v0.2.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-amazon-redshift",

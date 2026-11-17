@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: amazon-lambda
   displayName: Amazon Lambda
-  description: Read Lambda function configuration with AWS Signature Version 4.
+  description: List, inspect, update, and delete Lambda functions with AWS Signature Version 4.
   company: Amazon
   categories: [developer-tools]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: amazon-lambda
   languages:
@@ -38,12 +38,12 @@ spec:
         goName: Timeout
         type: duration
         default: 15s
-        description: Maximum duration of one GetFunction request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network.
+        description: Maximum duration of one Lambda API request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network.
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
         default: 2097152
-        description: Maximum complete function metadata response in bytes. Blank uses the displayed default; increase only for unusually large responses.
+        description: Maximum complete Lambda API response in bytes. Blank uses the displayed default; increase only for unusually large responses.
   auth:
     type: apiKey
     connectionKind: amazon-lambda-access-key
@@ -65,7 +65,7 @@ spec:
     guide:
       startURL: https://console.aws.amazon.com/iam
       steps:
-        - Open IAM > Users > Create user for Dex. Give it only lambda:GetFunction on the function ARN; do not use the root user. A function's ARN is visible at https://console.aws.amazon.com/lambda > Functions > selected function > Function overview.
+        - Open IAM > Users > Create user for Dex. Grant only the Lambda actions your Flow uses (lambda:GetFunction, lambda:ListFunctions, lambda:UpdateFunctionConfiguration, or lambda:DeleteFunction) on the intended resources; do not use the root user. A function ARN is visible at https://console.aws.amazon.com/lambda > Functions > selected function > Function overview. ListFunctions requires the account-wide resource scope.
         - Open the IAM user > Security credentials > Access keys > Create access key > Other. Copy the Access key ID to secret access_key_id and the one-time Secret access key Value to secret_access_key. Leave session_token blank for long-term keys; include it for temporary ASIA keys.
         - Open https://console.aws.amazon.com/lambda > Functions, choose the Region in the console selector, and set region to that Region code. Leave endpoint blank for AWS. Supply the function name, 1 to 64 letters, digits, underscores, or hyphens, to getFunction; blank is invalid.
         - Rotate the key under IAM > Users > selected user > Security credentials > Access keys by creating a second key, updating this connection, verifying a Flow, then deactivating and deleting the old key.
@@ -91,3 +91,63 @@ spec:
           default: true
           description: One example function exists.
           output: {name: example-function, arn: 'arn:aws:lambda:us-east-1:123456789012:function:example-function'}
+    - name: listFunctions
+      goName: ListFunctions
+      inputType: ListFunctionsInput
+      outputType: FunctionPage
+      kind: query
+      description: List one page of function names and ARNs in the configured Region.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: AWS returned a page of functions.}
+        - {id: providerRejected, goName: ProviderRejected, description: AWS conclusively rejected the request or credentials., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: AWS returned malformed or oversized function metadata., optional: true}
+        - {id: defect, goName: Defect, description: The page input or connection settings are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example function exists.
+          output: {functions: [{name: example-function, arn: 'arn:aws:lambda:us-east-1:123456789012:function:example-function'}], nextMarker: ''}
+    - name: updateFunctionDescription
+      goName: UpdateFunctionDescription
+      inputType: UpdateFunctionDescriptionInput
+      outputType: FunctionDetails
+      kind: mutation
+      description: Set a function's description to an absolute value.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: AWS accepted the description update.}
+        - {id: missing, goName: Missing, description: The function does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: AWS conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: AWS returned malformed or oversized metadata., optional: true}
+        - {id: defect, goName: Defect, description: The update input or connection settings are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: The example function description was accepted.
+          output: {name: example-function, arn: 'arn:aws:lambda:us-east-1:123456789012:function:example-function'}
+    - name: deleteFunction
+      goName: DeleteFunction
+      inputType: DeleteFunctionInput
+      outputType: FunctionWriteResult
+      kind: mutation
+      description: Delete a function and all its versions and aliases by name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The function is absent after deletion.}
+        - {id: providerRejected, goName: ProviderRejected, description: AWS conclusively rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: The function name or connection settings are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: The example function is absent.
+          output: {applied: true}

@@ -56,6 +56,8 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateRecord() sdkgo.Mutation[CreateRecordInput, Record]
+	DeleteRecord() sdkgo.Mutation[DeleteRecordInput, DeletedRecord]
 	ListRecords() sdkgo.Query[ListRecordsInput, RecordPage]
 	GetRecord() sdkgo.Query[GetRecordInput, Record]
 	UpsertRecords() sdkgo.Mutation[UpsertRecordsInput, UpsertedRecords]
@@ -64,6 +66,12 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateRecord() sdkgo.Mutation[CreateRecordInput, Record] {
+	return operations.client.CreateRecord()
+}
+func (operations clientOperations) DeleteRecord() sdkgo.Mutation[DeleteRecordInput, DeletedRecord] {
+	return operations.client.DeleteRecord()
+}
 func (operations clientOperations) ListRecords() sdkgo.Query[ListRecordsInput, RecordPage] {
 	return operations.client.ListRecords()
 }
@@ -264,6 +272,164 @@ func NewRecordChangedTrigger(config RecordChangedTriggerConfig) sdkgo.TriggerRun
 	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[RecordChangedEvent]{
 		Definition: RecordChangedTriggerDefinition, Binding: binding,
 		Source: config.Connection.client.recordChangedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
+}
+
+const CreateRecordBranchCreated sdkgo.BranchID = "created"
+const CreateRecordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateRecordBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateRecordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateRecordDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createRecord"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateRecordBranchCreated, Description: "Airtable created and returned the record."},
+		{ID: CreateRecordBranchProviderRejected, Description: "Airtable conclusively rejected the create request.", Optional: true},
+		{ID: CreateRecordBranchUncertain, Description: "A previous create may have succeeded but cannot be confirmed after the send cap.", Optional: true},
+		{ID: CreateRecordBranchDefect, Description: "Local input or connector configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateRecordResult = sdkgo.MutationResult[Record]
+
+type CreateRecordStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                     `connector:"connectorId=airtable"`
+	operationID                       struct{}                                     `connector:"operationId=createRecord"`
+	StepType                          string                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                        `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI               `connector:"configurationUI"`
+	Connection                        Connection                                   `connector:"connection"`
+	ConnectionName                    string                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateRecordInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateRecordResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateRecordResult]             `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateRecordResult]             `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateRecordResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Record]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                             `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateRecordStep[IN any](config CreateRecordStepConfig[IN]) sdkgo.MutationStep[IN, CreateRecordInput, Record] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("airtable connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateRecordInput, Record]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.CreateRecord(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateRecordResult] {
+			branches := make([]sdkgo.BranchTarget[CreateRecordResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateRecordBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateRecordBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateRecordBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateRecordBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const DeleteRecordBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteRecordBranchAlreadyAbsent sdkgo.BranchID = "alreadyAbsent"
+const DeleteRecordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteRecordBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteRecordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteRecordDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteRecord"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteRecordBranchDeleted, Description: "Airtable deleted the record."},
+		{ID: DeleteRecordBranchAlreadyAbsent, Description: "The record was already absent.", Optional: true},
+		{ID: DeleteRecordBranchProviderRejected, Description: "Airtable conclusively rejected the delete request.", Optional: true},
+		{ID: DeleteRecordBranchInvalidResponse, Description: "Airtable returned an invalid delete response.", Optional: true},
+		{ID: DeleteRecordBranchDefect, Description: "Local input or connector configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteRecordResult = sdkgo.MutationResult[DeletedRecord]
+
+type DeleteRecordStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=airtable"`
+	operationID                       struct{}                                            `connector:"operationId=deleteRecord"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                      `connector:"configurationUI"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteRecordInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteRecordResult]                    `connector:"branch=deleted"`
+	AlreadyAbsent                     sdkgo.Target[DeleteRecordResult]                    `connector:"branch=alreadyAbsent,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteRecordResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteRecordResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteRecordResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteRecordStep[IN any](config DeleteRecordStepConfig[IN]) sdkgo.MutationStep[IN, DeleteRecordInput, DeletedRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("airtable connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteRecordInput, DeletedRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.DeleteRecord(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteRecordResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteRecordResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteRecordBranchDeleted))
+			}
+			if config.AlreadyAbsent.HasStep() {
+				branches = append(branches, config.AlreadyAbsent.BranchTarget(DeleteRecordBranchAlreadyAbsent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteRecordBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteRecordBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteRecordBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
 	})
 }
 

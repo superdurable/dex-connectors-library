@@ -8,7 +8,7 @@ import { AmazonRedshiftClient } from '../src/client.js';
 import { GetStatementResultInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/amazon/redshift/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/amazon/redshift/scenarios.json', import.meta.url)).filter(scenario => scenario.operation === 'getStatementResult');
 const connection = { provider: 'amazon-redshift', name: 'amazon-redshift' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeAmazonRedshift, ''));
 
