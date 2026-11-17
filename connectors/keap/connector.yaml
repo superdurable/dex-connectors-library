@@ -186,7 +186,7 @@ spec:
       description: Create a Keap company with a bounded resend budget.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
       branches:
         - {id: created, goName: Created, description: Keap created the company.}
         - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the create request., optional: true}
