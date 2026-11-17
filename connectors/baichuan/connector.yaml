@@ -11,6 +11,7 @@ spec:
   provider: baichuan
   languages:
     python: {version: v0.1.0, operations: [listKnowledgeBases], triggers: []}
+    typescript: {version: v0.1.0, operations: [listKnowledgeBases], triggers: []}
   codegen:
     go:
       package: baichuan

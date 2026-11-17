@@ -35,3 +35,5 @@ Dex Web connection are needed for live verification.
 ## Python
 
 The [Python package](python/README.md) implements `listKnowledgeBases` with a runnable Dex Flow and Go-recorded provider scenarios. Provider authorization with a live Baichuan API key remains unverified.
+
+The [TypeScript package and runnable Flow](typescript/README.md) replay the Go-recorded provider contract and exercise the Flow against a real local Dex Server.
