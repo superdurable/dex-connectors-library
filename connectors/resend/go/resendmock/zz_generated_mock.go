@@ -17,9 +17,14 @@ import (
 
 // Mock is a scripted resend connection. Script each operation through its accessor.
 type Mock struct {
-	connection resend.Connection
-	sendEmail  *connectormock.Mutation[resend.SendEmailInput, resend.SentEmail]
-	getEmail   *connectormock.Query[resend.GetEmailInput, resend.Email]
+	connection   resend.Connection
+	sendEmail    *connectormock.Mutation[resend.SendEmailInput, resend.SentEmail]
+	getEmail     *connectormock.Query[resend.GetEmailInput, resend.Email]
+	listEmails   *connectormock.Query[resend.ListEmailsInput, resend.EmailPage]
+	getContact   *connectormock.Query[resend.GetContactInput, resend.Contact]
+	listContacts *connectormock.Query[resend.ListContactsInput, resend.ContactPage]
+	getDomain    *connectormock.Query[resend.GetDomainInput, resend.Domain]
+	listDomains  *connectormock.Query[resend.ListDomainsInput, resend.DomainPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +32,21 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		sendEmail: connectormock.NewMutation[resend.SendEmailInput, resend.SentEmail](t, resend.SendEmailDefinition),
-		getEmail:  connectormock.NewQuery[resend.GetEmailInput, resend.Email](t, resend.GetEmailDefinition),
+		sendEmail:    connectormock.NewMutation[resend.SendEmailInput, resend.SentEmail](t, resend.SendEmailDefinition),
+		getEmail:     connectormock.NewQuery[resend.GetEmailInput, resend.Email](t, resend.GetEmailDefinition),
+		listEmails:   connectormock.NewQuery[resend.ListEmailsInput, resend.EmailPage](t, resend.ListEmailsDefinition),
+		getContact:   connectormock.NewQuery[resend.GetContactInput, resend.Contact](t, resend.GetContactDefinition),
+		listContacts: connectormock.NewQuery[resend.ListContactsInput, resend.ContactPage](t, resend.ListContactsDefinition),
+		getDomain:    connectormock.NewQuery[resend.GetDomainInput, resend.Domain](t, resend.GetDomainDefinition),
+		listDomains:  connectormock.NewQuery[resend.ListDomainsInput, resend.DomainPage](t, resend.ListDomainsDefinition),
 	}
 	mock.sendEmail.Default(SendEmailDefault())
 	mock.getEmail.Default(GetEmailDefault())
+	mock.listEmails.Default(ListEmailsDefault())
+	mock.getContact.Default(GetContactDefault())
+	mock.listContacts.Default(ListContactsDefault())
+	mock.getDomain.Default(GetDomainDefault())
+	mock.listDomains.Default(ListDomainsDefault())
 	connection, err := resend.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "resend", Name: connectionName})
 	if err != nil {
 		t.Fatalf("resend mock connection: %v", err)
@@ -53,6 +68,31 @@ func (mock *Mock) GetEmail() *connectormock.Query[resend.GetEmailInput, resend.E
 	return mock.getEmail
 }
 
+// ListEmails returns the listEmails script.
+func (mock *Mock) ListEmails() *connectormock.Query[resend.ListEmailsInput, resend.EmailPage] {
+	return mock.listEmails
+}
+
+// GetContact returns the getContact script.
+func (mock *Mock) GetContact() *connectormock.Query[resend.GetContactInput, resend.Contact] {
+	return mock.getContact
+}
+
+// ListContacts returns the listContacts script.
+func (mock *Mock) ListContacts() *connectormock.Query[resend.ListContactsInput, resend.ContactPage] {
+	return mock.listContacts
+}
+
+// GetDomain returns the getDomain script.
+func (mock *Mock) GetDomain() *connectormock.Query[resend.GetDomainInput, resend.Domain] {
+	return mock.getDomain
+}
+
+// ListDomains returns the listDomains script.
+func (mock *Mock) ListDomains() *connectormock.Query[resend.ListDomainsInput, resend.DomainPage] {
+	return mock.listDomains
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) SendEmail() sdkgo.Mutation[resend.SendEmailInput, resend.SentEmail] {
@@ -60,6 +100,21 @@ func (operations mockOperations) SendEmail() sdkgo.Mutation[resend.SendEmailInpu
 }
 func (operations mockOperations) GetEmail() sdkgo.Query[resend.GetEmailInput, resend.Email] {
 	return operations.mock.getEmail
+}
+func (operations mockOperations) ListEmails() sdkgo.Query[resend.ListEmailsInput, resend.EmailPage] {
+	return operations.mock.listEmails
+}
+func (operations mockOperations) GetContact() sdkgo.Query[resend.GetContactInput, resend.Contact] {
+	return operations.mock.getContact
+}
+func (operations mockOperations) ListContacts() sdkgo.Query[resend.ListContactsInput, resend.ContactPage] {
+	return operations.mock.listContacts
+}
+func (operations mockOperations) GetDomain() sdkgo.Query[resend.GetDomainInput, resend.Domain] {
+	return operations.mock.getDomain
+}
+func (operations mockOperations) ListDomains() sdkgo.Query[resend.ListDomainsInput, resend.DomainPage] {
+	return operations.mock.listDomains
 }
 
 // SendEmailSent selects the sent branch: Resend returned the requested result.
@@ -134,3 +189,187 @@ func GetEmailGetEmailDefault() connectormock.Case[resend.Email] {
 
 // GetEmailDefault is the manifest default, getEmailDefault, which New installs.
 func GetEmailDefault() connectormock.Case[resend.Email] { return GetEmailGetEmailDefault() }
+
+// ListEmailsListed selects the listed branch: Resend returned sent email references.
+func ListEmailsListed(value resend.EmailPage, failure *sdkgo.Failure) connectormock.Case[resend.EmailPage] {
+	return connectormock.Branch(resend.ListEmailsBranchListed, value, failure)
+}
+
+// ListEmailsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListEmailsProviderRejected(value resend.EmailPage, failure *sdkgo.Failure) connectormock.Case[resend.EmailPage] {
+	return connectormock.Branch(resend.ListEmailsBranchProviderRejected, value, failure)
+}
+
+// ListEmailsInvalidResponse selects the invalidResponse branch: Resend returned malformed or oversized JSON.
+func ListEmailsInvalidResponse(value resend.EmailPage, failure *sdkgo.Failure) connectormock.Case[resend.EmailPage] {
+	return connectormock.Branch(resend.ListEmailsBranchInvalidResponse, value, failure)
+}
+
+// ListEmailsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListEmailsDefect(value resend.EmailPage, failure *sdkgo.Failure) connectormock.Case[resend.EmailPage] {
+	return connectormock.Branch(resend.ListEmailsBranchDefect, value, failure)
+}
+
+// ListEmailsRetry asks Dex to retry the listEmails Step, after the delay when it is positive.
+func ListEmailsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.EmailPage] {
+	return connectormock.Retry[resend.EmailPage](failure, after)
+}
+
+// ListEmailsListEmailsDefault is the manifest mock listEmailsDefault: One sent email appears on the page.
+func ListEmailsListEmailsDefault() connectormock.Case[resend.EmailPage] {
+	value := connectormock.MustDecodeOutput[resend.EmailPage](`{"data":[{"id":"5f9f777d-04e0-482a-bb65-088bb5bd44a4","from":"Acme \u003chello@example.test\u003e","to":["reader@example.test"],"subject":"Welcome","created_at":"2026-10-26T12:00:00Z"}],"has_more":false}`)
+	return connectormock.Branch(resend.ListEmailsBranchListed, value, nil)
+}
+
+// ListEmailsDefault is the manifest default, listEmailsDefault, which New installs.
+func ListEmailsDefault() connectormock.Case[resend.EmailPage] { return ListEmailsListEmailsDefault() }
+
+// GetContactFound selects the found branch: Resend returned the contact.
+func GetContactFound(value resend.Contact, failure *sdkgo.Failure) connectormock.Case[resend.Contact] {
+	return connectormock.Branch(resend.GetContactBranchFound, value, failure)
+}
+
+// GetContactNotFound selects the notFound branch: No contact has this ID or email.
+func GetContactNotFound(value resend.Contact, failure *sdkgo.Failure) connectormock.Case[resend.Contact] {
+	return connectormock.Branch(resend.GetContactBranchNotFound, value, failure)
+}
+
+// GetContactProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetContactProviderRejected(value resend.Contact, failure *sdkgo.Failure) connectormock.Case[resend.Contact] {
+	return connectormock.Branch(resend.GetContactBranchProviderRejected, value, failure)
+}
+
+// GetContactInvalidResponse selects the invalidResponse branch: Resend returned malformed or oversized JSON.
+func GetContactInvalidResponse(value resend.Contact, failure *sdkgo.Failure) connectormock.Case[resend.Contact] {
+	return connectormock.Branch(resend.GetContactBranchInvalidResponse, value, failure)
+}
+
+// GetContactDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetContactDefect(value resend.Contact, failure *sdkgo.Failure) connectormock.Case[resend.Contact] {
+	return connectormock.Branch(resend.GetContactBranchDefect, value, failure)
+}
+
+// GetContactRetry asks Dex to retry the getContact Step, after the delay when it is positive.
+func GetContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.Contact] {
+	return connectormock.Retry[resend.Contact](failure, after)
+}
+
+// GetContactGetContactDefault is the manifest mock getContactDefault: One contact is found.
+func GetContactGetContactDefault() connectormock.Case[resend.Contact] {
+	value := connectormock.MustDecodeOutput[resend.Contact](`{"id":"contact-1","email":"reader@example.test","unsubscribed":false}`)
+	return connectormock.Branch(resend.GetContactBranchFound, value, nil)
+}
+
+// GetContactDefault is the manifest default, getContactDefault, which New installs.
+func GetContactDefault() connectormock.Case[resend.Contact] { return GetContactGetContactDefault() }
+
+// ListContactsListed selects the listed branch: Resend returned a contact page.
+func ListContactsListed(value resend.ContactPage, failure *sdkgo.Failure) connectormock.Case[resend.ContactPage] {
+	return connectormock.Branch(resend.ListContactsBranchListed, value, failure)
+}
+
+// ListContactsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListContactsProviderRejected(value resend.ContactPage, failure *sdkgo.Failure) connectormock.Case[resend.ContactPage] {
+	return connectormock.Branch(resend.ListContactsBranchProviderRejected, value, failure)
+}
+
+// ListContactsInvalidResponse selects the invalidResponse branch: Resend returned malformed or oversized JSON.
+func ListContactsInvalidResponse(value resend.ContactPage, failure *sdkgo.Failure) connectormock.Case[resend.ContactPage] {
+	return connectormock.Branch(resend.ListContactsBranchInvalidResponse, value, failure)
+}
+
+// ListContactsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListContactsDefect(value resend.ContactPage, failure *sdkgo.Failure) connectormock.Case[resend.ContactPage] {
+	return connectormock.Branch(resend.ListContactsBranchDefect, value, failure)
+}
+
+// ListContactsRetry asks Dex to retry the listContacts Step, after the delay when it is positive.
+func ListContactsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.ContactPage] {
+	return connectormock.Retry[resend.ContactPage](failure, after)
+}
+
+// ListContactsListContactsDefault is the manifest mock listContactsDefault: One contact appears on the page.
+func ListContactsListContactsDefault() connectormock.Case[resend.ContactPage] {
+	value := connectormock.MustDecodeOutput[resend.ContactPage](`{"data":[{"id":"contact-1","email":"reader@example.test","unsubscribed":false}],"has_more":false}`)
+	return connectormock.Branch(resend.ListContactsBranchListed, value, nil)
+}
+
+// ListContactsDefault is the manifest default, listContactsDefault, which New installs.
+func ListContactsDefault() connectormock.Case[resend.ContactPage] {
+	return ListContactsListContactsDefault()
+}
+
+// GetDomainFound selects the found branch: Resend returned the domain.
+func GetDomainFound(value resend.Domain, failure *sdkgo.Failure) connectormock.Case[resend.Domain] {
+	return connectormock.Branch(resend.GetDomainBranchFound, value, failure)
+}
+
+// GetDomainNotFound selects the notFound branch: No domain has this ID.
+func GetDomainNotFound(value resend.Domain, failure *sdkgo.Failure) connectormock.Case[resend.Domain] {
+	return connectormock.Branch(resend.GetDomainBranchNotFound, value, failure)
+}
+
+// GetDomainProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetDomainProviderRejected(value resend.Domain, failure *sdkgo.Failure) connectormock.Case[resend.Domain] {
+	return connectormock.Branch(resend.GetDomainBranchProviderRejected, value, failure)
+}
+
+// GetDomainInvalidResponse selects the invalidResponse branch: Resend returned malformed or oversized JSON.
+func GetDomainInvalidResponse(value resend.Domain, failure *sdkgo.Failure) connectormock.Case[resend.Domain] {
+	return connectormock.Branch(resend.GetDomainBranchInvalidResponse, value, failure)
+}
+
+// GetDomainDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetDomainDefect(value resend.Domain, failure *sdkgo.Failure) connectormock.Case[resend.Domain] {
+	return connectormock.Branch(resend.GetDomainBranchDefect, value, failure)
+}
+
+// GetDomainRetry asks Dex to retry the getDomain Step, after the delay when it is positive.
+func GetDomainRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.Domain] {
+	return connectormock.Retry[resend.Domain](failure, after)
+}
+
+// GetDomainGetDomainDefault is the manifest mock getDomainDefault: One domain is found.
+func GetDomainGetDomainDefault() connectormock.Case[resend.Domain] {
+	value := connectormock.MustDecodeOutput[resend.Domain](`{"id":"domain-1","name":"example.test","status":"verified"}`)
+	return connectormock.Branch(resend.GetDomainBranchFound, value, nil)
+}
+
+// GetDomainDefault is the manifest default, getDomainDefault, which New installs.
+func GetDomainDefault() connectormock.Case[resend.Domain] { return GetDomainGetDomainDefault() }
+
+// ListDomainsListed selects the listed branch: Resend returned a domain page.
+func ListDomainsListed(value resend.DomainPage, failure *sdkgo.Failure) connectormock.Case[resend.DomainPage] {
+	return connectormock.Branch(resend.ListDomainsBranchListed, value, failure)
+}
+
+// ListDomainsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListDomainsProviderRejected(value resend.DomainPage, failure *sdkgo.Failure) connectormock.Case[resend.DomainPage] {
+	return connectormock.Branch(resend.ListDomainsBranchProviderRejected, value, failure)
+}
+
+// ListDomainsInvalidResponse selects the invalidResponse branch: Resend returned malformed or oversized JSON.
+func ListDomainsInvalidResponse(value resend.DomainPage, failure *sdkgo.Failure) connectormock.Case[resend.DomainPage] {
+	return connectormock.Branch(resend.ListDomainsBranchInvalidResponse, value, failure)
+}
+
+// ListDomainsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListDomainsDefect(value resend.DomainPage, failure *sdkgo.Failure) connectormock.Case[resend.DomainPage] {
+	return connectormock.Branch(resend.ListDomainsBranchDefect, value, failure)
+}
+
+// ListDomainsRetry asks Dex to retry the listDomains Step, after the delay when it is positive.
+func ListDomainsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.DomainPage] {
+	return connectormock.Retry[resend.DomainPage](failure, after)
+}
+
+// ListDomainsListDomainsDefault is the manifest mock listDomainsDefault: One domain appears on the page.
+func ListDomainsListDomainsDefault() connectormock.Case[resend.DomainPage] {
+	value := connectormock.MustDecodeOutput[resend.DomainPage](`{"data":[{"id":"domain-1","name":"example.test","status":"verified"}],"has_more":false}`)
+	return connectormock.Branch(resend.ListDomainsBranchListed, value, nil)
+}
+
+// ListDomainsDefault is the manifest default, listDomainsDefault, which New installs.
+func ListDomainsDefault() connectormock.Case[resend.DomainPage] {
+	return ListDomainsListDomainsDefault()
+}

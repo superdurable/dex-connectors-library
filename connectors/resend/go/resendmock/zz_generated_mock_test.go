@@ -24,6 +24,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[resend.Email](`{"id":"5f9f777d-04e0-482a-bb65-088bb5bd44a4","from":"Acme \u003chello@example.test\u003e","to":["reader@example.test"],"subject":"Welcome","created_at":"2026-10-26T12:00:00Z"}`)
 			return err
 		}},
+		{name: "listEmails/listEmailsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EmailPage](`{"data":[{"id":"5f9f777d-04e0-482a-bb65-088bb5bd44a4","from":"Acme \u003chello@example.test\u003e","to":["reader@example.test"],"subject":"Welcome","created_at":"2026-10-26T12:00:00Z"}],"has_more":false}`)
+			return err
+		}},
+		{name: "getContact/getContactDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Contact](`{"id":"contact-1","email":"reader@example.test","unsubscribed":false}`)
+			return err
+		}},
+		{name: "listContacts/listContactsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactPage](`{"data":[{"id":"contact-1","email":"reader@example.test","unsubscribed":false}],"has_more":false}`)
+			return err
+		}},
+		{name: "getDomain/getDomainDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Domain](`{"id":"domain-1","name":"example.test","status":"verified"}`)
+			return err
+		}},
+		{name: "listDomains/listDomainsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DomainPage](`{"data":[{"id":"domain-1","name":"example.test","status":"verified"}],"has_more":false}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +59,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetEmail().Definition().Operation.OperationID != "getEmail" {
 		t.Errorf("getEmail mock has another definition")
+	}
+	if mock.ListEmails().Definition().Operation.OperationID != "listEmails" {
+		t.Errorf("listEmails mock has another definition")
+	}
+	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
+		t.Errorf("getContact mock has another definition")
+	}
+	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
+		t.Errorf("listContacts mock has another definition")
+	}
+	if mock.GetDomain().Definition().Operation.OperationID != "getDomain" {
+		t.Errorf("getDomain mock has another definition")
+	}
+	if mock.ListDomains().Definition().Operation.OperationID != "listDomains" {
+		t.Errorf("listDomains mock has another definition")
 	}
 }

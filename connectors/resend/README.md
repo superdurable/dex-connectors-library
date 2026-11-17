@@ -1,11 +1,11 @@
 # Resend connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/resend/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/resend/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/resend`.
 
 This Dex connector calls the public Resend JSON API. Its
-manifest version is `v0.2.0`; the Go module requires connector SDK `v0.33.0`
+manifest version is `v0.3.0`; the Go module requires connector SDK `v0.33.0`
     and Dex Go SDK `v1.26.0` or newer. The runnable
 [`welcome-email` example](go/examples/welcome-email/README.md) shows a
 complete Worker and the generated operation-specific Step factory.
@@ -26,6 +26,17 @@ unverified.
 | --- | --- | --- |
 | `sendEmail` | mutation | SentEmail |
 | `getEmail` | query | Email |
+| `listEmails` | query | EmailPage |
+| `getContact` | query | Contact |
+| `listContacts` | query | ContactPage |
+| `getDomain` | query | Domain |
+| `listDomains` | query | DomainPage |
+
+The five new Go queries use the `safe` repeat tier and bounded HTTP responses.
+List inputs accept a 1–100 item `limit`; zero uses Resend's default for emails
+and contacts, or retrieves all domains. `after` is an exclusive ID cursor;
+domain pages require `limit` when using it. These operations are Go-only in
+this release; Python and TypeScript retain their declared email capabilities.
 
 `sendEmail` sends the stable Dex call idempotency key in `Idempotency-Key`. Resend documents 24-hour key retention; the connector's default one-hour retry budget stays within that window. Keep any per-Step retry override shorter than 24 hours. A 409 `concurrent_idempotent_requests` retries with the same key, while `invalid_idempotent_request` selects `providerRejected`.
 
@@ -34,7 +45,9 @@ unverified.
 Before sending, verify the sender domain in Resend under **Domains**; supply an address on that domain in the Flow input.
 
 Start at [https://resend.com/api-keys](https://resend.com/api-keys) and follow
-**API Keys > Create API Key**. Create an API key with sending permission, then copy its secret value. It is an opaque secret string; blank prevents requests. Paste the token in the
+**API Keys > Create API Key**. Create a full-access API key to use contact and
+domain reads; a sending-only key still supports `sendEmail`. Copy its opaque
+secret value; blank prevents requests. Paste the token in the
 secret `api_key` field in Dex Web Connections.
 The key travels only in `Authorization`. Leave `baseUrl`, `timeout`,
 and `maxResponseBytes` blank for the displayed public endpoint and safety
@@ -72,6 +85,9 @@ flow := NewFlow(mock.Connection())
 
 - [https://resend.com/docs/api-reference/emails/send-email](https://resend.com/docs/api-reference/emails/send-email)
 - [https://resend.com/docs/api-reference/emails/retrieve-email](https://resend.com/docs/api-reference/emails/retrieve-email)
+- [https://resend.com/docs/api-reference/emails/list-emails](https://resend.com/docs/api-reference/emails/list-emails)
+- [https://resend.com/docs/api-reference/contacts/list-contacts](https://resend.com/docs/api-reference/contacts/list-contacts)
+- [https://resend.com/docs/api-reference/domains/list-domains](https://resend.com/docs/api-reference/domains/list-domains)
 - [https://resend.com/changelog/idempotency-keys](https://resend.com/changelog/idempotency-keys)
 
 The HTTP unit tests verify request shapes and local classification against

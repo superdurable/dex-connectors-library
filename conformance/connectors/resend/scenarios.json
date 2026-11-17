@@ -672,6 +672,1560 @@
       },
       "name": "getEmail-defect",
       "operation": "getEmail"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"email-1\",\"from\":\"hello@example.test\",\"to\":[\"reader@example.test\"],\"subject\":\"Welcome\",\"created_at\":\"2026-10-26T12:00:00Z\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails",
+          "query": {
+            "after": [
+              "email-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "created_at": "2026-10-26T12:00:00Z",
+              "from": "hello@example.test",
+              "id": "email-1",
+              "subject": "Welcome",
+              "to": [
+                "reader@example.test"
+              ]
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "email-0",
+        "limit": 2
+      },
+      "name": "listEmails-success",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails",
+          "query": {
+            "after": [
+              "email-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "email-0",
+        "limit": 2
+      },
+      "name": "listEmails-rejected",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails",
+          "query": {
+            "after": [
+              "email-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "email-0",
+        "limit": 2
+      },
+      "name": "listEmails-invalid",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 101
+      },
+      "name": "listEmails-defect",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails",
+          "query": {
+            "after": [
+              "email-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "email-0",
+        "limit": 2
+      },
+      "name": "listEmails-rate",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails",
+          "query": {
+            "after": [
+              "email-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "email-0",
+        "limit": 2
+      },
+      "name": "listEmails-server",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails",
+          "query": {
+            "after": [
+              "email-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "email-0",
+        "limit": 2
+      },
+      "name": "listEmails-transport",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"contact-1\",\"email\":\"reader@example.test\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/reader@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "email": "reader@example.test",
+          "first_name": "",
+          "id": "contact-1",
+          "last_name": "",
+          "unsubscribed": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "idOrEmail": "reader@example.test"
+      },
+      "name": "getContact-success",
+      "operation": "getContact"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/reader@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "email": "",
+          "first_name": "",
+          "id": "",
+          "last_name": "",
+          "unsubscribed": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "idOrEmail": "reader@example.test"
+      },
+      "name": "getContact-missing",
+      "operation": "getContact"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/reader@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "email": "",
+          "first_name": "",
+          "id": "",
+          "last_name": "",
+          "unsubscribed": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "idOrEmail": "reader@example.test"
+      },
+      "name": "getContact-rejected",
+      "operation": "getContact"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/reader@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "first_name": "",
+          "id": "",
+          "last_name": "",
+          "unsubscribed": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "idOrEmail": "reader@example.test"
+      },
+      "name": "getContact-invalid",
+      "operation": "getContact"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "first_name": "",
+          "id": "",
+          "last_name": "",
+          "unsubscribed": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "idOrEmail": ""
+      },
+      "name": "getContact-defect",
+      "operation": "getContact"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/reader@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "idOrEmail": "reader@example.test"
+      },
+      "name": "getContact-rate",
+      "operation": "getContact"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/reader@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "idOrEmail": "reader@example.test"
+      },
+      "name": "getContact-server",
+      "operation": "getContact"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/reader@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "idOrEmail": "reader@example.test"
+      },
+      "name": "getContact-transport",
+      "operation": "getContact"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"contact-1\",\"email\":\"reader@example.test\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "after": [
+              "contact-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "email": "reader@example.test",
+              "first_name": "",
+              "id": "contact-1",
+              "last_name": "",
+              "unsubscribed": false
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "contact-0",
+        "limit": 2
+      },
+      "name": "listContacts-success",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "after": [
+              "contact-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "contact-0",
+        "limit": 2
+      },
+      "name": "listContacts-rejected",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "after": [
+              "contact-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "contact-0",
+        "limit": 2
+      },
+      "name": "listContacts-invalid",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 101
+      },
+      "name": "listContacts-defect",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "after": [
+              "contact-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "contact-0",
+        "limit": 2
+      },
+      "name": "listContacts-rate",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "after": [
+              "contact-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "contact-0",
+        "limit": 2
+      },
+      "name": "listContacts-server",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "after": [
+              "contact-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "contact-0",
+        "limit": 2
+      },
+      "name": "listContacts-transport",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"domain-1\",\"name\":\"example.test\",\"status\":\"verified\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains/domain-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "domain-1",
+          "name": "example.test",
+          "status": "verified"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "getDomain-success",
+      "operation": "getDomain"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains/domain-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "getDomain-missing",
+      "operation": "getDomain"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains/domain-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "getDomain-rejected",
+      "operation": "getDomain"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains/domain-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "getDomain-invalid",
+      "operation": "getDomain"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": ""
+      },
+      "name": "getDomain-defect",
+      "operation": "getDomain"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains/domain-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "getDomain-rate",
+      "operation": "getDomain"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains/domain-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "getDomain-server",
+      "operation": "getDomain"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains/domain-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "getDomain-transport",
+      "operation": "getDomain"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"domain-1\",\"name\":\"example.test\",\"status\":\"verified\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains",
+          "query": {
+            "after": [
+              "domain-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "id": "domain-1",
+              "name": "example.test",
+              "status": "verified"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "domain-0",
+        "limit": 2
+      },
+      "name": "listDomains-success",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains",
+          "query": {
+            "after": [
+              "domain-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "domain-0",
+        "limit": 2
+      },
+      "name": "listDomains-rejected",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains",
+          "query": {
+            "after": [
+              "domain-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "domain-0",
+        "limit": 2
+      },
+      "name": "listDomains-invalid",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "domain-0",
+        "limit": 0
+      },
+      "name": "listDomains-defect",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains",
+          "query": {
+            "after": [
+              "domain-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "domain-0",
+        "limit": 2
+      },
+      "name": "listDomains-rate",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains",
+          "query": {
+            "after": [
+              "domain-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "domain-0",
+        "limit": 2
+      },
+      "name": "listDomains-server",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains",
+          "query": {
+            "after": [
+              "domain-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "domain-0",
+        "limit": 2
+      },
+      "name": "listDomains-transport",
+      "operation": "listDomains"
     }
   ],
   "schemaVersion": 1

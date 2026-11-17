@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, load
 import { ResendClient } from '../src/client.js';
 import { GetEmailInputSchema, SendEmailInputSchema, type SendEmailInput } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/resend/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/resend/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'sendEmail' || scenario.operation === 'getEmail');
 const noProgress = { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeResend));

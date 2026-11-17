@@ -1,7 +1,8 @@
 # Resend welcome-email example
 
 This runnable Worker starts `ResendWelcomeEmail` with typed `welcomeemail.Request`, calls
-`resend.NewSendEmailStep`, and completes with `resend.SentEmail`. The
+`resend.NewSendEmailStep`, then lists sending domains with
+`resend.NewListDomainsStep` and completes with `resend.SentEmail`. The
 static Dex Web connection name is `resend`. Optional failure branches are
 unwired and fail the Flow when selected.
 
@@ -9,7 +10,7 @@ The completed provider result is available in the Dex Web summary and display vi
 
 ## Generate the strict FDG 2.0 definition
 
-From `connectors/resend` with a current Dex CLI:
+From `connectors/resend/go` with a current Dex CLI:
 
 ```bash
 mkdir -p build
@@ -29,18 +30,18 @@ mkdir -p /tmp/resend-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/resend/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/resend/go \
-  --version v0.2.0 --tag connectors/resend/go/v0.2.0 \
+  --version v0.3.0 --tag connectors/resend/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/resend-release/connector-release.json \
   --digest-output /tmp/resend-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/resend/go/build" \
+dexcli dev -open=false --flow-rendering-dir "$PWD/connectors/resend/go/build" \
   --connector-release-override resend=/tmp/resend-release
 ```
 
 ## Configure and run
 
 Create the `resend` connection in Dex Web. Start at [https://resend.com/api-keys](https://resend.com/api-keys),
-follow **API Keys > Create API Key**, and paste the secret token in `api_key`.
+follow **API Keys > Create API Key**, and paste a full-access secret token in `api_key`.
 Leave the displayed configuration defaults blank. The token is never a Flow input.
 
 From this module, with the Dex project environment configured, run:
