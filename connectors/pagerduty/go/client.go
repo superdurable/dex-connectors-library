@@ -412,12 +412,7 @@ func runMutation[T any](client *Client, call sdkgo.Call, operation, method, path
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case response.StatusCode == http.StatusConflict:
-		conflict, _ := providerhttp.ReadBoundedBody(response.Body, providerhttp.MaxErrorBodyBytes)
-		names := providerhttp.ReadErrorTokens(conflict, []string{"/name"})
-		if len(names) == 1 && names[0] == "invalid_idempotent_request" {
-			return mutationFailure[T](operation, rejected, sdkgo.FailureProviderRejection, "idempotency key was used for a different request")
-		}
-		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider is processing the same request"), 0)
+		return mutationFailure[T](operation, rejected, sdkgo.FailureProviderRejection, "provider rejected the conflicting update")
 	case response.StatusCode == http.StatusNotFound && notFound != "":
 		return mutationFailure[T](operation, notFound, sdkgo.FailureNotFound, "provider resource was not found")
 	case response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated && response.StatusCode != http.StatusAccepted:

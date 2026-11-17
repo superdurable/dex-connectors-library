@@ -4,6 +4,8 @@ This runnable Worker starts `PagerDutyIncidentReview` with typed `incidentreview
 `pagerduty.NewListIncidentsStep`, and completes with `pagerduty.IncidentPage`. The
 same Worker also registers `PagerDutyUserLookup`, which calls `pagerduty.NewGetUserStep`
 and returns a `pagerduty.User` for `incidentreview.UserLookupRequest`. The
+Worker registers `PagerDutyIncidentUpdate` to exercise the safe status mutation
+with `pagerduty.NewUpdateIncidentStep` and `incidentreview.IncidentUpdateRequest`. The
 static Dex Web connection name is `pagerduty`. Optional failure branches are
 unwired and fail the Flow when selected.
 
@@ -17,6 +19,7 @@ From `connectors/pagerduty` with a current Dex CLI:
 mkdir -p build
 dexcli visualize ./examples/incident-review/flow/workflow.go --schema-version 2.0 --json --out ./build/incident-review
 dexcli visualize ./examples/incident-review/flow/user_lookup.go --schema-version 2.0 --json --out ./build/user-lookup
+dexcli visualize ./examples/incident-review/flow/incident_update.go --schema-version 2.0 --json --out ./build/incident-update
 ```
 
 Check that the command reports `valid: true`. A local source may warn that a
@@ -54,5 +57,7 @@ go run ./examples/incident-review
 
 Start `PagerDutyIncidentReview` in Dex Web with a JSON input matching `pagerduty.ListIncidentsInput`.
 Start `PagerDutyUserLookup` with `{"id":"PXPGF42"}` after choosing a user ID from PagerDuty.
+Start `PagerDutyIncidentUpdate` with `{"id":"P123456","status":"acknowledged","fromUserEmail":"responder@example.com"}`
+after choosing an incident and a PagerDuty user email. The connection needs a full-access REST API key for this Flow.
 The mock backed real Dex test is `flow/workflow_mock_integration_test.go` and
 CI runs it with the integration tag.
