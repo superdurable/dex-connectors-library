@@ -4,6 +4,7 @@
 package vercel
 
 import (
+	"encoding/json"
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"net/http"
@@ -20,10 +21,28 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {AccessToken: sdkgo.NewSecretString(token)}}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listDeployments":  newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.ListDeployments(), testConnection),
-		"getDeployment":    newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.GetDeployment(), testConnection),
-		"cancelDeployment": newConformanceMutationInvocation(t, scenario.Input, testContext{}, client.CancelDeployment(), testConnection, scenario.CallID),
-		"deleteDeployment": newConformanceMutationInvocation(t, scenario.Input, testContext{}, client.DeleteDeployment(), testConnection, scenario.CallID),
+	ctx := &projectTestContext{}
+	if len(scenario.PriorHeartbeat) > 0 {
+		ctx.heartbeat = append(json.RawMessage(nil), scenario.PriorHeartbeat...)
+		var marker struct {
+			Attempt int32 `json:"attempt"`
+		}
+		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &marker))
+		ctx.attempt = marker.Attempt + 1
+	}
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			ctx.attempt = int32(attempt)
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"listDeployments":  newConformanceQueryInvocation(t, scenario.Input, ctx, client.ListDeployments(), testConnection),
+		"getDeployment":    newConformanceQueryInvocation(t, scenario.Input, ctx, client.GetDeployment(), testConnection),
+		"cancelDeployment": newConformanceMutationInvocation(t, scenario.Input, ctx, client.CancelDeployment(), testConnection, scenario.CallID),
+		"deleteDeployment": newConformanceMutationInvocation(t, scenario.Input, ctx, client.DeleteDeployment(), testConnection, scenario.CallID),
+		"listProjects":     newConformanceQueryInvocation(t, scenario.Input, ctx, client.ListProjects(), testConnection),
+		"getProject":       newConformanceQueryInvocation(t, scenario.Input, ctx, client.GetProject(), testConnection),
+		"createProject":    newConformanceMutationInvocation(t, scenario.Input, ctx, client.CreateProject(), testConnection, scenario.CallID),
+		"updateProject":    newConformanceMutationInvocation(t, scenario.Input, ctx, client.UpdateProject(), testConnection, scenario.CallID),
+		"deleteProject":    newConformanceMutationInvocation(t, scenario.Input, ctx, client.DeleteProject(), testConnection, scenario.CallID),
 	}}
 }

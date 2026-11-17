@@ -19,8 +19,13 @@ The TypeScript package is [`@superdurable/connector-vercel`](typescript/README.m
 | NewGetDeploymentStep | GET /v13/deployments/{idOrUrl} | deployment ID or hostname in `IDOrURL`, optional `TeamID` | `Deployment` with identity, URL, and state fields | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect |
 | NewCancelDeploymentStep | PATCH /v12/deployments/{id}/cancel | deployment ID and optional team ID | canceled `Deployment` | `canceled` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | NewDeleteDeploymentStep | DELETE /v13/deployments/{id} | deployment ID and optional team ID | `DeletedDeployment` | `deleted` | `providerRejected`, `defect` |
+| NewListProjectsStep | GET /v9/projects | optional team ID | `ProjectsPage` | `listed` | `providerRejected`, `invalidResponse`, `defect` |
+| NewGetProjectStep | GET /v9/projects/{idOrName} | project ID or name, optional team ID | `Project` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| NewCreateProjectStep | POST /v9/projects | project name, optional team ID | `Project` | `created` | `providerRejected`, `defect` |
+| NewUpdateProjectStep | PATCH /v9/projects/{idOrName} | project ID, replacement name, optional team ID | `Project` | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| NewDeleteProjectStep | DELETE /v9/projects/{idOrName} | project ID or name, optional team ID | `DeletedProject` | `deleted` | `providerRejected`, `defect` |
 
-The first two operations are read-only Queries; the list operation returns one provider page. Cancellation and deletion are safe-repeat Mutations. An already absent deployment counts as deleted. Creating deployments requires file upload and is deferred as a binary-heavy operation.
+Deployment and project reads are safe Queries. Cancellation, deletion, and the absolute project rename are safe Mutations; an already absent deployment or project counts as deleted. Project creation is limited to three possible sends per call and selects uncertainty when the result cannot be confirmed. Creating deployments requires file upload and is deferred as a binary-heavy operation.
 
 ## Authorization
 

@@ -139,3 +139,84 @@ spec:
           default: true
           description: One example deployment was deleted.
           output: {deploymentId: dpl_meridian1}
+    - name: listProjects
+      goName: ListProjects
+      inputType: ListProjectsInput
+      outputType: ProjectsPage
+      kind: query
+      description: List projects visible to the token or selected team.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: A page of projects was returned.}
+        - {id: providerRejected, goName: ProviderRejected, description: Vercel rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Vercel returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The team ID or connection is invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One example project is listed., output: {projects: [{id: prj_meridian1, name: meridian-web}], pagination: {next: null}}}
+    - name: getProject
+      goName: GetProject
+      inputType: GetProjectInput
+      outputType: Project
+      kind: query
+      description: Read one project by Vercel ID or name.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: The project was returned.}
+        - {id: notFound, goName: NotFound, description: The project does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Vercel rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Vercel returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The project ID or connection is invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One example project is found., output: {id: prj_meridian1, name: meridian-web}}
+    - name: createProject
+      goName: CreateProject
+      inputType: CreateProjectInput
+      outputType: Project
+      kind: mutation
+      description: Create a named Vercel project.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: The project was created.}
+        - {id: providerRejected, goName: ProviderRejected, description: Vercel rejected the create request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The project may have been created but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: The project name or connection is invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: One example project is created., output: {id: prj_meridian1, name: meridian-web}}
+    - name: updateProject
+      goName: UpdateProject
+      inputType: UpdateProjectInput
+      outputType: Project
+      kind: mutation
+      description: Replace the name of an existing Vercel project.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: The project has the requested name.}
+        - {id: notFound, goName: NotFound, description: The project does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Vercel rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Vercel returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: "The project ID, name, or connection is invalid.", optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: One example project is renamed., output: {id: prj_meridian1, name: meridian-renamed}}
+    - name: deleteProject
+      goName: DeleteProject
+      inputType: DeleteProjectInput
+      outputType: DeletedProject
+      kind: mutation
+      description: Delete a Vercel project by ID; an already absent project counts as deleted.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The project is now absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Vercel rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: The project ID or connection is invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: One example project is deleted., output: {projectId: prj_meridian1}}

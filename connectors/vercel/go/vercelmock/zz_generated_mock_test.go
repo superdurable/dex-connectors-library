@@ -32,6 +32,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[vercel.DeletedDeployment](`{"deploymentId":"dpl_meridian1"}`)
 			return err
 		}},
+		{name: "listProjects/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[vercel.ProjectsPage](`{"projects":[{"id":"prj_meridian1","name":"meridian-web"}],"pagination":{"next":null}}`)
+			return err
+		}},
+		{name: "getProject/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[vercel.Project](`{"id":"prj_meridian1","name":"meridian-web"}`)
+			return err
+		}},
+		{name: "createProject/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[vercel.Project](`{"id":"prj_meridian1","name":"meridian-web"}`)
+			return err
+		}},
+		{name: "updateProject/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[vercel.Project](`{"id":"prj_meridian1","name":"meridian-renamed"}`)
+			return err
+		}},
+		{name: "deleteProject/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[vercel.DeletedProject](`{"projectId":"prj_meridian1"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -53,5 +73,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteDeployment().Definition().Operation.OperationID != "deleteDeployment" {
 		t.Errorf("deleteDeployment mock has another definition")
+	}
+	if mock.ListProjects().Definition().Operation.OperationID != "listProjects" {
+		t.Errorf("listProjects mock has another definition")
+	}
+	if mock.GetProject().Definition().Operation.OperationID != "getProject" {
+		t.Errorf("getProject mock has another definition")
+	}
+	if mock.CreateProject().Definition().Operation.OperationID != "createProject" {
+		t.Errorf("createProject mock has another definition")
+	}
+	if mock.UpdateProject().Definition().Operation.OperationID != "updateProject" {
+		t.Errorf("updateProject mock has another definition")
+	}
+	if mock.DeleteProject().Definition().Operation.OperationID != "deleteProject" {
+		t.Errorf("deleteProject mock has another definition")
 	}
 }

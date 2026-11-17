@@ -1245,6 +1245,1745 @@
       },
       "name": "deleteDeployment-transport",
       "operation": "deleteDeployment"
+    },
+    {
+      "callId": "04be9b2f-4f24-58c1-b24b-df952c406ce7",
+      "exchanges": [
+        {
+          "body": "{\"projects\":[{\"id\":\"prj_meridian1\",\"name\":\"meridian-web\"}],\"pagination\":{\"next\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v9/projects",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "pagination": {
+            "next": null
+          },
+          "projects": [
+            {
+              "framework": "",
+              "id": "prj_meridian1",
+              "name": "meridian-web"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "team_123"
+      },
+      "name": "listProjects-listed",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "8a33c836-36fb-55bb-b6c9-649205f8df63",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"prj_meridian1\",\"name\":\"meridian-web\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "framework": "",
+          "id": "prj_meridian1",
+          "name": "meridian-web"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "getProject-found",
+      "operation": "getProject"
+    },
+    {
+      "callId": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"prj_meridian1\",\"name\":\"meridian-web\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v9/projects",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestBody": {
+            "name": "meridian-web"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "framework": "",
+          "id": "prj_meridian1",
+          "name": "meridian-web"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+      "input": {
+        "name": "meridian-web",
+        "teamId": "team_123"
+      },
+      "name": "createProject-created",
+      "operation": "createProject"
+    },
+    {
+      "callId": "18d84691-4b8d-53fc-a62b-15fed0878261",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"prj_meridian1\",\"name\":\"meridian-renamed\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestBody": {
+            "name": "meridian-renamed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "framework": "",
+          "id": "prj_meridian1",
+          "name": "meridian-renamed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18d84691-4b8d-53fc-a62b-15fed0878261",
+      "input": {
+        "name": "meridian-renamed",
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "updateProject-updated",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "e5e81c04-1740-5d02-addb-1f5c1b0c1e40",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "projectId": "prj_meridian1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e5e81c04-1740-5d02-addb-1f5c1b0c1e40",
+      "input": {
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "deleteProject-deleted",
+      "operation": "deleteProject"
+    },
+    {
+      "callId": "04be9b2f-4f24-58c1-b24b-df952c406ce7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v9/projects",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "pagination": {
+            "next": null
+          },
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "team_123"
+      },
+      "name": "listProjects-providerRejected",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "04be9b2f-4f24-58c1-b24b-df952c406ce7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v9/projects",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "pagination": {
+            "next": null
+          },
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "team_123"
+      },
+      "name": "listProjects-invalidResponse",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "04be9b2f-4f24-58c1-b24b-df952c406ce7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "pagination": {
+            "next": null
+          },
+          "projects": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "bad"
+      },
+      "name": "listProjects-defect",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "04be9b2f-4f24-58c1-b24b-df952c406ce7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v9/projects",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "team_123"
+      },
+      "name": "listProjects-rateLimit",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "04be9b2f-4f24-58c1-b24b-df952c406ce7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v9/projects",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "team_123"
+      },
+      "name": "listProjects-serverUnavailable",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "04be9b2f-4f24-58c1-b24b-df952c406ce7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v9/projects",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "team_123"
+      },
+      "name": "listProjects-transport",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "8a33c836-36fb-55bb-b6c9-649205f8df63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "framework": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "getProject-notFound",
+      "operation": "getProject"
+    },
+    {
+      "callId": "8a33c836-36fb-55bb-b6c9-649205f8df63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "framework": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "getProject-providerRejected",
+      "operation": "getProject"
+    },
+    {
+      "callId": "8a33c836-36fb-55bb-b6c9-649205f8df63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "framework": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "getProject-invalidResponse",
+      "operation": "getProject"
+    },
+    {
+      "callId": "8a33c836-36fb-55bb-b6c9-649205f8df63",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "framework": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "",
+        "teamId": "team_123"
+      },
+      "name": "getProject-defect",
+      "operation": "getProject"
+    },
+    {
+      "callId": "8a33c836-36fb-55bb-b6c9-649205f8df63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "getProject-rateLimit",
+      "operation": "getProject"
+    },
+    {
+      "callId": "8a33c836-36fb-55bb-b6c9-649205f8df63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "getProject-serverUnavailable",
+      "operation": "getProject"
+    },
+    {
+      "callId": "8a33c836-36fb-55bb-b6c9-649205f8df63",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "getProject-transport",
+      "operation": "getProject"
+    },
+    {
+      "callId": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v9/projects",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestBody": {
+            "name": "meridian-web"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "framework": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+      "input": {
+        "name": "meridian-web",
+        "teamId": "team_123"
+      },
+      "name": "createProject-providerRejected",
+      "operation": "createProject"
+    },
+    {
+      "callId": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "framework": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+      "input": {
+        "name": "",
+        "teamId": "team_123"
+      },
+      "name": "createProject-defect",
+      "operation": "createProject"
+    },
+    {
+      "callId": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v9/projects",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestBody": {
+            "name": "meridian-web"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+      "input": {
+        "name": "meridian-web",
+        "teamId": "team_123"
+      },
+      "name": "createProject-rateLimit",
+      "operation": "createProject"
+    },
+    {
+      "callId": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v9/projects",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestBody": {
+            "name": "meridian-web"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+      "input": {
+        "name": "meridian-web",
+        "teamId": "team_123"
+      },
+      "name": "createProject-serviceUnavailable",
+      "operation": "createProject"
+    },
+    {
+      "callId": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v9/projects",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestBody": {
+            "name": "meridian-web"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+      "input": {
+        "name": "meridian-web",
+        "teamId": "team_123"
+      },
+      "name": "createProject-serverUnavailable",
+      "operation": "createProject"
+    },
+    {
+      "callId": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v9/projects",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestBody": {
+            "name": "meridian-web"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+      "input": {
+        "name": "meridian-web",
+        "teamId": "team_123"
+      },
+      "name": "createProject-transport",
+      "operation": "createProject"
+    },
+    {
+      "attempts": 3,
+      "callId": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v9/projects",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestBody": {
+            "name": "meridian-web"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v9/projects",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestBody": {
+            "name": "meridian-web"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v9/projects",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestBody": {
+            "name": "meridian-web"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "framework": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+      "input": {
+        "name": "meridian-web",
+        "teamId": "team_123"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "ea478549-195b-5537-9575-0a64bf9c0ef0",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createProject-uncertain",
+      "operation": "createProject"
+    },
+    {
+      "callId": "18d84691-4b8d-53fc-a62b-15fed0878261",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestBody": {
+            "name": "meridian-renamed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "framework": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18d84691-4b8d-53fc-a62b-15fed0878261",
+      "input": {
+        "name": "meridian-renamed",
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "updateProject-notFound",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "18d84691-4b8d-53fc-a62b-15fed0878261",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestBody": {
+            "name": "meridian-renamed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "framework": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18d84691-4b8d-53fc-a62b-15fed0878261",
+      "input": {
+        "name": "meridian-renamed",
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "updateProject-providerRejected",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "18d84691-4b8d-53fc-a62b-15fed0878261",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestBody": {
+            "name": "meridian-renamed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "framework": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18d84691-4b8d-53fc-a62b-15fed0878261",
+      "input": {
+        "name": "meridian-renamed",
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "updateProject-invalidResponse",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "18d84691-4b8d-53fc-a62b-15fed0878261",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "framework": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18d84691-4b8d-53fc-a62b-15fed0878261",
+      "input": {
+        "name": "meridian-renamed",
+        "projectId": "",
+        "teamId": "team_123"
+      },
+      "name": "updateProject-defect",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "18d84691-4b8d-53fc-a62b-15fed0878261",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestBody": {
+            "name": "meridian-renamed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18d84691-4b8d-53fc-a62b-15fed0878261",
+      "input": {
+        "name": "meridian-renamed",
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "updateProject-rateLimit",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "18d84691-4b8d-53fc-a62b-15fed0878261",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestBody": {
+            "name": "meridian-renamed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18d84691-4b8d-53fc-a62b-15fed0878261",
+      "input": {
+        "name": "meridian-renamed",
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "updateProject-serverUnavailable",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "18d84691-4b8d-53fc-a62b-15fed0878261",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestBody": {
+            "name": "meridian-renamed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18d84691-4b8d-53fc-a62b-15fed0878261",
+      "input": {
+        "name": "meridian-renamed",
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "updateProject-transport",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "e5e81c04-1740-5d02-addb-1f5c1b0c1e40",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "projectId": "prj_meridian1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e5e81c04-1740-5d02-addb-1f5c1b0c1e40",
+      "input": {
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "deleteProject-alreadyAbsent",
+      "operation": "deleteProject"
+    },
+    {
+      "callId": "e5e81c04-1740-5d02-addb-1f5c1b0c1e40",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "projectId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e5e81c04-1740-5d02-addb-1f5c1b0c1e40",
+      "input": {
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "deleteProject-providerRejected",
+      "operation": "deleteProject"
+    },
+    {
+      "callId": "e5e81c04-1740-5d02-addb-1f5c1b0c1e40",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "projectId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e5e81c04-1740-5d02-addb-1f5c1b0c1e40",
+      "input": {
+        "projectId": "",
+        "teamId": "team_123"
+      },
+      "name": "deleteProject-defect",
+      "operation": "deleteProject"
+    },
+    {
+      "callId": "e5e81c04-1740-5d02-addb-1f5c1b0c1e40",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e5e81c04-1740-5d02-addb-1f5c1b0c1e40",
+      "input": {
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "deleteProject-rateLimit",
+      "operation": "deleteProject"
+    },
+    {
+      "callId": "e5e81c04-1740-5d02-addb-1f5c1b0c1e40",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e5e81c04-1740-5d02-addb-1f5c1b0c1e40",
+      "input": {
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "deleteProject-serverUnavailable",
+      "operation": "deleteProject"
+    },
+    {
+      "callId": "e5e81c04-1740-5d02-addb-1f5c1b0c1e40",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v9/projects/prj_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e5e81c04-1740-5d02-addb-1f5c1b0c1e40",
+      "input": {
+        "projectId": "prj_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "deleteProject-transport",
+      "operation": "deleteProject"
     }
   ],
   "schemaVersion": 1

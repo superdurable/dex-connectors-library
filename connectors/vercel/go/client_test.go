@@ -5,6 +5,7 @@ package vercel
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -24,6 +25,33 @@ func (testContext) Deadline() (time.Time, bool) { return time.Time{}, false }
 func (testContext) Done() <-chan struct{}       { return nil }
 func (testContext) Err() error                  { return nil }
 func (testContext) Value(key any) any           { return context.Background().Value(key) }
+
+type projectTestContext struct {
+	testContext
+	attempt   int32
+	heartbeat json.RawMessage
+}
+
+func (ctx *projectTestContext) Attempt() int32 {
+	if ctx.attempt == 0 {
+		return 1
+	}
+	return ctx.attempt
+}
+func (ctx *projectTestContext) RecordHeartbeat(value any) error {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	ctx.heartbeat = encoded
+	return nil
+}
+func (ctx *projectTestContext) GetLastHeartbeatValue(target any) (bool, error) {
+	if len(ctx.heartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(ctx.heartbeat, target)
+}
 
 var testConnection = sdkgo.ConnectionRef{Provider: "vercel", Name: "vercel"}
 
