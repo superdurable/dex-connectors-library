@@ -16,6 +16,62 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listChannels/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[youtube.ChannelsPage](`{"channels":[{"id":"UC1234567890123456789012","title":"Compiler Lab","description":"Compiler tutorials"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "updateChannel/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[youtube.UpdatedChannelDescription](`{"id":"UC1234567890123456789012","description":"Updated compiler tutorials"}`)
+			return err
+		}},
+		{name: "listVideos/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[youtube.VideosPage](`{"videos":[{"id":"AbCdEfGhI12","channelId":"UC1234567890123456789012","channelTitle":"Compiler Lab","title":"Compiler release walkthrough","description":"A short compiler tour","publishedAt":"2026-10-20T10:00:00Z","privacyStatus":"public"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "listVideoCategories/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[youtube.VideoCategoriesPage](`{"categories":[{"id":"27","title":"Education","assignable":true}]}`)
+			return err
+		}},
+		{name: "rateVideo/ratedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[youtube.RatedVideo](`{"videoId":"AbCdEfGhI12","rating":"like"}`)
+			return err
+		}},
+		{name: "deleteVideo/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[youtube.DeletedVideo](`{"videoId":"AbCdEfGhI12"}`)
+			return err
+		}},
+		{name: "updateVideo/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[youtube.UpdatedVideo](`{"videoId":"AbCdEfGhI12","title":"Updated walkthrough","description":"A short compiler tour","categoryId":"27","privacyStatus":"public"}`)
+			return err
+		}},
+		{name: "createPlaylist/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[youtube.Playlist](`{"id":"PLcurated123","title":"Compiler picks","description":"Curated videos","privacyStatus":"private"}`)
+			return err
+		}},
+		{name: "getPlaylistItem/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[youtube.PlaylistItem](`{"id":"PLITEM001","playlistId":"PLcurated123","videoId":"AbCdEfGhI12","title":"Compiler release walkthrough","position":0,"addedAt":"2026-10-26T10:00:00Z","videoPublishedAt":"2026-10-20T10:00:00Z"}`)
+			return err
+		}},
+		{name: "deletePlaylistItem/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[youtube.DeletedPlaylistItem](`{"playlistItemId":"PLITEM001"}`)
+			return err
+		}},
+		{name: "getPlaylist/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[youtube.Playlist](`{"id":"PLcurated123","title":"Compiler picks","description":"Curated videos","privacyStatus":"private"}`)
+			return err
+		}},
+		{name: "listPlaylists/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[youtube.PlaylistsPage](`{"playlists":[{"id":"PLcurated123","title":"Compiler picks","description":"Curated videos","privacyStatus":"private"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "updatePlaylist/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[youtube.Playlist](`{"id":"PLcurated123","title":"Updated picks","description":"Curated videos","privacyStatus":"private"}`)
+			return err
+		}},
+		{name: "deletePlaylist/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[youtube.DeletedPlaylist](`{"playlistId":"PLcurated123"}`)
+			return err
+		}},
 		{name: "searchVideos/matchingCompilerVideo/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[youtube.VideoSearchPage](`{"results":[{"videoId":"AbCdEfGhI12","channelId":"UC1234567890123456789012","channelTitle":"Compiler Lab","title":"Compiler release walkthrough","description":"A short compiler tour","publishedAt":"2026-10-20T10:00:00Z"}],"nextPageToken":"compiler-search-2","totalResults":2}`)
 			return err
@@ -62,6 +118,48 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListChannels().Definition().Operation.OperationID != "listChannels" {
+		t.Errorf("listChannels mock has another definition")
+	}
+	if mock.UpdateChannel().Definition().Operation.OperationID != "updateChannel" {
+		t.Errorf("updateChannel mock has another definition")
+	}
+	if mock.ListVideos().Definition().Operation.OperationID != "listVideos" {
+		t.Errorf("listVideos mock has another definition")
+	}
+	if mock.ListVideoCategories().Definition().Operation.OperationID != "listVideoCategories" {
+		t.Errorf("listVideoCategories mock has another definition")
+	}
+	if mock.RateVideo().Definition().Operation.OperationID != "rateVideo" {
+		t.Errorf("rateVideo mock has another definition")
+	}
+	if mock.DeleteVideo().Definition().Operation.OperationID != "deleteVideo" {
+		t.Errorf("deleteVideo mock has another definition")
+	}
+	if mock.UpdateVideo().Definition().Operation.OperationID != "updateVideo" {
+		t.Errorf("updateVideo mock has another definition")
+	}
+	if mock.CreatePlaylist().Definition().Operation.OperationID != "createPlaylist" {
+		t.Errorf("createPlaylist mock has another definition")
+	}
+	if mock.GetPlaylistItem().Definition().Operation.OperationID != "getPlaylistItem" {
+		t.Errorf("getPlaylistItem mock has another definition")
+	}
+	if mock.DeletePlaylistItem().Definition().Operation.OperationID != "deletePlaylistItem" {
+		t.Errorf("deletePlaylistItem mock has another definition")
+	}
+	if mock.GetPlaylist().Definition().Operation.OperationID != "getPlaylist" {
+		t.Errorf("getPlaylist mock has another definition")
+	}
+	if mock.ListPlaylists().Definition().Operation.OperationID != "listPlaylists" {
+		t.Errorf("listPlaylists mock has another definition")
+	}
+	if mock.UpdatePlaylist().Definition().Operation.OperationID != "updatePlaylist" {
+		t.Errorf("updatePlaylist mock has another definition")
+	}
+	if mock.DeletePlaylist().Definition().Operation.OperationID != "deletePlaylist" {
+		t.Errorf("deletePlaylist mock has another definition")
+	}
 	if mock.SearchVideos().Definition().Operation.OperationID != "searchVideos" {
 		t.Errorf("searchVideos mock has another definition")
 	}
