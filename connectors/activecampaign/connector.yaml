@@ -82,7 +82,7 @@ spec:
       description: List Deep Data ecommerce orders.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: ActiveCampaign returned the selected ecommerce data.}
         - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
@@ -102,7 +102,7 @@ spec:
       description: Read one Deep Data ecommerce order.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: ActiveCampaign returned the selected ecommerce data.}
         - {id: notFound, goName: NotFound, description: No matching order or product exists., optional: true}
@@ -123,7 +123,7 @@ spec:
       description: List Deep Data order products.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: ActiveCampaign returned the selected ecommerce data.}
         - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
@@ -143,7 +143,7 @@ spec:
       description: Read one Deep Data order product.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: ActiveCampaign returned the selected ecommerce data.}
         - {id: notFound, goName: NotFound, description: No matching order or product exists., optional: true}
@@ -164,7 +164,7 @@ spec:
       description: List products belonging to one Deep Data order.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: ActiveCampaign returned the selected ecommerce data.}
         - {id: notFound, goName: NotFound, description: No matching order or product exists., optional: true}
@@ -185,7 +185,7 @@ spec:
       description: List Deep Data ecommerce customers.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: ActiveCampaign completed the ecommerce customer operation.}
         - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
@@ -205,7 +205,7 @@ spec:
       description: Read one Deep Data ecommerce customer.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: ActiveCampaign completed the ecommerce customer operation.}
         - {id: notFound, goName: NotFound, description: No customer exists at the selected ID., optional: true}
@@ -287,7 +287,7 @@ spec:
       description: List Deep Data ecommerce connections.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: ActiveCampaign completed the ecommerce connection operation.}
         - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
@@ -307,7 +307,7 @@ spec:
       description: Read one ecommerce connection.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: ActiveCampaign completed the ecommerce connection operation.}
         - {id: notFound, goName: NotFound, description: No connection exists at the selected ID., optional: true}
@@ -389,7 +389,7 @@ spec:
       description: List one page of account-contact links.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: ActiveCampaign completed the contact-account link operation.}
         - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
@@ -409,7 +409,7 @@ spec:
       description: Read one account-contact link.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: ActiveCampaign completed the contact-account link operation.}
         - {id: notFound, goName: NotFound, description: No link exists at the selected ID., optional: true}
@@ -491,7 +491,7 @@ spec:
       description: List one page of CRM accounts.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: ActiveCampaign completed the account operation.}
         - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
@@ -511,7 +511,7 @@ spec:
       description: Read one CRM account.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: ActiveCampaign completed the account operation.}
         - {id: notFound, goName: NotFound, description: No account exists at the selected ID., optional: true}
@@ -593,7 +593,7 @@ spec:
       description: List one page of a contact's list memberships.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: ActiveCampaign completed the list-membership operation.}
         - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
@@ -655,7 +655,7 @@ spec:
       description: List the tag associations of one contact.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: ActiveCampaign completed the contact-tag operation.}
         - {id: notFound, goName: NotFound, description: The contact does not exist., optional: true}
@@ -717,7 +717,7 @@ spec:
       description: List one page of notes for a deal.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: ActiveCampaign completed the note operation.}
         - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
@@ -737,7 +737,7 @@ spec:
       description: Read one note belonging to a deal.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: ActiveCampaign completed the note operation.}
         - {id: notFound, goName: NotFound, description: The deal or note does not exist., optional: true}
@@ -800,7 +800,7 @@ spec:
       description: List one page of deals and their basic metadata.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: ActiveCampaign completed the deal operation.}
         - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
@@ -820,7 +820,7 @@ spec:
       description: Read one deal by ID.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: ActiveCampaign completed the deal operation.}
         - {id: notFound, goName: NotFound, description: The deal ID does not exist., optional: true}
@@ -903,7 +903,7 @@ spec:
       description: List contact tag definitions by page.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: ActiveCampaign completed the tag operation.}
         - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
@@ -923,7 +923,7 @@ spec:
       description: Read one contact tag definition by ID.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: ActiveCampaign completed the tag operation.}
         - {id: notFound, goName: NotFound, description: The tag ID does not exist., optional: true}
@@ -1005,7 +1005,7 @@ spec:
       description: List one page of email contact lists and their subscriber counts.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: ActiveCampaign returned the selected list page.}
         - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
@@ -1025,7 +1025,7 @@ spec:
       description: Read one contact list by numeric ID.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: ActiveCampaign returned list metadata.}
         - {id: notFound, goName: NotFound, description: No list with this ID is visible to the API user., optional: true}
@@ -1046,7 +1046,7 @@ spec:
       description: List one page of contact IDs, email addresses, and names without embedded relationships.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: ActiveCampaign returned the selected contact page.}
         - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
@@ -1066,7 +1066,7 @@ spec:
       description: Read one contact's ID, email address, and name without embedded relationships.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: ActiveCampaign returned contact metadata.}
         - {id: notFound, goName: NotFound, description: No contact with this ID is visible to the API user., optional: true}

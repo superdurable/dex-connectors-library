@@ -38,6 +38,11 @@ func (*NotificationFlow) GetPersistenceSchema() dex.PersistenceSchema {
 func (*NotificationFlow) GetConnectorTriggerBindings() []sdkgo.TriggerBindingDefinition {
 	return []sdkgo.TriggerBindingDefinition{sns.DefineNotificationReceivedTriggerBinding(sns.NotificationReceivedTriggerBindingConfig{
 		ConnectionName: ConnectionName, BindingName: NotificationBindingName,
+		ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{{
+			ID: "notificationTopic", UnitID: sns.UIUnitTopicARNInput, Label: "Notification topic", Required: true,
+			Description: "Open https://console.aws.amazon.com/sns > Topics in the connection Region, select the topic whose notifications start this Flow, and copy its Topic ARN, such as arn:aws:sns:us-east-1:123456789012:example-topic. This non-secret ARN must match the connection Region; blank cannot save this binding.",
+			Bindings:    []sdkgo.ConnectorUIBinding{{Port: sns.UITopicARNInputPortTopicARN, JSONPointer: "/topicARN"}},
+		}}},
 	})}
 }
 

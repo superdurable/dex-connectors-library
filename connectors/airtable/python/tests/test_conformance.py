@@ -15,7 +15,8 @@ sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # noqa: E402
 
 SCENARIOS = [
-    scenario for scenario in load_scenarios(ROOT / "conformance/connectors/airtable/scenarios.json")
+    scenario
+    for scenario in load_scenarios(ROOT / "conformance/connectors/airtable/scenarios.json")
     if scenario["operation"] in {"listRecords", "getRecord", "upsertRecords", "updateRecords"}
 ]
 CONNECTION = sdk.ConnectionRef("airtable", "airtable")

@@ -18,6 +18,11 @@ import (
 
 const ConnectorID = "amazon-sns"
 
+const (
+	UIUnitTopicARNInput         = "topicARNInput"
+	UITopicARNInputPortTopicARN = "topicARN"
+)
+
 type Config struct {
 	Region           string        `json:"region,omitempty" yaml:"region,omitempty"`
 	Endpoint         string        `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
@@ -247,15 +252,17 @@ var NotificationReceivedTriggerDefinition = sdkgo.TriggerDefinition{
 
 type NotificationReceivedTriggerBindingConfig struct {
 	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
-	connectorID                             struct{} `connector:"connectorId=amazon-sns"`
-	triggerName                             struct{} `connector:"triggerName=notificationReceived"`
-	ConnectionName                          string   `connector:"connectionName"`
-	BindingName                             string   `connector:"bindingName"`
+	connectorID                             struct{}                       `connector:"connectorId=amazon-sns"`
+	triggerName                             struct{}                       `connector:"triggerName=notificationReceived"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
 }
 
 func DefineNotificationReceivedTriggerBinding(config NotificationReceivedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
 	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
 		Definition: NotificationReceivedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
 	})
 }
 
@@ -311,6 +318,7 @@ type CreateTopicStepConfig[IN any] struct {
 	operationID                       struct{}                                            `connector:"operationId=createTopic"`
 	StepType                          string                                              `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                      `connector:"configurationUI"`
 	Connection                        Connection                                          `connector:"connection"`
 	ConnectionName                    string                                              `connector:"connectionName"`
 	MapToOperationInput               func(IN) CreateTopicInput                           `connector:"mapToOperationInput"`
@@ -330,7 +338,8 @@ func NewCreateTopicStep[IN any](config CreateTopicStepConfig[IN]) sdkgo.Mutation
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateTopicInput, TopicIdentity]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.CreateTopic(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.CreateTopic(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateTopicResult] {
 			branches := make([]sdkgo.BranchTarget[CreateTopicResult], 0, 3)
@@ -377,6 +386,7 @@ type DeleteTopicStepConfig[IN any] struct {
 	operationID                       struct{}                                            `connector:"operationId=deleteTopic"`
 	StepType                          string                                              `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                      `connector:"configurationUI"`
 	Connection                        Connection                                          `connector:"connection"`
 	ConnectionName                    string                                              `connector:"connectionName"`
 	MapToOperationInput               func(IN) TopicARNInput                              `connector:"mapToOperationInput"`
@@ -396,7 +406,8 @@ func NewDeleteTopicStep[IN any](config DeleteTopicStepConfig[IN]) sdkgo.Mutation
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, TopicARNInput, TopicIdentity]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.DeleteTopic(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.DeleteTopic(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[DeleteTopicResult] {
 			branches := make([]sdkgo.BranchTarget[DeleteTopicResult], 0, 3)
@@ -443,6 +454,7 @@ type SetTopicAttributeStepConfig[IN any] struct {
 	operationID                       struct{}                                            `connector:"operationId=setTopicAttribute"`
 	StepType                          string                                              `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                      `connector:"configurationUI"`
 	Connection                        Connection                                          `connector:"connection"`
 	ConnectionName                    string                                              `connector:"connectionName"`
 	MapToOperationInput               func(IN) SetTopicAttributeInput                     `connector:"mapToOperationInput"`
@@ -462,7 +474,8 @@ func NewSetTopicAttributeStep[IN any](config SetTopicAttributeStepConfig[IN]) sd
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetTopicAttributeInput, TopicIdentity]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.SetTopicAttribute(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.SetTopicAttribute(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SetTopicAttributeResult] {
 			branches := make([]sdkgo.BranchTarget[SetTopicAttributeResult], 0, 3)
@@ -512,6 +525,7 @@ type GetTopicAttributesStepConfig[IN any] struct {
 	operationID                    struct{}                                           `connector:"operationId=getTopicAttributes"`
 	StepType                       string                                             `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                     `connector:"configurationUI"`
 	Connection                     Connection                                         `connector:"connection"`
 	ConnectionName                 string                                             `connector:"connectionName"`
 	MapToOperationInput            func(IN) TopicARNInput                             `connector:"mapToOperationInput"`
@@ -533,7 +547,8 @@ func NewGetTopicAttributesStep[IN any](config GetTopicAttributesStepConfig[IN]) 
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, TopicARNInput, TopicAttributes]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.GetTopicAttributes(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetTopicAttributes(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetTopicAttributesResult] {
 			branches := make([]sdkgo.BranchTarget[GetTopicAttributesResult], 0, 5)
@@ -589,6 +604,7 @@ type PublishMessageStepConfig[IN any] struct {
 	operationID                       struct{}                                               `connector:"operationId=publishMessage"`
 	StepType                          string                                                 `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                         `connector:"configurationUI"`
 	Connection                        Connection                                             `connector:"connection"`
 	ConnectionName                    string                                                 `connector:"connectionName"`
 	MapToOperationInput               func(IN) PublishMessageInput                           `connector:"mapToOperationInput"`
@@ -611,7 +627,8 @@ func NewPublishMessageStep[IN any](config PublishMessageStepConfig[IN]) sdkgo.Mu
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PublishMessageInput, PublishedMessage]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.PublishMessage(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.PublishMessage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[PublishMessageResult] {
 			branches := make([]sdkgo.BranchTarget[PublishMessageResult], 0, 4)
@@ -663,6 +680,7 @@ type ListTopicsStepConfig[IN any] struct {
 	operationID                    struct{}                                     `connector:"operationId=listTopics"`
 	StepType                       string                                       `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI               `connector:"configurationUI"`
 	Connection                     Connection                                   `connector:"connection"`
 	ConnectionName                 string                                       `connector:"connectionName"`
 	MapToOperationInput            func(IN) ListTopicsInput                     `connector:"mapToOperationInput"`
@@ -683,7 +701,8 @@ func NewListTopicsStep[IN any](config ListTopicsStepConfig[IN]) sdkgo.QueryStep[
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTopicsInput, TopicPage]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.ListTopics(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListTopics(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListTopicsResult] {
 			branches := make([]sdkgo.BranchTarget[ListTopicsResult], 0, 4)
@@ -736,6 +755,7 @@ type SubscribeEndpointStepConfig[IN any] struct {
 	operationID                       struct{}                                                   `connector:"operationId=subscribeEndpoint"`
 	StepType                          string                                                     `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                             `connector:"configurationUI"`
 	Connection                        Connection                                                 `connector:"connection"`
 	ConnectionName                    string                                                     `connector:"connectionName"`
 	MapToOperationInput               func(IN) SubscribeEndpointInput                            `connector:"mapToOperationInput"`
@@ -758,7 +778,8 @@ func NewSubscribeEndpointStep[IN any](config SubscribeEndpointStepConfig[IN]) sd
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SubscribeEndpointInput, SubscriptionIdentity]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.SubscribeEndpoint(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.SubscribeEndpoint(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SubscribeEndpointResult] {
 			branches := make([]sdkgo.BranchTarget[SubscribeEndpointResult], 0, 4)
@@ -810,6 +831,7 @@ type ListSubscriptionsByTopicStepConfig[IN any] struct {
 	operationID                    struct{}                                            `connector:"operationId=listSubscriptionsByTopic"`
 	StepType                       string                                              `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                      `connector:"configurationUI"`
 	Connection                     Connection                                          `connector:"connection"`
 	ConnectionName                 string                                              `connector:"connectionName"`
 	MapToOperationInput            func(IN) ListSubscriptionsByTopicInput              `connector:"mapToOperationInput"`
@@ -830,7 +852,8 @@ func NewListSubscriptionsByTopicStep[IN any](config ListSubscriptionsByTopicStep
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSubscriptionsByTopicInput, SubscriptionPage]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.ListSubscriptionsByTopic(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListSubscriptionsByTopic(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListSubscriptionsByTopicResult] {
 			branches := make([]sdkgo.BranchTarget[ListSubscriptionsByTopicResult], 0, 4)
@@ -881,6 +904,7 @@ type ListSubscriptionsStepConfig[IN any] struct {
 	operationID                    struct{}                                            `connector:"operationId=listSubscriptions"`
 	StepType                       string                                              `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                      `connector:"configurationUI"`
 	Connection                     Connection                                          `connector:"connection"`
 	ConnectionName                 string                                              `connector:"connectionName"`
 	MapToOperationInput            func(IN) ListSubscriptionsInput                     `connector:"mapToOperationInput"`
@@ -901,7 +925,8 @@ func NewListSubscriptionsStep[IN any](config ListSubscriptionsStepConfig[IN]) sd
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSubscriptionsInput, SubscriptionPage]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.ListSubscriptions(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListSubscriptions(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListSubscriptionsResult] {
 			branches := make([]sdkgo.BranchTarget[ListSubscriptionsResult], 0, 4)
@@ -954,6 +979,7 @@ type GetSubscriptionAttributesStepConfig[IN any] struct {
 	operationID                    struct{}                                                  `connector:"operationId=getSubscriptionAttributes"`
 	StepType                       string                                                    `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                                     `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                            `connector:"configurationUI"`
 	Connection                     Connection                                                `connector:"connection"`
 	ConnectionName                 string                                                    `connector:"connectionName"`
 	MapToOperationInput            func(IN) SubscriptionARNInput                             `connector:"mapToOperationInput"`
@@ -975,7 +1001,8 @@ func NewGetSubscriptionAttributesStep[IN any](config GetSubscriptionAttributesSt
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SubscriptionARNInput, SubscriptionAttributes]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.GetSubscriptionAttributes(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetSubscriptionAttributes(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetSubscriptionAttributesResult] {
 			branches := make([]sdkgo.BranchTarget[GetSubscriptionAttributesResult], 0, 5)
@@ -1028,6 +1055,7 @@ type SetSubscriptionAttributeStepConfig[IN any] struct {
 	operationID                       struct{}                                                   `connector:"operationId=setSubscriptionAttribute"`
 	StepType                          string                                                     `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                             `connector:"configurationUI"`
 	Connection                        Connection                                                 `connector:"connection"`
 	ConnectionName                    string                                                     `connector:"connectionName"`
 	MapToOperationInput               func(IN) SetSubscriptionAttributeInput                     `connector:"mapToOperationInput"`
@@ -1047,7 +1075,8 @@ func NewSetSubscriptionAttributeStep[IN any](config SetSubscriptionAttributeStep
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetSubscriptionAttributeInput, SubscriptionIdentity]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.SetSubscriptionAttribute(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.SetSubscriptionAttribute(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SetSubscriptionAttributeResult] {
 			branches := make([]sdkgo.BranchTarget[SetSubscriptionAttributeResult], 0, 3)
@@ -1094,6 +1123,7 @@ type UnsubscribeEndpointStepConfig[IN any] struct {
 	operationID                       struct{}                                                   `connector:"operationId=unsubscribeEndpoint"`
 	StepType                          string                                                     `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                             `connector:"configurationUI"`
 	Connection                        Connection                                                 `connector:"connection"`
 	ConnectionName                    string                                                     `connector:"connectionName"`
 	MapToOperationInput               func(IN) SubscriptionARNInput                              `connector:"mapToOperationInput"`
@@ -1113,7 +1143,8 @@ func NewUnsubscribeEndpointStep[IN any](config UnsubscribeEndpointStepConfig[IN]
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SubscriptionARNInput, SubscriptionIdentity]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.UnsubscribeEndpoint(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.UnsubscribeEndpoint(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UnsubscribeEndpointResult] {
 			branches := make([]sdkgo.BranchTarget[UnsubscribeEndpointResult], 0, 3)

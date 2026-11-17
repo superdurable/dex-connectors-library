@@ -15,10 +15,17 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # type: ignore[import-not-found]  # noqa: E402
 
-PACKAGE_MANIFEST = json.loads((ROOT / "connectors/amplitude/python/src/dex_connectors/amplitude/dex-connector.json").read_text())
-SUPPORTED_OPERATIONS = {factory["operationId"] for factory in PACKAGE_MANIFEST["factories"] if "operationId" in factory}
-SCENARIOS = [scenario for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/amplitude/scenarios.json")
-             if scenario["operation"] in SUPPORTED_OPERATIONS]
+PACKAGE_MANIFEST = json.loads(
+    (ROOT / "connectors/amplitude/python/src/dex_connectors/amplitude/dex-connector.json").read_text()
+)
+SUPPORTED_OPERATIONS = {
+    factory["operationId"] for factory in PACKAGE_MANIFEST["factories"] if "operationId" in factory
+}
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/amplitude/scenarios.json")
+    if scenario["operation"] in SUPPORTED_OPERATIONS
+]
 CONNECTION = sdk.ConnectionRef("amplitude", "amplitude")
 TEST_CREDENTIALS = amplitude.Credentials(
     sdk.SecretString("sample-amplitude-api-key"), sdk.SecretString("sample-amplitude-secret-key")

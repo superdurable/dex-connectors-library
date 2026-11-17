@@ -69,6 +69,19 @@ spec:
         - Open the IAM user > Security credentials > Access keys > Create access key > Other. Copy the Access key ID to secret access_key_id and the one-time Secret access key Value to secret_access_key. Leave session_token blank for long-term keys; include it for temporary ASIA keys.
         - Open https://console.aws.amazon.com/sns > Topics, choose the Region in the console selector, and set region to that Region code. Leave endpoint blank for AWS. Copy the full Topic ARN from a selected topic for deleteTopic, setTopicAttribute, or publishMessage. Leave nextToken blank for the first listTopics page; pass the returned token for the next page.
         - Rotate the key under IAM > Users > selected user > Security credentials > Access keys by creating a second key, updating this connection, verifying a Flow, then deactivating and deleting the old key.
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    units:
+      - id: topicARNInput
+        goName: TopicARNInput
+        description: "Choose a topic at https://console.aws.amazon.com/sns > Topics in the connection Region, then copy its Topic ARN. The non-secret ARN has the form arn:aws:sns:us-east-1:123456789012:example-topic; blank cannot save a notificationReceived binding."
+        outputs:
+          - {name: topicARN, goName: TopicARN, type: string}
   triggers:
     - name: notificationReceived
       goName: NotificationReceived

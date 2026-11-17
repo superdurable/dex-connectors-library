@@ -16,7 +16,9 @@ import connector_scenarios as conformance  # type: ignore[import-not-found]  # n
 
 SCENARIOS = [
     scenario
-    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/adobe/acrobat-sign/scenarios.json")
+    for scenario in conformance.load_scenarios(
+        ROOT / "conformance/connectors/adobe/acrobat-sign/scenarios.json"
+    )
     if scenario["operation"] == "getAgreement"
 ]
 CONNECTION = sdk.ConnectionRef("adobe-acrobat-sign", "adobe-acrobat-sign")
