@@ -2206,6 +2206,1987 @@
       },
       "name": "deleteCampaign-transport",
       "operation": "deleteCampaign"
+    },
+    {
+      "callId": "b07-adgroup-listAdGroups-1",
+      "exchanges": [
+        {
+          "body": "{\"AdGroups\":[{\"Id\":\"33\",\"Name\":\"Example\",\"Status\":\"Paused\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups/QueryByCampaignId",
+          "requestBody": {
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "adGroups": [
+            {
+              "id": "33",
+              "name": "Example",
+              "status": "Paused"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765"
+      },
+      "name": "listAdGroups-success",
+      "operation": "listAdGroups"
+    },
+    {
+      "callId": "b07-adgroup-listAdGroups-2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups/QueryByCampaignId",
+          "requestBody": {
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "adGroups": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765"
+      },
+      "name": "listAdGroups-rejected",
+      "operation": "listAdGroups"
+    },
+    {
+      "callId": "b07-adgroup-listAdGroups-3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups/QueryByCampaignId",
+          "requestBody": {
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adGroups": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765"
+      },
+      "name": "listAdGroups-invalid",
+      "operation": "listAdGroups"
+    },
+    {
+      "callId": "b07-adgroup-listAdGroups-4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "adGroups": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "INVALID",
+        "campaignId": "98765"
+      },
+      "name": "listAdGroups-defect",
+      "operation": "listAdGroups"
+    },
+    {
+      "callId": "b07-adgroup-listAdGroups-5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups/QueryByCampaignId",
+          "requestBody": {
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765"
+      },
+      "name": "listAdGroups-429",
+      "operation": "listAdGroups"
+    },
+    {
+      "callId": "b07-adgroup-listAdGroups-6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups/QueryByCampaignId",
+          "requestBody": {
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765"
+      },
+      "name": "listAdGroups-500",
+      "operation": "listAdGroups"
+    },
+    {
+      "callId": "b07-adgroup-listAdGroups-7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups/QueryByCampaignId",
+          "requestBody": {
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765"
+      },
+      "name": "listAdGroups-transport",
+      "operation": "listAdGroups"
+    },
+    {
+      "callId": "b07-adgroup-getAdGroup-1",
+      "exchanges": [
+        {
+          "body": "{\"AdGroups\":[{\"Id\":\"33\",\"Name\":\"Example\",\"Status\":\"Paused\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups/QueryByIds",
+          "requestBody": {
+            "AdGroupIds": [
+              "33"
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "33",
+          "name": "Example",
+          "status": "Paused"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "campaignId": "98765"
+      },
+      "name": "getAdGroup-success",
+      "operation": "getAdGroup"
+    },
+    {
+      "callId": "b07-adgroup-getAdGroup-2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups/QueryByIds",
+          "requestBody": {
+            "AdGroupIds": [
+              "33"
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "campaignId": "98765"
+      },
+      "name": "getAdGroup-rejected",
+      "operation": "getAdGroup"
+    },
+    {
+      "callId": "b07-adgroup-getAdGroup-3",
+      "exchanges": [
+        {
+          "body": "{\"AdGroups\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups/QueryByIds",
+          "requestBody": {
+            "AdGroupIds": [
+              "33"
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "campaignId": "98765"
+      },
+      "name": "getAdGroup-notFound",
+      "operation": "getAdGroup"
+    },
+    {
+      "callId": "b07-adgroup-getAdGroup-4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups/QueryByIds",
+          "requestBody": {
+            "AdGroupIds": [
+              "33"
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "campaignId": "98765"
+      },
+      "name": "getAdGroup-invalid",
+      "operation": "getAdGroup"
+    },
+    {
+      "callId": "b07-adgroup-getAdGroup-5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "INVALID",
+        "adGroupId": "33",
+        "campaignId": "98765"
+      },
+      "name": "getAdGroup-defect",
+      "operation": "getAdGroup"
+    },
+    {
+      "callId": "b07-adgroup-getAdGroup-6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups/QueryByIds",
+          "requestBody": {
+            "AdGroupIds": [
+              "33"
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "campaignId": "98765"
+      },
+      "name": "getAdGroup-429",
+      "operation": "getAdGroup"
+    },
+    {
+      "callId": "b07-adgroup-getAdGroup-7",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups/QueryByIds",
+          "requestBody": {
+            "AdGroupIds": [
+              "33"
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "campaignId": "98765"
+      },
+      "name": "getAdGroup-500",
+      "operation": "getAdGroup"
+    },
+    {
+      "callId": "b07-adgroup-getAdGroup-8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups/QueryByIds",
+          "requestBody": {
+            "AdGroupIds": [
+              "33"
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "campaignId": "98765"
+      },
+      "name": "getAdGroup-transport",
+      "operation": "getAdGroup"
+    },
+    {
+      "callId": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+      "exchanges": [
+        {
+          "body": "{\"AdGroupIds\":[\"33\"],\"PartialErrors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups",
+          "requestBody": {
+            "AdGroups": [
+              {
+                "Name": "Example",
+                "Status": "Paused"
+              }
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+          "providerId": "33",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "adGroupId": "33"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765",
+        "name": "Example"
+      },
+      "name": "createAdGroup-success",
+      "operation": "createAdGroup"
+    },
+    {
+      "callId": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups",
+          "requestBody": {
+            "AdGroups": [
+              {
+                "Name": "Example",
+                "Status": "Paused"
+              }
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "adGroupId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765",
+        "name": "Example"
+      },
+      "name": "createAdGroup-rejected",
+      "operation": "createAdGroup"
+    },
+    {
+      "callId": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "adGroupId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+      "input": {
+        "accountId": "INVALID",
+        "campaignId": "98765",
+        "name": "Example"
+      },
+      "name": "createAdGroup-defect",
+      "operation": "createAdGroup"
+    },
+    {
+      "callId": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups",
+          "requestBody": {
+            "AdGroups": [
+              {
+                "Name": "Example",
+                "Status": "Paused"
+              }
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765",
+        "name": "Example"
+      },
+      "name": "createAdGroup-429",
+      "operation": "createAdGroup"
+    },
+    {
+      "callId": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups",
+          "requestBody": {
+            "AdGroups": [
+              {
+                "Name": "Example",
+                "Status": "Paused"
+              }
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765",
+        "name": "Example"
+      },
+      "name": "createAdGroup-500",
+      "operation": "createAdGroup"
+    },
+    {
+      "callId": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups",
+          "requestBody": {
+            "AdGroups": [
+              {
+                "Name": "Example",
+                "Status": "Paused"
+              }
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765",
+        "name": "Example"
+      },
+      "name": "createAdGroup-transport",
+      "operation": "createAdGroup"
+    },
+    {
+      "callId": "fcf3d8bf-9e68-5477-83ec-37c6274c8e34",
+      "exchanges": [
+        {
+          "body": "{\"PartialErrors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/CampaignManagement/v13/AdGroups",
+          "requestBody": {
+            "AdGroups": [
+              {
+                "Id": "33",
+                "Name": "Updated",
+                "Status": "Paused"
+              }
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "adGroupId": "33"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fcf3d8bf-9e68-5477-83ec-37c6274c8e34",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "campaignId": "98765",
+        "name": "Updated",
+        "status": "Paused"
+      },
+      "name": "updateAdGroup-success",
+      "operation": "updateAdGroup"
+    },
+    {
+      "callId": "fcf3d8bf-9e68-5477-83ec-37c6274c8e34",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/CampaignManagement/v13/AdGroups",
+          "requestBody": {
+            "AdGroups": [
+              {
+                "Id": "33",
+                "Name": "Updated",
+                "Status": "Paused"
+              }
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "adGroupId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fcf3d8bf-9e68-5477-83ec-37c6274c8e34",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "campaignId": "98765",
+        "name": "Updated",
+        "status": "Paused"
+      },
+      "name": "updateAdGroup-rejected",
+      "operation": "updateAdGroup"
+    },
+    {
+      "callId": "fcf3d8bf-9e68-5477-83ec-37c6274c8e34",
+      "exchanges": [
+        {
+          "body": "{bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/CampaignManagement/v13/AdGroups",
+          "requestBody": {
+            "AdGroups": [
+              {
+                "Id": "33",
+                "Name": "Updated",
+                "Status": "Paused"
+              }
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adGroupId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fcf3d8bf-9e68-5477-83ec-37c6274c8e34",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "campaignId": "98765",
+        "name": "Updated",
+        "status": "Paused"
+      },
+      "name": "updateAdGroup-invalid",
+      "operation": "updateAdGroup"
+    },
+    {
+      "callId": "fcf3d8bf-9e68-5477-83ec-37c6274c8e34",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "adGroupId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fcf3d8bf-9e68-5477-83ec-37c6274c8e34",
+      "input": {
+        "accountId": "INVALID",
+        "adGroupId": "33",
+        "campaignId": "98765",
+        "name": "Updated",
+        "status": "Paused"
+      },
+      "name": "updateAdGroup-defect",
+      "operation": "updateAdGroup"
+    },
+    {
+      "callId": "fcf3d8bf-9e68-5477-83ec-37c6274c8e34",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/CampaignManagement/v13/AdGroups",
+          "requestBody": {
+            "AdGroups": [
+              {
+                "Id": "33",
+                "Name": "Updated",
+                "Status": "Paused"
+              }
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fcf3d8bf-9e68-5477-83ec-37c6274c8e34",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "campaignId": "98765",
+        "name": "Updated",
+        "status": "Paused"
+      },
+      "name": "updateAdGroup-429",
+      "operation": "updateAdGroup"
+    },
+    {
+      "callId": "fcf3d8bf-9e68-5477-83ec-37c6274c8e34",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/CampaignManagement/v13/AdGroups",
+          "requestBody": {
+            "AdGroups": [
+              {
+                "Id": "33",
+                "Name": "Updated",
+                "Status": "Paused"
+              }
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fcf3d8bf-9e68-5477-83ec-37c6274c8e34",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "campaignId": "98765",
+        "name": "Updated",
+        "status": "Paused"
+      },
+      "name": "updateAdGroup-500",
+      "operation": "updateAdGroup"
+    },
+    {
+      "callId": "fcf3d8bf-9e68-5477-83ec-37c6274c8e34",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/CampaignManagement/v13/AdGroups",
+          "requestBody": {
+            "AdGroups": [
+              {
+                "Id": "33",
+                "Name": "Updated",
+                "Status": "Paused"
+              }
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fcf3d8bf-9e68-5477-83ec-37c6274c8e34",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "campaignId": "98765",
+        "name": "Updated",
+        "status": "Paused"
+      },
+      "name": "updateAdGroup-transport",
+      "operation": "updateAdGroup"
+    },
+    {
+      "callId": "68b83cfc-d23e-5628-b5f4-db20073da528",
+      "exchanges": [
+        {
+          "body": "{\"PartialErrors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/CampaignManagement/v13/AdGroups",
+          "requestBody": {
+            "AdGroupIds": [
+              "33"
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "adGroupId": "33"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68b83cfc-d23e-5628-b5f4-db20073da528",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "campaignId": "98765"
+      },
+      "name": "deleteAdGroup-success",
+      "operation": "deleteAdGroup"
+    },
+    {
+      "callId": "68b83cfc-d23e-5628-b5f4-db20073da528",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/CampaignManagement/v13/AdGroups",
+          "requestBody": {
+            "AdGroupIds": [
+              "33"
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "adGroupId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68b83cfc-d23e-5628-b5f4-db20073da528",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "campaignId": "98765"
+      },
+      "name": "deleteAdGroup-rejected",
+      "operation": "deleteAdGroup"
+    },
+    {
+      "callId": "68b83cfc-d23e-5628-b5f4-db20073da528",
+      "exchanges": [
+        {
+          "body": "{bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/CampaignManagement/v13/AdGroups",
+          "requestBody": {
+            "AdGroupIds": [
+              "33"
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adGroupId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68b83cfc-d23e-5628-b5f4-db20073da528",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "campaignId": "98765"
+      },
+      "name": "deleteAdGroup-invalid",
+      "operation": "deleteAdGroup"
+    },
+    {
+      "callId": "68b83cfc-d23e-5628-b5f4-db20073da528",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "adGroupId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68b83cfc-d23e-5628-b5f4-db20073da528",
+      "input": {
+        "accountId": "INVALID",
+        "adGroupId": "33",
+        "campaignId": "98765"
+      },
+      "name": "deleteAdGroup-defect",
+      "operation": "deleteAdGroup"
+    },
+    {
+      "callId": "68b83cfc-d23e-5628-b5f4-db20073da528",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/CampaignManagement/v13/AdGroups",
+          "requestBody": {
+            "AdGroupIds": [
+              "33"
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68b83cfc-d23e-5628-b5f4-db20073da528",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "campaignId": "98765"
+      },
+      "name": "deleteAdGroup-429",
+      "operation": "deleteAdGroup"
+    },
+    {
+      "callId": "68b83cfc-d23e-5628-b5f4-db20073da528",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/CampaignManagement/v13/AdGroups",
+          "requestBody": {
+            "AdGroupIds": [
+              "33"
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68b83cfc-d23e-5628-b5f4-db20073da528",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "campaignId": "98765"
+      },
+      "name": "deleteAdGroup-500",
+      "operation": "deleteAdGroup"
+    },
+    {
+      "callId": "68b83cfc-d23e-5628-b5f4-db20073da528",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/CampaignManagement/v13/AdGroups",
+          "requestBody": {
+            "AdGroupIds": [
+              "33"
+            ],
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68b83cfc-d23e-5628-b5f4-db20073da528",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "campaignId": "98765"
+      },
+      "name": "deleteAdGroup-transport",
+      "operation": "deleteAdGroup"
+    },
+    {
+      "callId": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+      "exchanges": [
+        {
+          "body": "{\"AdGroups\":[{\"Id\":\"33\",\"Name\":\"Example\",\"Status\":\"Paused\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups/QueryByCampaignId",
+          "requestBody": {
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "adGroupId": "33"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765",
+        "name": "Example"
+      },
+      "name": "createAdGroup-readback",
+      "operation": "createAdGroup",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+      "exchanges": [
+        {
+          "body": "{\"AdGroups\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/AdGroups/QueryByCampaignId",
+          "requestBody": {
+            "CampaignId": "98765"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "LOCAL_DEFECT",
+        "output": {
+          "adGroupId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+      "input": {
+        "accountId": "12345",
+        "campaignId": "98765",
+        "name": "Example"
+      },
+      "name": "createAdGroup-uncertain",
+      "operation": "createAdGroup",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+        "sendCount": 3,
+        "state": "claimed"
+      }
     }
   ],
   "schemaVersion": 1

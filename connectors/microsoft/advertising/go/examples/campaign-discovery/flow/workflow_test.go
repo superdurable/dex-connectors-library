@@ -24,3 +24,12 @@ func TestCampaignDiscoveryFlowIdentityAndMapping(t *testing.T) {
 	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
 	require.NoError(t, err)
 }
+
+func TestAdGroupDiscoveryFlowRegisters(t *testing.T) {
+	mock := microsoftadvertisingmock.New(t, ConnectionName)
+	_, err := dex.NewRegistry([]dex.Flow{NewAdGroupDiscoveryFlow(mock.Connection())})
+	require.NoError(t, err)
+	wait, err := startAdGroupDiscovery{}.WaitFor(nil, microsoftadvertising.ListAdGroupsInput{})
+	require.NoError(t, err)
+	require.Equal(t, dex.SkipWaitImmediately(), wait)
+}

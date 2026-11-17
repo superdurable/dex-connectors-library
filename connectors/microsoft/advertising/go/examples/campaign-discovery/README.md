@@ -1,6 +1,8 @@
 # Microsoft Advertising campaign discovery
 
-This Go example registers two Flows. `MicrosoftAdvertisingCampaignDiscovery` lists an account's campaigns; `CampaignInspectionFlow` calls `microsoftadvertising.NewGetCampaignStep` for one campaign ID and stores its summary in a Dex Attribute. Both use the static Dex Web connection name `microsoft-advertising`.
+This Go example registers three Flows. `MicrosoftAdvertisingCampaignDiscovery` lists an account's campaigns; `CampaignInspectionFlow` reads one campaign ID; `AdGroupDiscoveryFlow` lists the ad groups in one campaign. All use the static Dex Web connection name `microsoft-advertising` and store their results in Dex Attributes.
+
+Start `AdGroupDiscoveryFlow` with `{"accountId":"12345","campaignId":"98765"}` after copying `aid` and the campaign ID from **Microsoft Advertising > Campaigns > selected campaign > Ad groups**. Its mock-backed Dex test verifies the typed ad group page. The provider authorization and live ad group calls remain unverified.
 
 From the repository root, generate and lint the FDG 2.0 graph:
 

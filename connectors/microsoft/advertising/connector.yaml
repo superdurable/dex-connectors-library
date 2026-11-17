@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: microsoft-advertising
   displayName: Microsoft Advertising
-  description: Read and manage campaigns in a Microsoft Advertising account through the v13 REST API.
+  description: Read and manage campaigns and ad groups in a Microsoft Advertising account through the v13 REST API.
   company: Microsoft
   categories: [marketing]
   version: v0.2.0
@@ -39,12 +39,12 @@ spec:
         goName: Timeout
         type: duration
         default: 15s
-        description: Maximum duration of one campaign request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for slow accounts.
+        description: Maximum duration of one Campaign Management request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for slow accounts.
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
         default: 4194304
-        description: Maximum complete campaign JSON response in bytes. Blank uses the displayed default; increase only for unusually large accounts.
+        description: Maximum complete Campaign Management JSON response in bytes. Blank uses the displayed default; increase only for unusually large accounts.
   auth:
     type: oauth2
     refreshable: true
@@ -101,6 +101,86 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, interaction_required, consent_required]
   operations:
+    - name: listAdGroups
+      goName: ListAdGroups
+      inputType: ListAdGroupsInput
+      outputType: AdGroupsPage
+      kind: query
+      description: List ad groups in one campaign.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Microsoft Advertising returned the ad groups.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The ad group response was invalid., optional: true}
+        - {id: defect, goName: Defect, description: The account or campaign ID is invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One ad group is listed., output: {adGroups: [{id: '33', name: Example, status: Paused}]}}
+    - name: getAdGroup
+      goName: GetAdGroup
+      inputType: GetAdGroupInput
+      outputType: AdGroupSummary
+      kind: query
+      description: Read one ad group in a campaign by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Microsoft Advertising returned the ad group.}
+        - {id: notFound, goName: NotFound, description: No ad group has the requested ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The ad group response was invalid., optional: true}
+        - {id: defect, goName: Defect, description: "The account, campaign, or ad group ID is invalid.", optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One ad group is found., output: {id: '33', name: Example, status: Paused}}
+    - name: createAdGroup
+      goName: CreateAdGroup
+      inputType: CreateAdGroupInput
+      outputType: AdGroupMutationResult
+      kind: mutation
+      description: Create a paused ad group with a unique name within its campaign.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Microsoft Advertising created the ad group.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the create., optional: true}
+        - {id: defect, goName: Defect, description: "The account, campaign, or name is invalid.", optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: One ad group was created., output: {adGroupId: '33'}}
+    - name: updateAdGroup
+      goName: UpdateAdGroup
+      inputType: UpdateAdGroupInput
+      outputType: AdGroupMutationResult
+      kind: mutation
+      description: Replace an ad group's name or status.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Microsoft Advertising updated the ad group.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The update response was invalid., optional: true}
+        - {id: defect, goName: Defect, description: "The account, campaign, ad group, or replacement is invalid.", optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: One ad group was updated., output: {adGroupId: '33'}}
+    - name: deleteAdGroup
+      goName: DeleteAdGroup
+      inputType: DeleteAdGroupInput
+      outputType: AdGroupMutationResult
+      kind: mutation
+      description: Delete one ad group in its campaign.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Microsoft Advertising deleted the ad group.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the delete., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The delete response was invalid., optional: true}
+        - {id: defect, goName: Defect, description: "The account, campaign, or ad group ID is invalid.", optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: One ad group was deleted., output: {adGroupId: '33'}}
     - name: getCampaign
       goName: GetCampaign
       inputType: GetCampaignInput

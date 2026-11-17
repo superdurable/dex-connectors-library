@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listAdGroups/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.AdGroupsPage](`{"adGroups":[{"id":"33","name":"Example","status":"Paused"}]}`)
+			return err
+		}},
+		{name: "getAdGroup/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.AdGroupSummary](`{"id":"33","name":"Example","status":"Paused"}`)
+			return err
+		}},
+		{name: "createAdGroup/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.AdGroupMutationResult](`{"adGroupId":"33"}`)
+			return err
+		}},
+		{name: "updateAdGroup/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.AdGroupMutationResult](`{"adGroupId":"33"}`)
+			return err
+		}},
+		{name: "deleteAdGroup/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.AdGroupMutationResult](`{"adGroupId":"33"}`)
+			return err
+		}},
 		{name: "getCampaign/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[microsoftadvertising.CampaignSummary](`{"id":"98765","name":"Sample Search","campaignType":"Search","status":"Active"}`)
 			return err
@@ -46,6 +66,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListAdGroups().Definition().Operation.OperationID != "listAdGroups" {
+		t.Errorf("listAdGroups mock has another definition")
+	}
+	if mock.GetAdGroup().Definition().Operation.OperationID != "getAdGroup" {
+		t.Errorf("getAdGroup mock has another definition")
+	}
+	if mock.CreateAdGroup().Definition().Operation.OperationID != "createAdGroup" {
+		t.Errorf("createAdGroup mock has another definition")
+	}
+	if mock.UpdateAdGroup().Definition().Operation.OperationID != "updateAdGroup" {
+		t.Errorf("updateAdGroup mock has another definition")
+	}
+	if mock.DeleteAdGroup().Definition().Operation.OperationID != "deleteAdGroup" {
+		t.Errorf("deleteAdGroup mock has another definition")
+	}
 	if mock.GetCampaign().Definition().Operation.OperationID != "getCampaign" {
 		t.Errorf("getCampaign mock has another definition")
 	}

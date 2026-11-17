@@ -39,6 +39,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			currentAttempt++
 		}
 	}, actions: map[string]conformanceOperationInvocation{
+		"listAdGroups":   newConformanceQueryInvocation(t, scenario.Input, context, client.ListAdGroups(), reference),
+		"getAdGroup":     newConformanceQueryInvocation(t, scenario.Input, context, client.GetAdGroup(), reference),
+		"createAdGroup":  newConformanceMutationInvocation(t, scenario.Input, context, client.CreateAdGroup(), reference, scenario.CallID),
+		"updateAdGroup":  newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateAdGroup(), reference, scenario.CallID),
+		"deleteAdGroup":  newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteAdGroup(), reference, scenario.CallID),
 		"listCampaigns":  newConformanceQueryInvocation(t, scenario.Input, context, client.ListCampaigns(), reference),
 		"getCampaign":    newConformanceQueryInvocation(t, scenario.Input, context, client.GetCampaign(), reference),
 		"createCampaign": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateCampaign(), reference, scenario.CallID),
