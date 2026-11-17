@@ -16,6 +16,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "answerCallbackQuery/answeredDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.AnsweredQuery](`{"answered":true}`)
+			return err
+		}},
+		{name: "answerInlineQuery/answeredDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.AnsweredQuery](`{"answered":true}`)
+			return err
+		}},
+		{name: "getFile/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.TelegramFile](`{"fileId":"ABC123","fileUniqueId":"UNIQUE123","fileSize":1024,"filePath":"documents/example.pdf"}`)
+			return err
+		}},
 		{name: "getChatAdministrators/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[telegram.ChatAdministrators](`{"administrators":[{"userId":42,"status":"administrator"}]}`)
 			return err
@@ -54,6 +66,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.AnswerCallbackQuery().Definition().Operation.OperationID != "answerCallbackQuery" {
+		t.Errorf("answerCallbackQuery mock has another definition")
+	}
+	if mock.AnswerInlineQuery().Definition().Operation.OperationID != "answerInlineQuery" {
+		t.Errorf("answerInlineQuery mock has another definition")
+	}
+	if mock.GetFile().Definition().Operation.OperationID != "getFile" {
+		t.Errorf("getFile mock has another definition")
+	}
 	if mock.GetChatAdministrators().Definition().Operation.OperationID != "getChatAdministrators" {
 		t.Errorf("getChatAdministrators mock has another definition")
 	}

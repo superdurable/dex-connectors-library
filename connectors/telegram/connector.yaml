@@ -55,6 +55,67 @@ spec:
         - For an existing bot, open BotFather > /mybots > your bot > API Token. Save the token only in bot_token, never in Flow input. Use BotFather to revoke and replace a leaked token.
         - Add the bot to the target chat and grant access needed to read its metadata or send text. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: answerCallbackQuery
+      goName: AnswerCallbackQuery
+      inputType: AnswerCallbackQueryInput
+      outputType: AnsweredQuery
+      kind: mutation
+      description: Acknowledge a callback query and optionally show a notification.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: answered, goName: Answered, description: Telegram confirmed the callback answer.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the answer., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "Local query ID, text, or credentials are invalid.", optional: true}
+      mocks:
+        - name: answeredDefault
+          branch: answered
+          default: true
+          description: The callback was acknowledged.
+          output: {answered: true}
+    - name: answerInlineQuery
+      goName: AnswerInlineQuery
+      inputType: AnswerInlineQueryInput
+      outputType: AnsweredQuery
+      kind: mutation
+      description: Send up to 50 JSON inline results for an inline query.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: answered, goName: Answered, description: Telegram confirmed the inline answer.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the answer., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "Local query ID, results JSON, or credentials are invalid.", optional: true}
+      mocks:
+        - name: answeredDefault
+          branch: answered
+          default: true
+          description: The inline query was answered.
+          output: {answered: true}
+    - name: getFile
+      goName: GetFile
+      inputType: GetFileInput
+      outputType: TelegramFile
+      kind: query
+      description: Read Telegram file metadata without constructing a token-bearing download URL.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Telegram returned file metadata.}
+        - {id: notFound, goName: NotFound, description: Telegram did not recognize the file ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local file ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Telegram returned one file's metadata.
+          output: {fileId: "ABC123", fileUniqueId: "UNIQUE123", fileSize: 1024, filePath: "documents/example.pdf"}
     - name: getChatAdministrators
       goName: GetChatAdministrators
       inputType: GetChatInput

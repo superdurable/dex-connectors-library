@@ -18,6 +18,9 @@ import (
 // Mock is a scripted telegram connection. Script each operation through its accessor.
 type Mock struct {
 	connection            telegram.Connection
+	answerCallbackQuery   *connectormock.Mutation[telegram.AnswerCallbackQueryInput, telegram.AnsweredQuery]
+	answerInlineQuery     *connectormock.Mutation[telegram.AnswerInlineQueryInput, telegram.AnsweredQuery]
+	getFile               *connectormock.Query[telegram.GetFileInput, telegram.TelegramFile]
 	getChatAdministrators *connectormock.Query[telegram.GetChatInput, telegram.ChatAdministrators]
 	getChatMember         *connectormock.Query[telegram.GetChatMemberInput, telegram.ChatMemberSummary]
 	leaveChat             *connectormock.Mutation[telegram.GetChatInput, telegram.ChatActionResult]
@@ -32,6 +35,9 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		answerCallbackQuery:   connectormock.NewMutation[telegram.AnswerCallbackQueryInput, telegram.AnsweredQuery](t, telegram.AnswerCallbackQueryDefinition),
+		answerInlineQuery:     connectormock.NewMutation[telegram.AnswerInlineQueryInput, telegram.AnsweredQuery](t, telegram.AnswerInlineQueryDefinition),
+		getFile:               connectormock.NewQuery[telegram.GetFileInput, telegram.TelegramFile](t, telegram.GetFileDefinition),
 		getChatAdministrators: connectormock.NewQuery[telegram.GetChatInput, telegram.ChatAdministrators](t, telegram.GetChatAdministratorsDefinition),
 		getChatMember:         connectormock.NewQuery[telegram.GetChatMemberInput, telegram.ChatMemberSummary](t, telegram.GetChatMemberDefinition),
 		leaveChat:             connectormock.NewMutation[telegram.GetChatInput, telegram.ChatActionResult](t, telegram.LeaveChatDefinition),
@@ -40,6 +46,9 @@ func New(t testing.TB, connectionName string) *Mock {
 		sendMessage:           connectormock.NewMutation[telegram.SendMessageInput, telegram.SentMessage](t, telegram.SendMessageDefinition),
 		getChat:               connectormock.NewQuery[telegram.GetChatInput, telegram.Chat](t, telegram.GetChatDefinition),
 	}
+	mock.answerCallbackQuery.Default(AnswerCallbackQueryDefault())
+	mock.answerInlineQuery.Default(AnswerInlineQueryDefault())
+	mock.getFile.Default(GetFileDefault())
 	mock.getChatAdministrators.Default(GetChatAdministratorsDefault())
 	mock.getChatMember.Default(GetChatMemberDefault())
 	mock.leaveChat.Default(LeaveChatDefault())
@@ -57,6 +66,21 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() telegram.Connection { return mock.connection }
+
+// AnswerCallbackQuery returns the answerCallbackQuery script.
+func (mock *Mock) AnswerCallbackQuery() *connectormock.Mutation[telegram.AnswerCallbackQueryInput, telegram.AnsweredQuery] {
+	return mock.answerCallbackQuery
+}
+
+// AnswerInlineQuery returns the answerInlineQuery script.
+func (mock *Mock) AnswerInlineQuery() *connectormock.Mutation[telegram.AnswerInlineQueryInput, telegram.AnsweredQuery] {
+	return mock.answerInlineQuery
+}
+
+// GetFile returns the getFile script.
+func (mock *Mock) GetFile() *connectormock.Query[telegram.GetFileInput, telegram.TelegramFile] {
+	return mock.getFile
+}
 
 // GetChatAdministrators returns the getChatAdministrators script.
 func (mock *Mock) GetChatAdministrators() *connectormock.Query[telegram.GetChatInput, telegram.ChatAdministrators] {
@@ -95,6 +119,15 @@ func (mock *Mock) GetChat() *connectormock.Query[telegram.GetChatInput, telegram
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) AnswerCallbackQuery() sdkgo.Mutation[telegram.AnswerCallbackQueryInput, telegram.AnsweredQuery] {
+	return operations.mock.answerCallbackQuery
+}
+func (operations mockOperations) AnswerInlineQuery() sdkgo.Mutation[telegram.AnswerInlineQueryInput, telegram.AnsweredQuery] {
+	return operations.mock.answerInlineQuery
+}
+func (operations mockOperations) GetFile() sdkgo.Query[telegram.GetFileInput, telegram.TelegramFile] {
+	return operations.mock.getFile
+}
 func (operations mockOperations) GetChatAdministrators() sdkgo.Query[telegram.GetChatInput, telegram.ChatAdministrators] {
 	return operations.mock.getChatAdministrators
 }
@@ -116,6 +149,117 @@ func (operations mockOperations) SendMessage() sdkgo.Mutation[telegram.SendMessa
 func (operations mockOperations) GetChat() sdkgo.Query[telegram.GetChatInput, telegram.Chat] {
 	return operations.mock.getChat
 }
+
+// AnswerCallbackQueryAnswered selects the answered branch: Telegram confirmed the callback answer.
+func AnswerCallbackQueryAnswered(value telegram.AnsweredQuery, failure *sdkgo.Failure) connectormock.Case[telegram.AnsweredQuery] {
+	return connectormock.Branch(telegram.AnswerCallbackQueryBranchAnswered, value, failure)
+}
+
+// AnswerCallbackQueryProviderRejected selects the providerRejected branch: Telegram conclusively rejected the answer.
+func AnswerCallbackQueryProviderRejected(value telegram.AnsweredQuery, failure *sdkgo.Failure) connectormock.Case[telegram.AnsweredQuery] {
+	return connectormock.Branch(telegram.AnswerCallbackQueryBranchProviderRejected, value, failure)
+}
+
+// AnswerCallbackQueryInvalidResponse selects the invalidResponse branch: Telegram returned malformed or oversized data.
+func AnswerCallbackQueryInvalidResponse(value telegram.AnsweredQuery, failure *sdkgo.Failure) connectormock.Case[telegram.AnsweredQuery] {
+	return connectormock.Branch(telegram.AnswerCallbackQueryBranchInvalidResponse, value, failure)
+}
+
+// AnswerCallbackQueryDefect selects the defect branch: Local query ID, text, or credentials are invalid.
+func AnswerCallbackQueryDefect(value telegram.AnsweredQuery, failure *sdkgo.Failure) connectormock.Case[telegram.AnsweredQuery] {
+	return connectormock.Branch(telegram.AnswerCallbackQueryBranchDefect, value, failure)
+}
+
+// AnswerCallbackQueryRetry asks Dex to retry the answerCallbackQuery Step, after the delay when it is positive.
+func AnswerCallbackQueryRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[telegram.AnsweredQuery] {
+	return connectormock.Retry[telegram.AnsweredQuery](failure, after)
+}
+
+// AnswerCallbackQueryAnsweredDefault is the manifest mock answeredDefault: The callback was acknowledged.
+func AnswerCallbackQueryAnsweredDefault() connectormock.Case[telegram.AnsweredQuery] {
+	value := connectormock.MustDecodeOutput[telegram.AnsweredQuery](`{"answered":true}`)
+	return connectormock.Branch(telegram.AnswerCallbackQueryBranchAnswered, value, nil)
+}
+
+// AnswerCallbackQueryDefault is the manifest default, answeredDefault, which New installs.
+func AnswerCallbackQueryDefault() connectormock.Case[telegram.AnsweredQuery] {
+	return AnswerCallbackQueryAnsweredDefault()
+}
+
+// AnswerInlineQueryAnswered selects the answered branch: Telegram confirmed the inline answer.
+func AnswerInlineQueryAnswered(value telegram.AnsweredQuery, failure *sdkgo.Failure) connectormock.Case[telegram.AnsweredQuery] {
+	return connectormock.Branch(telegram.AnswerInlineQueryBranchAnswered, value, failure)
+}
+
+// AnswerInlineQueryProviderRejected selects the providerRejected branch: Telegram conclusively rejected the answer.
+func AnswerInlineQueryProviderRejected(value telegram.AnsweredQuery, failure *sdkgo.Failure) connectormock.Case[telegram.AnsweredQuery] {
+	return connectormock.Branch(telegram.AnswerInlineQueryBranchProviderRejected, value, failure)
+}
+
+// AnswerInlineQueryInvalidResponse selects the invalidResponse branch: Telegram returned malformed or oversized data.
+func AnswerInlineQueryInvalidResponse(value telegram.AnsweredQuery, failure *sdkgo.Failure) connectormock.Case[telegram.AnsweredQuery] {
+	return connectormock.Branch(telegram.AnswerInlineQueryBranchInvalidResponse, value, failure)
+}
+
+// AnswerInlineQueryDefect selects the defect branch: Local query ID, results JSON, or credentials are invalid.
+func AnswerInlineQueryDefect(value telegram.AnsweredQuery, failure *sdkgo.Failure) connectormock.Case[telegram.AnsweredQuery] {
+	return connectormock.Branch(telegram.AnswerInlineQueryBranchDefect, value, failure)
+}
+
+// AnswerInlineQueryRetry asks Dex to retry the answerInlineQuery Step, after the delay when it is positive.
+func AnswerInlineQueryRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[telegram.AnsweredQuery] {
+	return connectormock.Retry[telegram.AnsweredQuery](failure, after)
+}
+
+// AnswerInlineQueryAnsweredDefault is the manifest mock answeredDefault: The inline query was answered.
+func AnswerInlineQueryAnsweredDefault() connectormock.Case[telegram.AnsweredQuery] {
+	value := connectormock.MustDecodeOutput[telegram.AnsweredQuery](`{"answered":true}`)
+	return connectormock.Branch(telegram.AnswerInlineQueryBranchAnswered, value, nil)
+}
+
+// AnswerInlineQueryDefault is the manifest default, answeredDefault, which New installs.
+func AnswerInlineQueryDefault() connectormock.Case[telegram.AnsweredQuery] {
+	return AnswerInlineQueryAnsweredDefault()
+}
+
+// GetFileFound selects the found branch: Telegram returned file metadata.
+func GetFileFound(value telegram.TelegramFile, failure *sdkgo.Failure) connectormock.Case[telegram.TelegramFile] {
+	return connectormock.Branch(telegram.GetFileBranchFound, value, failure)
+}
+
+// GetFileNotFound selects the notFound branch: Telegram did not recognize the file ID.
+func GetFileNotFound(value telegram.TelegramFile, failure *sdkgo.Failure) connectormock.Case[telegram.TelegramFile] {
+	return connectormock.Branch(telegram.GetFileBranchNotFound, value, failure)
+}
+
+// GetFileProviderRejected selects the providerRejected branch: Telegram conclusively rejected the lookup.
+func GetFileProviderRejected(value telegram.TelegramFile, failure *sdkgo.Failure) connectormock.Case[telegram.TelegramFile] {
+	return connectormock.Branch(telegram.GetFileBranchProviderRejected, value, failure)
+}
+
+// GetFileInvalidResponse selects the invalidResponse branch: Telegram returned malformed or oversized data.
+func GetFileInvalidResponse(value telegram.TelegramFile, failure *sdkgo.Failure) connectormock.Case[telegram.TelegramFile] {
+	return connectormock.Branch(telegram.GetFileBranchInvalidResponse, value, failure)
+}
+
+// GetFileDefect selects the defect branch: Local file ID or credentials are invalid.
+func GetFileDefect(value telegram.TelegramFile, failure *sdkgo.Failure) connectormock.Case[telegram.TelegramFile] {
+	return connectormock.Branch(telegram.GetFileBranchDefect, value, failure)
+}
+
+// GetFileRetry asks Dex to retry the getFile Step, after the delay when it is positive.
+func GetFileRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[telegram.TelegramFile] {
+	return connectormock.Retry[telegram.TelegramFile](failure, after)
+}
+
+// GetFileFoundDefault is the manifest mock foundDefault: Telegram returned one file's metadata.
+func GetFileFoundDefault() connectormock.Case[telegram.TelegramFile] {
+	value := connectormock.MustDecodeOutput[telegram.TelegramFile](`{"fileId":"ABC123","fileUniqueId":"UNIQUE123","fileSize":1024,"filePath":"documents/example.pdf"}`)
+	return connectormock.Branch(telegram.GetFileBranchFound, value, nil)
+}
+
+// GetFileDefault is the manifest default, foundDefault, which New installs.
+func GetFileDefault() connectormock.Case[telegram.TelegramFile] { return GetFileFoundDefault() }
 
 // GetChatAdministratorsFound selects the found branch: Telegram returned the administrators.
 func GetChatAdministratorsFound(value telegram.ChatAdministrators, failure *sdkgo.Failure) connectormock.Case[telegram.ChatAdministrators] {

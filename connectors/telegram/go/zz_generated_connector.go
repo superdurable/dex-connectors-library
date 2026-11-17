@@ -40,6 +40,9 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	AnswerCallbackQuery() sdkgo.Mutation[AnswerCallbackQueryInput, AnsweredQuery]
+	AnswerInlineQuery() sdkgo.Mutation[AnswerInlineQueryInput, AnsweredQuery]
+	GetFile() sdkgo.Query[GetFileInput, TelegramFile]
 	GetChatAdministrators() sdkgo.Query[GetChatInput, ChatAdministrators]
 	GetChatMember() sdkgo.Query[GetChatMemberInput, ChatMemberSummary]
 	LeaveChat() sdkgo.Mutation[GetChatInput, ChatActionResult]
@@ -51,6 +54,15 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) AnswerCallbackQuery() sdkgo.Mutation[AnswerCallbackQueryInput, AnsweredQuery] {
+	return operations.client.AnswerCallbackQuery()
+}
+func (operations clientOperations) AnswerInlineQuery() sdkgo.Mutation[AnswerInlineQueryInput, AnsweredQuery] {
+	return operations.client.AnswerInlineQuery()
+}
+func (operations clientOperations) GetFile() sdkgo.Query[GetFileInput, TelegramFile] {
+	return operations.client.GetFile()
+}
 func (operations clientOperations) GetChatAdministrators() sdkgo.Query[GetChatInput, ChatAdministrators] {
 	return operations.client.GetChatAdministrators()
 }
@@ -208,6 +220,225 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential bot_token is required")
 	}
 	return nil
+}
+
+const AnswerCallbackQueryBranchAnswered sdkgo.BranchID = "answered"
+const AnswerCallbackQueryBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const AnswerCallbackQueryBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const AnswerCallbackQueryBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var AnswerCallbackQueryDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "answerCallbackQuery"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: AnswerCallbackQueryBranchAnswered, Description: "Telegram confirmed the callback answer."},
+		{ID: AnswerCallbackQueryBranchProviderRejected, Description: "Telegram conclusively rejected the answer.", Optional: true},
+		{ID: AnswerCallbackQueryBranchInvalidResponse, Description: "Telegram returned malformed or oversized data.", Optional: true},
+		{ID: AnswerCallbackQueryBranchDefect, Description: "Local query ID, text, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type AnswerCallbackQueryResult = sdkgo.MutationResult[AnsweredQuery]
+
+type AnswerCallbackQueryStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=telegram"`
+	operationID                       struct{}                                            `connector:"operationId=answerCallbackQuery"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) AnswerCallbackQueryInput                   `connector:"mapToOperationInput"`
+	Answered                          sdkgo.Target[AnswerCallbackQueryResult]             `connector:"branch=answered"`
+	ProviderRejected                  sdkgo.Target[AnswerCallbackQueryResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[AnswerCallbackQueryResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[AnswerCallbackQueryResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AnsweredQuery]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewAnswerCallbackQueryStep[IN any](config AnswerCallbackQueryStepConfig[IN]) sdkgo.MutationStep[IN, AnswerCallbackQueryInput, AnsweredQuery] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AnswerCallbackQueryInput, AnsweredQuery]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.AnswerCallbackQuery(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[AnswerCallbackQueryResult] {
+			branches := make([]sdkgo.BranchTarget[AnswerCallbackQueryResult], 0, 4)
+			if config.Answered.HasStep() {
+				branches = append(branches, config.Answered.BranchTarget(AnswerCallbackQueryBranchAnswered))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(AnswerCallbackQueryBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(AnswerCallbackQueryBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(AnswerCallbackQueryBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const AnswerInlineQueryBranchAnswered sdkgo.BranchID = "answered"
+const AnswerInlineQueryBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const AnswerInlineQueryBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const AnswerInlineQueryBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var AnswerInlineQueryDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "answerInlineQuery"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: AnswerInlineQueryBranchAnswered, Description: "Telegram confirmed the inline answer."},
+		{ID: AnswerInlineQueryBranchProviderRejected, Description: "Telegram conclusively rejected the answer.", Optional: true},
+		{ID: AnswerInlineQueryBranchInvalidResponse, Description: "Telegram returned malformed or oversized data.", Optional: true},
+		{ID: AnswerInlineQueryBranchDefect, Description: "Local query ID, results JSON, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type AnswerInlineQueryResult = sdkgo.MutationResult[AnsweredQuery]
+
+type AnswerInlineQueryStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=telegram"`
+	operationID                       struct{}                                            `connector:"operationId=answerInlineQuery"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) AnswerInlineQueryInput                     `connector:"mapToOperationInput"`
+	Answered                          sdkgo.Target[AnswerInlineQueryResult]               `connector:"branch=answered"`
+	ProviderRejected                  sdkgo.Target[AnswerInlineQueryResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[AnswerInlineQueryResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[AnswerInlineQueryResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AnsweredQuery]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewAnswerInlineQueryStep[IN any](config AnswerInlineQueryStepConfig[IN]) sdkgo.MutationStep[IN, AnswerInlineQueryInput, AnsweredQuery] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AnswerInlineQueryInput, AnsweredQuery]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.AnswerInlineQuery(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[AnswerInlineQueryResult] {
+			branches := make([]sdkgo.BranchTarget[AnswerInlineQueryResult], 0, 4)
+			if config.Answered.HasStep() {
+				branches = append(branches, config.Answered.BranchTarget(AnswerInlineQueryBranchAnswered))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(AnswerInlineQueryBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(AnswerInlineQueryBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(AnswerInlineQueryBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetFileBranchFound sdkgo.BranchID = "found"
+const GetFileBranchNotFound sdkgo.BranchID = "notFound"
+const GetFileBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetFileBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetFileBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetFileDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getFile"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetFileBranchFound, Description: "Telegram returned file metadata."},
+		{ID: GetFileBranchNotFound, Description: "Telegram did not recognize the file ID.", Optional: true},
+		{ID: GetFileBranchProviderRejected, Description: "Telegram conclusively rejected the lookup.", Optional: true},
+		{ID: GetFileBranchInvalidResponse, Description: "Telegram returned malformed or oversized data.", Optional: true},
+		{ID: GetFileBranchDefect, Description: "Local file ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetFileResult = sdkgo.QueryResult[TelegramFile]
+
+type GetFileStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=telegram"`
+	operationID                    struct{}                                        `connector:"operationId=getFile"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetFileInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetFileResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetFileResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetFileResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetFileResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetFileResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TelegramFile]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetFileStep[IN any](config GetFileStepConfig[IN]) sdkgo.QueryStep[IN, GetFileInput, TelegramFile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetFileInput, TelegramFile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetFile(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetFileResult] {
+			branches := make([]sdkgo.BranchTarget[GetFileResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetFileBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetFileBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetFileBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetFileBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetFileBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetChatAdministratorsBranchFound sdkgo.BranchID = "found"

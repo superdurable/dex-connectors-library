@@ -2312,6 +2312,868 @@
       },
       "name": "setChatTitle-transportFailure",
       "operation": "setChatTitle"
+    },
+    {
+      "attempts": 1,
+      "callId": "bd7bbf01-f91e-59b9-b486-92f4e94330e5",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"result\":true}",
+          "form": {
+            "callback_query_id": [
+              "callback-123"
+            ],
+            "text": [
+              "Done"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/answerCallbackQuery",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "answered",
+        "failureKind": "",
+        "output": {
+          "answered": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bd7bbf01-f91e-59b9-b486-92f4e94330e5",
+      "input": {
+        "queryId": "callback-123",
+        "text": "Done"
+      },
+      "name": "answerCallbackQuery-success",
+      "operation": "answerCallbackQuery"
+    },
+    {
+      "attempts": 1,
+      "callId": "bd7bbf01-f91e-59b9-b486-92f4e94330e5",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error_code\":403,\"description\":\"Forbidden\"}",
+          "form": {
+            "callback_query_id": [
+              "callback-123"
+            ],
+            "text": [
+              "Done"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/answerCallbackQuery",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "answered": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bd7bbf01-f91e-59b9-b486-92f4e94330e5",
+      "input": {
+        "queryId": "callback-123",
+        "text": "Done"
+      },
+      "name": "answerCallbackQuery-providerRejected",
+      "operation": "answerCallbackQuery"
+    },
+    {
+      "attempts": 1,
+      "callId": "bd7bbf01-f91e-59b9-b486-92f4e94330e5",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"result\":{}}",
+          "form": {
+            "callback_query_id": [
+              "callback-123"
+            ],
+            "text": [
+              "Done"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/answerCallbackQuery",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "answered": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bd7bbf01-f91e-59b9-b486-92f4e94330e5",
+      "input": {
+        "queryId": "callback-123",
+        "text": "Done"
+      },
+      "name": "answerCallbackQuery-invalidResponse",
+      "operation": "answerCallbackQuery"
+    },
+    {
+      "attempts": 1,
+      "callId": "bd7bbf01-f91e-59b9-b486-92f4e94330e5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "answered": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bd7bbf01-f91e-59b9-b486-92f4e94330e5",
+      "input": {
+        "queryId": "",
+        "text": "Done"
+      },
+      "name": "answerCallbackQuery-defect",
+      "operation": "answerCallbackQuery"
+    },
+    {
+      "attempts": 1,
+      "callId": "bd7bbf01-f91e-59b9-b486-92f4e94330e5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "callback_query_id": [
+              "callback-123"
+            ],
+            "text": [
+              "Done"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/answerCallbackQuery",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bd7bbf01-f91e-59b9-b486-92f4e94330e5",
+      "input": {
+        "queryId": "callback-123",
+        "text": "Done"
+      },
+      "name": "answerCallbackQuery-rateLimit",
+      "operation": "answerCallbackQuery"
+    },
+    {
+      "attempts": 1,
+      "callId": "bd7bbf01-f91e-59b9-b486-92f4e94330e5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "callback_query_id": [
+              "callback-123"
+            ],
+            "text": [
+              "Done"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/answerCallbackQuery",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bd7bbf01-f91e-59b9-b486-92f4e94330e5",
+      "input": {
+        "queryId": "callback-123",
+        "text": "Done"
+      },
+      "name": "answerCallbackQuery-serverFailure",
+      "operation": "answerCallbackQuery"
+    },
+    {
+      "attempts": 1,
+      "callId": "bd7bbf01-f91e-59b9-b486-92f4e94330e5",
+      "exchanges": [
+        {
+          "form": {
+            "callback_query_id": [
+              "callback-123"
+            ],
+            "text": [
+              "Done"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/answerCallbackQuery",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bd7bbf01-f91e-59b9-b486-92f4e94330e5",
+      "input": {
+        "queryId": "callback-123",
+        "text": "Done"
+      },
+      "name": "answerCallbackQuery-transportFailure",
+      "operation": "answerCallbackQuery"
+    },
+    {
+      "attempts": 1,
+      "callId": "b063d9cf-45ad-5252-be2a-384e80601a1a",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"result\":true}",
+          "form": {
+            "inline_query_id": [
+              "inline-123"
+            ],
+            "results": [
+              "[]"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/answerInlineQuery",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "answered",
+        "failureKind": "",
+        "output": {
+          "answered": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b063d9cf-45ad-5252-be2a-384e80601a1a",
+      "input": {
+        "queryId": "inline-123",
+        "resultsJson": "[]"
+      },
+      "name": "answerInlineQuery-success",
+      "operation": "answerInlineQuery"
+    },
+    {
+      "attempts": 1,
+      "callId": "b063d9cf-45ad-5252-be2a-384e80601a1a",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error_code\":403,\"description\":\"Forbidden\"}",
+          "form": {
+            "inline_query_id": [
+              "inline-123"
+            ],
+            "results": [
+              "[]"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/answerInlineQuery",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "answered": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b063d9cf-45ad-5252-be2a-384e80601a1a",
+      "input": {
+        "queryId": "inline-123",
+        "resultsJson": "[]"
+      },
+      "name": "answerInlineQuery-providerRejected",
+      "operation": "answerInlineQuery"
+    },
+    {
+      "attempts": 1,
+      "callId": "b063d9cf-45ad-5252-be2a-384e80601a1a",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"result\":{}}",
+          "form": {
+            "inline_query_id": [
+              "inline-123"
+            ],
+            "results": [
+              "[]"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/answerInlineQuery",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "answered": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b063d9cf-45ad-5252-be2a-384e80601a1a",
+      "input": {
+        "queryId": "inline-123",
+        "resultsJson": "[]"
+      },
+      "name": "answerInlineQuery-invalidResponse",
+      "operation": "answerInlineQuery"
+    },
+    {
+      "attempts": 1,
+      "callId": "b063d9cf-45ad-5252-be2a-384e80601a1a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "answered": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b063d9cf-45ad-5252-be2a-384e80601a1a",
+      "input": {
+        "queryId": "",
+        "resultsJson": "[]"
+      },
+      "name": "answerInlineQuery-defect",
+      "operation": "answerInlineQuery"
+    },
+    {
+      "attempts": 1,
+      "callId": "b063d9cf-45ad-5252-be2a-384e80601a1a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "inline_query_id": [
+              "inline-123"
+            ],
+            "results": [
+              "[]"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/answerInlineQuery",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b063d9cf-45ad-5252-be2a-384e80601a1a",
+      "input": {
+        "queryId": "inline-123",
+        "resultsJson": "[]"
+      },
+      "name": "answerInlineQuery-rateLimit",
+      "operation": "answerInlineQuery"
+    },
+    {
+      "attempts": 1,
+      "callId": "b063d9cf-45ad-5252-be2a-384e80601a1a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "inline_query_id": [
+              "inline-123"
+            ],
+            "results": [
+              "[]"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/answerInlineQuery",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b063d9cf-45ad-5252-be2a-384e80601a1a",
+      "input": {
+        "queryId": "inline-123",
+        "resultsJson": "[]"
+      },
+      "name": "answerInlineQuery-serverFailure",
+      "operation": "answerInlineQuery"
+    },
+    {
+      "attempts": 1,
+      "callId": "b063d9cf-45ad-5252-be2a-384e80601a1a",
+      "exchanges": [
+        {
+          "form": {
+            "inline_query_id": [
+              "inline-123"
+            ],
+            "results": [
+              "[]"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/answerInlineQuery",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b063d9cf-45ad-5252-be2a-384e80601a1a",
+      "input": {
+        "queryId": "inline-123",
+        "resultsJson": "[]"
+      },
+      "name": "answerInlineQuery-transportFailure",
+      "operation": "answerInlineQuery"
+    },
+    {
+      "attempts": 1,
+      "callId": "a3c25634-7f13-441d-93f1-d4deae82bda3",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"result\":{\"file_id\":\"ABC123\",\"file_unique_id\":\"UNIQUE123\",\"file_size\":1024,\"file_path\":\"documents/example.pdf\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bot123456:fake_test_token/getFile",
+          "query": {
+            "file_id": [
+              "ABC123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "fileId": "ABC123",
+          "filePath": "documents/example.pdf",
+          "fileSize": 1024,
+          "fileUniqueId": "UNIQUE123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "ABC123"
+      },
+      "name": "getFile-success",
+      "operation": "getFile"
+    },
+    {
+      "attempts": 1,
+      "callId": "a3c25634-7f13-441d-93f1-d4deae82bda3",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error_code\":400,\"description\":\"wrong file identifier\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bot123456:fake_test_token/getFile",
+          "query": {
+            "file_id": [
+              "ABC123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "fileId": "",
+          "filePath": "",
+          "fileSize": 0,
+          "fileUniqueId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "ABC123"
+      },
+      "name": "getFile-notFound",
+      "operation": "getFile"
+    },
+    {
+      "attempts": 1,
+      "callId": "a3c25634-7f13-441d-93f1-d4deae82bda3",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"result\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bot123456:fake_test_token/getFile",
+          "query": {
+            "file_id": [
+              "ABC123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fileId": "",
+          "filePath": "",
+          "fileSize": 0,
+          "fileUniqueId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "ABC123"
+      },
+      "name": "getFile-invalidResponse",
+      "operation": "getFile"
+    },
+    {
+      "attempts": 1,
+      "callId": "a3c25634-7f13-441d-93f1-d4deae82bda3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fileId": "",
+          "filePath": "",
+          "fileSize": 0,
+          "fileUniqueId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": ""
+      },
+      "name": "getFile-defect",
+      "operation": "getFile"
+    },
+    {
+      "attempts": 1,
+      "callId": "a3c25634-7f13-441d-93f1-d4deae82bda3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bot123456:fake_test_token/getFile",
+          "query": {
+            "file_id": [
+              "ABC123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "ABC123"
+      },
+      "name": "getFile-rateLimit",
+      "operation": "getFile"
+    },
+    {
+      "attempts": 1,
+      "callId": "a3c25634-7f13-441d-93f1-d4deae82bda3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bot123456:fake_test_token/getFile",
+          "query": {
+            "file_id": [
+              "ABC123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "ABC123"
+      },
+      "name": "getFile-serverFailure",
+      "operation": "getFile"
+    },
+    {
+      "attempts": 1,
+      "callId": "a3c25634-7f13-441d-93f1-d4deae82bda3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bot123456:fake_test_token/getFile",
+          "query": {
+            "file_id": [
+              "ABC123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "ABC123"
+      },
+      "name": "getFile-transportFailure",
+      "operation": "getFile"
     }
   ],
   "schemaVersion": 1

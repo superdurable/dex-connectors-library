@@ -1,6 +1,6 @@
 # Telegram chat lookup Flow
 
-These runnable Flows call `getChat` and `setChatTitle` with the static `telegram` connection. Optional branches are unwired, so provider refusals fail the Flow.
+These runnable Flows call `getChat`, `setChatTitle`, and `getFile` with the static `telegram` connection. Optional branches are unwired, so provider refusals fail the Flow.
 
 ## Strict FDG 2.0 generation
 
@@ -31,3 +31,5 @@ In Dex Web Start Flow, choose `TelegramChatLookup`, enter a unique Flow ID, and 
 Replace the public username with your accessible chat, or use a decimal chat ID. The pull Worker connects to Dex Server without an inbound listener. Dex Web summary and display show the persisted metadata. The mock-backed real-Dex integration test runs with `GOWORK=off go test -tags=integration ./examples/chat-lookup/flow` while `dexcli dev` runs.
 
 Choose `TelegramSetChatTitle` with a unique Flow ID and input `{"chatId":"@meridian_team","title":"Meridian Team"}` to replace a chat title. Telegram returns only a confirmation; the Flow persists the requested chat ID without including the title in Results.
+
+Choose `TelegramGetFile` with input `{"fileId":"ABC123"}` to inspect a file ID returned by a Telegram update. The Flow returns file metadata and its provider path without a bot token or download URL.

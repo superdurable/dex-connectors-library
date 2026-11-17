@@ -241,7 +241,7 @@ func invokeChatQuery[Output any](call sdkgo.Call, client *Client, operation stri
 		return chatQueryBranch(branches.invalid, zero, operation, sdkgo.FailureProtocol, "Bot API response invalid")
 	}
 	if !envelope.OK {
-		if branches.notFound != "" && response.status == http.StatusBadRequest && (strings.Contains(strings.ToLower(envelope.Description), "not found") || strings.Contains(strings.ToLower(envelope.Description), "participant")) {
+		if branches.notFound != "" && response.status == http.StatusBadRequest && (strings.Contains(strings.ToLower(envelope.Description), "not found") || strings.Contains(strings.ToLower(envelope.Description), "participant") || strings.Contains(strings.ToLower(envelope.Description), "wrong file identifier")) {
 			return chatQueryBranch(branches.notFound, zero, operation, sdkgo.FailureNotFound, "member not found")
 		}
 		return chatQueryBranch(branches.rejected, zero, operation, botRejectionKind(response.status), "Telegram rejected lookup")
