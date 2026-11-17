@@ -16,6 +16,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listJobs/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.JobPage](`{"jobs":[{"id":"1be42b8e-cafd-4beb-8121-f4981eb20f42","title":"Software Engineer","status":"Draft","createdAt":"2024-01-01T00:00:00.000Z","updatedAt":"2024-01-15T10:30:00.000Z"}],"moreDataAvailable":false}`)
+			return err
+		}},
+		{name: "getJob/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.JobSummary](`{"id":"1be42b8e-cafd-4beb-8121-f4981eb20f42","title":"Software Engineer","status":"Draft","createdAt":"2024-01-01T00:00:00.000Z","updatedAt":"2024-01-15T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "searchJobs/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.JobSearchResults](`{"jobs":[{"id":"1be42b8e-cafd-4beb-8121-f4981eb20f42","title":"Software Engineer","status":"Draft","createdAt":"2024-01-01T00:00:00.000Z","updatedAt":"2024-01-15T10:30:00.000Z"}]}`)
+			return err
+		}},
+		{name: "createJob/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.JobSummary](`{"id":"1be42b8e-cafd-4beb-8121-f4981eb20f42","title":"Software Engineer","status":"Draft","createdAt":"2024-01-01T00:00:00.000Z","updatedAt":"2024-01-15T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "updateJobTitle/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.JobSummary](`{"id":"1be42b8e-cafd-4beb-8121-f4981eb20f42","title":"Software Engineer","status":"Draft","createdAt":"2024-01-01T00:00:00.000Z","updatedAt":"2024-01-15T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "setJobStatus/setDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.JobSummary](`{"id":"1be42b8e-cafd-4beb-8121-f4981eb20f42","title":"Software Engineer","status":"Draft","createdAt":"2024-01-01T00:00:00.000Z","updatedAt":"2024-01-15T10:30:00.000Z"}`)
+			return err
+		}},
 		{name: "listCandidateNotes/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[ashby.CandidateNotePage](`{"notes":[{"id":"5fa61e0b-3c4d-4e5f-9a0b-1c2d3e4f5a6b","createdAt":"2024-01-15T10:30:00.000Z","isPrivate":false}],"moreDataAvailable":false}`)
 			return err
@@ -74,6 +98,24 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListJobs().Definition().Operation.OperationID != "listJobs" {
+		t.Errorf("listJobs mock has another definition")
+	}
+	if mock.GetJob().Definition().Operation.OperationID != "getJob" {
+		t.Errorf("getJob mock has another definition")
+	}
+	if mock.SearchJobs().Definition().Operation.OperationID != "searchJobs" {
+		t.Errorf("searchJobs mock has another definition")
+	}
+	if mock.CreateJob().Definition().Operation.OperationID != "createJob" {
+		t.Errorf("createJob mock has another definition")
+	}
+	if mock.UpdateJobTitle().Definition().Operation.OperationID != "updateJobTitle" {
+		t.Errorf("updateJobTitle mock has another definition")
+	}
+	if mock.SetJobStatus().Definition().Operation.OperationID != "setJobStatus" {
+		t.Errorf("setJobStatus mock has another definition")
+	}
 	if mock.ListCandidateNotes().Definition().Operation.OperationID != "listCandidateNotes" {
 		t.Errorf("listCandidateNotes mock has another definition")
 	}

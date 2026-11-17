@@ -5,6 +5,1880 @@
       "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
       "exchanges": [
         {
+          "body": "{\"success\":true,\"results\":[{\"id\":\"1be42b8e-cafd-4beb-8121-f4981eb20f42\",\"title\":\"Software Engineer\",\"status\":\"Draft\",\"createdAt\":\"2024-01-01T00:00:00.000Z\",\"updatedAt\":\"2024-01-15T10:30:00.000Z\"}],\"moreDataAvailable\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.list",
+          "requestBody": {
+            "cursor": "start",
+            "limit": 20
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "jobs": [
+            {
+              "createdAt": "2024-01-01T00:00:00.000Z",
+              "id": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+              "status": "Draft",
+              "title": "Software Engineer",
+              "updatedAt": "2024-01-15T10:30:00.000Z"
+            }
+          ],
+          "moreDataAvailable": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "start",
+        "limit": 20
+      },
+      "name": "listJobs-listed",
+      "operation": "listJobs"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"missing_endpoint_permission\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.list",
+          "requestBody": {
+            "cursor": "start",
+            "limit": 20
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "jobs": [],
+          "moreDataAvailable": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "start",
+        "limit": 20
+      },
+      "name": "listJobs-providerRejected",
+      "operation": "listJobs"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.list",
+          "requestBody": {
+            "cursor": "start",
+            "limit": 20
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "jobs": [],
+          "moreDataAvailable": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "start",
+        "limit": 20
+      },
+      "name": "listJobs-invalidResponse",
+      "operation": "listJobs"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "jobs": [],
+          "moreDataAvailable": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "start",
+        "limit": -1
+      },
+      "name": "listJobs-defect",
+      "operation": "listJobs"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.list",
+          "requestBody": {
+            "cursor": "start",
+            "limit": 20
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "start",
+        "limit": 20
+      },
+      "name": "listJobs-rateLimit",
+      "operation": "listJobs"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.list",
+          "requestBody": {
+            "cursor": "start",
+            "limit": 20
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "start",
+        "limit": 20
+      },
+      "name": "listJobs-unavailable",
+      "operation": "listJobs"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.list",
+          "requestBody": {
+            "cursor": "start",
+            "limit": 20
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "start",
+        "limit": 20
+      },
+      "name": "listJobs-transportFailure",
+      "operation": "listJobs"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":{\"id\":\"1be42b8e-cafd-4beb-8121-f4981eb20f42\",\"title\":\"Software Engineer\",\"status\":\"Draft\",\"createdAt\":\"2024-01-01T00:00:00.000Z\",\"updatedAt\":\"2024-01-15T10:30:00.000Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.info",
+          "requestBody": {
+            "id": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2024-01-01T00:00:00.000Z",
+          "id": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+          "status": "Draft",
+          "title": "Software Engineer",
+          "updatedAt": "2024-01-15T10:30:00.000Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "getJob-found",
+      "operation": "getJob"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"missing_endpoint_permission\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.info",
+          "requestBody": {
+            "id": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "status": "",
+          "title": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "getJob-providerRejected",
+      "operation": "getJob"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.info",
+          "requestBody": {
+            "id": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "status": "",
+          "title": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "getJob-invalidResponse",
+      "operation": "getJob"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "status": "",
+          "title": "",
+          "updatedAt": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jobId": "bad-id"
+      },
+      "name": "getJob-defect",
+      "operation": "getJob"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.info",
+          "requestBody": {
+            "id": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "getJob-rateLimit",
+      "operation": "getJob"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.info",
+          "requestBody": {
+            "id": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "getJob-unavailable",
+      "operation": "getJob"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.info",
+          "requestBody": {
+            "id": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "getJob-transportFailure",
+      "operation": "getJob"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":[{\"id\":\"1be42b8e-cafd-4beb-8121-f4981eb20f42\",\"title\":\"Software Engineer\",\"status\":\"Draft\",\"createdAt\":\"2024-01-01T00:00:00.000Z\",\"updatedAt\":\"2024-01-15T10:30:00.000Z\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.search",
+          "requestBody": {
+            "limit": 20,
+            "requisitionId": "ENG-01",
+            "title": "Software"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "jobs": [
+            {
+              "createdAt": "2024-01-01T00:00:00.000Z",
+              "id": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+              "status": "Draft",
+              "title": "Software Engineer",
+              "updatedAt": "2024-01-15T10:30:00.000Z"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "requisitionId": "ENG-01",
+        "title": "Software"
+      },
+      "name": "searchJobs-found",
+      "operation": "searchJobs"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"missing_endpoint_permission\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.search",
+          "requestBody": {
+            "limit": 20,
+            "requisitionId": "ENG-01",
+            "title": "Software"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "jobs": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "requisitionId": "ENG-01",
+        "title": "Software"
+      },
+      "name": "searchJobs-providerRejected",
+      "operation": "searchJobs"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.search",
+          "requestBody": {
+            "limit": 20,
+            "requisitionId": "ENG-01",
+            "title": "Software"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "jobs": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "requisitionId": "ENG-01",
+        "title": "Software"
+      },
+      "name": "searchJobs-invalidResponse",
+      "operation": "searchJobs"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "jobs": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "requisitionId": "",
+        "title": ""
+      },
+      "name": "searchJobs-defect",
+      "operation": "searchJobs"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.search",
+          "requestBody": {
+            "limit": 20,
+            "requisitionId": "ENG-01",
+            "title": "Software"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "requisitionId": "ENG-01",
+        "title": "Software"
+      },
+      "name": "searchJobs-rateLimit",
+      "operation": "searchJobs"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.search",
+          "requestBody": {
+            "limit": 20,
+            "requisitionId": "ENG-01",
+            "title": "Software"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "requisitionId": "ENG-01",
+        "title": "Software"
+      },
+      "name": "searchJobs-unavailable",
+      "operation": "searchJobs"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.search",
+          "requestBody": {
+            "limit": 20,
+            "requisitionId": "ENG-01",
+            "title": "Software"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "requisitionId": "ENG-01",
+        "title": "Software"
+      },
+      "name": "searchJobs-transportFailure",
+      "operation": "searchJobs"
+    },
+    {
+      "callId": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":{\"id\":\"1be42b8e-cafd-4beb-8121-f4981eb20f42\",\"title\":\"Software Engineer\",\"status\":\"Draft\",\"createdAt\":\"2024-01-01T00:00:00.000Z\",\"updatedAt\":\"2024-01-15T10:30:00.000Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.create",
+          "requestBody": {
+            "locationId": "3ae2b801-19f6-41ef-ad28-214bd731948f",
+            "teamId": "f9e52a51-a075-4116-a7b8-484deba69004",
+            "title": "Software Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "createdAt": "2024-01-01T00:00:00.000Z",
+          "id": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+          "status": "Draft",
+          "title": "Software Engineer",
+          "updatedAt": "2024-01-15T10:30:00.000Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+      "input": {
+        "locationId": "3ae2b801-19f6-41ef-ad28-214bd731948f",
+        "teamId": "f9e52a51-a075-4116-a7b8-484deba69004",
+        "title": "Software Engineer"
+      },
+      "name": "createJob-created",
+      "operation": "createJob"
+    },
+    {
+      "callId": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"missing_endpoint_permission\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.create",
+          "requestBody": {
+            "locationId": "3ae2b801-19f6-41ef-ad28-214bd731948f",
+            "teamId": "f9e52a51-a075-4116-a7b8-484deba69004",
+            "title": "Software Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "status": "",
+          "title": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+      "input": {
+        "locationId": "3ae2b801-19f6-41ef-ad28-214bd731948f",
+        "teamId": "f9e52a51-a075-4116-a7b8-484deba69004",
+        "title": "Software Engineer"
+      },
+      "name": "createJob-providerRejected",
+      "operation": "createJob"
+    },
+    {
+      "callId": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "status": "",
+          "title": "",
+          "updatedAt": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+      "input": {
+        "locationId": "3ae2b801-19f6-41ef-ad28-214bd731948f",
+        "teamId": "f9e52a51-a075-4116-a7b8-484deba69004",
+        "title": ""
+      },
+      "name": "createJob-defect",
+      "operation": "createJob"
+    },
+    {
+      "callId": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.create",
+          "requestBody": {
+            "locationId": "3ae2b801-19f6-41ef-ad28-214bd731948f",
+            "teamId": "f9e52a51-a075-4116-a7b8-484deba69004",
+            "title": "Software Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+      "input": {
+        "locationId": "3ae2b801-19f6-41ef-ad28-214bd731948f",
+        "teamId": "f9e52a51-a075-4116-a7b8-484deba69004",
+        "title": "Software Engineer"
+      },
+      "name": "createJob-rateLimit",
+      "operation": "createJob"
+    },
+    {
+      "callId": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.create",
+          "requestBody": {
+            "locationId": "3ae2b801-19f6-41ef-ad28-214bd731948f",
+            "teamId": "f9e52a51-a075-4116-a7b8-484deba69004",
+            "title": "Software Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+      "input": {
+        "locationId": "3ae2b801-19f6-41ef-ad28-214bd731948f",
+        "teamId": "f9e52a51-a075-4116-a7b8-484deba69004",
+        "title": "Software Engineer"
+      },
+      "name": "createJob-unavailable",
+      "operation": "createJob"
+    },
+    {
+      "callId": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.create",
+          "requestBody": {
+            "locationId": "3ae2b801-19f6-41ef-ad28-214bd731948f",
+            "teamId": "f9e52a51-a075-4116-a7b8-484deba69004",
+            "title": "Software Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+      "input": {
+        "locationId": "3ae2b801-19f6-41ef-ad28-214bd731948f",
+        "teamId": "f9e52a51-a075-4116-a7b8-484deba69004",
+        "title": "Software Engineer"
+      },
+      "name": "createJob-serverFailure",
+      "operation": "createJob"
+    },
+    {
+      "callId": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.create",
+          "requestBody": {
+            "locationId": "3ae2b801-19f6-41ef-ad28-214bd731948f",
+            "teamId": "f9e52a51-a075-4116-a7b8-484deba69004",
+            "title": "Software Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+      "input": {
+        "locationId": "3ae2b801-19f6-41ef-ad28-214bd731948f",
+        "teamId": "f9e52a51-a075-4116-a7b8-484deba69004",
+        "title": "Software Engineer"
+      },
+      "name": "createJob-transportFailure",
+      "operation": "createJob"
+    },
+    {
+      "callId": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "status": "",
+          "title": "",
+          "updatedAt": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+      "input": {
+        "locationId": "3ae2b801-19f6-41ef-ad28-214bd731948f",
+        "teamId": "f9e52a51-a075-4116-a7b8-484deba69004",
+        "title": "Software Engineer"
+      },
+      "name": "createJob-uncertain",
+      "operation": "createJob",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "47cbb470-7971-5029-a065-d0a19f5d455e",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":{\"id\":\"1be42b8e-cafd-4beb-8121-f4981eb20f42\",\"title\":\"Software Engineer\",\"status\":\"Draft\",\"createdAt\":\"2024-01-01T00:00:00.000Z\",\"updatedAt\":\"2024-01-15T10:30:00.000Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.update",
+          "requestBody": {
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+            "title": "Software Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2024-01-01T00:00:00.000Z",
+          "id": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+          "status": "Draft",
+          "title": "Software Engineer",
+          "updatedAt": "2024-01-15T10:30:00.000Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47cbb470-7971-5029-a065-d0a19f5d455e",
+      "input": {
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+        "title": "Software Engineer"
+      },
+      "name": "updateJobTitle-updated",
+      "operation": "updateJobTitle"
+    },
+    {
+      "callId": "47cbb470-7971-5029-a065-d0a19f5d455e",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"missing_endpoint_permission\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.update",
+          "requestBody": {
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+            "title": "Software Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "status": "",
+          "title": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47cbb470-7971-5029-a065-d0a19f5d455e",
+      "input": {
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+        "title": "Software Engineer"
+      },
+      "name": "updateJobTitle-providerRejected",
+      "operation": "updateJobTitle"
+    },
+    {
+      "callId": "47cbb470-7971-5029-a065-d0a19f5d455e",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.update",
+          "requestBody": {
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+            "title": "Software Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "status": "",
+          "title": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47cbb470-7971-5029-a065-d0a19f5d455e",
+      "input": {
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+        "title": "Software Engineer"
+      },
+      "name": "updateJobTitle-invalidResponse",
+      "operation": "updateJobTitle"
+    },
+    {
+      "callId": "47cbb470-7971-5029-a065-d0a19f5d455e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "status": "",
+          "title": "",
+          "updatedAt": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47cbb470-7971-5029-a065-d0a19f5d455e",
+      "input": {
+        "jobId": "bad-id",
+        "title": "Software Engineer"
+      },
+      "name": "updateJobTitle-defect",
+      "operation": "updateJobTitle"
+    },
+    {
+      "callId": "47cbb470-7971-5029-a065-d0a19f5d455e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.update",
+          "requestBody": {
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+            "title": "Software Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47cbb470-7971-5029-a065-d0a19f5d455e",
+      "input": {
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+        "title": "Software Engineer"
+      },
+      "name": "updateJobTitle-rateLimit",
+      "operation": "updateJobTitle"
+    },
+    {
+      "callId": "47cbb470-7971-5029-a065-d0a19f5d455e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.update",
+          "requestBody": {
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+            "title": "Software Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47cbb470-7971-5029-a065-d0a19f5d455e",
+      "input": {
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+        "title": "Software Engineer"
+      },
+      "name": "updateJobTitle-unavailable",
+      "operation": "updateJobTitle"
+    },
+    {
+      "callId": "47cbb470-7971-5029-a065-d0a19f5d455e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.update",
+          "requestBody": {
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+            "title": "Software Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47cbb470-7971-5029-a065-d0a19f5d455e",
+      "input": {
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+        "title": "Software Engineer"
+      },
+      "name": "updateJobTitle-transportFailure",
+      "operation": "updateJobTitle"
+    },
+    {
+      "callId": "2e3c9cab-25f1-560c-9a4c-67c61ef6e212",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":{\"id\":\"1be42b8e-cafd-4beb-8121-f4981eb20f42\",\"title\":\"Software Engineer\",\"status\":\"Closed\",\"createdAt\":\"2024-01-01T00:00:00.000Z\",\"updatedAt\":\"2024-01-15T10:30:00.000Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.setStatus",
+          "requestBody": {
+            "closeReasonId": "595ae947-e308-4a36-af06-70b7f6e0fb82",
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+            "status": "Closed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "set",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2024-01-01T00:00:00.000Z",
+          "id": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+          "status": "Closed",
+          "title": "Software Engineer",
+          "updatedAt": "2024-01-15T10:30:00.000Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e3c9cab-25f1-560c-9a4c-67c61ef6e212",
+      "input": {
+        "closeReasonId": "595ae947-e308-4a36-af06-70b7f6e0fb82",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+        "status": "Closed"
+      },
+      "name": "setJobStatus-set",
+      "operation": "setJobStatus"
+    },
+    {
+      "callId": "2e3c9cab-25f1-560c-9a4c-67c61ef6e212",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"missing_endpoint_permission\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.setStatus",
+          "requestBody": {
+            "closeReasonId": "595ae947-e308-4a36-af06-70b7f6e0fb82",
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+            "status": "Closed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "status": "",
+          "title": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e3c9cab-25f1-560c-9a4c-67c61ef6e212",
+      "input": {
+        "closeReasonId": "595ae947-e308-4a36-af06-70b7f6e0fb82",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+        "status": "Closed"
+      },
+      "name": "setJobStatus-providerRejected",
+      "operation": "setJobStatus"
+    },
+    {
+      "callId": "2e3c9cab-25f1-560c-9a4c-67c61ef6e212",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.setStatus",
+          "requestBody": {
+            "closeReasonId": "595ae947-e308-4a36-af06-70b7f6e0fb82",
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+            "status": "Closed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "status": "",
+          "title": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e3c9cab-25f1-560c-9a4c-67c61ef6e212",
+      "input": {
+        "closeReasonId": "595ae947-e308-4a36-af06-70b7f6e0fb82",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+        "status": "Closed"
+      },
+      "name": "setJobStatus-invalidResponse",
+      "operation": "setJobStatus"
+    },
+    {
+      "callId": "2e3c9cab-25f1-560c-9a4c-67c61ef6e212",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "status": "",
+          "title": "",
+          "updatedAt": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e3c9cab-25f1-560c-9a4c-67c61ef6e212",
+      "input": {
+        "closeReasonId": "595ae947-e308-4a36-af06-70b7f6e0fb82",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+        "status": "Bogus"
+      },
+      "name": "setJobStatus-defect",
+      "operation": "setJobStatus"
+    },
+    {
+      "callId": "2e3c9cab-25f1-560c-9a4c-67c61ef6e212",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.setStatus",
+          "requestBody": {
+            "closeReasonId": "595ae947-e308-4a36-af06-70b7f6e0fb82",
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+            "status": "Closed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e3c9cab-25f1-560c-9a4c-67c61ef6e212",
+      "input": {
+        "closeReasonId": "595ae947-e308-4a36-af06-70b7f6e0fb82",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+        "status": "Closed"
+      },
+      "name": "setJobStatus-rateLimit",
+      "operation": "setJobStatus"
+    },
+    {
+      "callId": "2e3c9cab-25f1-560c-9a4c-67c61ef6e212",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.setStatus",
+          "requestBody": {
+            "closeReasonId": "595ae947-e308-4a36-af06-70b7f6e0fb82",
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+            "status": "Closed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e3c9cab-25f1-560c-9a4c-67c61ef6e212",
+      "input": {
+        "closeReasonId": "595ae947-e308-4a36-af06-70b7f6e0fb82",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+        "status": "Closed"
+      },
+      "name": "setJobStatus-unavailable",
+      "operation": "setJobStatus"
+    },
+    {
+      "callId": "2e3c9cab-25f1-560c-9a4c-67c61ef6e212",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/job.setStatus",
+          "requestBody": {
+            "closeReasonId": "595ae947-e308-4a36-af06-70b7f6e0fb82",
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+            "status": "Closed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e3c9cab-25f1-560c-9a4c-67c61ef6e212",
+      "input": {
+        "closeReasonId": "595ae947-e308-4a36-af06-70b7f6e0fb82",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+        "status": "Closed"
+      },
+      "name": "setJobStatus-transportFailure",
+      "operation": "setJobStatus"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
           "body": "{\"success\":true,\"results\":[{\"id\":\"5fa61e0b-3c4d-4e5f-9a0b-1c2d3e4f5a6b\",\"createdAt\":\"2024-01-15T10:30:00.000Z\",\"isPrivate\":false}],\"moreDataAvailable\":false}",
           "headers": {},
           "keyMode": "absent",

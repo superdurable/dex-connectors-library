@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: ashby
   displayName: Ashby
-  description: Create, search, and read candidates; manage names, tags, projects, and notes in Ashby.
+  description: Create, search, and read candidates and jobs; manage names, tags, projects, notes, and job status in Ashby.
   company: Ashby
   categories: [hr-recruiting]
   version: v0.2.0
@@ -48,13 +48,133 @@ spec:
         goName: APIKey
         type: secretString
         required: true
-        description: Secret Ashby API key from Admin > API Keys. Grant Candidates read/write permissions for the operations used; copy the complete opaque value once. Blank prevents calls. Dex uses it as the Basic username with an empty password.
+        description: Secret Ashby API key from Admin > API Keys. Grant Candidates and Jobs read/write permissions for the operations used; copy the complete opaque value once. Blank prevents calls. Dex uses it as the Basic username with an empty password.
     guide:
       startURL: https://app.ashbyhq.com
       steps:
         - In Ashby, open Admin > API Keys and create or select an API key with Candidates read/write permissions for these operations. Copy the complete opaque secret into Dex Web api_key; blank is invalid. Revoke or rotate it on the same page. Confidential candidates require the separate confidential jobs and projects permission.
         - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Find the non-secret candidate UUID in Ashby or from candidate.list and pass it as candidateId; blank is invalid. For tag operations, find the non-secret tag UUID in Ashby Admin > Organization Settings > Candidate Tags or candidateTag.list (which additionally needs Hiring Process read permission) and pass it as tagId; blank is invalid. For project association, open Sourcing > Projects or use candidate.listProjects and pass the non-secret project UUID as projectId; blank is invalid. Candidate notes accept plaintext up to 8192 bytes; omit secrets. Results omit email, phone, resume, and note content.
   operations:
+    - name: listJobs
+      goName: ListJobs
+      inputType: ListJobsInput
+      outputType: JobPage
+      kind: query
+      description: List a bounded page of Ashby job identities.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Ashby returned the job result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the job request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local job input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample job is returned.
+          output: {jobs: [{id: 1be42b8e-cafd-4beb-8121-f4981eb20f42, title: Software Engineer, status: Draft, createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-15T10:30:00.000Z'}], moreDataAvailable: false}
+    - name: getJob
+      goName: GetJob
+      inputType: GetJobInput
+      outputType: JobSummary
+      kind: query
+      description: Read one Ashby job identity and status.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Ashby returned the job result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the job request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local job input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample job is returned.
+          output: {id: 1be42b8e-cafd-4beb-8121-f4981eb20f42, title: Software Engineer, status: Draft, createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-15T10:30:00.000Z'}
+    - name: searchJobs
+      goName: SearchJobs
+      inputType: SearchJobsInput
+      outputType: JobSearchResults
+      kind: query
+      description: Search Ashby jobs by title or requisition ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Ashby returned the job result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the job request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local job input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample job is returned.
+          output: {jobs: [{id: 1be42b8e-cafd-4beb-8121-f4981eb20f42, title: Software Engineer, status: Draft, createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-15T10:30:00.000Z'}]}
+    - name: createJob
+      goName: CreateJob
+      inputType: CreateJobInput
+      outputType: JobSummary
+      kind: mutation
+      description: Create an Ashby job with a title, team, and location.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Ashby returned the job result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the job request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The job may have been created but the bounded send cap was reached., optional: true}
+        - {id: defect, goName: Defect, description: Local job input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample job is returned.
+          output: {id: 1be42b8e-cafd-4beb-8121-f4981eb20f42, title: Software Engineer, status: Draft, createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-15T10:30:00.000Z'}
+    - name: updateJobTitle
+      goName: UpdateJobTitle
+      inputType: UpdateJobTitleInput
+      outputType: JobSummary
+      kind: mutation
+      description: Replace an Ashby job title by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Ashby returned the job result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the job request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local job input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample job is returned.
+          output: {id: 1be42b8e-cafd-4beb-8121-f4981eb20f42, title: Software Engineer, status: Draft, createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-15T10:30:00.000Z'}
+    - name: setJobStatus
+      goName: SetJobStatus
+      inputType: SetJobStatusInput
+      outputType: JobSummary
+      kind: mutation
+      description: Set an Ashby job status to Draft, Open, Closed, or Archived.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: set, goName: Set, description: Ashby returned the job result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the job request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local job input or credentials are invalid., optional: true}
+      mocks:
+        - name: setDefault
+          branch: set
+          default: true
+          description: A sample job is returned.
+          output: {id: 1be42b8e-cafd-4beb-8121-f4981eb20f42, title: Software Engineer, status: Draft, createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-15T10:30:00.000Z'}
     - name: listCandidateNotes
       goName: ListCandidateNotes
       inputType: ListCandidateNotesInput
