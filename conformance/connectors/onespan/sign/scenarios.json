@@ -3703,31 +3703,14 @@
     },
     {
       "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
-      "exchanges": [
-        {
-          "body": "{\"id\":\"9sKhW-h-qS9m6Ho3zRv3n2a-rkI=\",\"name\":\"Example agreement\",\"status\":\"DRAFT\",\"roles\":[]}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Basic sample-onespan-sign-api-key"
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "exchanges": [],
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
         "output": {
           "roleId": ""
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true

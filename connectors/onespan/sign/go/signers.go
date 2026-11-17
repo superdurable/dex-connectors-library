@@ -236,7 +236,7 @@ func (AddSignerOperation) IdempotencyKey(callID sdkgo.CallID, _ AddSignerInput) 
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke adds one signer, reading back the role after an ambiguous send.
+// Invoke adds one signer under a persisted send cap.
 func (operation AddSignerOperation) Invoke(call sdkgo.Call, input AddSignerInput) sdkgo.MutationAttempt[SignerRoleID] {
 	if !validSignerInput(input.PackageID, input.RoleID, input.Email, input.FirstName, input.LastName) {
 		return packageMutationBranch[SignerRoleID]("addSigner", AddSignerBranchDefect, sdkgo.FailureValidation, "signer fields are invalid")
@@ -246,15 +246,6 @@ func (operation AddSignerOperation) Invoke(call sdkgo.Call, input AddSignerInput
 		return packageMutationBranch[SignerRoleID]("addSigner", AddSignerBranchDefect, sdkgo.FailureLocalDefect, "dispatch checkpoint is unavailable")
 	}
 	decision := fence.Decide()
-	if decision.MaximumPriorSends > 0 || decision.Kind != singledispatch.SendAllowed {
-		found, readError := operation.client.readBackSigner(call, input)
-		if found {
-			return sdkgo.NewMutationBranch(AddSignerBranchAdded, SignerRoleID{RoleID: input.RoleID}, nil, sdkgo.Receipt{})
-		}
-		if readError != nil {
-			return sdkgo.NewMutationRetry[SignerRoleID](packageOperationFailure("addSigner", sdkgo.FailureAvailability, "signer read-back is unavailable"), 0)
-		}
-	}
 	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(SignerRoleID{}, packageOperationFailure("addSigner", sdkgo.FailureTransport, "signer addition may have succeeded"), sdkgo.Receipt{})
 	}
@@ -306,23 +297,6 @@ func (operation AddSignerOperation) Invoke(call sdkgo.Call, input AddSignerInput
 		return sdkgo.NewMutationUncertain(SignerRoleID{}, packageOperationFailure("addSigner", sdkgo.FailureProtocol, "provider accepted signer without the requested role ID"), sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(AddSignerBranchAdded, SignerRoleID{RoleID: input.RoleID}, nil, sdkgo.Receipt{})
-}
-
-func (client *Client) readBackSigner(call sdkgo.Call, input AddSignerInput) (bool, error) {
-	response := client.requestPackage(call, call.Context, http.MethodGet, "/packages/"+url.PathEscape(input.PackageID), nil)
-	if response.err != nil || response.status != http.StatusOK {
-		return false, errors.New("signer read-back failed")
-	}
-	roles, err := decodeSignerRoles(response.body)
-	if err != nil {
-		return false, err
-	}
-	for _, role := range roles {
-		if role.ID == input.RoleID {
-			return len(role.Signers) == 1 && role.Signers[0].Email == input.Email, nil
-		}
-	}
-	return false, nil
 }
 
 // UpdateSignerOperation replaces a draft signer role's identity.
