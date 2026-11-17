@@ -17,9 +17,11 @@ import (
 
 // Mock is a scripted activecampaign connection. Script each operation through its accessor.
 type Mock struct {
-	connection   activecampaign.Connection
-	listContacts *connectormock.Query[activecampaign.ListContactsInput, activecampaign.ContactsPage]
-	getContact   *connectormock.Query[activecampaign.GetContactInput, activecampaign.ContactMetadata]
+	connection    activecampaign.Connection
+	listContacts  *connectormock.Query[activecampaign.ListContactsInput, activecampaign.ContactsPage]
+	getContact    *connectormock.Query[activecampaign.GetContactInput, activecampaign.ContactMetadata]
+	syncContact   *connectormock.Mutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata]
+	updateContact *connectormock.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +29,15 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listContacts: connectormock.NewQuery[activecampaign.ListContactsInput, activecampaign.ContactsPage](t, activecampaign.ListContactsDefinition),
-		getContact:   connectormock.NewQuery[activecampaign.GetContactInput, activecampaign.ContactMetadata](t, activecampaign.GetContactDefinition),
+		listContacts:  connectormock.NewQuery[activecampaign.ListContactsInput, activecampaign.ContactsPage](t, activecampaign.ListContactsDefinition),
+		getContact:    connectormock.NewQuery[activecampaign.GetContactInput, activecampaign.ContactMetadata](t, activecampaign.GetContactDefinition),
+		syncContact:   connectormock.NewMutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata](t, activecampaign.SyncContactDefinition),
+		updateContact: connectormock.NewMutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata](t, activecampaign.UpdateContactDefinition),
 	}
 	mock.listContacts.Default(ListContactsDefault())
 	mock.getContact.Default(GetContactDefault())
+	mock.syncContact.Default(SyncContactDefault())
+	mock.updateContact.Default(UpdateContactDefault())
 	connection, err := activecampaign.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "activecampaign", Name: connectionName})
 	if err != nil {
 		t.Fatalf("activecampaign mock connection: %v", err)
@@ -53,6 +59,16 @@ func (mock *Mock) GetContact() *connectormock.Query[activecampaign.GetContactInp
 	return mock.getContact
 }
 
+// SyncContact returns the syncContact script.
+func (mock *Mock) SyncContact() *connectormock.Mutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata] {
+	return mock.syncContact
+}
+
+// UpdateContact returns the updateContact script.
+func (mock *Mock) UpdateContact() *connectormock.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata] {
+	return mock.updateContact
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListContacts() sdkgo.Query[activecampaign.ListContactsInput, activecampaign.ContactsPage] {
@@ -60,6 +76,12 @@ func (operations mockOperations) ListContacts() sdkgo.Query[activecampaign.ListC
 }
 func (operations mockOperations) GetContact() sdkgo.Query[activecampaign.GetContactInput, activecampaign.ContactMetadata] {
 	return operations.mock.getContact
+}
+func (operations mockOperations) SyncContact() sdkgo.Mutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata] {
+	return operations.mock.syncContact
+}
+func (operations mockOperations) UpdateContact() sdkgo.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata] {
+	return operations.mock.updateContact
 }
 
 // ListContactsListed selects the listed branch: ActiveCampaign returned the selected contact page.
@@ -137,4 +159,81 @@ func GetContactFoundDefault() connectormock.Case[activecampaign.ContactMetadata]
 // GetContactDefault is the manifest default, foundDefault, which New installs.
 func GetContactDefault() connectormock.Case[activecampaign.ContactMetadata] {
 	return GetContactFoundDefault()
+}
+
+// SyncContactSynced selects the synced branch: ActiveCampaign created or updated the contact.
+func SyncContactSynced(value activecampaign.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactMetadata] {
+	return connectormock.Branch(activecampaign.SyncContactBranchSynced, value, failure)
+}
+
+// SyncContactProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the contact.
+func SyncContactProviderRejected(value activecampaign.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactMetadata] {
+	return connectormock.Branch(activecampaign.SyncContactBranchProviderRejected, value, failure)
+}
+
+// SyncContactInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func SyncContactInvalidResponse(value activecampaign.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactMetadata] {
+	return connectormock.Branch(activecampaign.SyncContactBranchInvalidResponse, value, failure)
+}
+
+// SyncContactDefect selects the defect branch: Local input or connection credentials are invalid.
+func SyncContactDefect(value activecampaign.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactMetadata] {
+	return connectormock.Branch(activecampaign.SyncContactBranchDefect, value, failure)
+}
+
+// SyncContactRetry asks Dex to retry the syncContact Step, after the delay when it is positive.
+func SyncContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.ContactMetadata] {
+	return connectormock.Retry[activecampaign.ContactMetadata](failure, after)
+}
+
+// SyncContactSyncedDefault is the manifest mock syncedDefault: One sample contact was synchronized.
+func SyncContactSyncedDefault() connectormock.Case[activecampaign.ContactMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.ContactMetadata](`{"id":"68","email":"ada@example.com","firstName":"Ada","lastName":"Lovelace"}`)
+	return connectormock.Branch(activecampaign.SyncContactBranchSynced, value, nil)
+}
+
+// SyncContactDefault is the manifest default, syncedDefault, which New installs.
+func SyncContactDefault() connectormock.Case[activecampaign.ContactMetadata] {
+	return SyncContactSyncedDefault()
+}
+
+// UpdateContactUpdated selects the updated branch: ActiveCampaign updated the contact.
+func UpdateContactUpdated(value activecampaign.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactMetadata] {
+	return connectormock.Branch(activecampaign.UpdateContactBranchUpdated, value, failure)
+}
+
+// UpdateContactNotFound selects the notFound branch: No contact with this ID exists.
+func UpdateContactNotFound(value activecampaign.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactMetadata] {
+	return connectormock.Branch(activecampaign.UpdateContactBranchNotFound, value, failure)
+}
+
+// UpdateContactProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the update.
+func UpdateContactProviderRejected(value activecampaign.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactMetadata] {
+	return connectormock.Branch(activecampaign.UpdateContactBranchProviderRejected, value, failure)
+}
+
+// UpdateContactInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func UpdateContactInvalidResponse(value activecampaign.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactMetadata] {
+	return connectormock.Branch(activecampaign.UpdateContactBranchInvalidResponse, value, failure)
+}
+
+// UpdateContactDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateContactDefect(value activecampaign.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactMetadata] {
+	return connectormock.Branch(activecampaign.UpdateContactBranchDefect, value, failure)
+}
+
+// UpdateContactRetry asks Dex to retry the updateContact Step, after the delay when it is positive.
+func UpdateContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.ContactMetadata] {
+	return connectormock.Retry[activecampaign.ContactMetadata](failure, after)
+}
+
+// UpdateContactUpdatedDefault is the manifest mock updatedDefault: One sample contact was updated.
+func UpdateContactUpdatedDefault() connectormock.Case[activecampaign.ContactMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.ContactMetadata](`{"id":"68","email":"ada@example.com","firstName":"Ada","lastName":"Lovelace"}`)
+	return connectormock.Branch(activecampaign.UpdateContactBranchUpdated, value, nil)
+}
+
+// UpdateContactDefault is the manifest default, updatedDefault, which New installs.
+func UpdateContactDefault() connectormock.Case[activecampaign.ContactMetadata] {
+	return UpdateContactUpdatedDefault()
 }

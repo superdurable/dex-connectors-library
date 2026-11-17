@@ -645,6 +645,670 @@
       },
       "name": "getContact-transportFailure",
       "operation": "getContact"
+    },
+    {
+      "callId": "0eede10c-3459-5f64-81dc-f00bc3dfa07f",
+      "exchanges": [
+        {
+          "body": "{\"contact\":{\"id\":\"68\",\"email\":\"ada@example.com\",\"firstName\":\"Ada\",\"lastName\":\"Lovelace\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact/sync",
+          "requestBody": {
+            "contact": {
+              "email": "ada@example.com",
+              "firstName": "Ada",
+              "lastName": "Lovelace"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "synced",
+        "failureKind": "",
+        "output": {
+          "email": "ada@example.com",
+          "firstName": "Ada",
+          "id": "68",
+          "lastName": "Lovelace"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0eede10c-3459-5f64-81dc-f00bc3dfa07f",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "name": "syncContact-success",
+      "operation": "syncContact"
+    },
+    {
+      "callId": "0eede10c-3459-5f64-81dc-f00bc3dfa07f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact/sync",
+          "requestBody": {
+            "contact": {
+              "email": "ada@example.com"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0eede10c-3459-5f64-81dc-f00bc3dfa07f",
+      "input": {
+        "email": "ada@example.com"
+      },
+      "name": "syncContact-providerRejected",
+      "operation": "syncContact"
+    },
+    {
+      "callId": "0eede10c-3459-5f64-81dc-f00bc3dfa07f",
+      "exchanges": [
+        {
+          "body": "{\"contact\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact/sync",
+          "requestBody": {
+            "contact": {
+              "email": "ada@example.com"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0eede10c-3459-5f64-81dc-f00bc3dfa07f",
+      "input": {
+        "email": "ada@example.com"
+      },
+      "name": "syncContact-invalidResponse",
+      "operation": "syncContact"
+    },
+    {
+      "callId": "0eede10c-3459-5f64-81dc-f00bc3dfa07f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0eede10c-3459-5f64-81dc-f00bc3dfa07f",
+      "input": {
+        "email": "invalid"
+      },
+      "name": "syncContact-defect",
+      "operation": "syncContact"
+    },
+    {
+      "callId": "0eede10c-3459-5f64-81dc-f00bc3dfa07f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact/sync",
+          "requestBody": {
+            "contact": {
+              "email": "ada@example.com"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "0eede10c-3459-5f64-81dc-f00bc3dfa07f",
+      "input": {
+        "email": "ada@example.com"
+      },
+      "name": "syncContact-rateLimit",
+      "operation": "syncContact"
+    },
+    {
+      "callId": "0eede10c-3459-5f64-81dc-f00bc3dfa07f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact/sync",
+          "requestBody": {
+            "contact": {
+              "email": "ada@example.com"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0eede10c-3459-5f64-81dc-f00bc3dfa07f",
+      "input": {
+        "email": "ada@example.com"
+      },
+      "name": "syncContact-serverUnavailable",
+      "operation": "syncContact"
+    },
+    {
+      "callId": "0eede10c-3459-5f64-81dc-f00bc3dfa07f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact/sync",
+          "requestBody": {
+            "contact": {
+              "email": "ada@example.com"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0eede10c-3459-5f64-81dc-f00bc3dfa07f",
+      "input": {
+        "email": "ada@example.com"
+      },
+      "name": "syncContact-transportFailure",
+      "operation": "syncContact"
+    },
+    {
+      "callId": "02da0d66-8503-5b29-b030-b77f5f306256",
+      "exchanges": [
+        {
+          "body": "{\"contact\":{\"id\":\"68\",\"email\":\"ada@example.com\",\"firstName\":\"Ada\",\"lastName\":\"Lovelace\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/contacts/68",
+          "requestBody": {
+            "contact": {
+              "email": "ada@example.com",
+              "firstName": "Ada",
+              "lastName": "Lovelace"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "email": "ada@example.com",
+          "firstName": "Ada",
+          "id": "68",
+          "lastName": "Lovelace"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "02da0d66-8503-5b29-b030-b77f5f306256",
+      "input": {
+        "contactId": "68",
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "name": "updateContact-success",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "02da0d66-8503-5b29-b030-b77f5f306256",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/contacts/68",
+          "requestBody": {
+            "contact": {
+              "firstName": "Ada"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "02da0d66-8503-5b29-b030-b77f5f306256",
+      "input": {
+        "contactId": "68",
+        "firstName": "Ada"
+      },
+      "name": "updateContact-notFound",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "02da0d66-8503-5b29-b030-b77f5f306256",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/contacts/68",
+          "requestBody": {
+            "contact": {
+              "firstName": "Ada"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "02da0d66-8503-5b29-b030-b77f5f306256",
+      "input": {
+        "contactId": "68",
+        "firstName": "Ada"
+      },
+      "name": "updateContact-providerRejected",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "02da0d66-8503-5b29-b030-b77f5f306256",
+      "exchanges": [
+        {
+          "body": "{\"contact\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/contacts/68",
+          "requestBody": {
+            "contact": {
+              "firstName": "Ada"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "02da0d66-8503-5b29-b030-b77f5f306256",
+      "input": {
+        "contactId": "68",
+        "firstName": "Ada"
+      },
+      "name": "updateContact-invalidResponse",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "02da0d66-8503-5b29-b030-b77f5f306256",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "02da0d66-8503-5b29-b030-b77f5f306256",
+      "input": {
+        "contactId": "68"
+      },
+      "name": "updateContact-defect",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "02da0d66-8503-5b29-b030-b77f5f306256",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/contacts/68",
+          "requestBody": {
+            "contact": {
+              "firstName": "Ada"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "02da0d66-8503-5b29-b030-b77f5f306256",
+      "input": {
+        "contactId": "68",
+        "firstName": "Ada"
+      },
+      "name": "updateContact-rateLimit",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "02da0d66-8503-5b29-b030-b77f5f306256",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/contacts/68",
+          "requestBody": {
+            "contact": {
+              "firstName": "Ada"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "02da0d66-8503-5b29-b030-b77f5f306256",
+      "input": {
+        "contactId": "68",
+        "firstName": "Ada"
+      },
+      "name": "updateContact-serverUnavailable",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "02da0d66-8503-5b29-b030-b77f5f306256",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/contacts/68",
+          "requestBody": {
+            "contact": {
+              "firstName": "Ada"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "02da0d66-8503-5b29-b030-b77f5f306256",
+      "input": {
+        "contactId": "68",
+        "firstName": "Ada"
+      },
+      "name": "updateContact-transportFailure",
+      "operation": "updateContact"
     }
   ],
   "schemaVersion": 1

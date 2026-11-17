@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: activecampaign
   displayName: ActiveCampaign
-  description: List and inspect contact metadata through the ActiveCampaign API.
+  description: List, inspect, upsert, and update contacts through the ActiveCampaign API.
   company: ActiveCampaign
   categories: [marketing, crm-sales]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: activecampaign
   languages:
@@ -95,4 +95,45 @@ spec:
           branch: found
           default: true
           description: Metadata for one sample contact.
+          output: {id: '68', email: 'ada@example.com', firstName: Ada, lastName: Lovelace}
+    - name: syncContact
+      goName: SyncContact
+      inputType: SyncContactInput
+      outputType: ContactMetadata
+      kind: mutation
+      description: Create or update one contact by email, returning its stable ID and names.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: synced, goName: Synced, description: ActiveCampaign created or updated the contact.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the contact., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: syncedDefault
+          branch: synced
+          default: true
+          description: One sample contact was synchronized.
+          output: {id: '68', email: 'ada@example.com', firstName: Ada, lastName: Lovelace}
+    - name: updateContact
+      goName: UpdateContact
+      inputType: UpdateContactInput
+      outputType: ContactMetadata
+      kind: mutation
+      description: Set one contact's email or names by numeric contact ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: ActiveCampaign updated the contact.}
+        - {id: notFound, goName: NotFound, description: No contact with this ID exists., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample contact was updated.
           output: {id: '68', email: 'ada@example.com', firstName: Ada, lastName: Lovelace}

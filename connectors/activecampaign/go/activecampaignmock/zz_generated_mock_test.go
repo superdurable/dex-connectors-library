@@ -24,6 +24,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[activecampaign.ContactMetadata](`{"id":"68","email":"ada@example.com","firstName":"Ada","lastName":"Lovelace"}`)
 			return err
 		}},
+		{name: "syncContact/syncedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ContactMetadata](`{"id":"68","email":"ada@example.com","firstName":"Ada","lastName":"Lovelace"}`)
+			return err
+		}},
+		{name: "updateContact/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ContactMetadata](`{"id":"68","email":"ada@example.com","firstName":"Ada","lastName":"Lovelace"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +47,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")
+	}
+	if mock.SyncContact().Definition().Operation.OperationID != "syncContact" {
+		t.Errorf("syncContact mock has another definition")
+	}
+	if mock.UpdateContact().Definition().Operation.OperationID != "updateContact" {
+		t.Errorf("updateContact mock has another definition")
 	}
 }

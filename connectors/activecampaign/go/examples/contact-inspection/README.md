@@ -1,5 +1,7 @@
 # ActiveCampaign contact-inspection Flow
 
+This Worker registers both the existing `ActiveCampaignContactInspection` read Flow and `ActiveCampaignSyncContact`, which upserts one contact by email. The sync Flow accepts `email` and optional `firstName` and `lastName`; its checked-in mock integration test exercises the mutation against a real local Dex Server. The production connection uses the same static `activecampaign` name for both Flows.
+
 This runnable Flow calls `listContacts` with the static `activecampaign` connection. Its happy-path contact page is saved in an Attribute and shown through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected. Only basic contact fields enter the Flow result; the API Key does not.
 
 ## Strict FDG 2.0 generation
