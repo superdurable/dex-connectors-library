@@ -299,6 +299,8 @@ def new_update_object_step(
     defect: dex.StepTarget[MutationResult[CRMObject]] | None = None,
     result_attribute: dex.Attribute[MutationResult[CRMObject]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UpdateObjectInput, CRMObject]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Pipedrive Step connection name must match its connection reference")

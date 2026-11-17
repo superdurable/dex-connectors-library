@@ -537,6 +537,8 @@ type UpdateCardStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateCardResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateCardOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateCardStep[IN any](config UpdateCardStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCardInput, UpdateCardOutput] {

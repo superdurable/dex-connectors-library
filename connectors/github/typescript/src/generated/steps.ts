@@ -326,11 +326,14 @@ export interface SetIssueStateStepConfig<StepInput, OperationInput = SetIssueSta
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the setIssueState Step from a named connection. */
 export function newSetIssueStateStep<StepInput, OperationInput = SetIssueStateInput, OperationOutput = UpdatedIssueState>(configuration: SetIssueStateStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, insufficientScope, authorizationRevoked, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, insufficientScope, authorizationRevoked, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.setIssueState(), connection: connection.reference, branches: [
     goToBranch("updated", updated),
@@ -363,11 +366,14 @@ export interface ReplaceIssueLabelsStepConfig<StepInput, OperationInput = Replac
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the replaceIssueLabels Step from a named connection. */
 export function newReplaceIssueLabelsStep<StepInput, OperationInput = ReplaceIssueLabelsInput, OperationOutput = ReplacedIssueLabels>(configuration: ReplaceIssueLabelsStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, replaced, insufficientScope, authorizationRevoked, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, replaced, insufficientScope, authorizationRevoked, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.replaceIssueLabels(), connection: connection.reference, branches: [
     goToBranch("replaced", replaced),

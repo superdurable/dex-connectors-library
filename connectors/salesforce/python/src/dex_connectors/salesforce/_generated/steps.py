@@ -145,6 +145,8 @@ def new_upsert_record_by_external_id_step(
     defect: dex.StepTarget[MutationResult[UpsertRecordByExternalIDOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UpsertRecordByExternalIDOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UpsertRecordByExternalIDInput, UpsertRecordByExternalIDOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Salesforce Step connection name must match its connection reference")
@@ -198,6 +200,8 @@ def new_update_record_step(
     defect: dex.StepTarget[MutationResult[UpdateRecordOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UpdateRecordOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UpdateRecordInput, UpdateRecordOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Salesforce Step connection name must match its connection reference")

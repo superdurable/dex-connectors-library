@@ -113,11 +113,14 @@ export interface CancelScheduledEventStepConfig<StepInput, OperationInput = Canc
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the cancelScheduledEvent Step from a named connection. */
 export function newCancelScheduledEventStep<StepInput, OperationInput = CancelScheduledEventInput, OperationOutput = ScheduledEventCancellation>(configuration: CancelScheduledEventStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, canceled, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, canceled, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.cancelScheduledEvent(), connection: connection.reference, branches: [
     goToBranch("canceled", canceled),
@@ -172,11 +175,14 @@ export interface CreateWebhookSubscriptionStepConfig<StepInput, OperationInput =
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the createWebhookSubscription Step from a named connection. */
 export function newCreateWebhookSubscriptionStep<StepInput, OperationInput = CreateWebhookSubscriptionInput, OperationOutput = WebhookSubscription>(configuration: CreateWebhookSubscriptionStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, subscribed, conflictingSubscription, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, subscribed, conflictingSubscription, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.createWebhookSubscription(), connection: connection.reference, branches: [
     goToBranch("subscribed", subscribed),

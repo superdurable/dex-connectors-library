@@ -149,6 +149,8 @@ def new_replace_document_text_step(
     defect: dex.StepTarget[MutationResult[ReplaceDocumentTextOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[ReplaceDocumentTextOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, ReplaceDocumentTextInput, ReplaceDocumentTextOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Google Docs Step connection name must match its connection reference")
@@ -207,6 +209,8 @@ def new_append_text_step(
     defect: dex.StepTarget[MutationResult[AppendTextOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[AppendTextOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, AppendTextInput, AppendTextOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Google Docs Step connection name must match its connection reference")

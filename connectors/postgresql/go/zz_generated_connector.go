@@ -358,6 +358,8 @@ type ExecuteStatementStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[ExecuteStatementResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[StatementExecution]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewExecuteStatementStep[IN any](config ExecuteStatementStepConfig[IN]) sdkgo.MutationStep[IN, ExecuteStatementInput, StatementExecution] {

@@ -541,6 +541,8 @@ type UpsertObjectStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpsertObjectResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpsertedObject]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpsertObjectStep[IN any](config UpsertObjectStepConfig[IN]) sdkgo.MutationStep[IN, UpsertObjectInput, UpsertedObject] {
@@ -624,6 +626,8 @@ type UpdateObjectStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateObjectResult]                `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CRMObject]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateObjectStep[IN any](config UpdateObjectStepConfig[IN]) sdkgo.MutationStep[IN, UpdateObjectInput, CRMObject] {

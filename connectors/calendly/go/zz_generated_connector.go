@@ -624,6 +624,8 @@ type CancelScheduledEventStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CancelScheduledEventResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ScheduledEventCancellation]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                                 `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCancelScheduledEventStep[IN any](config CancelScheduledEventStepConfig[IN]) sdkgo.MutationStep[IN, CancelScheduledEventInput, ScheduledEventCancellation] {
@@ -782,6 +784,8 @@ type CreateWebhookSubscriptionStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateWebhookSubscriptionResult]             `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[WebhookSubscription]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateWebhookSubscriptionStep[IN any](config CreateWebhookSubscriptionStepConfig[IN]) sdkgo.MutationStep[IN, CreateWebhookSubscriptionInput, WebhookSubscription] {

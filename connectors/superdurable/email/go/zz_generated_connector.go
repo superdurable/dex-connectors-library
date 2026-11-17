@@ -600,6 +600,8 @@ type MoveMessageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[MoveMessageResult]                    `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[MovedMessage]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewMoveMessageStep[IN any](config MoveMessageStepConfig[IN]) sdkgo.MutationStep[IN, MoveMessageInput, MovedMessage] {
@@ -672,6 +674,8 @@ type SetFlagsStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[SetFlagsResult]                       `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[MessageFlags]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewSetFlagsStep[IN any](config SetFlagsStepConfig[IN]) sdkgo.MutationStep[IN, SetFlagsInput, MessageFlags] {

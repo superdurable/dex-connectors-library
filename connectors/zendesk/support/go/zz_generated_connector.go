@@ -423,6 +423,8 @@ type CreateTicketStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateTicketResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateTicketOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateTicketStep[IN any](config CreateTicketStepConfig[IN]) sdkgo.MutationStep[IN, CreateTicketInput, CreateTicketOutput] {

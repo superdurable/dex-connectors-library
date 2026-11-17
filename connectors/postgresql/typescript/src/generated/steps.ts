@@ -56,11 +56,14 @@ export interface ExecuteStatementStepConfig<StepInput, OperationInput = ExecuteS
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the execute Step from a named connection. */
 export function newExecuteStatementStep<StepInput, OperationInput = ExecuteStatementInput, OperationOutput = StatementExecution>(configuration: ExecuteStatementStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, completed, limitExceeded, providerRejected, uncertain, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, completed, limitExceeded, providerRejected, uncertain, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.execute(), connection: connection.reference, branches: [
     goToBranch("completed", completed),

@@ -21,11 +21,14 @@ export interface SendRequestStepConfig<StepInput, OperationInput = SendRequestIn
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** The input or the connection settings are invalid, so no request was sent. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the sendRequest Step from a named connection. */
 export function newSendRequestStep<StepInput, OperationInput = SendRequestInput, OperationOutput = SendRequestOutput>(configuration: SendRequestStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, completed, rejected, uncertain, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, completed, rejected, uncertain, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.sendRequest(), connection: connection.reference, branches: [
     goToBranch("completed", completed),

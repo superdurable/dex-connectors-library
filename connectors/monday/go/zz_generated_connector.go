@@ -623,6 +623,8 @@ type UpdateItemColumnValuesStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateItemColumnValuesResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateItemColumnValuesOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                                   `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateItemColumnValuesStep[IN any](config UpdateItemColumnValuesStepConfig[IN]) sdkgo.MutationStep[IN, UpdateItemColumnValuesInput, UpdateItemColumnValuesOutput] {

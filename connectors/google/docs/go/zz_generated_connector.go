@@ -544,6 +544,8 @@ type ReplaceDocumentTextStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[ReplaceDocumentTextResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ReplaceDocumentTextOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                                `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewReplaceDocumentTextStep[IN any](config ReplaceDocumentTextStepConfig[IN]) sdkgo.MutationStep[IN, ReplaceDocumentTextInput, ReplaceDocumentTextOutput] {
@@ -633,6 +635,8 @@ type AppendTextStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[AppendTextResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AppendTextOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewAppendTextStep[IN any](config AppendTextStepConfig[IN]) sdkgo.MutationStep[IN, AppendTextInput, AppendTextOutput] {

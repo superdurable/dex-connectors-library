@@ -574,6 +574,8 @@ type UpdateMeetingStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateMeetingResult]                    `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedMeeting]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateMeetingStep[IN any](config UpdateMeetingStepConfig[IN]) sdkgo.MutationStep[IN, UpdateMeetingInput, UpdatedMeeting] {

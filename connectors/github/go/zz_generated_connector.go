@@ -1140,6 +1140,8 @@ type SetIssueStateStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[SetIssueStateResult]                       `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedIssueState]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewSetIssueStateStep[IN any](config SetIssueStateStepConfig[IN]) sdkgo.MutationStep[IN, SetIssueStateInput, UpdatedIssueState] {
@@ -1230,6 +1232,8 @@ type ReplaceIssueLabelsStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[ReplaceIssueLabelsResult]                    `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ReplacedIssueLabels]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewReplaceIssueLabelsStep[IN any](config ReplaceIssueLabelsStepConfig[IN]) sdkgo.MutationStep[IN, ReplaceIssueLabelsInput, ReplacedIssueLabels] {

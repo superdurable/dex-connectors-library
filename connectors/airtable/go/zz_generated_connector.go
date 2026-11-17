@@ -464,6 +464,8 @@ type UpsertRecordsStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpsertRecordsResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpsertedRecords]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpsertRecordsStep[IN any](config UpsertRecordsStepConfig[IN]) sdkgo.MutationStep[IN, UpsertRecordsInput, UpsertedRecords] {
@@ -541,6 +543,8 @@ type UpdateRecordsStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateRecordsResult]                    `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedRecords]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateRecordsStep[IN any](config UpdateRecordsStepConfig[IN]) sdkgo.MutationStep[IN, UpdateRecordsInput, UpdatedRecords] {

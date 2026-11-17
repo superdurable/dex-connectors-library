@@ -331,6 +331,8 @@ type SendRequestStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[SendRequestResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SendRequestOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewSendRequestStep[IN any](config SendRequestStepConfig[IN]) sdkgo.MutationStep[IN, SendRequestInput, SendRequestOutput] {

@@ -192,6 +192,8 @@ def new_cancel_scheduled_event_step(
     defect: dex.StepTarget[MutationResult[ScheduledEventCancellation]] | None = None,
     result_attribute: dex.Attribute[MutationResult[ScheduledEventCancellation]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, CancelScheduledEventInput, ScheduledEventCancellation]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Calendly Step connection name must match its connection reference")
@@ -297,6 +299,8 @@ def new_create_webhook_subscription_step(
     defect: dex.StepTarget[MutationResult[WebhookSubscription]] | None = None,
     result_attribute: dex.Attribute[MutationResult[WebhookSubscription]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, CreateWebhookSubscriptionInput, WebhookSubscription]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Calendly Step connection name must match its connection reference")

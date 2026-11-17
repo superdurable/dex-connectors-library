@@ -536,6 +536,8 @@ type UpdateTaskStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateTaskResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateTaskOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateTaskStep[IN any](config UpdateTaskStepConfig[IN]) sdkgo.MutationStep[IN, UpdateTaskInput, UpdateTaskOutput] {
@@ -616,6 +618,8 @@ type UpdateTaskTagsStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateTaskTagsResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateTaskTagsOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateTaskTagsStep[IN any](config UpdateTaskTagsStepConfig[IN]) sdkgo.MutationStep[IN, UpdateTaskTagsInput, UpdateTaskTagsOutput] {

@@ -631,6 +631,8 @@ type UpdatePagePropertiesStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdatePagePropertiesResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatePagePropertiesOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                                 `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdatePagePropertiesStep[IN any](config UpdatePagePropertiesStepConfig[IN]) sdkgo.MutationStep[IN, UpdatePagePropertiesInput, UpdatePagePropertiesOutput] {

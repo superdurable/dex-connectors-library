@@ -722,6 +722,8 @@ type CreateInvoiceStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateInvoiceResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateInvoiceOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateInvoiceStep[IN any](config CreateInvoiceStepConfig[IN]) sdkgo.MutationStep[IN, CreateInvoiceInput, CreateInvoiceOutput] {
@@ -802,6 +804,8 @@ type RecordPaymentStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[RecordPaymentResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[RecordPaymentOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewRecordPaymentStep[IN any](config RecordPaymentStepConfig[IN]) sdkgo.MutationStep[IN, RecordPaymentInput, RecordPaymentOutput] {

@@ -497,6 +497,8 @@ type UpdateValuesStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateValuesResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateValuesOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateValuesStep[IN any](config UpdateValuesStepConfig[IN]) sdkgo.MutationStep[IN, UpdateValuesInput, UpdateValuesOutput] {

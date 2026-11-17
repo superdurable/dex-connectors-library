@@ -156,11 +156,14 @@ export interface CreateInvoiceStepConfig<StepInput, OperationInput = CreateInvoi
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the createInvoice Step from a named connection. */
 export function newCreateInvoiceStep<StepInput, OperationInput = CreateInvoiceInput, OperationOutput = CreateInvoiceOutput>(configuration: CreateInvoiceStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, created, providerRejected, dailyLimitReached, uncertain, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, created, providerRejected, dailyLimitReached, uncertain, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.createInvoice(), connection: connection.reference, branches: [
     goToBranch("created", created),
@@ -187,11 +190,14 @@ export interface RecordPaymentStepConfig<StepInput, OperationInput = RecordPayme
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the recordPayment Step from a named connection. */
 export function newRecordPaymentStep<StepInput, OperationInput = RecordPaymentInput, OperationOutput = RecordPaymentOutput>(configuration: RecordPaymentStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, recorded, providerRejected, dailyLimitReached, uncertain, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, recorded, providerRejected, dailyLimitReached, uncertain, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.recordPayment(), connection: connection.reference, branches: [
     goToBranch("recorded", recorded),
