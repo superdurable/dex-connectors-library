@@ -206,4 +206,3 @@ func contactDeleteRetry(kind sdkgo.FailureKind, message string, delay time.Durat
 	failure := sdkgo.Failure{Kind: kind, Provider: "google-contacts", Operation: "deleteContact", Message: message}
 	return sdkgo.NewMutationRetry[DeletedContact](failure, delay)
 }
-
