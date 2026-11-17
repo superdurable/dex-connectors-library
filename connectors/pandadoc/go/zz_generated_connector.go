@@ -41,12 +41,32 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	GetDocument() sdkgo.Query[GetDocumentInput, DocumentStatus]
+	ListDocuments() sdkgo.Query[ListDocumentsInput, DocumentPage]
+	UpdateDocument() sdkgo.Mutation[UpdateDocumentInput, DocumentAction]
+	DeleteDocument() sdkgo.Mutation[DeleteDocumentInput, DocumentAction]
+	CreateDocument() sdkgo.Mutation[CreateDocumentInput, DocumentStatus]
+	SendDocument() sdkgo.Mutation[SendDocumentInput, DocumentAction]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) GetDocument() sdkgo.Query[GetDocumentInput, DocumentStatus] {
 	return operations.client.GetDocument()
+}
+func (operations clientOperations) ListDocuments() sdkgo.Query[ListDocumentsInput, DocumentPage] {
+	return operations.client.ListDocuments()
+}
+func (operations clientOperations) UpdateDocument() sdkgo.Mutation[UpdateDocumentInput, DocumentAction] {
+	return operations.client.UpdateDocument()
+}
+func (operations clientOperations) DeleteDocument() sdkgo.Mutation[DeleteDocumentInput, DocumentAction] {
+	return operations.client.DeleteDocument()
+}
+func (operations clientOperations) CreateDocument() sdkgo.Mutation[CreateDocumentInput, DocumentStatus] {
+	return operations.client.CreateDocument()
+}
+func (operations clientOperations) SendDocument() sdkgo.Mutation[SendDocumentInput, DocumentAction] {
+	return operations.client.SendDocument()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -260,5 +280,372 @@ func NewGetDocumentStep[IN any](config GetDocumentStepConfig[IN]) sdkgo.QuerySte
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListDocumentsBranchListed sdkgo.BranchID = "listed"
+const ListDocumentsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListDocumentsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListDocumentsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListDocumentsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listDocuments"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListDocumentsBranchListed, Description: "PandaDoc returned a document page."},
+		{ID: ListDocumentsBranchProviderRejected, Description: "PandaDoc rejected the search.", Optional: true},
+		{ID: ListDocumentsBranchInvalidResponse, Description: "PandaDoc returned malformed or oversized JSON.", Optional: true},
+		{ID: ListDocumentsBranchDefect, Description: "The page request or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListDocumentsResult = sdkgo.QueryResult[DocumentPage]
+
+type ListDocumentsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=pandadoc"`
+	operationID                    struct{}                                        `connector:"operationId=listDocuments"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListDocumentsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListDocumentsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListDocumentsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListDocumentsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListDocumentsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DocumentPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListDocumentsStep[IN any](config ListDocumentsStepConfig[IN]) sdkgo.QueryStep[IN, ListDocumentsInput, DocumentPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("pandadoc connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListDocumentsInput, DocumentPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListDocuments(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListDocumentsResult] {
+			branches := make([]sdkgo.BranchTarget[ListDocumentsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListDocumentsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListDocumentsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListDocumentsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListDocumentsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateDocumentBranchUpdated sdkgo.BranchID = "updated"
+const UpdateDocumentBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateDocumentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateDocumentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateDocumentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateDocument"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateDocumentBranchUpdated, Description: "PandaDoc accepted the draft update."},
+		{ID: UpdateDocumentBranchNotFound, Description: "The document does not exist.", Optional: true},
+		{ID: UpdateDocumentBranchProviderRejected, Description: "PandaDoc rejected the draft update.", Optional: true},
+		{ID: UpdateDocumentBranchDefect, Description: "The document ID, name, or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateDocumentResult = sdkgo.MutationResult[DocumentAction]
+
+type UpdateDocumentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=pandadoc"`
+	operationID                       struct{}                                             `connector:"operationId=updateDocument"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateDocumentInput                         `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateDocumentResult]                   `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateDocumentResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateDocumentResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateDocumentResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DocumentAction]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateDocumentStep[IN any](config UpdateDocumentStepConfig[IN]) sdkgo.MutationStep[IN, UpdateDocumentInput, DocumentAction] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("pandadoc connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateDocumentInput, DocumentAction]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateDocument(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateDocumentResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateDocumentResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateDocumentBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateDocumentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateDocumentBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateDocumentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteDocumentBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteDocumentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteDocumentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteDocumentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteDocument"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteDocumentBranchDeleted, Description: "PandaDoc deleted the document or it was already absent."},
+		{ID: DeleteDocumentBranchProviderRejected, Description: "PandaDoc rejected the deletion.", Optional: true},
+		{ID: DeleteDocumentBranchDefect, Description: "The document ID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteDocumentResult = sdkgo.MutationResult[DocumentAction]
+
+type DeleteDocumentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=pandadoc"`
+	operationID                       struct{}                                             `connector:"operationId=deleteDocument"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteDocumentInput                         `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteDocumentResult]                   `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteDocumentResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteDocumentResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DocumentAction]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteDocumentStep[IN any](config DeleteDocumentStepConfig[IN]) sdkgo.MutationStep[IN, DeleteDocumentInput, DocumentAction] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("pandadoc connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteDocumentInput, DocumentAction]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteDocument(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteDocumentResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteDocumentResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteDocumentBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteDocumentBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteDocumentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateDocumentBranchCreated sdkgo.BranchID = "created"
+const CreateDocumentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateDocumentBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateDocumentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateDocumentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createDocument"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateDocumentBranchCreated, Description: "PandaDoc returned the new document."},
+		{ID: CreateDocumentBranchProviderRejected, Description: "PandaDoc rejected creation.", Optional: true},
+		{ID: CreateDocumentBranchUncertain, Description: "Creation may have succeeded but cannot be confirmed.", Optional: true},
+		{ID: CreateDocumentBranchDefect, Description: "The template, recipients, name, or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateDocumentResult = sdkgo.MutationResult[DocumentStatus]
+
+type CreateDocumentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=pandadoc"`
+	operationID                       struct{}                                             `connector:"operationId=createDocument"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateDocumentInput                         `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateDocumentResult]                   `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateDocumentResult]                   `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateDocumentResult]                   `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateDocumentResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DocumentStatus]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateDocumentStep[IN any](config CreateDocumentStepConfig[IN]) sdkgo.MutationStep[IN, CreateDocumentInput, DocumentStatus] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("pandadoc connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateDocumentInput, DocumentStatus]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateDocument(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateDocumentResult] {
+			branches := make([]sdkgo.BranchTarget[CreateDocumentResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateDocumentBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateDocumentBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateDocumentBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateDocumentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const SendDocumentBranchSent sdkgo.BranchID = "sent"
+const SendDocumentBranchNotFound sdkgo.BranchID = "notFound"
+const SendDocumentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendDocumentBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendDocumentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendDocumentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendDocument"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendDocumentBranchSent, Description: "PandaDoc accepted the send request."},
+		{ID: SendDocumentBranchNotFound, Description: "The document does not exist.", Optional: true},
+		{ID: SendDocumentBranchProviderRejected, Description: "PandaDoc rejected the send request.", Optional: true},
+		{ID: SendDocumentBranchUncertain, Description: "The document may have been sent but cannot be confirmed.", Optional: true},
+		{ID: SendDocumentBranchDefect, Description: "The document ID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendDocumentResult = sdkgo.MutationResult[DocumentAction]
+
+type SendDocumentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=pandadoc"`
+	operationID                       struct{}                                             `connector:"operationId=sendDocument"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendDocumentInput                           `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendDocumentResult]                     `connector:"branch=sent"`
+	NotFound                          sdkgo.Target[SendDocumentResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[SendDocumentResult]                     `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendDocumentResult]                     `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendDocumentResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DocumentAction]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendDocumentStep[IN any](config SendDocumentStepConfig[IN]) sdkgo.MutationStep[IN, SendDocumentInput, DocumentAction] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("pandadoc connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendDocumentInput, DocumentAction]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendDocument(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendDocumentResult] {
+			branches := make([]sdkgo.BranchTarget[SendDocumentResult], 0, 5)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendDocumentBranchSent))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(SendDocumentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendDocumentBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendDocumentBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendDocumentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

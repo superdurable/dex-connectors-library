@@ -40,11 +40,119 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListCustomers() sdkgo.Query[ListCustomersInput, CustomerPage]
+	GetCustomer() sdkgo.Query[CustomerIDInput, PaddleCustomer]
+	CreateCustomer() sdkgo.Mutation[CreateCustomerInput, PaddleCustomer]
+	UpdateCustomer() sdkgo.Mutation[UpdateCustomerInput, PaddleCustomer]
+	ArchiveCustomer() sdkgo.Mutation[CustomerIDInput, PaddleCustomer]
+	ListDiscounts() sdkgo.Query[ListDiscountsInput, DiscountPage]
+	GetDiscount() sdkgo.Query[DiscountIDInput, PaddleDiscount]
+	CreateDiscount() sdkgo.Mutation[CreateDiscountInput, PaddleDiscount]
+	UpdateDiscount() sdkgo.Mutation[UpdateDiscountInput, PaddleDiscount]
+	ArchiveDiscount() sdkgo.Mutation[DiscountIDInput, PaddleDiscount]
+	ListProducts() sdkgo.Query[ListProductsInput, ProductPage]
+	GetProduct() sdkgo.Query[ProductIDInput, PaddleProduct]
+	CreateProduct() sdkgo.Mutation[CreateProductInput, PaddleProduct]
+	UpdateProduct() sdkgo.Mutation[UpdateProductInput, PaddleProduct]
+	ArchiveProduct() sdkgo.Mutation[ProductIDInput, PaddleProduct]
+	ListPrices() sdkgo.Query[ListPricesInput, PricePage]
+	GetPrice() sdkgo.Query[PriceIDInput, PaddlePrice]
+	CreatePrice() sdkgo.Mutation[CreatePriceInput, PaddlePrice]
+	UpdatePrice() sdkgo.Mutation[UpdatePriceInput, PaddlePrice]
+	ArchivePrice() sdkgo.Mutation[PriceIDInput, PaddlePrice]
+	ListTransactions() sdkgo.Query[ListTransactionsInput, TransactionPage]
+	CreateTransaction() sdkgo.Mutation[CreateTransactionInput, TransactionStatus]
+	UpdateTransaction() sdkgo.Mutation[UpdateTransactionInput, TransactionStatus]
+	CancelTransaction() sdkgo.Mutation[GetTransactionInput, TransactionStatus]
+	ListSubscriptions() sdkgo.Query[ListSubscriptionsInput, SubscriptionPage]
+	GetSubscription() sdkgo.Query[SubscriptionIDInput, PaddleSubscription]
+	SetNextBillingDate() sdkgo.Mutation[SetNextBillingDateInput, PaddleSubscription]
 	GetTransaction() sdkgo.Query[GetTransactionInput, TransactionStatus]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListCustomers() sdkgo.Query[ListCustomersInput, CustomerPage] {
+	return operations.client.ListCustomers()
+}
+func (operations clientOperations) GetCustomer() sdkgo.Query[CustomerIDInput, PaddleCustomer] {
+	return operations.client.GetCustomer()
+}
+func (operations clientOperations) CreateCustomer() sdkgo.Mutation[CreateCustomerInput, PaddleCustomer] {
+	return operations.client.CreateCustomer()
+}
+func (operations clientOperations) UpdateCustomer() sdkgo.Mutation[UpdateCustomerInput, PaddleCustomer] {
+	return operations.client.UpdateCustomer()
+}
+func (operations clientOperations) ArchiveCustomer() sdkgo.Mutation[CustomerIDInput, PaddleCustomer] {
+	return operations.client.ArchiveCustomer()
+}
+func (operations clientOperations) ListDiscounts() sdkgo.Query[ListDiscountsInput, DiscountPage] {
+	return operations.client.ListDiscounts()
+}
+func (operations clientOperations) GetDiscount() sdkgo.Query[DiscountIDInput, PaddleDiscount] {
+	return operations.client.GetDiscount()
+}
+func (operations clientOperations) CreateDiscount() sdkgo.Mutation[CreateDiscountInput, PaddleDiscount] {
+	return operations.client.CreateDiscount()
+}
+func (operations clientOperations) UpdateDiscount() sdkgo.Mutation[UpdateDiscountInput, PaddleDiscount] {
+	return operations.client.UpdateDiscount()
+}
+func (operations clientOperations) ArchiveDiscount() sdkgo.Mutation[DiscountIDInput, PaddleDiscount] {
+	return operations.client.ArchiveDiscount()
+}
+func (operations clientOperations) ListProducts() sdkgo.Query[ListProductsInput, ProductPage] {
+	return operations.client.ListProducts()
+}
+func (operations clientOperations) GetProduct() sdkgo.Query[ProductIDInput, PaddleProduct] {
+	return operations.client.GetProduct()
+}
+func (operations clientOperations) CreateProduct() sdkgo.Mutation[CreateProductInput, PaddleProduct] {
+	return operations.client.CreateProduct()
+}
+func (operations clientOperations) UpdateProduct() sdkgo.Mutation[UpdateProductInput, PaddleProduct] {
+	return operations.client.UpdateProduct()
+}
+func (operations clientOperations) ArchiveProduct() sdkgo.Mutation[ProductIDInput, PaddleProduct] {
+	return operations.client.ArchiveProduct()
+}
+func (operations clientOperations) ListPrices() sdkgo.Query[ListPricesInput, PricePage] {
+	return operations.client.ListPrices()
+}
+func (operations clientOperations) GetPrice() sdkgo.Query[PriceIDInput, PaddlePrice] {
+	return operations.client.GetPrice()
+}
+func (operations clientOperations) CreatePrice() sdkgo.Mutation[CreatePriceInput, PaddlePrice] {
+	return operations.client.CreatePrice()
+}
+func (operations clientOperations) UpdatePrice() sdkgo.Mutation[UpdatePriceInput, PaddlePrice] {
+	return operations.client.UpdatePrice()
+}
+func (operations clientOperations) ArchivePrice() sdkgo.Mutation[PriceIDInput, PaddlePrice] {
+	return operations.client.ArchivePrice()
+}
+func (operations clientOperations) ListTransactions() sdkgo.Query[ListTransactionsInput, TransactionPage] {
+	return operations.client.ListTransactions()
+}
+func (operations clientOperations) CreateTransaction() sdkgo.Mutation[CreateTransactionInput, TransactionStatus] {
+	return operations.client.CreateTransaction()
+}
+func (operations clientOperations) UpdateTransaction() sdkgo.Mutation[UpdateTransactionInput, TransactionStatus] {
+	return operations.client.UpdateTransaction()
+}
+func (operations clientOperations) CancelTransaction() sdkgo.Mutation[GetTransactionInput, TransactionStatus] {
+	return operations.client.CancelTransaction()
+}
+func (operations clientOperations) ListSubscriptions() sdkgo.Query[ListSubscriptionsInput, SubscriptionPage] {
+	return operations.client.ListSubscriptions()
+}
+func (operations clientOperations) GetSubscription() sdkgo.Query[SubscriptionIDInput, PaddleSubscription] {
+	return operations.client.GetSubscription()
+}
+func (operations clientOperations) SetNextBillingDate() sdkgo.Mutation[SetNextBillingDateInput, PaddleSubscription] {
+	return operations.client.SetNextBillingDate()
+}
 func (operations clientOperations) GetTransaction() sdkgo.Query[GetTransactionInput, TransactionStatus] {
 	return operations.client.GetTransaction()
 }
@@ -184,6 +292,2055 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ListCustomersBranchListed sdkgo.BranchID = "listed"
+const ListCustomersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCustomersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCustomersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCustomersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCustomers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCustomersBranchListed, Description: "Paddle returned a customer page."},
+		{ID: ListCustomersBranchProviderRejected, Description: "Paddle rejected the listing.", Optional: true},
+		{ID: ListCustomersBranchInvalidResponse, Description: "Paddle returned malformed customer JSON.", Optional: true},
+		{ID: ListCustomersBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCustomersResult = sdkgo.QueryResult[CustomerPage]
+
+type ListCustomersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=paddle"`
+	operationID                    struct{}                                        `connector:"operationId=listCustomers"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCustomersInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCustomersResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListCustomersResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCustomersResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCustomersResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CustomerPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListCustomersStep[IN any](config ListCustomersStepConfig[IN]) sdkgo.QueryStep[IN, ListCustomersInput, CustomerPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCustomersInput, CustomerPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCustomers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCustomersResult] {
+			branches := make([]sdkgo.BranchTarget[ListCustomersResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCustomersBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCustomersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCustomersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCustomersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetCustomerBranchFound sdkgo.BranchID = "found"
+const GetCustomerBranchNotFound sdkgo.BranchID = "notFound"
+const GetCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCustomerBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCustomerDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCustomerBranchFound, Description: "Paddle returned the customer."},
+		{ID: GetCustomerBranchNotFound, Description: "Customer is absent.", Optional: true},
+		{ID: GetCustomerBranchProviderRejected, Description: "Paddle rejected the lookup.", Optional: true},
+		{ID: GetCustomerBranchInvalidResponse, Description: "Paddle returned malformed customer JSON.", Optional: true},
+		{ID: GetCustomerBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCustomerResult = sdkgo.QueryResult[PaddleCustomer]
+
+type GetCustomerStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=paddle"`
+	operationID                    struct{}                                          `connector:"operationId=getCustomer"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) CustomerIDInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCustomerResult]                   `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCustomerResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCustomerResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCustomerResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCustomerResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PaddleCustomer]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewGetCustomerStep[IN any](config GetCustomerStepConfig[IN]) sdkgo.QueryStep[IN, CustomerIDInput, PaddleCustomer] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, CustomerIDInput, PaddleCustomer]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[GetCustomerResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCustomerBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCustomerBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCustomerBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCustomerBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateCustomerBranchCreated sdkgo.BranchID = "created"
+const CreateCustomerBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateCustomerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateCustomerBranchCreated, Description: "Paddle created the customer."},
+		{ID: CreateCustomerBranchUncertain, Description: "Customer creation may have succeeded but cannot be confirmed.", Optional: true},
+		{ID: CreateCustomerBranchProviderRejected, Description: "Paddle rejected creation.", Optional: true},
+		{ID: CreateCustomerBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateCustomerResult = sdkgo.MutationResult[PaddleCustomer]
+
+type CreateCustomerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=paddle"`
+	operationID                       struct{}                                             `connector:"operationId=createCustomer"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateCustomerInput                         `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateCustomerResult]                   `connector:"branch=created"`
+	Uncertain                         sdkgo.Target[CreateCustomerResult]                   `connector:"branch=uncertain,optional"`
+	ProviderRejected                  sdkgo.Target[CreateCustomerResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateCustomerResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaddleCustomer]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateCustomerStep[IN any](config CreateCustomerStepConfig[IN]) sdkgo.MutationStep[IN, CreateCustomerInput, PaddleCustomer] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateCustomerInput, PaddleCustomer]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[CreateCustomerResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateCustomerBranchCreated))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateCustomerBranchUncertain))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateCustomerBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateCustomerBranchUpdated sdkgo.BranchID = "updated"
+const UpdateCustomerBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateCustomerBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateCustomerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateCustomerBranchUpdated, Description: "Paddle updated the customer."},
+		{ID: UpdateCustomerBranchNotFound, Description: "Customer is absent.", Optional: true},
+		{ID: UpdateCustomerBranchProviderRejected, Description: "Paddle rejected the update.", Optional: true},
+		{ID: UpdateCustomerBranchInvalidResponse, Description: "Paddle returned malformed customer JSON.", Optional: true},
+		{ID: UpdateCustomerBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateCustomerResult = sdkgo.MutationResult[PaddleCustomer]
+
+type UpdateCustomerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=paddle"`
+	operationID                       struct{}                                             `connector:"operationId=updateCustomer"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateCustomerInput                         `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateCustomerResult]                   `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateCustomerResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateCustomerResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateCustomerResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateCustomerResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaddleCustomer]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateCustomerStep[IN any](config UpdateCustomerStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCustomerInput, PaddleCustomer] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateCustomerInput, PaddleCustomer]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateCustomerResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateCustomerBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateCustomerBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateCustomerBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateCustomerBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ArchiveCustomerBranchArchived sdkgo.BranchID = "archived"
+const ArchiveCustomerBranchNotFound sdkgo.BranchID = "notFound"
+const ArchiveCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ArchiveCustomerBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ArchiveCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ArchiveCustomerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "archiveCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ArchiveCustomerBranchArchived, Description: "Paddle archived the customer."},
+		{ID: ArchiveCustomerBranchNotFound, Description: "Customer is absent.", Optional: true},
+		{ID: ArchiveCustomerBranchProviderRejected, Description: "Paddle rejected archival.", Optional: true},
+		{ID: ArchiveCustomerBranchInvalidResponse, Description: "Paddle returned malformed customer JSON.", Optional: true},
+		{ID: ArchiveCustomerBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type ArchiveCustomerResult = sdkgo.MutationResult[PaddleCustomer]
+
+type ArchiveCustomerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=paddle"`
+	operationID                       struct{}                                             `connector:"operationId=archiveCustomer"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CustomerIDInput                             `connector:"mapToOperationInput"`
+	Archived                          sdkgo.Target[ArchiveCustomerResult]                  `connector:"branch=archived"`
+	NotFound                          sdkgo.Target[ArchiveCustomerResult]                  `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[ArchiveCustomerResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[ArchiveCustomerResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[ArchiveCustomerResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaddleCustomer]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewArchiveCustomerStep[IN any](config ArchiveCustomerStepConfig[IN]) sdkgo.MutationStep[IN, CustomerIDInput, PaddleCustomer] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CustomerIDInput, PaddleCustomer]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ArchiveCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ArchiveCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[ArchiveCustomerResult], 0, 5)
+			if config.Archived.HasStep() {
+				branches = append(branches, config.Archived.BranchTarget(ArchiveCustomerBranchArchived))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ArchiveCustomerBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ArchiveCustomerBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ArchiveCustomerBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ArchiveCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListDiscountsBranchListed sdkgo.BranchID = "listed"
+const ListDiscountsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListDiscountsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListDiscountsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListDiscountsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listDiscounts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListDiscountsBranchListed, Description: "Paddle returned the listDiscounts."},
+		{ID: ListDiscountsBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: ListDiscountsBranchInvalidResponse, Description: "invalidResponse outcome.", Optional: true},
+		{ID: ListDiscountsBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListDiscountsResult = sdkgo.QueryResult[DiscountPage]
+
+type ListDiscountsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=paddle"`
+	operationID                    struct{}                                        `connector:"operationId=listDiscounts"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListDiscountsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListDiscountsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListDiscountsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListDiscountsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListDiscountsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DiscountPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListDiscountsStep[IN any](config ListDiscountsStepConfig[IN]) sdkgo.QueryStep[IN, ListDiscountsInput, DiscountPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListDiscountsInput, DiscountPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListDiscounts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListDiscountsResult] {
+			branches := make([]sdkgo.BranchTarget[ListDiscountsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListDiscountsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListDiscountsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListDiscountsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListDiscountsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetDiscountBranchFound sdkgo.BranchID = "found"
+const GetDiscountBranchNotFound sdkgo.BranchID = "notFound"
+const GetDiscountBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetDiscountBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetDiscountBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetDiscountDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getDiscount"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetDiscountBranchFound, Description: "Paddle returned the getDiscount."},
+		{ID: GetDiscountBranchNotFound, Description: "notFound outcome.", Optional: true},
+		{ID: GetDiscountBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: GetDiscountBranchInvalidResponse, Description: "invalidResponse outcome.", Optional: true},
+		{ID: GetDiscountBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetDiscountResult = sdkgo.QueryResult[PaddleDiscount]
+
+type GetDiscountStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=paddle"`
+	operationID                    struct{}                                          `connector:"operationId=getDiscount"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) DiscountIDInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetDiscountResult]                   `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetDiscountResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetDiscountResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetDiscountResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetDiscountResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PaddleDiscount]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewGetDiscountStep[IN any](config GetDiscountStepConfig[IN]) sdkgo.QueryStep[IN, DiscountIDInput, PaddleDiscount] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, DiscountIDInput, PaddleDiscount]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetDiscount(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetDiscountResult] {
+			branches := make([]sdkgo.BranchTarget[GetDiscountResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetDiscountBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetDiscountBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetDiscountBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetDiscountBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetDiscountBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateDiscountBranchCreated sdkgo.BranchID = "created"
+const CreateDiscountBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateDiscountBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateDiscountBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateDiscountDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createDiscount"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateDiscountBranchCreated, Description: "Paddle returned the createDiscount."},
+		{ID: CreateDiscountBranchUncertain, Description: "Discount creation may have succeeded but cannot be confirmed.", Optional: true},
+		{ID: CreateDiscountBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: CreateDiscountBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateDiscountResult = sdkgo.MutationResult[PaddleDiscount]
+
+type CreateDiscountStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=paddle"`
+	operationID                       struct{}                                             `connector:"operationId=createDiscount"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateDiscountInput                         `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateDiscountResult]                   `connector:"branch=created"`
+	Uncertain                         sdkgo.Target[CreateDiscountResult]                   `connector:"branch=uncertain,optional"`
+	ProviderRejected                  sdkgo.Target[CreateDiscountResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateDiscountResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaddleDiscount]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateDiscountStep[IN any](config CreateDiscountStepConfig[IN]) sdkgo.MutationStep[IN, CreateDiscountInput, PaddleDiscount] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateDiscountInput, PaddleDiscount]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateDiscount(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateDiscountResult] {
+			branches := make([]sdkgo.BranchTarget[CreateDiscountResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateDiscountBranchCreated))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateDiscountBranchUncertain))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateDiscountBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateDiscountBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateDiscountBranchUpdated sdkgo.BranchID = "updated"
+const UpdateDiscountBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateDiscountBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateDiscountBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateDiscountBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateDiscountDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateDiscount"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateDiscountBranchUpdated, Description: "Paddle returned the updateDiscount."},
+		{ID: UpdateDiscountBranchNotFound, Description: "notFound outcome.", Optional: true},
+		{ID: UpdateDiscountBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: UpdateDiscountBranchInvalidResponse, Description: "invalidResponse outcome.", Optional: true},
+		{ID: UpdateDiscountBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateDiscountResult = sdkgo.MutationResult[PaddleDiscount]
+
+type UpdateDiscountStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=paddle"`
+	operationID                       struct{}                                             `connector:"operationId=updateDiscount"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateDiscountInput                         `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateDiscountResult]                   `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateDiscountResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateDiscountResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateDiscountResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateDiscountResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaddleDiscount]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateDiscountStep[IN any](config UpdateDiscountStepConfig[IN]) sdkgo.MutationStep[IN, UpdateDiscountInput, PaddleDiscount] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateDiscountInput, PaddleDiscount]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateDiscount(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateDiscountResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateDiscountResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateDiscountBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateDiscountBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateDiscountBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateDiscountBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateDiscountBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ArchiveDiscountBranchArchived sdkgo.BranchID = "archived"
+const ArchiveDiscountBranchNotFound sdkgo.BranchID = "notFound"
+const ArchiveDiscountBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ArchiveDiscountBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ArchiveDiscountBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ArchiveDiscountDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "archiveDiscount"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ArchiveDiscountBranchArchived, Description: "Paddle returned the archiveDiscount."},
+		{ID: ArchiveDiscountBranchNotFound, Description: "notFound outcome.", Optional: true},
+		{ID: ArchiveDiscountBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: ArchiveDiscountBranchInvalidResponse, Description: "invalidResponse outcome.", Optional: true},
+		{ID: ArchiveDiscountBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type ArchiveDiscountResult = sdkgo.MutationResult[PaddleDiscount]
+
+type ArchiveDiscountStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=paddle"`
+	operationID                       struct{}                                             `connector:"operationId=archiveDiscount"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) DiscountIDInput                             `connector:"mapToOperationInput"`
+	Archived                          sdkgo.Target[ArchiveDiscountResult]                  `connector:"branch=archived"`
+	NotFound                          sdkgo.Target[ArchiveDiscountResult]                  `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[ArchiveDiscountResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[ArchiveDiscountResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[ArchiveDiscountResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaddleDiscount]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewArchiveDiscountStep[IN any](config ArchiveDiscountStepConfig[IN]) sdkgo.MutationStep[IN, DiscountIDInput, PaddleDiscount] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DiscountIDInput, PaddleDiscount]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ArchiveDiscount(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ArchiveDiscountResult] {
+			branches := make([]sdkgo.BranchTarget[ArchiveDiscountResult], 0, 5)
+			if config.Archived.HasStep() {
+				branches = append(branches, config.Archived.BranchTarget(ArchiveDiscountBranchArchived))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ArchiveDiscountBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ArchiveDiscountBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ArchiveDiscountBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ArchiveDiscountBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListProductsBranchListed sdkgo.BranchID = "listed"
+const ListProductsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListProductsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListProductsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListProductsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listProducts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListProductsBranchListed, Description: "Paddle returned the listProducts."},
+		{ID: ListProductsBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: ListProductsBranchInvalidResponse, Description: "invalidResponse outcome.", Optional: true},
+		{ID: ListProductsBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListProductsResult = sdkgo.QueryResult[ProductPage]
+
+type ListProductsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=paddle"`
+	operationID                    struct{}                                       `connector:"operationId=listProducts"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListProductsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListProductsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListProductsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListProductsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListProductsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ProductPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListProductsStep[IN any](config ListProductsStepConfig[IN]) sdkgo.QueryStep[IN, ListProductsInput, ProductPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListProductsInput, ProductPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListProducts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListProductsResult] {
+			branches := make([]sdkgo.BranchTarget[ListProductsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListProductsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListProductsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListProductsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListProductsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetProductBranchFound sdkgo.BranchID = "found"
+const GetProductBranchNotFound sdkgo.BranchID = "notFound"
+const GetProductBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetProductBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetProductBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetProductDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getProduct"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetProductBranchFound, Description: "Paddle returned the getProduct."},
+		{ID: GetProductBranchNotFound, Description: "notFound outcome.", Optional: true},
+		{ID: GetProductBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: GetProductBranchInvalidResponse, Description: "invalidResponse outcome.", Optional: true},
+		{ID: GetProductBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetProductResult = sdkgo.QueryResult[PaddleProduct]
+
+type GetProductStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=paddle"`
+	operationID                    struct{}                                         `connector:"operationId=getProduct"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ProductIDInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetProductResult]                   `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetProductResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetProductResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetProductResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetProductResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PaddleProduct]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetProductStep[IN any](config GetProductStepConfig[IN]) sdkgo.QueryStep[IN, ProductIDInput, PaddleProduct] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ProductIDInput, PaddleProduct]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetProduct(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetProductResult] {
+			branches := make([]sdkgo.BranchTarget[GetProductResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetProductBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetProductBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetProductBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetProductBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetProductBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateProductBranchCreated sdkgo.BranchID = "created"
+const CreateProductBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateProductBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateProductBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateProductDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createProduct"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateProductBranchCreated, Description: "Paddle returned the createProduct."},
+		{ID: CreateProductBranchUncertain, Description: "Product creation may have succeeded but cannot be confirmed.", Optional: true},
+		{ID: CreateProductBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: CreateProductBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateProductResult = sdkgo.MutationResult[PaddleProduct]
+
+type CreateProductStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=paddle"`
+	operationID                       struct{}                                            `connector:"operationId=createProduct"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateProductInput                         `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateProductResult]                   `connector:"branch=created"`
+	Uncertain                         sdkgo.Target[CreateProductResult]                   `connector:"branch=uncertain,optional"`
+	ProviderRejected                  sdkgo.Target[CreateProductResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateProductResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaddleProduct]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateProductStep[IN any](config CreateProductStepConfig[IN]) sdkgo.MutationStep[IN, CreateProductInput, PaddleProduct] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateProductInput, PaddleProduct]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateProduct(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateProductResult] {
+			branches := make([]sdkgo.BranchTarget[CreateProductResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateProductBranchCreated))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateProductBranchUncertain))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateProductBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateProductBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateProductBranchUpdated sdkgo.BranchID = "updated"
+const UpdateProductBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateProductBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateProductBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateProductBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateProductDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateProduct"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateProductBranchUpdated, Description: "Paddle returned the updateProduct."},
+		{ID: UpdateProductBranchNotFound, Description: "notFound outcome.", Optional: true},
+		{ID: UpdateProductBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: UpdateProductBranchInvalidResponse, Description: "invalidResponse outcome.", Optional: true},
+		{ID: UpdateProductBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateProductResult = sdkgo.MutationResult[PaddleProduct]
+
+type UpdateProductStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=paddle"`
+	operationID                       struct{}                                            `connector:"operationId=updateProduct"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateProductInput                         `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateProductResult]                   `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateProductResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateProductResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateProductResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateProductResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaddleProduct]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateProductStep[IN any](config UpdateProductStepConfig[IN]) sdkgo.MutationStep[IN, UpdateProductInput, PaddleProduct] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateProductInput, PaddleProduct]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateProduct(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateProductResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateProductResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateProductBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateProductBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateProductBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateProductBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateProductBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ArchiveProductBranchArchived sdkgo.BranchID = "archived"
+const ArchiveProductBranchNotFound sdkgo.BranchID = "notFound"
+const ArchiveProductBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ArchiveProductBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ArchiveProductBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ArchiveProductDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "archiveProduct"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ArchiveProductBranchArchived, Description: "Paddle returned the archiveProduct."},
+		{ID: ArchiveProductBranchNotFound, Description: "notFound outcome.", Optional: true},
+		{ID: ArchiveProductBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: ArchiveProductBranchInvalidResponse, Description: "invalidResponse outcome.", Optional: true},
+		{ID: ArchiveProductBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type ArchiveProductResult = sdkgo.MutationResult[PaddleProduct]
+
+type ArchiveProductStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=paddle"`
+	operationID                       struct{}                                            `connector:"operationId=archiveProduct"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) ProductIDInput                             `connector:"mapToOperationInput"`
+	Archived                          sdkgo.Target[ArchiveProductResult]                  `connector:"branch=archived"`
+	NotFound                          sdkgo.Target[ArchiveProductResult]                  `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[ArchiveProductResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[ArchiveProductResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[ArchiveProductResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaddleProduct]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewArchiveProductStep[IN any](config ArchiveProductStepConfig[IN]) sdkgo.MutationStep[IN, ProductIDInput, PaddleProduct] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ProductIDInput, PaddleProduct]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ArchiveProduct(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ArchiveProductResult] {
+			branches := make([]sdkgo.BranchTarget[ArchiveProductResult], 0, 5)
+			if config.Archived.HasStep() {
+				branches = append(branches, config.Archived.BranchTarget(ArchiveProductBranchArchived))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ArchiveProductBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ArchiveProductBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ArchiveProductBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ArchiveProductBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListPricesBranchListed sdkgo.BranchID = "listed"
+const ListPricesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListPricesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListPricesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListPricesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listPrices"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListPricesBranchListed, Description: "Paddle returned the listPrices."},
+		{ID: ListPricesBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: ListPricesBranchInvalidResponse, Description: "invalidResponse outcome.", Optional: true},
+		{ID: ListPricesBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListPricesResult = sdkgo.QueryResult[PricePage]
+
+type ListPricesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=paddle"`
+	operationID                    struct{}                                     `connector:"operationId=listPrices"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListPricesInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListPricesResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListPricesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListPricesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListPricesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PricePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListPricesStep[IN any](config ListPricesStepConfig[IN]) sdkgo.QueryStep[IN, ListPricesInput, PricePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPricesInput, PricePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListPrices(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListPricesResult] {
+			branches := make([]sdkgo.BranchTarget[ListPricesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListPricesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListPricesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListPricesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListPricesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetPriceBranchFound sdkgo.BranchID = "found"
+const GetPriceBranchNotFound sdkgo.BranchID = "notFound"
+const GetPriceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetPriceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetPriceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetPriceDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getPrice"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetPriceBranchFound, Description: "Paddle returned the getPrice."},
+		{ID: GetPriceBranchNotFound, Description: "notFound outcome.", Optional: true},
+		{ID: GetPriceBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: GetPriceBranchInvalidResponse, Description: "invalidResponse outcome.", Optional: true},
+		{ID: GetPriceBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetPriceResult = sdkgo.QueryResult[PaddlePrice]
+
+type GetPriceStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=paddle"`
+	operationID                    struct{}                                       `connector:"operationId=getPrice"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) PriceIDInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetPriceResult]                   `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetPriceResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetPriceResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetPriceResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetPriceResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PaddlePrice]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewGetPriceStep[IN any](config GetPriceStepConfig[IN]) sdkgo.QueryStep[IN, PriceIDInput, PaddlePrice] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, PriceIDInput, PaddlePrice]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetPrice(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetPriceResult] {
+			branches := make([]sdkgo.BranchTarget[GetPriceResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetPriceBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetPriceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetPriceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetPriceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetPriceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreatePriceBranchCreated sdkgo.BranchID = "created"
+const CreatePriceBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreatePriceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreatePriceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreatePriceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createPrice"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreatePriceBranchCreated, Description: "Paddle returned the createPrice."},
+		{ID: CreatePriceBranchUncertain, Description: "Price creation may have succeeded but cannot be confirmed.", Optional: true},
+		{ID: CreatePriceBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: CreatePriceBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreatePriceResult = sdkgo.MutationResult[PaddlePrice]
+
+type CreatePriceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=paddle"`
+	operationID                       struct{}                                          `connector:"operationId=createPrice"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreatePriceInput                         `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreatePriceResult]                   `connector:"branch=created"`
+	Uncertain                         sdkgo.Target[CreatePriceResult]                   `connector:"branch=uncertain,optional"`
+	ProviderRejected                  sdkgo.Target[CreatePriceResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreatePriceResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaddlePrice]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreatePriceStep[IN any](config CreatePriceStepConfig[IN]) sdkgo.MutationStep[IN, CreatePriceInput, PaddlePrice] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreatePriceInput, PaddlePrice]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreatePrice(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreatePriceResult] {
+			branches := make([]sdkgo.BranchTarget[CreatePriceResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreatePriceBranchCreated))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreatePriceBranchUncertain))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreatePriceBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreatePriceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdatePriceBranchUpdated sdkgo.BranchID = "updated"
+const UpdatePriceBranchNotFound sdkgo.BranchID = "notFound"
+const UpdatePriceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdatePriceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdatePriceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdatePriceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updatePrice"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdatePriceBranchUpdated, Description: "Paddle returned the updatePrice."},
+		{ID: UpdatePriceBranchNotFound, Description: "notFound outcome.", Optional: true},
+		{ID: UpdatePriceBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: UpdatePriceBranchInvalidResponse, Description: "invalidResponse outcome.", Optional: true},
+		{ID: UpdatePriceBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdatePriceResult = sdkgo.MutationResult[PaddlePrice]
+
+type UpdatePriceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=paddle"`
+	operationID                       struct{}                                          `connector:"operationId=updatePrice"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdatePriceInput                         `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdatePriceResult]                   `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdatePriceResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdatePriceResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdatePriceResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdatePriceResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaddlePrice]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewUpdatePriceStep[IN any](config UpdatePriceStepConfig[IN]) sdkgo.MutationStep[IN, UpdatePriceInput, PaddlePrice] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdatePriceInput, PaddlePrice]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdatePrice(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdatePriceResult] {
+			branches := make([]sdkgo.BranchTarget[UpdatePriceResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdatePriceBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdatePriceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdatePriceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdatePriceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdatePriceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ArchivePriceBranchArchived sdkgo.BranchID = "archived"
+const ArchivePriceBranchNotFound sdkgo.BranchID = "notFound"
+const ArchivePriceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ArchivePriceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ArchivePriceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ArchivePriceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "archivePrice"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ArchivePriceBranchArchived, Description: "Paddle returned the archivePrice."},
+		{ID: ArchivePriceBranchNotFound, Description: "notFound outcome.", Optional: true},
+		{ID: ArchivePriceBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: ArchivePriceBranchInvalidResponse, Description: "invalidResponse outcome.", Optional: true},
+		{ID: ArchivePriceBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type ArchivePriceResult = sdkgo.MutationResult[PaddlePrice]
+
+type ArchivePriceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=paddle"`
+	operationID                       struct{}                                          `connector:"operationId=archivePrice"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) PriceIDInput                             `connector:"mapToOperationInput"`
+	Archived                          sdkgo.Target[ArchivePriceResult]                  `connector:"branch=archived"`
+	NotFound                          sdkgo.Target[ArchivePriceResult]                  `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[ArchivePriceResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[ArchivePriceResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[ArchivePriceResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaddlePrice]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewArchivePriceStep[IN any](config ArchivePriceStepConfig[IN]) sdkgo.MutationStep[IN, PriceIDInput, PaddlePrice] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PriceIDInput, PaddlePrice]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ArchivePrice(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ArchivePriceResult] {
+			branches := make([]sdkgo.BranchTarget[ArchivePriceResult], 0, 5)
+			if config.Archived.HasStep() {
+				branches = append(branches, config.Archived.BranchTarget(ArchivePriceBranchArchived))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ArchivePriceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ArchivePriceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ArchivePriceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ArchivePriceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListTransactionsBranchListed sdkgo.BranchID = "listed"
+const ListTransactionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTransactionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTransactionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTransactionsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTransactions"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTransactionsBranchListed, Description: "Paddle returned the listTransactions."},
+		{ID: ListTransactionsBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: ListTransactionsBranchInvalidResponse, Description: "invalidResponse outcome.", Optional: true},
+		{ID: ListTransactionsBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTransactionsResult = sdkgo.QueryResult[TransactionPage]
+
+type ListTransactionsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=paddle"`
+	operationID                    struct{}                                           `connector:"operationId=listTransactions"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTransactionsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTransactionsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListTransactionsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTransactionsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTransactionsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TransactionPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewListTransactionsStep[IN any](config ListTransactionsStepConfig[IN]) sdkgo.QueryStep[IN, ListTransactionsInput, TransactionPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTransactionsInput, TransactionPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTransactions(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTransactionsResult] {
+			branches := make([]sdkgo.BranchTarget[ListTransactionsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTransactionsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTransactionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTransactionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTransactionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateTransactionBranchCreated sdkgo.BranchID = "created"
+const CreateTransactionBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateTransactionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateTransactionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateTransactionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createTransaction"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateTransactionBranchCreated, Description: "Paddle returned the createTransaction."},
+		{ID: CreateTransactionBranchUncertain, Description: "Draft transaction creation may have succeeded but cannot be confirmed.", Optional: true},
+		{ID: CreateTransactionBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: CreateTransactionBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateTransactionResult = sdkgo.MutationResult[TransactionStatus]
+
+type CreateTransactionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=paddle"`
+	operationID                       struct{}                                                `connector:"operationId=createTransaction"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateTransactionInput                         `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateTransactionResult]                   `connector:"branch=created"`
+	Uncertain                         sdkgo.Target[CreateTransactionResult]                   `connector:"branch=uncertain,optional"`
+	ProviderRejected                  sdkgo.Target[CreateTransactionResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateTransactionResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TransactionStatus]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateTransactionStep[IN any](config CreateTransactionStepConfig[IN]) sdkgo.MutationStep[IN, CreateTransactionInput, TransactionStatus] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateTransactionInput, TransactionStatus]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateTransaction(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateTransactionResult] {
+			branches := make([]sdkgo.BranchTarget[CreateTransactionResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateTransactionBranchCreated))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateTransactionBranchUncertain))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateTransactionBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateTransactionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateTransactionBranchUpdated sdkgo.BranchID = "updated"
+const UpdateTransactionBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateTransactionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateTransactionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateTransactionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateTransactionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateTransaction"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateTransactionBranchUpdated, Description: "Paddle returned the updateTransaction."},
+		{ID: UpdateTransactionBranchNotFound, Description: "notFound outcome.", Optional: true},
+		{ID: UpdateTransactionBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: UpdateTransactionBranchInvalidResponse, Description: "invalidResponse outcome.", Optional: true},
+		{ID: UpdateTransactionBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateTransactionResult = sdkgo.MutationResult[TransactionStatus]
+
+type UpdateTransactionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=paddle"`
+	operationID                       struct{}                                                `connector:"operationId=updateTransaction"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateTransactionInput                         `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateTransactionResult]                   `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateTransactionResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateTransactionResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateTransactionResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateTransactionResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TransactionStatus]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateTransactionStep[IN any](config UpdateTransactionStepConfig[IN]) sdkgo.MutationStep[IN, UpdateTransactionInput, TransactionStatus] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateTransactionInput, TransactionStatus]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateTransaction(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateTransactionResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateTransactionResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateTransactionBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateTransactionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateTransactionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateTransactionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateTransactionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CancelTransactionBranchCanceled sdkgo.BranchID = "canceled"
+const CancelTransactionBranchNotFound sdkgo.BranchID = "notFound"
+const CancelTransactionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CancelTransactionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CancelTransactionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CancelTransactionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "cancelTransaction"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CancelTransactionBranchCanceled, Description: "Paddle returned the cancelTransaction."},
+		{ID: CancelTransactionBranchNotFound, Description: "notFound outcome.", Optional: true},
+		{ID: CancelTransactionBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: CancelTransactionBranchInvalidResponse, Description: "invalidResponse outcome.", Optional: true},
+		{ID: CancelTransactionBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CancelTransactionResult = sdkgo.MutationResult[TransactionStatus]
+
+type CancelTransactionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=paddle"`
+	operationID                       struct{}                                                `connector:"operationId=cancelTransaction"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetTransactionInput                            `connector:"mapToOperationInput"`
+	Canceled                          sdkgo.Target[CancelTransactionResult]                   `connector:"branch=canceled"`
+	NotFound                          sdkgo.Target[CancelTransactionResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CancelTransactionResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CancelTransactionResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CancelTransactionResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TransactionStatus]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewCancelTransactionStep[IN any](config CancelTransactionStepConfig[IN]) sdkgo.MutationStep[IN, GetTransactionInput, TransactionStatus] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetTransactionInput, TransactionStatus]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CancelTransaction(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CancelTransactionResult] {
+			branches := make([]sdkgo.BranchTarget[CancelTransactionResult], 0, 5)
+			if config.Canceled.HasStep() {
+				branches = append(branches, config.Canceled.BranchTarget(CancelTransactionBranchCanceled))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CancelTransactionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CancelTransactionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CancelTransactionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CancelTransactionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListSubscriptionsBranchListed sdkgo.BranchID = "listed"
+const ListSubscriptionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSubscriptionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSubscriptionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSubscriptionsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSubscriptions"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSubscriptionsBranchListed, Description: "Paddle returned subscriptions."},
+		{ID: ListSubscriptionsBranchProviderRejected, Description: "Paddle rejected listing.", Optional: true},
+		{ID: ListSubscriptionsBranchInvalidResponse, Description: "Paddle returned malformed data.", Optional: true},
+		{ID: ListSubscriptionsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSubscriptionsResult = sdkgo.QueryResult[SubscriptionPage]
+
+type ListSubscriptionsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=paddle"`
+	operationID                    struct{}                                            `connector:"operationId=listSubscriptions"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSubscriptionsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSubscriptionsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListSubscriptionsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSubscriptionsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSubscriptionsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SubscriptionPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewListSubscriptionsStep[IN any](config ListSubscriptionsStepConfig[IN]) sdkgo.QueryStep[IN, ListSubscriptionsInput, SubscriptionPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSubscriptionsInput, SubscriptionPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSubscriptions(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSubscriptionsResult] {
+			branches := make([]sdkgo.BranchTarget[ListSubscriptionsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSubscriptionsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSubscriptionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSubscriptionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSubscriptionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetSubscriptionBranchFound sdkgo.BranchID = "found"
+const GetSubscriptionBranchNotFound sdkgo.BranchID = "notFound"
+const GetSubscriptionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetSubscriptionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetSubscriptionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetSubscriptionDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getSubscription"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetSubscriptionBranchFound, Description: "Paddle returned the subscription."},
+		{ID: GetSubscriptionBranchNotFound, Description: "Paddle did not find the subscription.", Optional: true},
+		{ID: GetSubscriptionBranchProviderRejected, Description: "Paddle rejected lookup.", Optional: true},
+		{ID: GetSubscriptionBranchInvalidResponse, Description: "Paddle returned malformed data.", Optional: true},
+		{ID: GetSubscriptionBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetSubscriptionResult = sdkgo.QueryResult[PaddleSubscription]
+
+type GetSubscriptionStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=paddle"`
+	operationID                    struct{}                                              `connector:"operationId=getSubscription"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) SubscriptionIDInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetSubscriptionResult]                   `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetSubscriptionResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetSubscriptionResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetSubscriptionResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetSubscriptionResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PaddleSubscription]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewGetSubscriptionStep[IN any](config GetSubscriptionStepConfig[IN]) sdkgo.QueryStep[IN, SubscriptionIDInput, PaddleSubscription] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SubscriptionIDInput, PaddleSubscription]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetSubscription(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetSubscriptionResult] {
+			branches := make([]sdkgo.BranchTarget[GetSubscriptionResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetSubscriptionBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetSubscriptionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetSubscriptionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetSubscriptionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetSubscriptionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SetNextBillingDateBranchUpdated sdkgo.BranchID = "updated"
+const SetNextBillingDateBranchNotFound sdkgo.BranchID = "notFound"
+const SetNextBillingDateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SetNextBillingDateBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SetNextBillingDateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SetNextBillingDateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "setNextBillingDate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SetNextBillingDateBranchUpdated, Description: "Paddle moved the next renewal."},
+		{ID: SetNextBillingDateBranchNotFound, Description: "Paddle did not find the subscription.", Optional: true},
+		{ID: SetNextBillingDateBranchProviderRejected, Description: "Paddle rejected the date change.", Optional: true},
+		{ID: SetNextBillingDateBranchInvalidResponse, Description: "Paddle returned malformed data.", Optional: true},
+		{ID: SetNextBillingDateBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type SetNextBillingDateResult = sdkgo.MutationResult[PaddleSubscription]
+
+type SetNextBillingDateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=paddle"`
+	operationID                       struct{}                                                 `connector:"operationId=setNextBillingDate"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) SetNextBillingDateInput                         `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[SetNextBillingDateResult]                   `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[SetNextBillingDateResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[SetNextBillingDateResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[SetNextBillingDateResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[SetNextBillingDateResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaddleSubscription]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewSetNextBillingDateStep[IN any](config SetNextBillingDateStepConfig[IN]) sdkgo.MutationStep[IN, SetNextBillingDateInput, PaddleSubscription] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetNextBillingDateInput, PaddleSubscription]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SetNextBillingDate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SetNextBillingDateResult] {
+			branches := make([]sdkgo.BranchTarget[SetNextBillingDateResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(SetNextBillingDateBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(SetNextBillingDateBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SetNextBillingDateBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SetNextBillingDateBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SetNextBillingDateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetTransactionBranchFound sdkgo.BranchID = "found"

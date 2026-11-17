@@ -57,4 +57,6 @@ func TestPackageInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "9sKhW-h-qS9m6Ho3zRv3n2a-rkI=", output.ID)
 	require.Equal(t, "COMPLETED", output.Status)
 	require.Len(t, mock.GetPackage().Calls(), 1)
+	require.Len(t, mock.ListPackages().Calls(), 1)
+	require.Len(t, mock.ListSignerRoles().Calls(), 1)
 }

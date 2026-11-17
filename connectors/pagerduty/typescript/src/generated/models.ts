@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret PagerDuty token. Start at https://support.pagerduty.com/main/docs/api-access-keys, follow Integrations > Developer Tools > API Access Keys. Create a read-only REST API key and copy it. It is an opaque secret string; blank prevents requests. It is sent only in the Authorization header. */
+  /** Secret PagerDuty token. Start at https://support.pagerduty.com/main/docs/api-access-keys, follow Integrations > Developer Tools > API Access Keys. Create a full-access REST API key for incident and note writes, or a read-only key for queries, and copy it. It is an opaque secret string; blank prevents requests. It is sent only in the Authorization header. */
   apiKey: SecretString;
 }
 

@@ -24,5 +24,6 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"indexDocument": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.IndexDocument(), testConnection, scenario.CallID),
 		"deleteDocument": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteDocument(), testConnection, scenario.CallID),
 		"searchDocuments": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.SearchDocuments(), testConnection),
+		"getDocument": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetDocument(), testConnection),
 	}}
 }

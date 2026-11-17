@@ -1,19 +1,20 @@
 # Pinecone sample Flow
 
-The runnable Flow in [flow/workflow.go](flow/workflow.go) calls `upsertVectors` through the static `pinecone` Dex Web connection and completes with its typed result. An unwired optional provider branch fails the Flow.
+The Worker registers two Flows on the static `pinecone` Dex Web connection. `PineconeSample` calls `upsertVectors`; `PineconeVectorFetch` calls `fetchVectors`. Start the latter with `{"namespace":"example","ids":["vec-meridian"]}` to read dense values without metadata. An unwired optional provider branch fails its Flow.
 
 Generate strict FDG 2.0 from this source:
 
 ```bash
 mkdir -p build
 dexcli visualize ./examples/sample-pinecone/flow/workflow.go --schema-version 2.0 --json --out ./build/sample-pinecone
+dexcli visualize ./examples/sample-pinecone/flow/vector_fetch.go --schema-version 2.0 --lint app --json --out ./build/vector-fetch
 ```
 
 The command must report `valid: true`. From the repository root, build the local release metadata for Dex Web:
 
 ```bash
 mkdir -p /tmp/pinecone-release
-go run ./cmd/connectorctl release-artifact --manifest connectors/pinecone/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/pinecone/go --version v0.2.0 --tag connectors/pinecone/go/v0.2.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/pinecone-release/connector-release.json --digest-output /tmp/pinecone-release/connector-release.json.sha256
+go run ./cmd/connectorctl release-artifact --manifest connectors/pinecone/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/pinecone/go --version v0.3.0 --tag connectors/pinecone/go/v0.3.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/pinecone-release/connector-release.json --digest-output /tmp/pinecone-release/connector-release.json.sha256
 dexcli dev --flow-rendering-dir "$PWD/connectors/pinecone/go/build" --connector-release-override pinecone=/tmp/pinecone-release
 ```
 

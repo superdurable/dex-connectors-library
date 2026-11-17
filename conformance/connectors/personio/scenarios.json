@@ -2,6 +2,377 @@
   "connector": "personio",
   "scenarios": [
     {
+      "callId": "22222222-2222-5222-8222-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"_data\":[{\"id\":\"3003\",\"first_name\":\"Jane\",\"last_name\":\"Doe\",\"email\":\"private@example.com\"}],\"_meta\":{\"links\":{\"next\":{\"href\":\"/v2/persons?cursor=cur-page-3\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons",
+          "query": {
+            "cursor": [
+              "cur-page-2"
+            ],
+            "first_name": [
+              "Jane"
+            ],
+            "last_name": [
+              "Doe"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "ACTIVE"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "cur-page-3",
+          "persons": [
+            {
+              "firstName": "Jane",
+              "id": "3003",
+              "lastName": "Doe"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cur-page-2",
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "limit": 10,
+        "status": "ACTIVE"
+      },
+      "name": "listPersons-listed",
+      "operation": "listPersons"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons",
+          "query": {
+            "cursor": [
+              "cur-page-2"
+            ],
+            "first_name": [
+              "Jane"
+            ],
+            "last_name": [
+              "Doe"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "ACTIVE"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextCursor": "",
+          "persons": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cur-page-2",
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "limit": 10,
+        "status": "ACTIVE"
+      },
+      "name": "listPersons-providerRejected",
+      "operation": "listPersons"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-000000000003",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons",
+          "query": {
+            "cursor": [
+              "cur-page-2"
+            ],
+            "first_name": [
+              "Jane"
+            ],
+            "last_name": [
+              "Doe"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "ACTIVE"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "persons": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cur-page-2",
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "limit": 10,
+        "status": "ACTIVE"
+      },
+      "name": "listPersons-invalidResponse",
+      "operation": "listPersons"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-000000000004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons",
+          "query": {
+            "cursor": [
+              "cur-page-2"
+            ],
+            "first_name": [
+              "Jane"
+            ],
+            "last_name": [
+              "Doe"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "ACTIVE"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cur-page-2",
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "limit": 10,
+        "status": "ACTIVE"
+      },
+      "name": "listPersons-final429",
+      "operation": "listPersons"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons",
+          "query": {
+            "cursor": [
+              "cur-page-2"
+            ],
+            "first_name": [
+              "Jane"
+            ],
+            "last_name": [
+              "Doe"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "ACTIVE"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cur-page-2",
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "limit": 10,
+        "status": "ACTIVE"
+      },
+      "name": "listPersons-final503",
+      "operation": "listPersons"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-000000000006",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons",
+          "query": {
+            "cursor": [
+              "cur-page-2"
+            ],
+            "first_name": [
+              "Jane"
+            ],
+            "last_name": [
+              "Doe"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "ACTIVE"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cur-page-2",
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "limit": 10,
+        "status": "ACTIVE"
+      },
+      "name": "listPersons-transportFailure",
+      "operation": "listPersons"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-000000000007",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextCursor": "",
+          "persons": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cur-page-2",
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "limit": 51,
+        "status": "ACTIVE"
+      },
+      "name": "listPersons-defect",
+      "operation": "listPersons"
+    },
+    {
       "callId": "d9e4f88f-f539-5f35-98a5-4caec221843e",
       "exchanges": [
         {

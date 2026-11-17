@@ -6,7 +6,8 @@ import { SecretString, StaticCredentialProvider, type Call } from '@superdurable
 import { SearchArticlesOperation, type SearchArticlesInput } from '../src/index.js';
 import { ExchangeRecorder, loadScenarios, replay, withScenarioHTTPServer, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/newsapi/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/newsapi/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'searchArticles');
 const connection = { provider: 'newsapi', name: 'newsapi' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeNewsapi));
 

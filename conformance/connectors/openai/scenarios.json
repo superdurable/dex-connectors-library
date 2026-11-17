@@ -2041,6 +2041,2370 @@
       ],
       "name": "create-cancelled-then-resend",
       "operation": "createResponse"
+    },
+    {
+      "callId": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"resp_001\",\"object\":\"response.deleted\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "resp_001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "input": {
+        "responseId": "resp_001"
+      },
+      "name": "delete-deleted",
+      "operation": "deleteResponse"
+    },
+    {
+      "callId": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "input": {
+        "responseId": "resp_001"
+      },
+      "name": "delete-not-found",
+      "operation": "deleteResponse"
+    },
+    {
+      "callId": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "input": {
+        "responseId": "resp_001"
+      },
+      "name": "delete-rejected",
+      "operation": "deleteResponse"
+    },
+    {
+      "callId": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"resp_other\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "input": {
+        "responseId": "resp_001"
+      },
+      "name": "delete-invalid",
+      "operation": "deleteResponse"
+    },
+    {
+      "callId": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "input": {
+        "responseId": "bad/id"
+      },
+      "name": "delete-defect",
+      "operation": "deleteResponse"
+    },
+    {
+      "callId": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "input": {
+        "responseId": "resp_001"
+      },
+      "name": "delete-retry-429",
+      "operation": "deleteResponse"
+    },
+    {
+      "callId": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "input": {
+        "responseId": "resp_001"
+      },
+      "name": "delete-retry-5xx",
+      "operation": "deleteResponse"
+    },
+    {
+      "callId": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "input": {
+        "responseId": "resp_001"
+      },
+      "name": "delete-transport",
+      "operation": "deleteResponse"
+    },
+    {
+      "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"conv_001\",\"object\":\"conversation\",\"created_at\":1741900000,\"metadata\":{\"topic\":\"demo\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations",
+          "requestBody": {
+            "items": [
+              {
+                "content": "Hello",
+                "role": "user",
+                "type": "message"
+              }
+            ],
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+          "providerId": "conv_001",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "createdAt": 1741900000,
+          "id": "conv_001",
+          "metadata": {
+            "topic": "demo"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "input": {
+        "items": [
+          {
+            "content": "Hello",
+            "role": "user",
+            "type": "message"
+          }
+        ],
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "createConversation-success",
+      "operation": "createConversation"
+    },
+    {
+      "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations",
+          "requestBody": {
+            "items": [
+              {
+                "content": "Hello",
+                "role": "user",
+                "type": "message"
+              }
+            ],
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "createdAt": 0,
+          "id": "",
+          "metadata": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "input": {
+        "items": [
+          {
+            "content": "Hello",
+            "role": "user",
+            "type": "message"
+          }
+        ],
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "createConversation-rejected",
+      "operation": "createConversation"
+    },
+    {
+      "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations",
+          "requestBody": {
+            "items": [
+              {
+                "content": "Hello",
+                "role": "user",
+                "type": "message"
+              }
+            ],
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "createdAt": 0,
+          "id": "",
+          "metadata": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "input": {
+        "items": [
+          {
+            "content": "Hello",
+            "role": "user",
+            "type": "message"
+          }
+        ],
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "createConversation-uncertain",
+      "operation": "createConversation"
+    },
+    {
+      "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": 0,
+          "id": "",
+          "metadata": {}
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "input": {
+        "items": [
+          {
+            "content": "Hello",
+            "role": "bad",
+            "type": "message"
+          }
+        ],
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "createConversation-defect",
+      "operation": "createConversation"
+    },
+    {
+      "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations",
+          "requestBody": {
+            "items": [
+              {
+                "content": "Hello",
+                "role": "user",
+                "type": "message"
+              }
+            ],
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "input": {
+        "items": [
+          {
+            "content": "Hello",
+            "role": "user",
+            "type": "message"
+          }
+        ],
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "createConversation-retry-429",
+      "operation": "createConversation"
+    },
+    {
+      "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations",
+          "requestBody": {
+            "items": [
+              {
+                "content": "Hello",
+                "role": "user",
+                "type": "message"
+              }
+            ],
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "input": {
+        "items": [
+          {
+            "content": "Hello",
+            "role": "user",
+            "type": "message"
+          }
+        ],
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "createConversation-retry-5xx",
+      "operation": "createConversation"
+    },
+    {
+      "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations",
+          "requestBody": {
+            "items": [
+              {
+                "content": "Hello",
+                "role": "user",
+                "type": "message"
+              }
+            ],
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "input": {
+        "items": [
+          {
+            "content": "Hello",
+            "role": "user",
+            "type": "message"
+          }
+        ],
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "createConversation-transport",
+      "operation": "createConversation"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"conv_001\",\"object\":\"conversation\",\"created_at\":1741900000,\"metadata\":{\"topic\":\"demo\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/conv_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "createdAt": 1741900000,
+          "id": "conv_001",
+          "metadata": {
+            "topic": "demo"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": "conv_001"
+      },
+      "name": "retrieveConversation-success",
+      "operation": "retrieveConversation"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/conv_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "createdAt": 0,
+          "id": "",
+          "metadata": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": "conv_001"
+      },
+      "name": "retrieveConversation-not-found",
+      "operation": "retrieveConversation"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/conv_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "createdAt": 0,
+          "id": "",
+          "metadata": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": "conv_001"
+      },
+      "name": "retrieveConversation-rejected",
+      "operation": "retrieveConversation"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/conv_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createdAt": 0,
+          "id": "",
+          "metadata": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": "conv_001"
+      },
+      "name": "retrieveConversation-invalid",
+      "operation": "retrieveConversation"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": 0,
+          "id": "",
+          "metadata": {}
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": "bad/id"
+      },
+      "name": "retrieveConversation-defect",
+      "operation": "retrieveConversation"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/conv_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": "conv_001"
+      },
+      "name": "retrieveConversation-retry-429",
+      "operation": "retrieveConversation"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/conv_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": "conv_001"
+      },
+      "name": "retrieveConversation-retry-5xx",
+      "operation": "retrieveConversation"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/conv_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": "conv_001"
+      },
+      "name": "retrieveConversation-transport",
+      "operation": "retrieveConversation"
+    },
+    {
+      "callId": "47acef64-c72b-564b-975d-4236cf033d67",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"conv_001\",\"object\":\"conversation\",\"created_at\":1741900000,\"metadata\":{\"topic\":\"demo\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/conv_001",
+          "requestBody": {
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "createdAt": 1741900000,
+          "id": "conv_001",
+          "metadata": {
+            "topic": "demo"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47acef64-c72b-564b-975d-4236cf033d67",
+      "input": {
+        "conversationId": "conv_001",
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "updateConversation-success",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "47acef64-c72b-564b-975d-4236cf033d67",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/conv_001",
+          "requestBody": {
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "createdAt": 0,
+          "id": "",
+          "metadata": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47acef64-c72b-564b-975d-4236cf033d67",
+      "input": {
+        "conversationId": "conv_001",
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "updateConversation-not-found",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "47acef64-c72b-564b-975d-4236cf033d67",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/conv_001",
+          "requestBody": {
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "createdAt": 0,
+          "id": "",
+          "metadata": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47acef64-c72b-564b-975d-4236cf033d67",
+      "input": {
+        "conversationId": "conv_001",
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "updateConversation-rejected",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "47acef64-c72b-564b-975d-4236cf033d67",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/conv_001",
+          "requestBody": {
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createdAt": 0,
+          "id": "",
+          "metadata": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47acef64-c72b-564b-975d-4236cf033d67",
+      "input": {
+        "conversationId": "conv_001",
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "updateConversation-invalid",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "47acef64-c72b-564b-975d-4236cf033d67",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": 0,
+          "id": "",
+          "metadata": {}
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47acef64-c72b-564b-975d-4236cf033d67",
+      "input": {
+        "conversationId": "bad/id",
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "updateConversation-defect",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "47acef64-c72b-564b-975d-4236cf033d67",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/conv_001",
+          "requestBody": {
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47acef64-c72b-564b-975d-4236cf033d67",
+      "input": {
+        "conversationId": "conv_001",
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "updateConversation-retry-429",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "47acef64-c72b-564b-975d-4236cf033d67",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/conv_001",
+          "requestBody": {
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47acef64-c72b-564b-975d-4236cf033d67",
+      "input": {
+        "conversationId": "conv_001",
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "updateConversation-retry-5xx",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "47acef64-c72b-564b-975d-4236cf033d67",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/conv_001",
+          "requestBody": {
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47acef64-c72b-564b-975d-4236cf033d67",
+      "input": {
+        "conversationId": "conv_001",
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "updateConversation-transport",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"conv_001\",\"object\":\"conversation.deleted\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/conversations/conv_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "conv_001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "input": {
+        "conversationId": "conv_001"
+      },
+      "name": "deleteConversation-success",
+      "operation": "deleteConversation"
+    },
+    {
+      "callId": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/conversations/conv_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "input": {
+        "conversationId": "conv_001"
+      },
+      "name": "deleteConversation-not-found",
+      "operation": "deleteConversation"
+    },
+    {
+      "callId": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/conversations/conv_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "input": {
+        "conversationId": "conv_001"
+      },
+      "name": "deleteConversation-rejected",
+      "operation": "deleteConversation"
+    },
+    {
+      "callId": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/conversations/conv_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "input": {
+        "conversationId": "conv_001"
+      },
+      "name": "deleteConversation-invalid",
+      "operation": "deleteConversation"
+    },
+    {
+      "callId": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "input": {
+        "conversationId": "bad/id"
+      },
+      "name": "deleteConversation-defect",
+      "operation": "deleteConversation"
+    },
+    {
+      "callId": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/conversations/conv_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "input": {
+        "conversationId": "conv_001"
+      },
+      "name": "deleteConversation-retry-429",
+      "operation": "deleteConversation"
+    },
+    {
+      "callId": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/conversations/conv_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "input": {
+        "conversationId": "conv_001"
+      },
+      "name": "deleteConversation-retry-5xx",
+      "operation": "deleteConversation"
+    },
+    {
+      "callId": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/conversations/conv_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "input": {
+        "conversationId": "conv_001"
+      },
+      "name": "deleteConversation-transport",
+      "operation": "deleteConversation"
+    },
+    {
+      "attempts": 3,
+      "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations",
+          "requestBody": {
+            "items": [
+              {
+                "content": "Hello",
+                "role": "user",
+                "type": "message"
+              }
+            ],
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations",
+          "requestBody": {
+            "items": [
+              {
+                "content": "Hello",
+                "role": "user",
+                "type": "message"
+              }
+            ],
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations",
+          "requestBody": {
+            "items": [
+              {
+                "content": "Hello",
+                "role": "user",
+                "type": "message"
+              }
+            ],
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "createdAt": 0,
+          "id": "",
+          "metadata": {}
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "input": {
+        "items": [
+          {
+            "content": "Hello",
+            "role": "user",
+            "type": "message"
+          }
+        ],
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createConversation-send-cap-reached",
+      "operation": "createConversation"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"file_001\",\"object\":\"file\",\"filename\":\"summary.txt\",\"purpose\":\"user_data\",\"bytes\":24,\"created_at\":1741900000}],\"first_id\":\"file_001\",\"last_id\":\"file_001\",\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/files",
+          "query": {
+            "after": [
+              "file_prev"
+            ],
+            "limit": [
+              "10"
+            ],
+            "purpose": [
+              "user_data"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "files": [
+            {
+              "bytes": 24,
+              "createdAt": 1741900000,
+              "filename": "summary.txt",
+              "id": "file_001",
+              "purpose": "user_data"
+            }
+          ],
+          "hasMore": false,
+          "lastID": "file_001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "file_prev",
+        "limit": 10,
+        "purpose": "user_data"
+      },
+      "name": "listFiles-success",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/files",
+          "query": {
+            "after": [
+              "file_prev"
+            ],
+            "limit": [
+              "10"
+            ],
+            "purpose": [
+              "user_data"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "files": [],
+          "hasMore": false,
+          "lastID": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "file_prev",
+        "limit": 10,
+        "purpose": "user_data"
+      },
+      "name": "listFiles-rejected",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/files",
+          "query": {
+            "after": [
+              "file_prev"
+            ],
+            "limit": [
+              "10"
+            ],
+            "purpose": [
+              "user_data"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "files": [],
+          "hasMore": false,
+          "lastID": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "file_prev",
+        "limit": 10,
+        "purpose": "user_data"
+      },
+      "name": "listFiles-invalid",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "files": [],
+          "hasMore": false,
+          "lastID": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "file_prev",
+        "limit": 10,
+        "purpose": "bad"
+      },
+      "name": "listFiles-defect",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/files",
+          "query": {
+            "after": [
+              "file_prev"
+            ],
+            "limit": [
+              "10"
+            ],
+            "purpose": [
+              "user_data"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "file_prev",
+        "limit": 10,
+        "purpose": "user_data"
+      },
+      "name": "listFiles-retry-429",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/files",
+          "query": {
+            "after": [
+              "file_prev"
+            ],
+            "limit": [
+              "10"
+            ],
+            "purpose": [
+              "user_data"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "file_prev",
+        "limit": 10,
+        "purpose": "user_data"
+      },
+      "name": "listFiles-retry-5xx",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/files",
+          "query": {
+            "after": [
+              "file_prev"
+            ],
+            "limit": [
+              "10"
+            ],
+            "purpose": [
+              "user_data"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "file_prev",
+        "limit": 10,
+        "purpose": "user_data"
+      },
+      "name": "listFiles-transport",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"file_001\",\"object\":\"file\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/files/file_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "file_001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "file_001"
+      },
+      "name": "deleteFile-success",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/files/file_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "file_001"
+      },
+      "name": "deleteFile-not-found",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/files/file_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "file_001"
+      },
+      "name": "deleteFile-rejected",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/files/file_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "file_001"
+      },
+      "name": "deleteFile-invalid",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "bad/id"
+      },
+      "name": "deleteFile-defect",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/files/file_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "file_001"
+      },
+      "name": "deleteFile-retry-429",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/files/file_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "file_001"
+      },
+      "name": "deleteFile-retry-5xx",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/files/file_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "file_001"
+      },
+      "name": "deleteFile-transport",
+      "operation": "deleteFile"
     }
   ],
   "schemaVersion": 1

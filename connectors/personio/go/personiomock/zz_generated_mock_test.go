@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listPersons/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[personio.PersonPage](`{"persons":[{"id":"3003","firstName":"Jane","lastName":"Doe"}],"nextCursor":""}`)
+			return err
+		}},
 		{name: "getPerson/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[personio.PersonProfile](`{"id":"3003","firstName":"Jane","lastName":"Doe"}`)
 			return err
@@ -30,6 +34,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListPersons().Definition().Operation.OperationID != "listPersons" {
+		t.Errorf("listPersons mock has another definition")
+	}
 	if mock.GetPerson().Definition().Operation.OperationID != "getPerson" {
 		t.Errorf("getPerson mock has another definition")
 	}

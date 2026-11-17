@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: opensearch
   displayName: OpenSearch
-  description: Search, replace, and delete documents in an OpenSearch index.
+  description: Search, retrieve, replace, and delete documents in an OpenSearch index.
   company: OpenSearch
   categories: [databases-storage, data-search]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: opensearch
   languages:
@@ -63,7 +63,7 @@ spec:
       startURL: https://docs.opensearch.org/latest/security-plugin/access-control/users-roles/
       steps:
         - Open your OpenSearch Dashboards URL and choose Security > Internal users > Create internal user. Set a username and password, then save them as username and password in this Dex connection.
-        - Choose Security > Roles > Create role and grant indices:data/read/search for searches, indices:data/write/index for document replacement, and indices:data/write/delete for deletion on the target index pattern. Map the internal user under that role's Mapped users tab. Grant only the permissions used by your Flows.
+        - Choose Security > Roles > Create role and grant indices:data/read/search for searches, indices:data/read/get for document retrieval, indices:data/write/index for document replacement, and indices:data/write/delete for deletion on the target index pattern. Map the internal user under that role's Mapped users tab. Grant only the permissions used by your Flows.
         - Find the HTTPS REST endpoint in your cluster deployment or managed-service console and save it as clusterUrl without an index path. Leave timeout, maxResponseBytes, and maxDocumentBytes blank for their displayed defaults.
   operations:
     - name: indexDocument
@@ -132,3 +132,25 @@ spec:
           description: A sample product document matches the example search.
           default: true
           output: {total: 1, relation: eq, hits: [{index: products, id: sku-42, score: 1.25, source: {title: Meridian, category: release}}]}
+    - name: getDocument
+      goName: GetDocument
+      inputType: GetDocumentInput
+      outputType: RetrievedDocument
+      kind: query
+      description: Retrieve one document by its stable ID, including the latest source before index refresh.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: OpenSearch returned the document.}
+        - {id: notFound, goName: NotFound, description: The document does not exist., optional: true}
+        - {id: indexNotFound, goName: IndexNotFound, description: The index does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: OpenSearch denied retrieval., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OpenSearch returned invalid document data., optional: true}
+        - {id: defect, goName: Defect, description: "Index, document ID, or credentials are invalid.", optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: productFound
+          branch: found
+          description: A product document is returned by stable ID.
+          default: true
+          output: {index: products, id: sku-42, source: {title: Meridian, category: release}, version: 1}

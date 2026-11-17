@@ -17,9 +17,13 @@ import (
 
 // Mock is a scripted paypal connection. Script each operation through its accessor.
 type Mock struct {
-	connection       paypal.Connection
-	getOrder         *connectormock.Query[paypal.GetOrderInput, paypal.Order]
-	listTransactions *connectormock.Query[paypal.ListTransactionsInput, paypal.TransactionPage]
+	connection        paypal.Connection
+	getPayoutBatch    *connectormock.Query[paypal.GetPayoutBatchInput, paypal.PayoutBatch]
+	getPayoutItem     *connectormock.Query[paypal.GetPayoutItemInput, paypal.PayoutItem]
+	createPayoutBatch *connectormock.Mutation[paypal.CreatePayoutBatchInput, paypal.PayoutBatch]
+	cancelPayoutItem  *connectormock.Mutation[paypal.CancelPayoutItemInput, paypal.PayoutItem]
+	getOrder          *connectormock.Query[paypal.GetOrderInput, paypal.Order]
+	listTransactions  *connectormock.Query[paypal.ListTransactionsInput, paypal.TransactionPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,9 +31,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getOrder:         connectormock.NewQuery[paypal.GetOrderInput, paypal.Order](t, paypal.GetOrderDefinition),
-		listTransactions: connectormock.NewQuery[paypal.ListTransactionsInput, paypal.TransactionPage](t, paypal.ListTransactionsDefinition),
+		getPayoutBatch:    connectormock.NewQuery[paypal.GetPayoutBatchInput, paypal.PayoutBatch](t, paypal.GetPayoutBatchDefinition),
+		getPayoutItem:     connectormock.NewQuery[paypal.GetPayoutItemInput, paypal.PayoutItem](t, paypal.GetPayoutItemDefinition),
+		createPayoutBatch: connectormock.NewMutation[paypal.CreatePayoutBatchInput, paypal.PayoutBatch](t, paypal.CreatePayoutBatchDefinition),
+		cancelPayoutItem:  connectormock.NewMutation[paypal.CancelPayoutItemInput, paypal.PayoutItem](t, paypal.CancelPayoutItemDefinition),
+		getOrder:          connectormock.NewQuery[paypal.GetOrderInput, paypal.Order](t, paypal.GetOrderDefinition),
+		listTransactions:  connectormock.NewQuery[paypal.ListTransactionsInput, paypal.TransactionPage](t, paypal.ListTransactionsDefinition),
 	}
+	mock.getPayoutBatch.Default(GetPayoutBatchDefault())
+	mock.getPayoutItem.Default(GetPayoutItemDefault())
+	mock.createPayoutBatch.Default(CreatePayoutBatchDefault())
+	mock.cancelPayoutItem.Default(CancelPayoutItemDefault())
 	mock.getOrder.Default(GetOrderDefault())
 	mock.listTransactions.Default(ListTransactionsDefault())
 	connection, err := paypal.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "paypal", Name: connectionName})
@@ -43,6 +55,26 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() paypal.Connection { return mock.connection }
 
+// GetPayoutBatch returns the getPayoutBatch script.
+func (mock *Mock) GetPayoutBatch() *connectormock.Query[paypal.GetPayoutBatchInput, paypal.PayoutBatch] {
+	return mock.getPayoutBatch
+}
+
+// GetPayoutItem returns the getPayoutItem script.
+func (mock *Mock) GetPayoutItem() *connectormock.Query[paypal.GetPayoutItemInput, paypal.PayoutItem] {
+	return mock.getPayoutItem
+}
+
+// CreatePayoutBatch returns the createPayoutBatch script.
+func (mock *Mock) CreatePayoutBatch() *connectormock.Mutation[paypal.CreatePayoutBatchInput, paypal.PayoutBatch] {
+	return mock.createPayoutBatch
+}
+
+// CancelPayoutItem returns the cancelPayoutItem script.
+func (mock *Mock) CancelPayoutItem() *connectormock.Mutation[paypal.CancelPayoutItemInput, paypal.PayoutItem] {
+	return mock.cancelPayoutItem
+}
+
 // GetOrder returns the getOrder script.
 func (mock *Mock) GetOrder() *connectormock.Query[paypal.GetOrderInput, paypal.Order] {
 	return mock.getOrder
@@ -55,11 +87,182 @@ func (mock *Mock) ListTransactions() *connectormock.Query[paypal.ListTransaction
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetPayoutBatch() sdkgo.Query[paypal.GetPayoutBatchInput, paypal.PayoutBatch] {
+	return operations.mock.getPayoutBatch
+}
+func (operations mockOperations) GetPayoutItem() sdkgo.Query[paypal.GetPayoutItemInput, paypal.PayoutItem] {
+	return operations.mock.getPayoutItem
+}
+func (operations mockOperations) CreatePayoutBatch() sdkgo.Mutation[paypal.CreatePayoutBatchInput, paypal.PayoutBatch] {
+	return operations.mock.createPayoutBatch
+}
+func (operations mockOperations) CancelPayoutItem() sdkgo.Mutation[paypal.CancelPayoutItemInput, paypal.PayoutItem] {
+	return operations.mock.cancelPayoutItem
+}
 func (operations mockOperations) GetOrder() sdkgo.Query[paypal.GetOrderInput, paypal.Order] {
 	return operations.mock.getOrder
 }
 func (operations mockOperations) ListTransactions() sdkgo.Query[paypal.ListTransactionsInput, paypal.TransactionPage] {
 	return operations.mock.listTransactions
+}
+
+// GetPayoutBatchFound selects the found branch: Payout batch details were read.
+func GetPayoutBatchFound(value paypal.PayoutBatch, failure *sdkgo.Failure) connectormock.Case[paypal.PayoutBatch] {
+	return connectormock.Branch(paypal.GetPayoutBatchBranchFound, value, failure)
+}
+
+// GetPayoutBatchNotFound selects the notFound branch: The payout batch does not exist.
+func GetPayoutBatchNotFound(value paypal.PayoutBatch, failure *sdkgo.Failure) connectormock.Case[paypal.PayoutBatch] {
+	return connectormock.Branch(paypal.GetPayoutBatchBranchNotFound, value, failure)
+}
+
+// GetPayoutBatchProviderRejected selects the providerRejected branch: PayPal rejected the request.
+func GetPayoutBatchProviderRejected(value paypal.PayoutBatch, failure *sdkgo.Failure) connectormock.Case[paypal.PayoutBatch] {
+	return connectormock.Branch(paypal.GetPayoutBatchBranchProviderRejected, value, failure)
+}
+
+// GetPayoutBatchInvalidResponse selects the invalidResponse branch: PayPal returned invalid JSON.
+func GetPayoutBatchInvalidResponse(value paypal.PayoutBatch, failure *sdkgo.Failure) connectormock.Case[paypal.PayoutBatch] {
+	return connectormock.Branch(paypal.GetPayoutBatchBranchInvalidResponse, value, failure)
+}
+
+// GetPayoutBatchDefect selects the defect branch: Local input or credentials are invalid.
+func GetPayoutBatchDefect(value paypal.PayoutBatch, failure *sdkgo.Failure) connectormock.Case[paypal.PayoutBatch] {
+	return connectormock.Branch(paypal.GetPayoutBatchBranchDefect, value, failure)
+}
+
+// GetPayoutBatchRetry asks Dex to retry the getPayoutBatch Step, after the delay when it is positive.
+func GetPayoutBatchRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paypal.PayoutBatch] {
+	return connectormock.Retry[paypal.PayoutBatch](failure, after)
+}
+
+// GetPayoutBatchDefaultAnswer is the manifest mock defaultAnswer: A sample payout batch.
+func GetPayoutBatchDefaultAnswer() connectormock.Case[paypal.PayoutBatch] {
+	value := connectormock.MustDecodeOutput[paypal.PayoutBatch](`{"batch_header":{"payout_batch_id":"BATCH101","batch_status":"SUCCESS"},"items":[]}`)
+	return connectormock.Branch(paypal.GetPayoutBatchBranchFound, value, nil)
+}
+
+// GetPayoutBatchDefault is the manifest default, defaultAnswer, which New installs.
+func GetPayoutBatchDefault() connectormock.Case[paypal.PayoutBatch] {
+	return GetPayoutBatchDefaultAnswer()
+}
+
+// GetPayoutItemFound selects the found branch: Payout item details were read.
+func GetPayoutItemFound(value paypal.PayoutItem, failure *sdkgo.Failure) connectormock.Case[paypal.PayoutItem] {
+	return connectormock.Branch(paypal.GetPayoutItemBranchFound, value, failure)
+}
+
+// GetPayoutItemNotFound selects the notFound branch: The payout item does not exist.
+func GetPayoutItemNotFound(value paypal.PayoutItem, failure *sdkgo.Failure) connectormock.Case[paypal.PayoutItem] {
+	return connectormock.Branch(paypal.GetPayoutItemBranchNotFound, value, failure)
+}
+
+// GetPayoutItemProviderRejected selects the providerRejected branch: PayPal rejected the request.
+func GetPayoutItemProviderRejected(value paypal.PayoutItem, failure *sdkgo.Failure) connectormock.Case[paypal.PayoutItem] {
+	return connectormock.Branch(paypal.GetPayoutItemBranchProviderRejected, value, failure)
+}
+
+// GetPayoutItemInvalidResponse selects the invalidResponse branch: PayPal returned invalid JSON.
+func GetPayoutItemInvalidResponse(value paypal.PayoutItem, failure *sdkgo.Failure) connectormock.Case[paypal.PayoutItem] {
+	return connectormock.Branch(paypal.GetPayoutItemBranchInvalidResponse, value, failure)
+}
+
+// GetPayoutItemDefect selects the defect branch: Local input or credentials are invalid.
+func GetPayoutItemDefect(value paypal.PayoutItem, failure *sdkgo.Failure) connectormock.Case[paypal.PayoutItem] {
+	return connectormock.Branch(paypal.GetPayoutItemBranchDefect, value, failure)
+}
+
+// GetPayoutItemRetry asks Dex to retry the getPayoutItem Step, after the delay when it is positive.
+func GetPayoutItemRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paypal.PayoutItem] {
+	return connectormock.Retry[paypal.PayoutItem](failure, after)
+}
+
+// GetPayoutItemDefaultAnswer is the manifest mock defaultAnswer: A sample payout item.
+func GetPayoutItemDefaultAnswer() connectormock.Case[paypal.PayoutItem] {
+	value := connectormock.MustDecodeOutput[paypal.PayoutItem](`{"payout_item_id":"ITEM101","transaction_status":"SUCCESS"}`)
+	return connectormock.Branch(paypal.GetPayoutItemBranchFound, value, nil)
+}
+
+// GetPayoutItemDefault is the manifest default, defaultAnswer, which New installs.
+func GetPayoutItemDefault() connectormock.Case[paypal.PayoutItem] {
+	return GetPayoutItemDefaultAnswer()
+}
+
+// CreatePayoutBatchCreated selects the created branch: PayPal accepted the payout batch.
+func CreatePayoutBatchCreated(value paypal.PayoutBatch, failure *sdkgo.Failure) connectormock.Case[paypal.PayoutBatch] {
+	return connectormock.Branch(paypal.CreatePayoutBatchBranchCreated, value, failure)
+}
+
+// CreatePayoutBatchProviderRejected selects the providerRejected branch: PayPal rejected the payout batch.
+func CreatePayoutBatchProviderRejected(value paypal.PayoutBatch, failure *sdkgo.Failure) connectormock.Case[paypal.PayoutBatch] {
+	return connectormock.Branch(paypal.CreatePayoutBatchBranchProviderRejected, value, failure)
+}
+
+// CreatePayoutBatchInvalidResponse selects the invalidResponse branch: PayPal returned invalid JSON.
+func CreatePayoutBatchInvalidResponse(value paypal.PayoutBatch, failure *sdkgo.Failure) connectormock.Case[paypal.PayoutBatch] {
+	return connectormock.Branch(paypal.CreatePayoutBatchBranchInvalidResponse, value, failure)
+}
+
+// CreatePayoutBatchDefect selects the defect branch: Local input or credentials are invalid.
+func CreatePayoutBatchDefect(value paypal.PayoutBatch, failure *sdkgo.Failure) connectormock.Case[paypal.PayoutBatch] {
+	return connectormock.Branch(paypal.CreatePayoutBatchBranchDefect, value, failure)
+}
+
+// CreatePayoutBatchRetry asks Dex to retry the createPayoutBatch Step, after the delay when it is positive.
+func CreatePayoutBatchRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paypal.PayoutBatch] {
+	return connectormock.Retry[paypal.PayoutBatch](failure, after)
+}
+
+// CreatePayoutBatchDefaultAnswer is the manifest mock defaultAnswer: An accepted sample payout batch.
+func CreatePayoutBatchDefaultAnswer() connectormock.Case[paypal.PayoutBatch] {
+	value := connectormock.MustDecodeOutput[paypal.PayoutBatch](`{"batch_header":{"payout_batch_id":"BATCH101","batch_status":"PENDING"}}`)
+	return connectormock.Branch(paypal.CreatePayoutBatchBranchCreated, value, nil)
+}
+
+// CreatePayoutBatchDefault is the manifest default, defaultAnswer, which New installs.
+func CreatePayoutBatchDefault() connectormock.Case[paypal.PayoutBatch] {
+	return CreatePayoutBatchDefaultAnswer()
+}
+
+// CancelPayoutItemCanceled selects the canceled branch: The unclaimed payout item was canceled.
+func CancelPayoutItemCanceled(value paypal.PayoutItem, failure *sdkgo.Failure) connectormock.Case[paypal.PayoutItem] {
+	return connectormock.Branch(paypal.CancelPayoutItemBranchCanceled, value, failure)
+}
+
+// CancelPayoutItemNotFound selects the notFound branch: The payout item does not exist.
+func CancelPayoutItemNotFound(value paypal.PayoutItem, failure *sdkgo.Failure) connectormock.Case[paypal.PayoutItem] {
+	return connectormock.Branch(paypal.CancelPayoutItemBranchNotFound, value, failure)
+}
+
+// CancelPayoutItemProviderRejected selects the providerRejected branch: PayPal rejected the cancellation.
+func CancelPayoutItemProviderRejected(value paypal.PayoutItem, failure *sdkgo.Failure) connectormock.Case[paypal.PayoutItem] {
+	return connectormock.Branch(paypal.CancelPayoutItemBranchProviderRejected, value, failure)
+}
+
+// CancelPayoutItemInvalidResponse selects the invalidResponse branch: PayPal returned invalid JSON.
+func CancelPayoutItemInvalidResponse(value paypal.PayoutItem, failure *sdkgo.Failure) connectormock.Case[paypal.PayoutItem] {
+	return connectormock.Branch(paypal.CancelPayoutItemBranchInvalidResponse, value, failure)
+}
+
+// CancelPayoutItemDefect selects the defect branch: Local input or credentials are invalid.
+func CancelPayoutItemDefect(value paypal.PayoutItem, failure *sdkgo.Failure) connectormock.Case[paypal.PayoutItem] {
+	return connectormock.Branch(paypal.CancelPayoutItemBranchDefect, value, failure)
+}
+
+// CancelPayoutItemRetry asks Dex to retry the cancelPayoutItem Step, after the delay when it is positive.
+func CancelPayoutItemRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paypal.PayoutItem] {
+	return connectormock.Retry[paypal.PayoutItem](failure, after)
+}
+
+// CancelPayoutItemDefaultAnswer is the manifest mock defaultAnswer: A canceled sample payout item.
+func CancelPayoutItemDefaultAnswer() connectormock.Case[paypal.PayoutItem] {
+	value := connectormock.MustDecodeOutput[paypal.PayoutItem](`{"payout_item_id":"ITEM101","transaction_status":"RETURNED"}`)
+	return connectormock.Branch(paypal.CancelPayoutItemBranchCanceled, value, nil)
+}
+
+// CancelPayoutItemDefault is the manifest default, defaultAnswer, which New installs.
+func CancelPayoutItemDefault() connectormock.Case[paypal.PayoutItem] {
+	return CancelPayoutItemDefaultAnswer()
 }
 
 // GetOrderFound selects the found branch: Read one PayPal checkout order.

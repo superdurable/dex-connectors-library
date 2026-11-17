@@ -1185,6 +1185,340 @@
       },
       "name": "searchDocuments-timed-out",
       "operation": "searchDocuments"
+    },
+    {
+      "callId": "a10e1d56-5d07-510d-90fe-4136e0435509",
+      "exchanges": [
+        {
+          "body": "{\"_index\":\"products\",\"_id\":\"sku-42\",\"_version\":1,\"found\":true,\"_source\":{\"title\":\"Meridian\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/_doc/sku-42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "sku-42",
+          "index": "products",
+          "source": {
+            "title": "Meridian"
+          },
+          "version": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "documentId": "sku-42",
+        "index": "products"
+      },
+      "name": "getDocument-found",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "a10e1d56-5d07-510d-90fe-4136e0435509",
+      "exchanges": [
+        {
+          "body": "{\"_index\":\"products\",\"_id\":\"sku-42\",\"found\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/_doc/sku-42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "index": "",
+          "source": null,
+          "version": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "documentId": "sku-42",
+        "index": "products"
+      },
+      "name": "getDocument-not-found",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "a10e1d56-5d07-510d-90fe-4136e0435509",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"index_not_found_exception\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/_doc/sku-42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "indexNotFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "index": "",
+          "source": null,
+          "version": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "documentId": "sku-42",
+        "index": "products"
+      },
+      "name": "getDocument-index-not-found",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "a10e1d56-5d07-510d-90fe-4136e0435509",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/_doc/sku-42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "index": "",
+          "source": null,
+          "version": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "documentId": "sku-42",
+        "index": "products"
+      },
+      "name": "getDocument-rejected",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "a10e1d56-5d07-510d-90fe-4136e0435509",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/_doc/sku-42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "index": "",
+          "source": null,
+          "version": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "documentId": "sku-42",
+        "index": "products"
+      },
+      "name": "getDocument-invalid",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "a10e1d56-5d07-510d-90fe-4136e0435509",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "index": "",
+          "source": null,
+          "version": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "documentId": "bad\nid",
+        "index": "products"
+      },
+      "name": "getDocument-defect",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "a10e1d56-5d07-510d-90fe-4136e0435509",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/_doc/sku-42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "documentId": "sku-42",
+        "index": "products"
+      },
+      "name": "getDocument-rate-limit",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "a10e1d56-5d07-510d-90fe-4136e0435509",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/_doc/sku-42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "documentId": "sku-42",
+        "index": "products"
+      },
+      "name": "getDocument-server-error",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "a10e1d56-5d07-510d-90fe-4136e0435509",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/_doc/sku-42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "documentId": "sku-42",
+        "index": "products"
+      },
+      "name": "getDocument-transport",
+      "operation": "getDocument"
     }
   ],
   "schemaVersion": 1

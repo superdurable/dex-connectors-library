@@ -24,6 +24,42 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[nimble.ContactMetadata](`{"id":"5049fb849b85f669e40000dc","firstName":"Ada","lastName":"Lovelace","emailAddress":"ada@example.com"}`)
 			return err
 		}},
+		{name: "searchContactIDs/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[nimble.ContactIDsPage](`{"ids":["5049fb849b85f669e40000dc"],"page":1,"pages":1,"perPage":20,"total":1}`)
+			return err
+		}},
+		{name: "createContact/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[nimble.ContactMetadata](`{"id":"5049fb849b85f669e40000dc","firstName":"Ada","lastName":"Lovelace","emailAddress":"ada@example.com"}`)
+			return err
+		}},
+		{name: "updateContact/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[nimble.ContactMetadata](`{"id":"5049fb849b85f669e40000dc","firstName":"Ada","lastName":"Lovelace","emailAddress":"ada@example.com"}`)
+			return err
+		}},
+		{name: "deleteContact/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[nimble.DeletedContact](`{"contactId":"5049fb849b85f669e40000dc"}`)
+			return err
+		}},
+		{name: "listContactNotes/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[nimble.ContactNotesPage](`{"notes":[{"id":"5049fb849b85f669e40000dd","note":"Call next week","notePreview":"Call next week"}],"page":1,"pages":1,"perPage":20,"total":1}`)
+			return err
+		}},
+		{name: "getContactNote/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[nimble.ContactNote](`{"id":"5049fb849b85f669e40000dd","note":"Call next week","notePreview":"Call next week"}`)
+			return err
+		}},
+		{name: "createContactNote/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[nimble.ContactNote](`{"id":"5049fb849b85f669e40000dd","note":"Call next week","notePreview":"Call next week"}`)
+			return err
+		}},
+		{name: "updateContactNote/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[nimble.ContactNote](`{"id":"5049fb849b85f669e40000dd","note":"Call next week","notePreview":"Call next week"}`)
+			return err
+		}},
+		{name: "deleteContactNote/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[nimble.DeletedContactNote](`{"noteId":"5049fb849b85f669e40000dd"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +75,32 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")
+	}
+	if mock.SearchContactIDs().Definition().Operation.OperationID != "searchContactIDs" {
+		t.Errorf("searchContactIDs mock has another definition")
+	}
+	if mock.CreateContact().Definition().Operation.OperationID != "createContact" {
+		t.Errorf("createContact mock has another definition")
+	}
+	if mock.UpdateContact().Definition().Operation.OperationID != "updateContact" {
+		t.Errorf("updateContact mock has another definition")
+	}
+	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
+		t.Errorf("deleteContact mock has another definition")
+	}
+	if mock.ListContactNotes().Definition().Operation.OperationID != "listContactNotes" {
+		t.Errorf("listContactNotes mock has another definition")
+	}
+	if mock.GetContactNote().Definition().Operation.OperationID != "getContactNote" {
+		t.Errorf("getContactNote mock has another definition")
+	}
+	if mock.CreateContactNote().Definition().Operation.OperationID != "createContactNote" {
+		t.Errorf("createContactNote mock has another definition")
+	}
+	if mock.UpdateContactNote().Definition().Operation.OperationID != "updateContactNote" {
+		t.Errorf("updateContactNote mock has another definition")
+	}
+	if mock.DeleteContactNote().Definition().Operation.OperationID != "deleteContactNote" {
+		t.Errorf("deleteContactNote mock has another definition")
 	}
 }

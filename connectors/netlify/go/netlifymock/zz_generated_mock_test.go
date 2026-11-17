@@ -24,6 +24,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[netlify.DeploysPage](`{"deploys":[{"id":"deploy-meridian","site_id":"site-meridian","state":"ready","url":"https://meridian.netlify.app"}]}`)
 			return err
 		}},
+		{name: "getSite/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[netlify.Site](`{"id":"site-meridian","name":"meridian-web","url":"https://meridian.netlify.app"}`)
+			return err
+		}},
+		{name: "getDeploy/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[netlify.Deploy](`{"id":"deploy-meridian","site_id":"site-meridian","state":"ready"}`)
+			return err
+		}},
+		{name: "deleteSite/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[netlify.DeletedSite](`{"siteId":"site-meridian"}`)
+			return err
+		}},
+		{name: "cancelDeploy/cancelledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[netlify.Deploy](`{"id":"deploy-meridian","site_id":"site-meridian","state":"cancelled"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +55,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListDeploys().Definition().Operation.OperationID != "listDeploys" {
 		t.Errorf("listDeploys mock has another definition")
+	}
+	if mock.GetSite().Definition().Operation.OperationID != "getSite" {
+		t.Errorf("getSite mock has another definition")
+	}
+	if mock.GetDeploy().Definition().Operation.OperationID != "getDeploy" {
+		t.Errorf("getDeploy mock has another definition")
+	}
+	if mock.DeleteSite().Definition().Operation.OperationID != "deleteSite" {
+		t.Errorf("deleteSite mock has another definition")
+	}
+	if mock.CancelDeploy().Definition().Operation.OperationID != "cancelDeploy" {
+		t.Errorf("cancelDeploy mock has another definition")
 	}
 }

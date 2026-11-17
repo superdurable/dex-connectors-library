@@ -59,3 +59,43 @@ func TestPersonInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "Doe", output.LastName)
 	require.Len(t, mock.GetPerson().Calls(), 1)
 }
+
+func TestPersonListUsesDefaultMockWithRealDex(t *testing.T) {
+	mock := personiomock.New(t, ConnectionName)
+	flow := NewPersonListFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	serverAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
+	require.NotEmpty(t, serverAddress)
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	t.Cleanup(func() {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		require.NoError(t, errors.Join(worker.Stop(stopCtx), <-workerResult, client.Close(), cache.Close()))
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	require.NoError(t, worker.WaitPullRegistered(ctx))
+	flowID := "personio-person-list-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	input := personio.ListPersonsInput{Limit: 10, Status: "ACTIVE"}
+	_, err = client.StartFlow(ctx, flow, flowID, input, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var output personio.PersonPage
+	require.NoError(t, result.DecodeSingleOutput(&output))
+	require.Len(t, output.Persons, 1)
+	require.Equal(t, "3003", output.Persons[0].ID)
+	calls := mock.ListPersons().Calls()
+	require.Len(t, calls, 1)
+	require.Equal(t, input, calls[0].Input)
+	require.Equal(t, personio.ListPersonsBranchListed, calls[0].Branch)
+}

@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: paypal
   displayName: PayPal
-  description: "Read PayPal resources through typed Dex Query Steps."
+  description: "Read PayPal orders and transactions and manage payout batches and items through typed Dex Steps."
   company: PayPal
   categories: [finance-payments]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: paypal
   languages:
@@ -56,9 +56,76 @@ spec:
     guide:
       startURL: https://developer.paypal.com/dashboard/applications/live
       steps:
-        - "At https://developer.paypal.com/dashboard/applications/live create or select a REST app, enable Transaction Search when listTransactions is needed, and copy its client ID and secret into client_id and client_secret. Both are stored in Dex credentials; the secret is never returned. For sandbox use the matching sandbox app and baseUrl https://api-m.sandbox.paypal.com. Blank credentials prevent calls."
+        - "At https://developer.paypal.com/dashboard/applications/live create or select a REST app, enable Transaction Search for listTransactions and Payouts for payout operations, then copy its client ID and secret into client_id and client_secret. Both are stored in Dex credentials; the secret is never returned. For sandbox use the matching sandbox app and baseUrl https://api-m.sandbox.paypal.com. Blank credentials prevent calls."
         - "Set baseUrl, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
   operations:
+    - name: getPayoutBatch
+      goName: GetPayoutBatch
+      inputType: GetPayoutBatchInput
+      outputType: PayoutBatch
+      kind: query
+      description: "Show one payout batch and its page of items."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Payout batch details were read."}
+        - {id: notFound, goName: NotFound, description: "The payout batch does not exist.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "PayPal rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "PayPal returned invalid JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or credentials are invalid.", optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: defaultAnswer, branch: found, description: "A sample payout batch.", default: true, output: {batch_header: {payout_batch_id: BATCH101, batch_status: SUCCESS}, items: []}}
+    - name: getPayoutItem
+      goName: GetPayoutItem
+      inputType: GetPayoutItemInput
+      outputType: PayoutItem
+      kind: query
+      description: "Show one payout item."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Payout item details were read."}
+        - {id: notFound, goName: NotFound, description: "The payout item does not exist.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "PayPal rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "PayPal returned invalid JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or credentials are invalid.", optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: defaultAnswer, branch: found, description: "A sample payout item.", default: true, output: {payout_item_id: ITEM101, transaction_status: SUCCESS}}
+    - name: createPayoutBatch
+      goName: CreatePayoutBatch
+      inputType: CreatePayoutBatchInput
+      outputType: PayoutBatch
+      kind: mutation
+      description: "Create a payout batch with a sender ID that PayPal deduplicates for 30 days."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: "PayPal accepted the payout batch."}
+        - {id: providerRejected, goName: ProviderRejected, description: "PayPal rejected the payout batch.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "PayPal returned invalid JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or credentials are invalid.", optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: defaultAnswer, branch: created, description: "An accepted sample payout batch.", default: true, output: {batch_header: {payout_batch_id: BATCH101, batch_status: PENDING}}}
+    - name: cancelPayoutItem
+      goName: CancelPayoutItem
+      inputType: CancelPayoutItemInput
+      outputType: PayoutItem
+      kind: mutation
+      description: "Cancel an unclaimed payout item."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: canceled, goName: Canceled, description: "The unclaimed payout item was canceled."}
+        - {id: notFound, goName: NotFound, description: "The payout item does not exist.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "PayPal rejected the cancellation.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "PayPal returned invalid JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or credentials are invalid.", optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: defaultAnswer, branch: canceled, description: "A canceled sample payout item.", default: true, output: {payout_item_id: ITEM101, transaction_status: RETURNED}}
     - name: getOrder
       goName: GetOrder
       inputType: GetOrderInput

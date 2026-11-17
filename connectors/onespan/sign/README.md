@@ -1,6 +1,10 @@
 # OneSpan Sign connector
 
-The Go, Python, and TypeScript `getPackage` Queries read a transaction package's ID, name, and status from the OneSpan Sign REST API. They exclude signer identities and document contents from the Dex result.
+The Go, Python, and TypeScript `getPackage` Queries read a transaction package's ID, name, and status from the OneSpan Sign REST API. Go also provides `listPackages`, `createDraftPackage`, `updatePackageName`, `sendPackage`, `trashPackage`, `deletePackage`, `listSignerRoles`, `getSignerRole`, `addSigner`, `updateSigner`, and `removeSigner`. Query results exclude signer identities and document contents.
+
+`listPackages` uses an inclusive one-based `from` and `to` range of at most 100 packages and filters by `DRAFT`, `SENT`, `COMPLETED`, `DECLINED`, `EXPIRED`, or `ARCHIVED`. `createDraftPackage` makes a document-free DRAFT transaction; add documents and signers in OneSpan Sign before `sendPackage`. Both creation and sending use a three-send limited retry cap. A draft name is not unique, so creation cannot safely read back after an ambiguous response and may return `uncertain`. Sending reads back the package status after an ambiguous request. `updatePackageName` sets a DRAFT title; `trashPackage` moves a transaction to Trash; `deletePackage` permanently removes it. Those absolute updates and deletion can safely repeat. Every non-success branch is optional and fails the Flow if unwired.
+
+`listSignerRoles` and `getSignerRole` return role IDs only. `addSigner` accepts an application-chosen stable role ID, email address, first name, and last name for a draft; it uses a three-send cap and selects `uncertain` when the addition cannot be confirmed. An existing role with the same email does not confirm this request. `updateSigner` replaces one role's identity, and `removeSigner` deletes one role. Both can safely repeat. Find the transaction under **Transactions** and its signer under **Recipients**; copy the package ID from the transaction URL and use the application's role ID in `roleId`. Email and names are required inputs, and blank values are invalid. Signer identities stay out of Results, receipts, and logs.
 
 ## Connection
 
@@ -10,4 +14,4 @@ Leave `baseUrl` blank for the displayed Sandbox endpoint. For Production, use th
 
 ## Example and verification
 
-Run the [Go](go/examples/package-inspection/README.md), [Python](python/examples/package_inspection/README.md), or [TypeScript](typescript/examples/package-inspection/README.md) package inspection Flow with a static `onespan-sign` connection. Go-recorded conformance covers all three implementations; each has a mock-backed real Dex integration test. Real OneSpan authorization and package retrieval have not been verified locally.
+Run the [Go](go/examples/package-inspection/README.md), [Python](python/examples/package_inspection/README.md), or [TypeScript](typescript/examples/package-inspection/README.md) package inspection Flow with a static `onespan-sign` connection. The Go example also lists draft packages and signer role IDs. Go-recorded conformance covers all implemented capabilities; each language has a mock-backed real Dex integration test. Real OneSpan authorization and package operations have not been verified locally.

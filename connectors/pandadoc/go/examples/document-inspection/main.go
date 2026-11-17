@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{documentinspection.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{documentinspection.NewFlow(connection), documentinspection.NewSendDocumentFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register PandaDoc document inspection Flow: %w", err)
 	}

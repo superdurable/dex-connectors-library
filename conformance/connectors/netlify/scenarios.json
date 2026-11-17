@@ -534,6 +534,1109 @@
       },
       "name": "deploys-missing-site",
       "operation": "listDeploys"
+    },
+    {
+      "callId": "netlify-getSite-success",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"site-meridian\",\"name\":\"meridian-web\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sites/site-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "admin_url": "",
+          "id": "site-meridian",
+          "name": "meridian-web",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteId": "site-meridian"
+      },
+      "name": "getSite-success",
+      "operation": "getSite"
+    },
+    {
+      "callId": "netlify-getSite-not-found",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sites/site-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "admin_url": "",
+          "id": "",
+          "name": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteId": "site-meridian"
+      },
+      "name": "getSite-not-found",
+      "operation": "getSite"
+    },
+    {
+      "callId": "netlify-getSite-rejected",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sites/site-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "admin_url": "",
+          "id": "",
+          "name": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteId": "site-meridian"
+      },
+      "name": "getSite-rejected",
+      "operation": "getSite"
+    },
+    {
+      "callId": "netlify-getSite-malformed",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sites/site-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "admin_url": "",
+          "id": "",
+          "name": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteId": "site-meridian"
+      },
+      "name": "getSite-malformed",
+      "operation": "getSite"
+    },
+    {
+      "callId": "netlify-getSite-rate-limited",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sites/site-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteId": "site-meridian"
+      },
+      "name": "getSite-rate-limited",
+      "operation": "getSite"
+    },
+    {
+      "callId": "netlify-getSite-unavailable",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sites/site-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteId": "site-meridian"
+      },
+      "name": "getSite-unavailable",
+      "operation": "getSite"
+    },
+    {
+      "callId": "netlify-getSite-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sites/site-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteId": "site-meridian"
+      },
+      "name": "getSite-transport",
+      "operation": "getSite"
+    },
+    {
+      "callId": "netlify-getSite-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "admin_url": "",
+          "id": "",
+          "name": "",
+          "url": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteId": ""
+      },
+      "name": "getSite-defect",
+      "operation": "getSite"
+    },
+    {
+      "callId": "netlify-getDeploy-success",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"deploy-meridian\",\"site_id\":\"site-meridian\",\"state\":\"ready\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sites/site-meridian/deploys/deploy-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "deploy-meridian",
+          "site_id": "site-meridian",
+          "state": "ready",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "deployId": "deploy-meridian",
+        "siteId": "site-meridian"
+      },
+      "name": "getDeploy-success",
+      "operation": "getDeploy"
+    },
+    {
+      "callId": "netlify-getDeploy-not-found",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sites/site-meridian/deploys/deploy-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "site_id": "",
+          "state": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "deployId": "deploy-meridian",
+        "siteId": "site-meridian"
+      },
+      "name": "getDeploy-not-found",
+      "operation": "getDeploy"
+    },
+    {
+      "callId": "netlify-getDeploy-rejected",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sites/site-meridian/deploys/deploy-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "id": "",
+          "site_id": "",
+          "state": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "deployId": "deploy-meridian",
+        "siteId": "site-meridian"
+      },
+      "name": "getDeploy-rejected",
+      "operation": "getDeploy"
+    },
+    {
+      "callId": "netlify-getDeploy-malformed",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sites/site-meridian/deploys/deploy-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "site_id": "",
+          "state": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "deployId": "deploy-meridian",
+        "siteId": "site-meridian"
+      },
+      "name": "getDeploy-malformed",
+      "operation": "getDeploy"
+    },
+    {
+      "callId": "netlify-getDeploy-rate-limited",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sites/site-meridian/deploys/deploy-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "deployId": "deploy-meridian",
+        "siteId": "site-meridian"
+      },
+      "name": "getDeploy-rate-limited",
+      "operation": "getDeploy"
+    },
+    {
+      "callId": "netlify-getDeploy-unavailable",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sites/site-meridian/deploys/deploy-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "deployId": "deploy-meridian",
+        "siteId": "site-meridian"
+      },
+      "name": "getDeploy-unavailable",
+      "operation": "getDeploy"
+    },
+    {
+      "callId": "netlify-getDeploy-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sites/site-meridian/deploys/deploy-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "deployId": "deploy-meridian",
+        "siteId": "site-meridian"
+      },
+      "name": "getDeploy-transport",
+      "operation": "getDeploy"
+    },
+    {
+      "callId": "netlify-getDeploy-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "site_id": "",
+          "state": "",
+          "url": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "deployId": "",
+        "siteId": ""
+      },
+      "name": "getDeploy-defect",
+      "operation": "getDeploy"
+    },
+    {
+      "callId": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sites/site-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "siteId": "site-meridian"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "input": {
+        "siteId": "site-meridian"
+      },
+      "name": "deleteSite-success",
+      "operation": "deleteSite"
+    },
+    {
+      "callId": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sites/site-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "siteId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "input": {
+        "siteId": "site-meridian"
+      },
+      "name": "deleteSite-not-found",
+      "operation": "deleteSite"
+    },
+    {
+      "callId": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sites/site-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "siteId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "input": {
+        "siteId": "site-meridian"
+      },
+      "name": "deleteSite-rejected",
+      "operation": "deleteSite"
+    },
+    {
+      "callId": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sites/site-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "input": {
+        "siteId": "site-meridian"
+      },
+      "name": "deleteSite-rate-limited",
+      "operation": "deleteSite"
+    },
+    {
+      "callId": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sites/site-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "input": {
+        "siteId": "site-meridian"
+      },
+      "name": "deleteSite-unavailable",
+      "operation": "deleteSite"
+    },
+    {
+      "callId": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sites/site-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "input": {
+        "siteId": "site-meridian"
+      },
+      "name": "deleteSite-transport",
+      "operation": "deleteSite"
+    },
+    {
+      "callId": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "siteId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "input": {
+        "siteId": ""
+      },
+      "name": "deleteSite-defect",
+      "operation": "deleteSite"
+    },
+    {
+      "callId": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"deploy-meridian\",\"site_id\":\"site-meridian\",\"state\":\"cancelled\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deploys/deploy-meridian/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "cancelled",
+        "failureKind": "",
+        "output": {
+          "id": "deploy-meridian",
+          "site_id": "site-meridian",
+          "state": "cancelled",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "input": {
+        "deployId": "deploy-meridian"
+      },
+      "name": "cancelDeploy-success",
+      "operation": "cancelDeploy"
+    },
+    {
+      "callId": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deploys/deploy-meridian/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "site_id": "",
+          "state": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "input": {
+        "deployId": "deploy-meridian"
+      },
+      "name": "cancelDeploy-not-found",
+      "operation": "cancelDeploy"
+    },
+    {
+      "callId": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deploys/deploy-meridian/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "id": "",
+          "site_id": "",
+          "state": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "input": {
+        "deployId": "deploy-meridian"
+      },
+      "name": "cancelDeploy-rejected",
+      "operation": "cancelDeploy"
+    },
+    {
+      "callId": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deploys/deploy-meridian/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "site_id": "",
+          "state": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "input": {
+        "deployId": "deploy-meridian"
+      },
+      "name": "cancelDeploy-malformed",
+      "operation": "cancelDeploy"
+    },
+    {
+      "callId": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deploys/deploy-meridian/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "input": {
+        "deployId": "deploy-meridian"
+      },
+      "name": "cancelDeploy-rate-limited",
+      "operation": "cancelDeploy"
+    },
+    {
+      "callId": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deploys/deploy-meridian/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "input": {
+        "deployId": "deploy-meridian"
+      },
+      "name": "cancelDeploy-unavailable",
+      "operation": "cancelDeploy"
+    },
+    {
+      "callId": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deploys/deploy-meridian/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "input": {
+        "deployId": "deploy-meridian"
+      },
+      "name": "cancelDeploy-transport",
+      "operation": "cancelDeploy"
+    },
+    {
+      "callId": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "site_id": "",
+          "state": "",
+          "url": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "input": {
+        "deployId": ""
+      },
+      "name": "cancelDeploy-defect",
+      "operation": "cancelDeploy"
     }
   ],
   "schemaVersion": 1
