@@ -42,13 +42,13 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
-  /** Stripe API base URL; leave blank for Stripe's public v1 API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway. */
+  /** Stripe API base URL, in https://host/v1 form. Leave blank for the displayed public Stripe endpoint; override only for a reviewed compatible gateway, and never paste an API key into this URL. */
   endpoint?: string;
-  /** Maximum complete Stripe API response in bytes; enter a positive integer only to change the safety limit. Oversized successful responses select invalidResponse; an oversized error response is classified by its status. */
+  /** Maximum complete Stripe API response in bytes. Enter a positive integer only when a valid Checkout Session or PaymentIntent exceeds the displayed safety limit; oversized successful responses select invalidResponse, while oversized errors are classified by HTTP status. Blank keeps the displayed limit. */
   maxResponseBytes?: number;
-  /** Maximum raw signed webhook request body in bytes; enter a positive integer only to change the safety limit. Larger bodies are rejected before signature verification. */
+  /** Maximum raw signed webhook body in bytes. Enter a positive integer only when Stripe delivers a legitimate Checkout Session event larger than the displayed safety limit; larger bodies receive 413 before signature verification. Blank keeps the displayed limit. */
   webhookMaxBodyBytes?: number;
-  /** Maximum accepted Stripe-Signature timestamp age, using a positive Go duration such as 5m; reduce only when clocks are synchronized and replay tolerance can be stricter. Runtime value in milliseconds. */
+  /** Maximum difference between the Stripe-Signature t value and this server clock, as a positive Go duration such as 2m or 300s. Reduce it only when clocks are synchronized and replay protection can be stricter; blank keeps the displayed duration. Runtime value in milliseconds. */
   webhookSignatureToleranceMs?: number;
 }
 
@@ -64,9 +64,9 @@ export const ConfigSchema = z.object({
 export interface Credentials {
   /** Selected authorization method. */
   authMethodId?: string;
-  /** Secret rk_test_/rk_live_ restricted or sk_test_/sk_live_ key from Developers > API keys. Grant only the permissions needed by the chosen operations. */
+  /** Secret Stripe API key. Start at https://dashboard.stripe.com/apikeys, choose Test or Live mode, then Developers > API keys > Create restricted key or Reveal secret key. Copy the opaque rk_test_/rk_live_ restricted key with only the selected operation permissions, or sk_test_/sk_live_ secret key. Store it only here; blank prevents authorization. */
   secretKey: SecretString;
-  /** Secret whsec_ signing secret from Developers > Webhooks > select the Dex endpoint > Signing secret > Reveal; this is different from an API key. */
+  /** Secret Stripe endpoint signing secret. Start at https://dashboard.stripe.com/webhooks in the matching Test or Live mode, open Developers > Webhooks > the endpoint that sends Checkout Session events > Signing secret > Reveal, and copy its opaque whsec_ value here. It never goes to Stripe API calls; blank prevents this webhook connection from authorizing. */
   webhookSecret?: SecretString;
 }
 

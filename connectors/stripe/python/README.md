@@ -1,11 +1,12 @@
 # Stripe connector for Python
 
 `dex-connector-stripe` provides five async Stripe operations: hosted card and
-ACH Checkout Session creation, Checkout Session and PaymentIntent reads, and
-refund creation. Install the released package with:
+ACH Checkout Session creation, Checkout Session and PaymentIntent reads,
+refund creation, and the signed `checkoutSessionUpdated` Trigger. Install the
+released package with:
 
 ```sh
-pip install dex-connector-stripe==0.2.0
+pip install dex-connector-stripe==0.3.0
 ```
 
 Use the `dex_connectors.stripe` import package. The connector requires Python
@@ -25,8 +26,8 @@ secret is resolved at call time and stays out of Flow input, Attributes,
 results, receipts, and logs. The optional **API key and webhook** method also
 requires a `whsec_` endpoint signing secret from **Developers > Webhooks >
 select endpoint > Signing secret > Reveal**. The key and endpoint must use the
-same Stripe mode. This Python package currently implements API operations;
-the Go connector documents webhook delivery.
+same Stripe mode. The [Checkout event example](examples/checkout_session_event/README.md)
+shows the Python webhook endpoint and durable Flow delivery.
 
 The default API endpoint is Stripe's public `/v1` endpoint. Set `endpoint`
 only for an explicitly supported compatible gateway. `max_response_bytes`
@@ -93,3 +94,5 @@ Client with a credential-safe fake provider. A live Stripe account has not
 been used to verify API-key authorization, card or ACH Checkout creation,
 Checkout Session or PaymentIntent reads, refund creation, or refund
 read-back reconciliation.
+
+The Checkout event example runs an ASGI webhook and Dex Worker. Its real Dex integration test covers signed delivery, acknowledgment before target handling, restart replay, and stable Flow identity on redelivery. Unit tests cover multiple v1 signatures, tampering, timestamp freshness, filtering, oversized requests, and secret-safe session reduction. Live Stripe webhook delivery remains unverified.

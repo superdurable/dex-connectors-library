@@ -8,6 +8,10 @@ from datetime import datetime
 from dex_connectors.sdk import SecretString
 
 from ._generated.config import Config as _ManifestConfig
+from ._generated.models import CheckoutSessionEvent as CheckoutSessionEvent
+from ._generated.models import (
+    CheckoutSessionUpdatedTriggerConfiguration as CheckoutSessionUpdatedTriggerConfiguration,
+)
 from ._generated.models import PaymentIntent as PaymentIntent
 from ._generated.models import Refund as Refund
 
@@ -17,7 +21,7 @@ class Config:
     """Stripe API and webhook limits from the manifest's connection settings.
 
     API calls use ``endpoint`` and ``max_response_bytes``. The webhook settings
-    preserve the shared connection contract for a future Python Trigger.
+    configure the signed Checkout Session Trigger.
     """
 
     endpoint: str = _ManifestConfig().endpoint
