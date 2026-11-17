@@ -53,8 +53,111 @@ spec:
       steps:
         - Sign in to the ActiveCampaign account at https://www.activecampaign.com/login, click Settings (gear), then Developer.
         - Copy the account's full API URL into non-secret baseUrl; it ends in /api/3 and is unique to the account. Copy the current user's API Key into secret api_key and save the connection.
-        - Ensure this API user can view the intended contacts and lists; tag creation, update, and deletion require tag management permission. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
+        - Ensure this API user can view the intended contacts and lists; tag writes need tag management permission, and deal operations need Deals and pipeline management permission. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: listDeals
+      goName: ListDeals
+      inputType: ListDealsInput
+      outputType: DealsPage
+      kind: query
+      description: List one page of deals and their basic metadata.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign completed the deal operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample deal result.
+          output: {deals: [{id: '46', title: Renewal, contactId: '68', stageId: '2', valueMinor: 45600, currency: USD, status: 0}], offset: 0, limit: 20, total: 1}
+    - name: getDeal
+      goName: GetDeal
+      inputType: GetDealInput
+      outputType: DealMetadata
+      kind: query
+      description: Read one deal by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ActiveCampaign completed the deal operation.}
+        - {id: notFound, goName: NotFound, description: The deal ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample deal result.
+          output: {id: '46', title: Renewal, contactId: '68', stageId: '2', valueMinor: 45600, currency: USD, status: 0}
+    - name: createDeal
+      goName: CreateDeal
+      inputType: CreateDealInput
+      outputType: DealMetadata
+      kind: mutation
+      description: Create a deal for a contact with bounded sends and read-back.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: ActiveCampaign completed the deal operation.}
+        - {id: uncertain, goName: Uncertain, description: A bounded deal create could not be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample deal result.
+          output: {id: '46', title: Renewal, contactId: '68', stageId: '2', valueMinor: 45600, currency: USD, status: 0}
+    - name: updateDeal
+      goName: UpdateDeal
+      inputType: UpdateDealInput
+      outputType: DealMetadata
+      kind: mutation
+      description: Set absolute deal fields by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: ActiveCampaign updated the deal.}
+        - {id: notFound, goName: NotFound, description: The deal ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample deal result.
+          output: {id: '46', title: Renewal, contactId: '68', stageId: '2', valueMinor: 45600, currency: USD, status: 0}
+    - name: deleteDeal
+      goName: DeleteDeal
+      inputType: DeleteDealInput
+      outputType: DealDeletion
+      kind: mutation
+      description: Delete a deal by ID and converge on absence.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: ActiveCampaign deleted the deal.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One sample deal result.
+          output: {dealId: '46', deleted: true}
     - name: listTags
       goName: ListTags
       inputType: ListTagsInput

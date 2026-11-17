@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listDeals/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.DealsPage](`{"deals":[{"id":"46","title":"Renewal","contactId":"68","stageId":"2","valueMinor":45600,"currency":"USD","status":0}],"offset":0,"limit":20,"total":1}`)
+			return err
+		}},
+		{name: "getDeal/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.DealMetadata](`{"id":"46","title":"Renewal","contactId":"68","stageId":"2","valueMinor":45600,"currency":"USD","status":0}`)
+			return err
+		}},
+		{name: "createDeal/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.DealMetadata](`{"id":"46","title":"Renewal","contactId":"68","stageId":"2","valueMinor":45600,"currency":"USD","status":0}`)
+			return err
+		}},
+		{name: "updateDeal/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.DealMetadata](`{"id":"46","title":"Renewal","contactId":"68","stageId":"2","valueMinor":45600,"currency":"USD","status":0}`)
+			return err
+		}},
+		{name: "deleteDeal/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.DealDeletion](`{"dealId":"46","deleted":true}`)
+			return err
+		}},
 		{name: "listTags/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[activecampaign.TagsPage](`{"tags":[{"id":"16","name":"Newsletter","description":"Monthly","tagType":"contact"}],"offset":0,"limit":20,"total":1}`)
 			return err
@@ -70,6 +90,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListDeals().Definition().Operation.OperationID != "listDeals" {
+		t.Errorf("listDeals mock has another definition")
+	}
+	if mock.GetDeal().Definition().Operation.OperationID != "getDeal" {
+		t.Errorf("getDeal mock has another definition")
+	}
+	if mock.CreateDeal().Definition().Operation.OperationID != "createDeal" {
+		t.Errorf("createDeal mock has another definition")
+	}
+	if mock.UpdateDeal().Definition().Operation.OperationID != "updateDeal" {
+		t.Errorf("updateDeal mock has another definition")
+	}
+	if mock.DeleteDeal().Definition().Operation.OperationID != "deleteDeal" {
+		t.Errorf("deleteDeal mock has another definition")
+	}
 	if mock.ListTags().Definition().Operation.OperationID != "listTags" {
 		t.Errorf("listTags mock has another definition")
 	}

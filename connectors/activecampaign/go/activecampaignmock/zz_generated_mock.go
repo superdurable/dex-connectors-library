@@ -18,6 +18,11 @@ import (
 // Mock is a scripted activecampaign connection. Script each operation through its accessor.
 type Mock struct {
 	connection    activecampaign.Connection
+	listDeals     *connectormock.Query[activecampaign.ListDealsInput, activecampaign.DealsPage]
+	getDeal       *connectormock.Query[activecampaign.GetDealInput, activecampaign.DealMetadata]
+	createDeal    *connectormock.Mutation[activecampaign.CreateDealInput, activecampaign.DealMetadata]
+	updateDeal    *connectormock.Mutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata]
+	deleteDeal    *connectormock.Mutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion]
 	listTags      *connectormock.Query[activecampaign.ListTagsInput, activecampaign.TagsPage]
 	getTag        *connectormock.Query[activecampaign.GetTagInput, activecampaign.TagMetadata]
 	createTag     *connectormock.Mutation[activecampaign.CreateTagInput, activecampaign.TagMetadata]
@@ -36,6 +41,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listDeals:     connectormock.NewQuery[activecampaign.ListDealsInput, activecampaign.DealsPage](t, activecampaign.ListDealsDefinition),
+		getDeal:       connectormock.NewQuery[activecampaign.GetDealInput, activecampaign.DealMetadata](t, activecampaign.GetDealDefinition),
+		createDeal:    connectormock.NewMutation[activecampaign.CreateDealInput, activecampaign.DealMetadata](t, activecampaign.CreateDealDefinition),
+		updateDeal:    connectormock.NewMutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata](t, activecampaign.UpdateDealDefinition),
+		deleteDeal:    connectormock.NewMutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion](t, activecampaign.DeleteDealDefinition),
 		listTags:      connectormock.NewQuery[activecampaign.ListTagsInput, activecampaign.TagsPage](t, activecampaign.ListTagsDefinition),
 		getTag:        connectormock.NewQuery[activecampaign.GetTagInput, activecampaign.TagMetadata](t, activecampaign.GetTagDefinition),
 		createTag:     connectormock.NewMutation[activecampaign.CreateTagInput, activecampaign.TagMetadata](t, activecampaign.CreateTagDefinition),
@@ -48,6 +58,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		syncContact:   connectormock.NewMutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata](t, activecampaign.SyncContactDefinition),
 		updateContact: connectormock.NewMutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata](t, activecampaign.UpdateContactDefinition),
 	}
+	mock.listDeals.Default(ListDealsDefault())
+	mock.getDeal.Default(GetDealDefault())
+	mock.createDeal.Default(CreateDealDefault())
+	mock.updateDeal.Default(UpdateDealDefault())
+	mock.deleteDeal.Default(DeleteDealDefault())
 	mock.listTags.Default(ListTagsDefault())
 	mock.getTag.Default(GetTagDefault())
 	mock.createTag.Default(CreateTagDefault())
@@ -69,6 +84,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() activecampaign.Connection { return mock.connection }
+
+// ListDeals returns the listDeals script.
+func (mock *Mock) ListDeals() *connectormock.Query[activecampaign.ListDealsInput, activecampaign.DealsPage] {
+	return mock.listDeals
+}
+
+// GetDeal returns the getDeal script.
+func (mock *Mock) GetDeal() *connectormock.Query[activecampaign.GetDealInput, activecampaign.DealMetadata] {
+	return mock.getDeal
+}
+
+// CreateDeal returns the createDeal script.
+func (mock *Mock) CreateDeal() *connectormock.Mutation[activecampaign.CreateDealInput, activecampaign.DealMetadata] {
+	return mock.createDeal
+}
+
+// UpdateDeal returns the updateDeal script.
+func (mock *Mock) UpdateDeal() *connectormock.Mutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata] {
+	return mock.updateDeal
+}
+
+// DeleteDeal returns the deleteDeal script.
+func (mock *Mock) DeleteDeal() *connectormock.Mutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion] {
+	return mock.deleteDeal
+}
 
 // ListTags returns the listTags script.
 func (mock *Mock) ListTags() *connectormock.Query[activecampaign.ListTagsInput, activecampaign.TagsPage] {
@@ -127,6 +167,21 @@ func (mock *Mock) UpdateContact() *connectormock.Mutation[activecampaign.UpdateC
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListDeals() sdkgo.Query[activecampaign.ListDealsInput, activecampaign.DealsPage] {
+	return operations.mock.listDeals
+}
+func (operations mockOperations) GetDeal() sdkgo.Query[activecampaign.GetDealInput, activecampaign.DealMetadata] {
+	return operations.mock.getDeal
+}
+func (operations mockOperations) CreateDeal() sdkgo.Mutation[activecampaign.CreateDealInput, activecampaign.DealMetadata] {
+	return operations.mock.createDeal
+}
+func (operations mockOperations) UpdateDeal() sdkgo.Mutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata] {
+	return operations.mock.updateDeal
+}
+func (operations mockOperations) DeleteDeal() sdkgo.Mutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion] {
+	return operations.mock.deleteDeal
+}
 func (operations mockOperations) ListTags() sdkgo.Query[activecampaign.ListTagsInput, activecampaign.TagsPage] {
 	return operations.mock.listTags
 }
@@ -159,6 +214,197 @@ func (operations mockOperations) SyncContact() sdkgo.Mutation[activecampaign.Syn
 }
 func (operations mockOperations) UpdateContact() sdkgo.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata] {
 	return operations.mock.updateContact
+}
+
+// ListDealsListed selects the listed branch: ActiveCampaign completed the deal operation.
+func ListDealsListed(value activecampaign.DealsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealsPage] {
+	return connectormock.Branch(activecampaign.ListDealsBranchListed, value, failure)
+}
+
+// ListDealsProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func ListDealsProviderRejected(value activecampaign.DealsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealsPage] {
+	return connectormock.Branch(activecampaign.ListDealsBranchProviderRejected, value, failure)
+}
+
+// ListDealsInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func ListDealsInvalidResponse(value activecampaign.DealsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealsPage] {
+	return connectormock.Branch(activecampaign.ListDealsBranchInvalidResponse, value, failure)
+}
+
+// ListDealsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListDealsDefect(value activecampaign.DealsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealsPage] {
+	return connectormock.Branch(activecampaign.ListDealsBranchDefect, value, failure)
+}
+
+// ListDealsRetry asks Dex to retry the listDeals Step, after the delay when it is positive.
+func ListDealsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.DealsPage] {
+	return connectormock.Retry[activecampaign.DealsPage](failure, after)
+}
+
+// ListDealsListedDefault is the manifest mock listedDefault: One sample deal result.
+func ListDealsListedDefault() connectormock.Case[activecampaign.DealsPage] {
+	value := connectormock.MustDecodeOutput[activecampaign.DealsPage](`{"deals":[{"id":"46","title":"Renewal","contactId":"68","stageId":"2","valueMinor":45600,"currency":"USD","status":0}],"offset":0,"limit":20,"total":1}`)
+	return connectormock.Branch(activecampaign.ListDealsBranchListed, value, nil)
+}
+
+// ListDealsDefault is the manifest default, listedDefault, which New installs.
+func ListDealsDefault() connectormock.Case[activecampaign.DealsPage] { return ListDealsListedDefault() }
+
+// GetDealFound selects the found branch: ActiveCampaign completed the deal operation.
+func GetDealFound(value activecampaign.DealMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealMetadata] {
+	return connectormock.Branch(activecampaign.GetDealBranchFound, value, failure)
+}
+
+// GetDealNotFound selects the notFound branch: The deal ID does not exist.
+func GetDealNotFound(value activecampaign.DealMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealMetadata] {
+	return connectormock.Branch(activecampaign.GetDealBranchNotFound, value, failure)
+}
+
+// GetDealProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func GetDealProviderRejected(value activecampaign.DealMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealMetadata] {
+	return connectormock.Branch(activecampaign.GetDealBranchProviderRejected, value, failure)
+}
+
+// GetDealInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func GetDealInvalidResponse(value activecampaign.DealMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealMetadata] {
+	return connectormock.Branch(activecampaign.GetDealBranchInvalidResponse, value, failure)
+}
+
+// GetDealDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetDealDefect(value activecampaign.DealMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealMetadata] {
+	return connectormock.Branch(activecampaign.GetDealBranchDefect, value, failure)
+}
+
+// GetDealRetry asks Dex to retry the getDeal Step, after the delay when it is positive.
+func GetDealRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.DealMetadata] {
+	return connectormock.Retry[activecampaign.DealMetadata](failure, after)
+}
+
+// GetDealFoundDefault is the manifest mock foundDefault: One sample deal result.
+func GetDealFoundDefault() connectormock.Case[activecampaign.DealMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.DealMetadata](`{"id":"46","title":"Renewal","contactId":"68","stageId":"2","valueMinor":45600,"currency":"USD","status":0}`)
+	return connectormock.Branch(activecampaign.GetDealBranchFound, value, nil)
+}
+
+// GetDealDefault is the manifest default, foundDefault, which New installs.
+func GetDealDefault() connectormock.Case[activecampaign.DealMetadata] { return GetDealFoundDefault() }
+
+// CreateDealCreated selects the created branch: ActiveCampaign completed the deal operation.
+func CreateDealCreated(value activecampaign.DealMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealMetadata] {
+	return connectormock.Branch(activecampaign.CreateDealBranchCreated, value, failure)
+}
+
+// CreateDealUncertain returns an uncertain createDeal outcome.
+func CreateDealUncertain(value activecampaign.DealMetadata, failure sdkgo.Failure) connectormock.Case[activecampaign.DealMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateDealProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func CreateDealProviderRejected(value activecampaign.DealMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealMetadata] {
+	return connectormock.Branch(activecampaign.CreateDealBranchProviderRejected, value, failure)
+}
+
+// CreateDealInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func CreateDealInvalidResponse(value activecampaign.DealMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealMetadata] {
+	return connectormock.Branch(activecampaign.CreateDealBranchInvalidResponse, value, failure)
+}
+
+// CreateDealDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateDealDefect(value activecampaign.DealMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealMetadata] {
+	return connectormock.Branch(activecampaign.CreateDealBranchDefect, value, failure)
+}
+
+// CreateDealRetry asks Dex to retry the createDeal Step, after the delay when it is positive.
+func CreateDealRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.DealMetadata] {
+	return connectormock.Retry[activecampaign.DealMetadata](failure, after)
+}
+
+// CreateDealCreatedDefault is the manifest mock createdDefault: One sample deal result.
+func CreateDealCreatedDefault() connectormock.Case[activecampaign.DealMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.DealMetadata](`{"id":"46","title":"Renewal","contactId":"68","stageId":"2","valueMinor":45600,"currency":"USD","status":0}`)
+	return connectormock.Branch(activecampaign.CreateDealBranchCreated, value, nil)
+}
+
+// CreateDealDefault is the manifest default, createdDefault, which New installs.
+func CreateDealDefault() connectormock.Case[activecampaign.DealMetadata] {
+	return CreateDealCreatedDefault()
+}
+
+// UpdateDealUpdated selects the updated branch: ActiveCampaign updated the deal.
+func UpdateDealUpdated(value activecampaign.DealMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealMetadata] {
+	return connectormock.Branch(activecampaign.UpdateDealBranchUpdated, value, failure)
+}
+
+// UpdateDealNotFound selects the notFound branch: The deal ID does not exist.
+func UpdateDealNotFound(value activecampaign.DealMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealMetadata] {
+	return connectormock.Branch(activecampaign.UpdateDealBranchNotFound, value, failure)
+}
+
+// UpdateDealProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func UpdateDealProviderRejected(value activecampaign.DealMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealMetadata] {
+	return connectormock.Branch(activecampaign.UpdateDealBranchProviderRejected, value, failure)
+}
+
+// UpdateDealInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func UpdateDealInvalidResponse(value activecampaign.DealMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealMetadata] {
+	return connectormock.Branch(activecampaign.UpdateDealBranchInvalidResponse, value, failure)
+}
+
+// UpdateDealDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateDealDefect(value activecampaign.DealMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealMetadata] {
+	return connectormock.Branch(activecampaign.UpdateDealBranchDefect, value, failure)
+}
+
+// UpdateDealRetry asks Dex to retry the updateDeal Step, after the delay when it is positive.
+func UpdateDealRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.DealMetadata] {
+	return connectormock.Retry[activecampaign.DealMetadata](failure, after)
+}
+
+// UpdateDealUpdatedDefault is the manifest mock updatedDefault: One sample deal result.
+func UpdateDealUpdatedDefault() connectormock.Case[activecampaign.DealMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.DealMetadata](`{"id":"46","title":"Renewal","contactId":"68","stageId":"2","valueMinor":45600,"currency":"USD","status":0}`)
+	return connectormock.Branch(activecampaign.UpdateDealBranchUpdated, value, nil)
+}
+
+// UpdateDealDefault is the manifest default, updatedDefault, which New installs.
+func UpdateDealDefault() connectormock.Case[activecampaign.DealMetadata] {
+	return UpdateDealUpdatedDefault()
+}
+
+// DeleteDealDeleted selects the deleted branch: ActiveCampaign deleted the deal.
+func DeleteDealDeleted(value activecampaign.DealDeletion, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealDeletion] {
+	return connectormock.Branch(activecampaign.DeleteDealBranchDeleted, value, failure)
+}
+
+// DeleteDealProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func DeleteDealProviderRejected(value activecampaign.DealDeletion, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealDeletion] {
+	return connectormock.Branch(activecampaign.DeleteDealBranchProviderRejected, value, failure)
+}
+
+// DeleteDealInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func DeleteDealInvalidResponse(value activecampaign.DealDeletion, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealDeletion] {
+	return connectormock.Branch(activecampaign.DeleteDealBranchInvalidResponse, value, failure)
+}
+
+// DeleteDealDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteDealDefect(value activecampaign.DealDeletion, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealDeletion] {
+	return connectormock.Branch(activecampaign.DeleteDealBranchDefect, value, failure)
+}
+
+// DeleteDealRetry asks Dex to retry the deleteDeal Step, after the delay when it is positive.
+func DeleteDealRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.DealDeletion] {
+	return connectormock.Retry[activecampaign.DealDeletion](failure, after)
+}
+
+// DeleteDealDeletedDefault is the manifest mock deletedDefault: One sample deal result.
+func DeleteDealDeletedDefault() connectormock.Case[activecampaign.DealDeletion] {
+	value := connectormock.MustDecodeOutput[activecampaign.DealDeletion](`{"dealId":"46","deleted":true}`)
+	return connectormock.Branch(activecampaign.DeleteDealBranchDeleted, value, nil)
+}
+
+// DeleteDealDefault is the manifest default, deletedDefault, which New installs.
+func DeleteDealDefault() connectormock.Case[activecampaign.DealDeletion] {
+	return DeleteDealDeletedDefault()
 }
 
 // ListTagsListed selects the listed branch: ActiveCampaign completed the tag operation.
