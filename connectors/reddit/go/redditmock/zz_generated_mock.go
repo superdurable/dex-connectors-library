@@ -17,8 +17,10 @@ import (
 
 // Mock is a scripted reddit connection. Script each operation through its accessor.
 type Mock struct {
-	connection reddit.Connection
-	getPost    *connectormock.Query[reddit.GetPostInput, reddit.Post]
+	connection         reddit.Connection
+	getPost            *connectormock.Query[reddit.GetPostInput, reddit.Post]
+	listSubredditPosts *connectormock.Query[reddit.ListSubredditPostsInput, reddit.PostPage]
+	searchPosts        *connectormock.Query[reddit.SearchPostsInput, reddit.PostPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +28,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getPost: connectormock.NewQuery[reddit.GetPostInput, reddit.Post](t, reddit.GetPostDefinition),
+		getPost:            connectormock.NewQuery[reddit.GetPostInput, reddit.Post](t, reddit.GetPostDefinition),
+		listSubredditPosts: connectormock.NewQuery[reddit.ListSubredditPostsInput, reddit.PostPage](t, reddit.ListSubredditPostsDefinition),
+		searchPosts:        connectormock.NewQuery[reddit.SearchPostsInput, reddit.PostPage](t, reddit.SearchPostsDefinition),
 	}
 	mock.getPost.Default(GetPostDefault())
+	mock.listSubredditPosts.Default(ListSubredditPostsDefault())
+	mock.searchPosts.Default(SearchPostsDefault())
 	connection, err := reddit.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "reddit", Name: connectionName})
 	if err != nil {
 		t.Fatalf("reddit mock connection: %v", err)
@@ -45,10 +51,26 @@ func (mock *Mock) GetPost() *connectormock.Query[reddit.GetPostInput, reddit.Pos
 	return mock.getPost
 }
 
+// ListSubredditPosts returns the listSubredditPosts script.
+func (mock *Mock) ListSubredditPosts() *connectormock.Query[reddit.ListSubredditPostsInput, reddit.PostPage] {
+	return mock.listSubredditPosts
+}
+
+// SearchPosts returns the searchPosts script.
+func (mock *Mock) SearchPosts() *connectormock.Query[reddit.SearchPostsInput, reddit.PostPage] {
+	return mock.searchPosts
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetPost() sdkgo.Query[reddit.GetPostInput, reddit.Post] {
 	return operations.mock.getPost
+}
+func (operations mockOperations) ListSubredditPosts() sdkgo.Query[reddit.ListSubredditPostsInput, reddit.PostPage] {
+	return operations.mock.listSubredditPosts
+}
+func (operations mockOperations) SearchPosts() sdkgo.Query[reddit.SearchPostsInput, reddit.PostPage] {
+	return operations.mock.searchPosts
 }
 
 // GetPostFound selects the found branch: Reddit returned the selected post.
@@ -89,3 +111,119 @@ func GetPostFoundDefault() connectormock.Case[reddit.Post] {
 
 // GetPostDefault is the manifest default, foundDefault, which New installs.
 func GetPostDefault() connectormock.Case[reddit.Post] { return GetPostFoundDefault() }
+
+// ListSubredditPostsListed selects the listed branch: Reddit returned one bounded page of posts; the page may be empty.
+func ListSubredditPostsListed(value reddit.PostPage, failure *sdkgo.Failure) connectormock.Case[reddit.PostPage] {
+	return connectormock.Branch(reddit.ListSubredditPostsBranchListed, value, failure)
+}
+
+// ListSubredditPostsSubredditUnavailable selects the subredditUnavailable branch: Reddit reports the subreddit missing, banned, private, quarantined, or otherwise closed to the account.
+func ListSubredditPostsSubredditUnavailable(value reddit.PostPage, failure *sdkgo.Failure) connectormock.Case[reddit.PostPage] {
+	return connectormock.Branch(reddit.ListSubredditPostsBranchSubredditUnavailable, value, failure)
+}
+
+// ListSubredditPostsProviderRejected selects the providerRejected branch: Reddit conclusively rejected the listing or app access.
+func ListSubredditPostsProviderRejected(value reddit.PostPage, failure *sdkgo.Failure) connectormock.Case[reddit.PostPage] {
+	return connectormock.Branch(reddit.ListSubredditPostsBranchProviderRejected, value, failure)
+}
+
+// ListSubredditPostsInvalidResponse selects the invalidResponse branch: Reddit returned a malformed or oversized listing.
+func ListSubredditPostsInvalidResponse(value reddit.PostPage, failure *sdkgo.Failure) connectormock.Case[reddit.PostPage] {
+	return connectormock.Branch(reddit.ListSubredditPostsBranchInvalidResponse, value, failure)
+}
+
+// ListSubredditPostsDefect selects the defect branch: The subreddit, sort, time window, limit, cursor, username, or OAuth credentials are invalid.
+func ListSubredditPostsDefect(value reddit.PostPage, failure *sdkgo.Failure) connectormock.Case[reddit.PostPage] {
+	return connectormock.Branch(reddit.ListSubredditPostsBranchDefect, value, failure)
+}
+
+// ListSubredditPostsRetry asks Dex to retry the listSubredditPosts Step, after the delay when it is positive.
+func ListSubredditPostsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[reddit.PostPage] {
+	return connectormock.Retry[reddit.PostPage](failure, after)
+}
+
+// ListSubredditPostsNewestThreePages is the manifest mock newestThreePages: Three newest-first pages with a pinned weekly thread to filter out and a post repeated across a page boundary.
+func ListSubredditPostsNewestThreePages() connectormock.Case[reddit.PostPage] {
+	pages := []reddit.PostPage{
+		connectormock.MustDecodeOutput[reddit.PostPage](`{"posts":[{"id":"t3_1a0001","title":"Weekly questions thread","subreddit":"golang","author":"example_moderator","permalink":"https://www.reddit.com/r/golang/comments/1a0001/weekly_questions_thread/","isSelf":true,"selfText":"Ask small questions here.","score":12,"commentCount":40,"createdAt":"2026-11-09T08:00:00Z","isOver18":false,"isSpoiler":false,"isStickied":true},{"id":"t3_1a0003","title":"How do generics interact with interfaces?","subreddit":"golang","author":"example_author_one","permalink":"https://www.reddit.com/r/golang/comments/1a0003/how_do_generics_interact_with_interfaces/","isSelf":true,"selfText":"I want a generic Map function that also accepts an interface type.","score":25,"commentCount":9,"createdAt":"2026-11-12T16:30:00Z","isOver18":false,"isSpoiler":false,"isStickied":false},{"id":"t3_1a0002","title":"A walkthrough of the new release notes","subreddit":"golang","author":"example_author_two","permalink":"https://www.reddit.com/r/golang/comments/1a0002/a_walkthrough_of_the_new_release_notes/","linkUrl":"https://example.com/blog/release-notes","isSelf":false,"score":31,"commentCount":4,"createdAt":"2026-11-12T09:15:00Z","isOver18":false,"isSpoiler":false,"isStickied":false}],"after":"t3_1a0002"}`),
+		connectormock.MustDecodeOutput[reddit.PostPage](`{"posts":[{"id":"t3_1a0002","title":"A walkthrough of the new release notes","subreddit":"golang","author":"example_author_two","permalink":"https://www.reddit.com/r/golang/comments/1a0002/a_walkthrough_of_the_new_release_notes/","linkUrl":"https://example.com/blog/release-notes","isSelf":false,"score":31,"commentCount":4,"createdAt":"2026-11-12T09:15:00Z","isOver18":false,"isSpoiler":false,"isStickied":false},{"id":"t3_19zzz9","title":"Generic constraints with comparable","subreddit":"golang","author":"example_author_three","permalink":"https://www.reddit.com/r/golang/comments/19zzz9/generic_constraints_with_comparable/","isSelf":true,"selfText":"When should a type parameter use comparable instead of any?","score":18,"commentCount":6,"createdAt":"2026-11-11T20:45:00Z","isOver18":false,"isSpoiler":false,"isStickied":false}],"after":"t3_19zzz9"}`),
+		connectormock.MustDecodeOutput[reddit.PostPage](`{"posts":[{"id":"t3_19zzz5","title":"Profiling a slow test suite","subreddit":"golang","author":"example_author_four","permalink":"https://www.reddit.com/r/golang/comments/19zzz5/profiling_a_slow_test_suite/","isSelf":true,"selfText":"Which profiler flags help most with slow tests?","score":7,"commentCount":3,"createdAt":"2026-11-10T11:00:00Z","isOver18":false,"isSpoiler":false,"isStickied":false}]}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[reddit.ListSubredditPostsInput]("after", "after", pages)
+	return connectormock.Paged(reddit.ListSubredditPostsBranchListed, pageNumber, pages...)
+}
+
+// ListSubredditPostsSubredditMissing is the manifest mock subredditMissing: Reddit reports no community with the requested name.
+func ListSubredditPostsSubredditMissing() connectormock.Case[reddit.PostPage] {
+	var value reddit.PostPage
+	return connectormock.Branch(reddit.ListSubredditPostsBranchSubredditUnavailable, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "Reddit reports the subreddit missing, banned, private, or restricted."})
+}
+
+// ListSubredditPostsListingRejected is the manifest mock listingRejected: Reddit refuses the listing for the authorized app.
+func ListSubredditPostsListingRejected() connectormock.Case[reddit.PostPage] {
+	var value reddit.PostPage
+	return connectormock.Branch(reddit.ListSubredditPostsBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Reddit rejected HTTP 403"})
+}
+
+// ListSubredditPostsDefault is the manifest default, newestThreePages, which New installs.
+func ListSubredditPostsDefault() connectormock.Case[reddit.PostPage] {
+	return ListSubredditPostsNewestThreePages()
+}
+
+// SearchPostsSearched selects the searched branch: Reddit returned one bounded page of matching posts; the page may be empty.
+func SearchPostsSearched(value reddit.PostPage, failure *sdkgo.Failure) connectormock.Case[reddit.PostPage] {
+	return connectormock.Branch(reddit.SearchPostsBranchSearched, value, failure)
+}
+
+// SearchPostsSubredditUnavailable selects the subredditUnavailable branch: Reddit reports the subreddit that restricts the search missing, banned, private, quarantined, or otherwise closed to the account.
+func SearchPostsSubredditUnavailable(value reddit.PostPage, failure *sdkgo.Failure) connectormock.Case[reddit.PostPage] {
+	return connectormock.Branch(reddit.SearchPostsBranchSubredditUnavailable, value, failure)
+}
+
+// SearchPostsProviderRejected selects the providerRejected branch: Reddit conclusively rejected the search or app access.
+func SearchPostsProviderRejected(value reddit.PostPage, failure *sdkgo.Failure) connectormock.Case[reddit.PostPage] {
+	return connectormock.Branch(reddit.SearchPostsBranchProviderRejected, value, failure)
+}
+
+// SearchPostsInvalidResponse selects the invalidResponse branch: Reddit returned malformed or oversized search results.
+func SearchPostsInvalidResponse(value reddit.PostPage, failure *sdkgo.Failure) connectormock.Case[reddit.PostPage] {
+	return connectormock.Branch(reddit.SearchPostsBranchInvalidResponse, value, failure)
+}
+
+// SearchPostsDefect selects the defect branch: The query, subreddit, sort, time window, limit, cursor, username, or OAuth credentials are invalid.
+func SearchPostsDefect(value reddit.PostPage, failure *sdkgo.Failure) connectormock.Case[reddit.PostPage] {
+	return connectormock.Branch(reddit.SearchPostsBranchDefect, value, failure)
+}
+
+// SearchPostsRetry asks Dex to retry the searchPosts Step, after the delay when it is positive.
+func SearchPostsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[reddit.PostPage] {
+	return connectormock.Retry[reddit.PostPage](failure, after)
+}
+
+// SearchPostsNewestMatchesThreePages is the manifest mock newestMatchesThreePages: Three newest-first pages of matches with a pinned thread to filter out and a match repeated across a page boundary.
+func SearchPostsNewestMatchesThreePages() connectormock.Case[reddit.PostPage] {
+	pages := []reddit.PostPage{
+		connectormock.MustDecodeOutput[reddit.PostPage](`{"posts":[{"id":"t3_1a0004","title":"Generics performance compared with interfaces","subreddit":"golang","author":"example_author_five","permalink":"https://www.reddit.com/r/golang/comments/1a0004/generics_performance_compared_with_interfaces/","linkUrl":"https://example.com/benchmarks/generics","isSelf":false,"score":44,"commentCount":15,"createdAt":"2026-11-13T10:00:00Z","isOver18":false,"isSpoiler":false,"isStickied":false},{"id":"t3_1a0003","title":"How do generics interact with interfaces?","subreddit":"golang","author":"example_author_one","permalink":"https://www.reddit.com/r/golang/comments/1a0003/how_do_generics_interact_with_interfaces/","isSelf":true,"selfText":"I want a generic Map function that also accepts an interface type.","score":25,"commentCount":9,"createdAt":"2026-11-12T16:30:00Z","isOver18":false,"isSpoiler":false,"isStickied":false},{"id":"t3_1a0001","title":"Weekly questions thread","subreddit":"golang","author":"example_moderator","permalink":"https://www.reddit.com/r/golang/comments/1a0001/weekly_questions_thread/","isSelf":true,"selfText":"Ask small questions here, including generics questions.","score":12,"commentCount":40,"createdAt":"2026-11-09T08:00:00Z","isOver18":false,"isSpoiler":false,"isStickied":true}],"after":"t3_1a0001"}`),
+		connectormock.MustDecodeOutput[reddit.PostPage](`{"posts":[{"id":"t3_1a0001","title":"Weekly questions thread","subreddit":"golang","author":"example_moderator","permalink":"https://www.reddit.com/r/golang/comments/1a0001/weekly_questions_thread/","isSelf":true,"selfText":"Ask small questions here, including generics questions.","score":12,"commentCount":40,"createdAt":"2026-11-09T08:00:00Z","isOver18":false,"isSpoiler":false,"isStickied":true},{"id":"t3_19zzx1","title":"Type inference surprises with generic functions","subreddit":"golang","author":"example_author_six","permalink":"https://www.reddit.com/r/golang/comments/19zzx1/type_inference_surprises_with_generic_functions/","isSelf":true,"selfText":"Inference failed until I named the type argument.","score":9,"commentCount":2,"createdAt":"2026-11-08T14:20:00Z","isOver18":false,"isSpoiler":false,"isStickied":false}],"after":"t3_19zzx1"}`),
+		connectormock.MustDecodeOutput[reddit.PostPage](`{"posts":[{"id":"t3_19zzw0","title":"Generic data structures one year later","subreddit":"golang","author":"example_author_seven","permalink":"https://www.reddit.com/r/golang/comments/19zzw0/generic_data_structures_one_year_later/","linkUrl":"https://example.com/articles/generic-data-structures","isSelf":false,"score":51,"commentCount":22,"createdAt":"2026-11-02T18:05:00Z","isOver18":false,"isSpoiler":false,"isStickied":false}]}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[reddit.SearchPostsInput]("after", "after", pages)
+	return connectormock.Paged(reddit.SearchPostsBranchSearched, pageNumber, pages...)
+}
+
+// SearchPostsSearchSubredditMissing is the manifest mock searchSubredditMissing: Reddit reports no community with the subreddit that restricts the search.
+func SearchPostsSearchSubredditMissing() connectormock.Case[reddit.PostPage] {
+	var value reddit.PostPage
+	return connectormock.Branch(reddit.SearchPostsBranchSubredditUnavailable, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "Reddit reports the subreddit missing, banned, private, or restricted."})
+}
+
+// SearchPostsSearchRejected is the manifest mock searchRejected: Reddit refuses the search for the authorized app.
+func SearchPostsSearchRejected() connectormock.Case[reddit.PostPage] {
+	var value reddit.PostPage
+	return connectormock.Branch(reddit.SearchPostsBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Reddit rejected HTTP 403"})
+}
+
+// SearchPostsDefault is the manifest default, newestMatchesThreePages, which New installs.
+func SearchPostsDefault() connectormock.Case[reddit.PostPage] {
+	return SearchPostsNewestMatchesThreePages()
+}

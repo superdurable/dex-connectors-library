@@ -14,7 +14,13 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/reddit/scenarios.json")
+# listSubredditPosts and searchPosts are Go only; replay just the operations this package implements.
+PYTHON_OPERATIONS = {"getPost"}
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/reddit/scenarios.json")
+    if scenario["operation"] in PYTHON_OPERATIONS
+]
 CONNECTION = sdk.ConnectionRef("reddit", "reddit")
 ADAPTER = conformance.PythonOperationAdapter(
     "reddit",
