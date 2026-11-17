@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: razorpay
   displayName: Razorpay
-  description: Read payment status and create or inspect Razorpay orders.
+  description: Read and act on Razorpay payments, orders, refunds, and standard payment links.
   company: Razorpay
   categories: [finance-payments]
   version: v0.2.0
@@ -60,6 +60,85 @@ spec:
         - Sign in to the Razorpay Dashboard, select Test or Live Mode, then open Account & Settings > API Keys > Generate Key. Copy the Key ID beginning rzp_test_ or rzp_live_ and its paired opaque Key Secret into Dex Web secret key_id and key_secret. Blank is invalid. Regenerate the pair on the same page to rotate it; Test and Live keys cannot be mixed.
         - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Find the non-secret pay_ payment ID on the Dashboard Payments page or from an API response and pass it as paymentId; blank is invalid. The payment amount returned is in currency subunits.
   operations:
+    - name: listPaymentLinks
+      goName: ListPaymentLinks
+      inputType: ListPaymentLinksInput
+      outputType: PaymentLinkPage
+      kind: query
+      description: List standard payment links with safe metadata.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Razorpay returned payment links.}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected the list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Razorpay returned unusable link data., optional: true}
+        - {id: defect, goName: Defect, description: The credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample payment link was returned.
+          output: {links: [{id: plink_ExjpAUN3gVHrPJ, status: created, amount: 1000, currencyCode: INR, referenceId: dex_0123456789abcdef0123456789abcdef, shortUrl: https://rzp.io/i/example}]}
+    - name: getPaymentLink
+      goName: GetPaymentLink
+      inputType: GetPaymentLinkInput
+      outputType: PaymentLinkSummary
+      kind: query
+      description: Read one standard payment link by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Razorpay returned the payment link.}
+        - {id: notFound, goName: NotFound, description: The payment link was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Razorpay returned unusable link data., optional: true}
+        - {id: defect, goName: Defect, description: The link ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample payment link was returned.
+          output: {id: plink_ExjpAUN3gVHrPJ, status: created, amount: 1000, currencyCode: INR, referenceId: dex_0123456789abcdef0123456789abcdef, shortUrl: https://rzp.io/i/example}
+    - name: createPaymentLink
+      goName: CreatePaymentLink
+      inputType: CreatePaymentLinkInput
+      outputType: PaymentLinkSummary
+      kind: mutation
+      description: Create a standard payment link without sending notifications.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Razorpay created or confirmed the payment link.}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected link creation., optional: true}
+        - {id: defect, goName: Defect, description: Invalid amount or currency or credentials., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample link was created without notifications.
+          output: {id: plink_ExjpAUN3gVHrPJ, status: created, amount: 1000, currencyCode: INR, referenceId: dex_0123456789abcdef0123456789abcdef, shortUrl: https://rzp.io/i/example}
+    - name: cancelPaymentLink
+      goName: CancelPaymentLink
+      inputType: CancelPaymentLinkInput
+      outputType: PaymentLinkSummary
+      kind: mutation
+      description: Cancel one unpaid standard payment link.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: cancelled, goName: Cancelled, description: The link is cancelled.}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected cancellation., optional: true}
+        - {id: defect, goName: Defect, description: Invalid link ID or credentials., optional: true}
+      mocks:
+        - name: cancelledDefault
+          branch: cancelled
+          default: true
+          description: One sample link was cancelled.
+          output: {id: plink_ExjpAUN3gVHrPJ, status: cancelled, amount: 1000, currencyCode: INR, referenceId: dex_0123456789abcdef0123456789abcdef, shortUrl: https://rzp.io/i/example}
     - name: listRefunds
       goName: ListRefunds
       inputType: ListRefundsInput

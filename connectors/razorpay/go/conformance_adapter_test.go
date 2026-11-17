@@ -37,5 +37,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"listRefunds":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListRefunds(), reference),
 		"getRefund":          newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetRefund(), reference),
 		"createNormalRefund": newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CreateNormalRefund(), reference, scenario.CallID),
+		"listPaymentLinks":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPaymentLinks(), reference),
+		"getPaymentLink":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPaymentLink(), reference),
+		"createPaymentLink":  newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CreatePaymentLink(), reference, scenario.CallID),
+		"cancelPaymentLink":  newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CancelPaymentLink(), reference, scenario.CallID),
 	}}
 }

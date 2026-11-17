@@ -41,6 +41,10 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListPaymentLinks() sdkgo.Query[ListPaymentLinksInput, PaymentLinkPage]
+	GetPaymentLink() sdkgo.Query[GetPaymentLinkInput, PaymentLinkSummary]
+	CreatePaymentLink() sdkgo.Mutation[CreatePaymentLinkInput, PaymentLinkSummary]
+	CancelPaymentLink() sdkgo.Mutation[CancelPaymentLinkInput, PaymentLinkSummary]
 	ListRefunds() sdkgo.Query[ListRefundsInput, RefundPage]
 	GetRefund() sdkgo.Query[GetRefundInput, RefundStatus]
 	CreateNormalRefund() sdkgo.Mutation[CreateNormalRefundInput, RefundStatus]
@@ -54,6 +58,18 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListPaymentLinks() sdkgo.Query[ListPaymentLinksInput, PaymentLinkPage] {
+	return operations.client.ListPaymentLinks()
+}
+func (operations clientOperations) GetPaymentLink() sdkgo.Query[GetPaymentLinkInput, PaymentLinkSummary] {
+	return operations.client.GetPaymentLink()
+}
+func (operations clientOperations) CreatePaymentLink() sdkgo.Mutation[CreatePaymentLinkInput, PaymentLinkSummary] {
+	return operations.client.CreatePaymentLink()
+}
+func (operations clientOperations) CancelPaymentLink() sdkgo.Mutation[CancelPaymentLinkInput, PaymentLinkSummary] {
+	return operations.client.CancelPaymentLink()
+}
 func (operations clientOperations) ListRefunds() sdkgo.Query[ListRefundsInput, RefundPage] {
 	return operations.client.ListRefunds()
 }
@@ -222,6 +238,286 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential key_secret is required")
 	}
 	return nil
+}
+
+const ListPaymentLinksBranchListed sdkgo.BranchID = "listed"
+const ListPaymentLinksBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListPaymentLinksBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListPaymentLinksBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListPaymentLinksDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listPaymentLinks"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListPaymentLinksBranchListed, Description: "Razorpay returned payment links."},
+		{ID: ListPaymentLinksBranchProviderRejected, Description: "Razorpay conclusively rejected the list.", Optional: true},
+		{ID: ListPaymentLinksBranchInvalidResponse, Description: "Razorpay returned unusable link data.", Optional: true},
+		{ID: ListPaymentLinksBranchDefect, Description: "The credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListPaymentLinksResult = sdkgo.QueryResult[PaymentLinkPage]
+
+type ListPaymentLinksStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=razorpay"`
+	operationID                    struct{}                                           `connector:"operationId=listPaymentLinks"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListPaymentLinksInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListPaymentLinksResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListPaymentLinksResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListPaymentLinksResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListPaymentLinksResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PaymentLinkPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewListPaymentLinksStep[IN any](config ListPaymentLinksStepConfig[IN]) sdkgo.QueryStep[IN, ListPaymentLinksInput, PaymentLinkPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("razorpay connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPaymentLinksInput, PaymentLinkPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListPaymentLinks(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListPaymentLinksResult] {
+			branches := make([]sdkgo.BranchTarget[ListPaymentLinksResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListPaymentLinksBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListPaymentLinksBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListPaymentLinksBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListPaymentLinksBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetPaymentLinkBranchFound sdkgo.BranchID = "found"
+const GetPaymentLinkBranchNotFound sdkgo.BranchID = "notFound"
+const GetPaymentLinkBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetPaymentLinkBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetPaymentLinkBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetPaymentLinkDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getPaymentLink"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetPaymentLinkBranchFound, Description: "Razorpay returned the payment link."},
+		{ID: GetPaymentLinkBranchNotFound, Description: "The payment link was not found.", Optional: true},
+		{ID: GetPaymentLinkBranchProviderRejected, Description: "Razorpay conclusively rejected the lookup.", Optional: true},
+		{ID: GetPaymentLinkBranchInvalidResponse, Description: "Razorpay returned unusable link data.", Optional: true},
+		{ID: GetPaymentLinkBranchDefect, Description: "The link ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetPaymentLinkResult = sdkgo.QueryResult[PaymentLinkSummary]
+
+type GetPaymentLinkStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=razorpay"`
+	operationID                    struct{}                                              `connector:"operationId=getPaymentLink"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetPaymentLinkInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetPaymentLinkResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetPaymentLinkResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetPaymentLinkResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetPaymentLinkResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetPaymentLinkResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PaymentLinkSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewGetPaymentLinkStep[IN any](config GetPaymentLinkStepConfig[IN]) sdkgo.QueryStep[IN, GetPaymentLinkInput, PaymentLinkSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("razorpay connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetPaymentLinkInput, PaymentLinkSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetPaymentLink(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetPaymentLinkResult] {
+			branches := make([]sdkgo.BranchTarget[GetPaymentLinkResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetPaymentLinkBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetPaymentLinkBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetPaymentLinkBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetPaymentLinkBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetPaymentLinkBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreatePaymentLinkBranchCreated sdkgo.BranchID = "created"
+const CreatePaymentLinkBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreatePaymentLinkBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreatePaymentLinkDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createPaymentLink"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreatePaymentLinkBranchCreated, Description: "Razorpay created or confirmed the payment link."},
+		{ID: CreatePaymentLinkBranchProviderRejected, Description: "Razorpay conclusively rejected link creation.", Optional: true},
+		{ID: CreatePaymentLinkBranchDefect, Description: "Invalid amount or currency or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CreatePaymentLinkResult = sdkgo.MutationResult[PaymentLinkSummary]
+
+type CreatePaymentLinkStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=razorpay"`
+	operationID                       struct{}                                                 `connector:"operationId=createPaymentLink"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreatePaymentLinkInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreatePaymentLinkResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreatePaymentLinkResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreatePaymentLinkResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentLinkSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewCreatePaymentLinkStep[IN any](config CreatePaymentLinkStepConfig[IN]) sdkgo.MutationStep[IN, CreatePaymentLinkInput, PaymentLinkSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("razorpay connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreatePaymentLinkInput, PaymentLinkSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreatePaymentLink(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreatePaymentLinkResult] {
+			branches := make([]sdkgo.BranchTarget[CreatePaymentLinkResult], 0, 3)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreatePaymentLinkBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreatePaymentLinkBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreatePaymentLinkBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CancelPaymentLinkBranchCancelled sdkgo.BranchID = "cancelled"
+const CancelPaymentLinkBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CancelPaymentLinkBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CancelPaymentLinkDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "cancelPaymentLink"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CancelPaymentLinkBranchCancelled, Description: "The link is cancelled."},
+		{ID: CancelPaymentLinkBranchProviderRejected, Description: "Razorpay conclusively rejected cancellation.", Optional: true},
+		{ID: CancelPaymentLinkBranchDefect, Description: "Invalid link ID or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CancelPaymentLinkResult = sdkgo.MutationResult[PaymentLinkSummary]
+
+type CancelPaymentLinkStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=razorpay"`
+	operationID                       struct{}                                                 `connector:"operationId=cancelPaymentLink"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) CancelPaymentLinkInput                          `connector:"mapToOperationInput"`
+	Cancelled                         sdkgo.Target[CancelPaymentLinkResult]                    `connector:"branch=cancelled"`
+	ProviderRejected                  sdkgo.Target[CancelPaymentLinkResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CancelPaymentLinkResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentLinkSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewCancelPaymentLinkStep[IN any](config CancelPaymentLinkStepConfig[IN]) sdkgo.MutationStep[IN, CancelPaymentLinkInput, PaymentLinkSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("razorpay connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CancelPaymentLinkInput, PaymentLinkSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CancelPaymentLink(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CancelPaymentLinkResult] {
+			branches := make([]sdkgo.BranchTarget[CancelPaymentLinkResult], 0, 3)
+			if config.Cancelled.HasStep() {
+				branches = append(branches, config.Cancelled.BranchTarget(CancelPaymentLinkBranchCancelled))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CancelPaymentLinkBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CancelPaymentLinkBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListRefundsBranchListed sdkgo.BranchID = "listed"

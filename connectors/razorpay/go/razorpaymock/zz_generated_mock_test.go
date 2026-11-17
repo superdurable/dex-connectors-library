@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listPaymentLinks/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.PaymentLinkPage](`{"links":[{"id":"plink_ExjpAUN3gVHrPJ","status":"created","amount":1000,"currencyCode":"INR","referenceId":"dex_0123456789abcdef0123456789abcdef","shortUrl":"https://rzp.io/i/example"}]}`)
+			return err
+		}},
+		{name: "getPaymentLink/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.PaymentLinkSummary](`{"id":"plink_ExjpAUN3gVHrPJ","status":"created","amount":1000,"currencyCode":"INR","referenceId":"dex_0123456789abcdef0123456789abcdef","shortUrl":"https://rzp.io/i/example"}`)
+			return err
+		}},
+		{name: "createPaymentLink/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.PaymentLinkSummary](`{"id":"plink_ExjpAUN3gVHrPJ","status":"created","amount":1000,"currencyCode":"INR","referenceId":"dex_0123456789abcdef0123456789abcdef","shortUrl":"https://rzp.io/i/example"}`)
+			return err
+		}},
+		{name: "cancelPaymentLink/cancelledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.PaymentLinkSummary](`{"id":"plink_ExjpAUN3gVHrPJ","status":"cancelled","amount":1000,"currencyCode":"INR","referenceId":"dex_0123456789abcdef0123456789abcdef","shortUrl":"https://rzp.io/i/example"}`)
+			return err
+		}},
 		{name: "listRefunds/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[razorpay.RefundPage](`{"refunds":[{"id":"rfnd_FP8QHiV938haTz","paymentId":"pay_DG4ZdRK8ZnXC3k","status":"processed","amount":100,"currencyCode":"INR"}],"count":1}`)
 			return err
@@ -62,6 +78,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListPaymentLinks().Definition().Operation.OperationID != "listPaymentLinks" {
+		t.Errorf("listPaymentLinks mock has another definition")
+	}
+	if mock.GetPaymentLink().Definition().Operation.OperationID != "getPaymentLink" {
+		t.Errorf("getPaymentLink mock has another definition")
+	}
+	if mock.CreatePaymentLink().Definition().Operation.OperationID != "createPaymentLink" {
+		t.Errorf("createPaymentLink mock has another definition")
+	}
+	if mock.CancelPaymentLink().Definition().Operation.OperationID != "cancelPaymentLink" {
+		t.Errorf("cancelPaymentLink mock has another definition")
+	}
 	if mock.ListRefunds().Definition().Operation.OperationID != "listRefunds" {
 		t.Errorf("listRefunds mock has another definition")
 	}

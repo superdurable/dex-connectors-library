@@ -3263,6 +3263,1296 @@
       },
       "name": "createNormalRefund-transportFailure",
       "operation": "createNormalRefund"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{\"payment_links\":[{\"id\":\"plink_ExjpAUN3gVHrPJ\",\"status\":\"created\",\"amount\":1000,\"currency\":\"INR\",\"reference_id\":\"merchant-42\",\"short_url\":\"https://rzp.io/i/example\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_links",
+          "query": {
+            "reference_id": [
+              "merchant-42"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "links": [
+            {
+              "amount": 1000,
+              "currencyCode": "INR",
+              "id": "plink_ExjpAUN3gVHrPJ",
+              "referenceId": "merchant-42",
+              "shortUrl": "https://rzp.io/i/example",
+              "status": "created"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "referenceId": "merchant-42"
+      },
+      "name": "listPaymentLinks-success",
+      "operation": "listPaymentLinks"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"description\":\"bad request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_links",
+          "query": {
+            "reference_id": [
+              "merchant-42"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "links": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "referenceId": "merchant-42"
+      },
+      "name": "listPaymentLinks-providerRejected",
+      "operation": "listPaymentLinks"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_links",
+          "query": {
+            "reference_id": [
+              "merchant-42"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "referenceId": "merchant-42"
+      },
+      "name": "listPaymentLinks-rateLimit",
+      "operation": "listPaymentLinks"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_links",
+          "query": {
+            "reference_id": [
+              "merchant-42"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "referenceId": "merchant-42"
+      },
+      "name": "listPaymentLinks-unavailable",
+      "operation": "listPaymentLinks"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_links",
+          "query": {
+            "reference_id": [
+              "merchant-42"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "referenceId": "merchant-42"
+      },
+      "name": "listPaymentLinks-serverError",
+      "operation": "listPaymentLinks"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_links",
+          "query": {
+            "reference_id": [
+              "merchant-42"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "referenceId": "merchant-42"
+      },
+      "name": "listPaymentLinks-transportFailure",
+      "operation": "listPaymentLinks"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_links",
+          "query": {
+            "reference_id": [
+              "merchant-42"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "links": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "referenceId": "merchant-42"
+      },
+      "name": "listPaymentLinks-invalidResponse",
+      "operation": "listPaymentLinks"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"plink_ExjpAUN3gVHrPJ\",\"status\":\"created\",\"amount\":1000,\"currency\":\"INR\",\"reference_id\":\"dex_2e079968e36a5deb9d875a574b85cc80\",\"short_url\":\"https://rzp.io/i/example\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_links/plink_ExjpAUN3gVHrPJ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "amount": 1000,
+          "currencyCode": "INR",
+          "id": "plink_ExjpAUN3gVHrPJ",
+          "referenceId": "dex_2e079968e36a5deb9d875a574b85cc80",
+          "shortUrl": "https://rzp.io/i/example",
+          "status": "created"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentLinkId": "plink_ExjpAUN3gVHrPJ"
+      },
+      "name": "getPaymentLink-success",
+      "operation": "getPaymentLink"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"description\":\"bad request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_links/plink_ExjpAUN3gVHrPJ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "referenceId": "",
+          "shortUrl": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentLinkId": "plink_ExjpAUN3gVHrPJ"
+      },
+      "name": "getPaymentLink-providerRejected",
+      "operation": "getPaymentLink"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_links/plink_ExjpAUN3gVHrPJ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentLinkId": "plink_ExjpAUN3gVHrPJ"
+      },
+      "name": "getPaymentLink-rateLimit",
+      "operation": "getPaymentLink"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_links/plink_ExjpAUN3gVHrPJ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentLinkId": "plink_ExjpAUN3gVHrPJ"
+      },
+      "name": "getPaymentLink-unavailable",
+      "operation": "getPaymentLink"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_links/plink_ExjpAUN3gVHrPJ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentLinkId": "plink_ExjpAUN3gVHrPJ"
+      },
+      "name": "getPaymentLink-serverError",
+      "operation": "getPaymentLink"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_links/plink_ExjpAUN3gVHrPJ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentLinkId": "plink_ExjpAUN3gVHrPJ"
+      },
+      "name": "getPaymentLink-transportFailure",
+      "operation": "getPaymentLink"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_links/plink_ExjpAUN3gVHrPJ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "referenceId": "",
+          "shortUrl": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentLinkId": "plink_ExjpAUN3gVHrPJ"
+      },
+      "name": "getPaymentLink-notFound",
+      "operation": "getPaymentLink"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_links/plink_ExjpAUN3gVHrPJ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "referenceId": "",
+          "shortUrl": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentLinkId": "plink_ExjpAUN3gVHrPJ"
+      },
+      "name": "getPaymentLink-invalidResponse",
+      "operation": "getPaymentLink"
+    },
+    {
+      "callId": "6abcc835-cd5f-53da-8112-ae3cb9c43b93",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"plink_ExjpAUN3gVHrPJ\",\"status\":\"created\",\"amount\":1000,\"currency\":\"INR\",\"reference_id\":\"dex_6abcc835cd5f53da8112ae3cb9c43b93\",\"short_url\":\"https://rzp.io/i/example\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment_links",
+          "requestBody": {
+            "amount": 1000,
+            "currency": "INR",
+            "notify": {
+              "email": false,
+              "sms": false
+            },
+            "reference_id": "dex_6abcc835cd5f53da8112ae3cb9c43b93"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "amount": 1000,
+          "currencyCode": "INR",
+          "id": "plink_ExjpAUN3gVHrPJ",
+          "referenceId": "dex_6abcc835cd5f53da8112ae3cb9c43b93",
+          "shortUrl": "https://rzp.io/i/example",
+          "status": "created"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6abcc835-cd5f-53da-8112-ae3cb9c43b93",
+      "input": {
+        "amount": 1000,
+        "currencyCode": "INR"
+      },
+      "name": "createPaymentLink-success",
+      "operation": "createPaymentLink"
+    },
+    {
+      "callId": "6abcc835-cd5f-53da-8112-ae3cb9c43b93",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"description\":\"bad request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment_links",
+          "requestBody": {
+            "amount": 1000,
+            "currency": "INR",
+            "notify": {
+              "email": false,
+              "sms": false
+            },
+            "reference_id": "dex_6abcc835cd5f53da8112ae3cb9c43b93"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "referenceId": "",
+          "shortUrl": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6abcc835-cd5f-53da-8112-ae3cb9c43b93",
+      "input": {
+        "amount": 1000,
+        "currencyCode": "INR"
+      },
+      "name": "createPaymentLink-providerRejected",
+      "operation": "createPaymentLink"
+    },
+    {
+      "callId": "6abcc835-cd5f-53da-8112-ae3cb9c43b93",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment_links",
+          "requestBody": {
+            "amount": 1000,
+            "currency": "INR",
+            "notify": {
+              "email": false,
+              "sms": false
+            },
+            "reference_id": "dex_6abcc835cd5f53da8112ae3cb9c43b93"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6abcc835-cd5f-53da-8112-ae3cb9c43b93",
+      "input": {
+        "amount": 1000,
+        "currencyCode": "INR"
+      },
+      "name": "createPaymentLink-rateLimit",
+      "operation": "createPaymentLink"
+    },
+    {
+      "callId": "6abcc835-cd5f-53da-8112-ae3cb9c43b93",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment_links",
+          "requestBody": {
+            "amount": 1000,
+            "currency": "INR",
+            "notify": {
+              "email": false,
+              "sms": false
+            },
+            "reference_id": "dex_6abcc835cd5f53da8112ae3cb9c43b93"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6abcc835-cd5f-53da-8112-ae3cb9c43b93",
+      "input": {
+        "amount": 1000,
+        "currencyCode": "INR"
+      },
+      "name": "createPaymentLink-unavailable",
+      "operation": "createPaymentLink"
+    },
+    {
+      "callId": "6abcc835-cd5f-53da-8112-ae3cb9c43b93",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment_links",
+          "requestBody": {
+            "amount": 1000,
+            "currency": "INR",
+            "notify": {
+              "email": false,
+              "sms": false
+            },
+            "reference_id": "dex_6abcc835cd5f53da8112ae3cb9c43b93"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6abcc835-cd5f-53da-8112-ae3cb9c43b93",
+      "input": {
+        "amount": 1000,
+        "currencyCode": "INR"
+      },
+      "name": "createPaymentLink-serverError",
+      "operation": "createPaymentLink"
+    },
+    {
+      "callId": "6abcc835-cd5f-53da-8112-ae3cb9c43b93",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment_links",
+          "requestBody": {
+            "amount": 1000,
+            "currency": "INR",
+            "notify": {
+              "email": false,
+              "sms": false
+            },
+            "reference_id": "dex_6abcc835cd5f53da8112ae3cb9c43b93"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6abcc835-cd5f-53da-8112-ae3cb9c43b93",
+      "input": {
+        "amount": 1000,
+        "currencyCode": "INR"
+      },
+      "name": "createPaymentLink-transportFailure",
+      "operation": "createPaymentLink"
+    },
+    {
+      "callId": "6abcc835-cd5f-53da-8112-ae3cb9c43b93",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"description\":\"reference_id already exists\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment_links",
+          "requestBody": {
+            "amount": 1000,
+            "currency": "INR",
+            "notify": {
+              "email": false,
+              "sms": false
+            },
+            "reference_id": "dex_6abcc835cd5f53da8112ae3cb9c43b93"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"payment_links\":[{\"id\":\"plink_ExjpAUN3gVHrPJ\",\"status\":\"created\",\"amount\":1000,\"currency\":\"INR\",\"reference_id\":\"dex_6abcc835cd5f53da8112ae3cb9c43b93\",\"short_url\":\"https://rzp.io/i/example\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_links",
+          "query": {
+            "reference_id": [
+              "dex_6abcc835cd5f53da8112ae3cb9c43b93"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "amount": 1000,
+          "currencyCode": "INR",
+          "id": "plink_ExjpAUN3gVHrPJ",
+          "referenceId": "dex_6abcc835cd5f53da8112ae3cb9c43b93",
+          "shortUrl": "https://rzp.io/i/example",
+          "status": "created"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6abcc835-cd5f-53da-8112-ae3cb9c43b93",
+      "input": {
+        "amount": 1000,
+        "currencyCode": "INR"
+      },
+      "name": "createPaymentLink-duplicateReference",
+      "operation": "createPaymentLink"
+    },
+    {
+      "callId": "73e1d53e-d231-5340-9d8c-dda594598dca",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"plink_ExjpAUN3gVHrPJ\",\"status\":\"cancelled\",\"amount\":1000,\"currency\":\"INR\",\"reference_id\":\"dex_2e079968e36a5deb9d875a574b85cc80\",\"short_url\":\"https://rzp.io/i/example\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment_links/plink_ExjpAUN3gVHrPJ/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "cancelled",
+        "failureKind": "",
+        "output": {
+          "amount": 1000,
+          "currencyCode": "INR",
+          "id": "plink_ExjpAUN3gVHrPJ",
+          "referenceId": "dex_2e079968e36a5deb9d875a574b85cc80",
+          "shortUrl": "https://rzp.io/i/example",
+          "status": "cancelled"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "73e1d53e-d231-5340-9d8c-dda594598dca",
+      "input": {
+        "paymentLinkId": "plink_ExjpAUN3gVHrPJ"
+      },
+      "name": "cancelPaymentLink-success",
+      "operation": "cancelPaymentLink"
+    },
+    {
+      "callId": "73e1d53e-d231-5340-9d8c-dda594598dca",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"description\":\"bad request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment_links/plink_ExjpAUN3gVHrPJ/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"id\":\"plink_ExjpAUN3gVHrPJ\",\"status\":\"created\",\"amount\":1000,\"currency\":\"INR\",\"reference_id\":\"merchant-42\",\"short_url\":\"https://rzp.io/i/example\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_links/plink_ExjpAUN3gVHrPJ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "referenceId": "",
+          "shortUrl": "",
+          "status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "73e1d53e-d231-5340-9d8c-dda594598dca",
+      "input": {
+        "paymentLinkId": "plink_ExjpAUN3gVHrPJ"
+      },
+      "name": "cancelPaymentLink-providerRejected",
+      "operation": "cancelPaymentLink"
+    },
+    {
+      "callId": "73e1d53e-d231-5340-9d8c-dda594598dca",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment_links/plink_ExjpAUN3gVHrPJ/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "73e1d53e-d231-5340-9d8c-dda594598dca",
+      "input": {
+        "paymentLinkId": "plink_ExjpAUN3gVHrPJ"
+      },
+      "name": "cancelPaymentLink-rateLimit",
+      "operation": "cancelPaymentLink"
+    },
+    {
+      "callId": "73e1d53e-d231-5340-9d8c-dda594598dca",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment_links/plink_ExjpAUN3gVHrPJ/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "73e1d53e-d231-5340-9d8c-dda594598dca",
+      "input": {
+        "paymentLinkId": "plink_ExjpAUN3gVHrPJ"
+      },
+      "name": "cancelPaymentLink-unavailable",
+      "operation": "cancelPaymentLink"
+    },
+    {
+      "callId": "73e1d53e-d231-5340-9d8c-dda594598dca",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment_links/plink_ExjpAUN3gVHrPJ/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "73e1d53e-d231-5340-9d8c-dda594598dca",
+      "input": {
+        "paymentLinkId": "plink_ExjpAUN3gVHrPJ"
+      },
+      "name": "cancelPaymentLink-serverError",
+      "operation": "cancelPaymentLink"
+    },
+    {
+      "callId": "73e1d53e-d231-5340-9d8c-dda594598dca",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment_links/plink_ExjpAUN3gVHrPJ/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "73e1d53e-d231-5340-9d8c-dda594598dca",
+      "input": {
+        "paymentLinkId": "plink_ExjpAUN3gVHrPJ"
+      },
+      "name": "cancelPaymentLink-transportFailure",
+      "operation": "cancelPaymentLink"
+    },
+    {
+      "callId": "73e1d53e-d231-5340-9d8c-dda594598dca",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment_links/plink_ExjpAUN3gVHrPJ/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"id\":\"plink_ExjpAUN3gVHrPJ\",\"status\":\"cancelled\",\"amount\":1000,\"currency\":\"INR\",\"reference_id\":\"dex_2e079968e36a5deb9d875a574b85cc80\",\"short_url\":\"https://rzp.io/i/example\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_links/plink_ExjpAUN3gVHrPJ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "cancelled",
+        "failureKind": "",
+        "output": {
+          "amount": 1000,
+          "currencyCode": "INR",
+          "id": "plink_ExjpAUN3gVHrPJ",
+          "referenceId": "dex_2e079968e36a5deb9d875a574b85cc80",
+          "shortUrl": "https://rzp.io/i/example",
+          "status": "cancelled"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "73e1d53e-d231-5340-9d8c-dda594598dca",
+      "input": {
+        "paymentLinkId": "plink_ExjpAUN3gVHrPJ"
+      },
+      "name": "cancelPaymentLink-alreadyCancelled",
+      "operation": "cancelPaymentLink"
     }
   ],
   "schemaVersion": 1
