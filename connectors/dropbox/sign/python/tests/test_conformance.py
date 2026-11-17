@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/dropbox/sign/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/dropbox/sign/scenarios.json")
+    if scenario["operation"] == "getSignatureRequest"
+]
 CONNECTION = sdk.ConnectionRef("dropbox-sign", "dropbox-sign")
 TEST_CREDENTIALS = dropbox_sign.Credentials(sdk.SecretString("sample-dropbox-sign-api-key"))
 ADAPTER = conformance.PythonOperationAdapter(

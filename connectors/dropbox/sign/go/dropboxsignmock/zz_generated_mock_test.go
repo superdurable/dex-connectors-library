@@ -20,6 +20,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[dropboxsign.SignatureRequestStatus](`{"id":"fa5c8a0b0f492d768749333ad6fcc214c111e967","title":"Example agreement","isComplete":true,"isDeclined":false,"hasError":false}`)
 			return err
 		}},
+		{name: "listSignatureRequests/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dropboxsign.SignatureRequestPage](`{"requests":[{"id":"fa5c8a0b0f492d768749333ad6fcc214c111e967","title":"Example agreement","isComplete":false,"isDeclined":false,"hasError":false}],"page":1,"totalPages":1}`)
+			return err
+		}},
+		{name: "updateSignerName/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dropboxsign.UpdatedSignerName](`{"signatureRequestId":"fa5c8a0b0f492d768749333ad6fcc214c111e967","updated":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +40,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetSignatureRequest().Definition().Operation.OperationID != "getSignatureRequest" {
 		t.Errorf("getSignatureRequest mock has another definition")
+	}
+	if mock.ListSignatureRequests().Definition().Operation.OperationID != "listSignatureRequests" {
+		t.Errorf("listSignatureRequests mock has another definition")
+	}
+	if mock.UpdateSignerName().Definition().Operation.OperationID != "updateSignerName" {
+		t.Errorf("updateSignerName mock has another definition")
 	}
 }

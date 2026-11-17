@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: dropbox-sign
   displayName: Dropbox Sign
-  description: Read a signature request's title and completion status without signer or document data.
+  description: List signature request statuses, inspect one request, and update a signer name without document data.
   company: Dropbox
   categories: [files-documents]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: dropbox-sign
   languages:
@@ -76,3 +76,44 @@ spec:
           default: true
           description: One example signature request is returned.
           output: {id: fa5c8a0b0f492d768749333ad6fcc214c111e967, title: Example agreement, isComplete: true, isDeclined: false, hasError: false}
+    - name: listSignatureRequests
+      goName: ListSignatureRequests
+      inputType: ListSignatureRequestsInput
+      outputType: SignatureRequestPage
+      kind: query
+      description: Read one bounded page of accessible signature request titles and statuses.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Dropbox Sign returned a signature request page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox Sign conclusively rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox Sign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example signature request is listed.
+          output: {requests: [{id: fa5c8a0b0f492d768749333ad6fcc214c111e967, title: Example agreement, isComplete: false, isDeclined: false, hasError: false}], page: 1, totalPages: 1}
+    - name: updateSignerName
+      goName: UpdateSignerName
+      inputType: UpdateSignerNameInput
+      outputType: UpdatedSignerName
+      kind: mutation
+      description: Replace one in-flight request signer's display name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Dropbox Sign accepted the signer name update.}
+        - {id: notFound, goName: NotFound, description: Dropbox Sign did not expose the signature request., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox Sign conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox Sign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One example signer name is updated.
+          output: {signatureRequestId: fa5c8a0b0f492d768749333ad6fcc214c111e967, updated: true}

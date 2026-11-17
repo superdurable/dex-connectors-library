@@ -17,8 +17,10 @@ import (
 
 // Mock is a scripted dropbox-sign connection. Script each operation through its accessor.
 type Mock struct {
-	connection          dropboxsign.Connection
-	getSignatureRequest *connectormock.Query[dropboxsign.GetSignatureRequestInput, dropboxsign.SignatureRequestStatus]
+	connection            dropboxsign.Connection
+	getSignatureRequest   *connectormock.Query[dropboxsign.GetSignatureRequestInput, dropboxsign.SignatureRequestStatus]
+	listSignatureRequests *connectormock.Query[dropboxsign.ListSignatureRequestsInput, dropboxsign.SignatureRequestPage]
+	updateSignerName      *connectormock.Mutation[dropboxsign.UpdateSignerNameInput, dropboxsign.UpdatedSignerName]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +28,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getSignatureRequest: connectormock.NewQuery[dropboxsign.GetSignatureRequestInput, dropboxsign.SignatureRequestStatus](t, dropboxsign.GetSignatureRequestDefinition),
+		getSignatureRequest:   connectormock.NewQuery[dropboxsign.GetSignatureRequestInput, dropboxsign.SignatureRequestStatus](t, dropboxsign.GetSignatureRequestDefinition),
+		listSignatureRequests: connectormock.NewQuery[dropboxsign.ListSignatureRequestsInput, dropboxsign.SignatureRequestPage](t, dropboxsign.ListSignatureRequestsDefinition),
+		updateSignerName:      connectormock.NewMutation[dropboxsign.UpdateSignerNameInput, dropboxsign.UpdatedSignerName](t, dropboxsign.UpdateSignerNameDefinition),
 	}
 	mock.getSignatureRequest.Default(GetSignatureRequestDefault())
+	mock.listSignatureRequests.Default(ListSignatureRequestsDefault())
+	mock.updateSignerName.Default(UpdateSignerNameDefault())
 	connection, err := dropboxsign.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "dropbox-sign", Name: connectionName})
 	if err != nil {
 		t.Fatalf("dropbox-sign mock connection: %v", err)
@@ -45,10 +51,26 @@ func (mock *Mock) GetSignatureRequest() *connectormock.Query[dropboxsign.GetSign
 	return mock.getSignatureRequest
 }
 
+// ListSignatureRequests returns the listSignatureRequests script.
+func (mock *Mock) ListSignatureRequests() *connectormock.Query[dropboxsign.ListSignatureRequestsInput, dropboxsign.SignatureRequestPage] {
+	return mock.listSignatureRequests
+}
+
+// UpdateSignerName returns the updateSignerName script.
+func (mock *Mock) UpdateSignerName() *connectormock.Mutation[dropboxsign.UpdateSignerNameInput, dropboxsign.UpdatedSignerName] {
+	return mock.updateSignerName
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetSignatureRequest() sdkgo.Query[dropboxsign.GetSignatureRequestInput, dropboxsign.SignatureRequestStatus] {
 	return operations.mock.getSignatureRequest
+}
+func (operations mockOperations) ListSignatureRequests() sdkgo.Query[dropboxsign.ListSignatureRequestsInput, dropboxsign.SignatureRequestPage] {
+	return operations.mock.listSignatureRequests
+}
+func (operations mockOperations) UpdateSignerName() sdkgo.Mutation[dropboxsign.UpdateSignerNameInput, dropboxsign.UpdatedSignerName] {
+	return operations.mock.updateSignerName
 }
 
 // GetSignatureRequestFound selects the found branch: Dropbox Sign returned the signature request.
@@ -90,4 +112,81 @@ func GetSignatureRequestFoundDefault() connectormock.Case[dropboxsign.SignatureR
 // GetSignatureRequestDefault is the manifest default, foundDefault, which New installs.
 func GetSignatureRequestDefault() connectormock.Case[dropboxsign.SignatureRequestStatus] {
 	return GetSignatureRequestFoundDefault()
+}
+
+// ListSignatureRequestsListed selects the listed branch: Dropbox Sign returned a signature request page.
+func ListSignatureRequestsListed(value dropboxsign.SignatureRequestPage, failure *sdkgo.Failure) connectormock.Case[dropboxsign.SignatureRequestPage] {
+	return connectormock.Branch(dropboxsign.ListSignatureRequestsBranchListed, value, failure)
+}
+
+// ListSignatureRequestsProviderRejected selects the providerRejected branch: Dropbox Sign conclusively rejected the list request.
+func ListSignatureRequestsProviderRejected(value dropboxsign.SignatureRequestPage, failure *sdkgo.Failure) connectormock.Case[dropboxsign.SignatureRequestPage] {
+	return connectormock.Branch(dropboxsign.ListSignatureRequestsBranchProviderRejected, value, failure)
+}
+
+// ListSignatureRequestsInvalidResponse selects the invalidResponse branch: Dropbox Sign returned malformed or oversized JSON.
+func ListSignatureRequestsInvalidResponse(value dropboxsign.SignatureRequestPage, failure *sdkgo.Failure) connectormock.Case[dropboxsign.SignatureRequestPage] {
+	return connectormock.Branch(dropboxsign.ListSignatureRequestsBranchInvalidResponse, value, failure)
+}
+
+// ListSignatureRequestsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListSignatureRequestsDefect(value dropboxsign.SignatureRequestPage, failure *sdkgo.Failure) connectormock.Case[dropboxsign.SignatureRequestPage] {
+	return connectormock.Branch(dropboxsign.ListSignatureRequestsBranchDefect, value, failure)
+}
+
+// ListSignatureRequestsRetry asks Dex to retry the listSignatureRequests Step, after the delay when it is positive.
+func ListSignatureRequestsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dropboxsign.SignatureRequestPage] {
+	return connectormock.Retry[dropboxsign.SignatureRequestPage](failure, after)
+}
+
+// ListSignatureRequestsListedDefault is the manifest mock listedDefault: One example signature request is listed.
+func ListSignatureRequestsListedDefault() connectormock.Case[dropboxsign.SignatureRequestPage] {
+	value := connectormock.MustDecodeOutput[dropboxsign.SignatureRequestPage](`{"requests":[{"id":"fa5c8a0b0f492d768749333ad6fcc214c111e967","title":"Example agreement","isComplete":false,"isDeclined":false,"hasError":false}],"page":1,"totalPages":1}`)
+	return connectormock.Branch(dropboxsign.ListSignatureRequestsBranchListed, value, nil)
+}
+
+// ListSignatureRequestsDefault is the manifest default, listedDefault, which New installs.
+func ListSignatureRequestsDefault() connectormock.Case[dropboxsign.SignatureRequestPage] {
+	return ListSignatureRequestsListedDefault()
+}
+
+// UpdateSignerNameUpdated selects the updated branch: Dropbox Sign accepted the signer name update.
+func UpdateSignerNameUpdated(value dropboxsign.UpdatedSignerName, failure *sdkgo.Failure) connectormock.Case[dropboxsign.UpdatedSignerName] {
+	return connectormock.Branch(dropboxsign.UpdateSignerNameBranchUpdated, value, failure)
+}
+
+// UpdateSignerNameNotFound selects the notFound branch: Dropbox Sign did not expose the signature request.
+func UpdateSignerNameNotFound(value dropboxsign.UpdatedSignerName, failure *sdkgo.Failure) connectormock.Case[dropboxsign.UpdatedSignerName] {
+	return connectormock.Branch(dropboxsign.UpdateSignerNameBranchNotFound, value, failure)
+}
+
+// UpdateSignerNameProviderRejected selects the providerRejected branch: Dropbox Sign conclusively rejected the update.
+func UpdateSignerNameProviderRejected(value dropboxsign.UpdatedSignerName, failure *sdkgo.Failure) connectormock.Case[dropboxsign.UpdatedSignerName] {
+	return connectormock.Branch(dropboxsign.UpdateSignerNameBranchProviderRejected, value, failure)
+}
+
+// UpdateSignerNameInvalidResponse selects the invalidResponse branch: Dropbox Sign returned malformed or oversized JSON.
+func UpdateSignerNameInvalidResponse(value dropboxsign.UpdatedSignerName, failure *sdkgo.Failure) connectormock.Case[dropboxsign.UpdatedSignerName] {
+	return connectormock.Branch(dropboxsign.UpdateSignerNameBranchInvalidResponse, value, failure)
+}
+
+// UpdateSignerNameDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateSignerNameDefect(value dropboxsign.UpdatedSignerName, failure *sdkgo.Failure) connectormock.Case[dropboxsign.UpdatedSignerName] {
+	return connectormock.Branch(dropboxsign.UpdateSignerNameBranchDefect, value, failure)
+}
+
+// UpdateSignerNameRetry asks Dex to retry the updateSignerName Step, after the delay when it is positive.
+func UpdateSignerNameRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dropboxsign.UpdatedSignerName] {
+	return connectormock.Retry[dropboxsign.UpdatedSignerName](failure, after)
+}
+
+// UpdateSignerNameUpdatedDefault is the manifest mock updatedDefault: One example signer name is updated.
+func UpdateSignerNameUpdatedDefault() connectormock.Case[dropboxsign.UpdatedSignerName] {
+	value := connectormock.MustDecodeOutput[dropboxsign.UpdatedSignerName](`{"signatureRequestId":"fa5c8a0b0f492d768749333ad6fcc214c111e967","updated":true}`)
+	return connectormock.Branch(dropboxsign.UpdateSignerNameBranchUpdated, value, nil)
+}
+
+// UpdateSignerNameDefault is the manifest default, updatedDefault, which New installs.
+func UpdateSignerNameDefault() connectormock.Case[dropboxsign.UpdatedSignerName] {
+	return UpdateSignerNameUpdatedDefault()
 }
