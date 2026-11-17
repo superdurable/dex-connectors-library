@@ -24,7 +24,7 @@ import (
 func TestContactReadUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := keapmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, NewDirectoryFlow(mock.Connection()), NewCompanyFlow(mock.Connection()), NewNoteFlow(mock.Connection()), NewTagFlow(mock.Connection()), NewOrderFlow(mock.Connection()), NewProductFlow(mock.Connection()), NewEmailListFlow(mock.Connection())})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, NewDirectoryFlow(mock.Connection()), NewCompanyFlow(mock.Connection()), NewNoteFlow(mock.Connection()), NewTagFlow(mock.Connection()), NewOrderFlow(mock.Connection()), NewProductFlow(mock.Connection()), NewEmailListFlow(mock.Connection()), NewFileListFlow(mock.Connection())})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -138,4 +138,16 @@ func TestContactReadUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Len(t, emails.Emails, 1)
 	require.Equal(t, "801", emails.Emails[0].ID)
 	require.Len(t, mock.ListEmails().Calls(), 1)
+	fileFlow := NewFileListFlow(mock.Connection())
+	fileFlowID := "keap-files-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, fileFlow, fileFlowID, keap.ListFilesInput{PageSize: 20}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	fileResult, err := client.WaitForFlow(ctx, fileFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, fileResult.Status, fileResult.ErrorMessage)
+	var files keap.FilesPage
+	require.NoError(t, fileResult.DecodeSingleOutput(&files))
+	require.Len(t, files.Files, 1)
+	require.Equal(t, "701", files.Files[0].ID)
+	require.Len(t, mock.ListFiles().Calls(), 1)
 }

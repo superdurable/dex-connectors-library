@@ -694,3 +694,44 @@ spec:
           default: true
           description: A sample sent-email record is deleted.
           output: {emailId: '801', deleted: true}
+    - name: listFiles
+      goName: ListFiles
+      inputType: ListFilesInput
+      outputType: FilesPage
+      kind: query
+      description: List one bounded page of Keap file metadata.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Keap returned a file page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid file list JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample file-metadata page is returned.
+          output: {files: [{id: '701', fileName: example.pdf, fileSizeBytes: 1024, isPublic: false}], nextPageToken: ''}
+    - name: deleteFile
+      goName: DeleteFile
+      inputType: FileIDInput
+      outputType: FileDeletion
+      kind: mutation
+      description: Delete one Keap file by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Keap accepted the file deletion.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the file., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid deletion JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample file is deleted.
+          output: {fileId: '701', deleted: true}

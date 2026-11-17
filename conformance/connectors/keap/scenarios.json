@@ -11776,6 +11776,668 @@
       ],
       "name": "sendEmail-uncertain",
       "operation": "sendEmail"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{\"files\":[{\"id\":\"701\",\"file_name\":\"example.pdf\",\"file_size\":1024,\"is_public\":false}],\"next_page_token\":\"next-files\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/files",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "files": [
+            {
+              "fileName": "example.pdf",
+              "fileSizeBytes": 1024,
+              "id": "701",
+              "isPublic": false
+            }
+          ],
+          "nextPageToken": "next-files"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listFiles-happy",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/files",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "files": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listFiles-rejected",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{\"files\":[{\"id\":\"701\",\"file_name\":\"example.pdf\",\"file_size\":1024,\"is_public\":false}],\"next_page_token\":\"next-files\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/files",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "files": [
+            {
+              "fileName": "example.pdf",
+              "fileSizeBytes": 1024,
+              "id": "701",
+              "isPublic": false
+            }
+          ],
+          "nextPageToken": "next-files"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listFiles-invalid",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/files",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listFiles-rateLimit",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/files",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listFiles-unavailable",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/files",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listFiles-serverFailure",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/files",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listFiles-transportFailure",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "files": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 101
+      },
+      "name": "listFiles-defect",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/files/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "fileId": "701"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
+      "input": {
+        "fileId": "701"
+      },
+      "name": "deleteFile-happy",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/files/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "fileId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
+      "input": {
+        "fileId": "701"
+      },
+      "name": "deleteFile-rejected",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
+      "exchanges": [
+        {
+          "body": "invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/files/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false,
+          "fileId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
+      "input": {
+        "fileId": "701"
+      },
+      "name": "deleteFile-invalid",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/files/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "fileId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
+      "input": {
+        "fileId": "701"
+      },
+      "name": "deleteFile-notFound",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/files/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
+      "input": {
+        "fileId": "701"
+      },
+      "name": "deleteFile-rateLimit",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/files/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
+      "input": {
+        "fileId": "701"
+      },
+      "name": "deleteFile-unavailable",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/files/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
+      "input": {
+        "fileId": "701"
+      },
+      "name": "deleteFile-serverFailure",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/files/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
+      "input": {
+        "fileId": "701"
+      },
+      "name": "deleteFile-transportFailure",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "fileId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
+      "input": {
+        "fileId": "bad id"
+      },
+      "name": "deleteFile-defect",
+      "operation": "deleteFile"
     }
   ],
   "schemaVersion": 1

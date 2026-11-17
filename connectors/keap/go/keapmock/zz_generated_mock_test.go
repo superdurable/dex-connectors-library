@@ -140,6 +140,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[keap.EmailRecordDeletion](`{"emailId":"801","deleted":true}`)
 			return err
 		}},
+		{name: "listFiles/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.FilesPage](`{"files":[{"id":"701","fileName":"example.pdf","fileSizeBytes":1024,"isPublic":false}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "deleteFile/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.FileDeletion](`{"fileId":"701","deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -242,5 +250,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteEmailRecord().Definition().Operation.OperationID != "deleteEmailRecord" {
 		t.Errorf("deleteEmailRecord mock has another definition")
+	}
+	if mock.ListFiles().Definition().Operation.OperationID != "listFiles" {
+		t.Errorf("listFiles mock has another definition")
+	}
+	if mock.DeleteFile().Definition().Operation.OperationID != "deleteFile" {
+		t.Errorf("deleteFile mock has another definition")
 	}
 }

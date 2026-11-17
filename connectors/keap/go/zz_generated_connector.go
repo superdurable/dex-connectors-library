@@ -71,6 +71,8 @@ type Operations interface {
 	CreateEmailRecord() sdkgo.Mutation[CreateEmailRecordInput, EmailRecord]
 	SendEmail() sdkgo.Mutation[SendEmailInput, EmailSendReceipt]
 	DeleteEmailRecord() sdkgo.Mutation[EmailRecordIDInput, EmailRecordDeletion]
+	ListFiles() sdkgo.Query[ListFilesInput, FilesPage]
+	DeleteFile() sdkgo.Mutation[FileIDInput, FileDeletion]
 }
 
 type clientOperations struct{ client *Client }
@@ -167,6 +169,12 @@ func (operations clientOperations) SendEmail() sdkgo.Mutation[SendEmailInput, Em
 }
 func (operations clientOperations) DeleteEmailRecord() sdkgo.Mutation[EmailRecordIDInput, EmailRecordDeletion] {
 	return operations.client.DeleteEmailRecord()
+}
+func (operations clientOperations) ListFiles() sdkgo.Query[ListFilesInput, FilesPage] {
+	return operations.client.ListFiles()
+}
+func (operations clientOperations) DeleteFile() sdkgo.Mutation[FileIDInput, FileDeletion] {
+	return operations.client.DeleteFile()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -2656,6 +2664,155 @@ func NewDeleteEmailRecordStep[IN any](config DeleteEmailRecordStepConfig[IN]) sd
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteEmailRecordBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListFilesBranchListed sdkgo.BranchID = "listed"
+const ListFilesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListFilesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListFilesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListFilesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listFiles"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListFilesBranchListed, Description: "Keap returned a file page."},
+		{ID: ListFilesBranchProviderRejected, Description: "Keap rejected the list request.", Optional: true},
+		{ID: ListFilesBranchInvalidResponse, Description: "Keap returned invalid file list JSON.", Optional: true},
+		{ID: ListFilesBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListFilesResult = sdkgo.QueryResult[FilesPage]
+
+type ListFilesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=keap"`
+	operationID                    struct{}                                     `connector:"operationId=listFiles"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListFilesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListFilesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListFilesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListFilesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListFilesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[FilesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListFilesStep[IN any](config ListFilesStepConfig[IN]) sdkgo.QueryStep[IN, ListFilesInput, FilesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("keap connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListFilesInput, FilesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListFiles(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListFilesResult] {
+			branches := make([]sdkgo.BranchTarget[ListFilesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListFilesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListFilesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListFilesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListFilesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteFileBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteFileBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteFileBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteFileBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteFileBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteFileDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteFile"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteFileBranchDeleted, Description: "Keap accepted the file deletion."},
+		{ID: DeleteFileBranchNotFound, Description: "Keap did not find the file.", Optional: true},
+		{ID: DeleteFileBranchProviderRejected, Description: "Keap rejected the deletion.", Optional: true},
+		{ID: DeleteFileBranchInvalidResponse, Description: "Keap returned invalid deletion JSON.", Optional: true},
+		{ID: DeleteFileBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteFileResult = sdkgo.MutationResult[FileDeletion]
+
+type DeleteFileStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=keap"`
+	operationID                       struct{}                                           `connector:"operationId=deleteFile"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) FileIDInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteFileResult]                     `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteFileResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteFileResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteFileResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteFileResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[FileDeletion]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteFileStep[IN any](config DeleteFileStepConfig[IN]) sdkgo.MutationStep[IN, FileIDInput, FileDeletion] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("keap connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, FileIDInput, FileDeletion]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteFile(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteFileResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteFileResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteFileBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteFileBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteFileBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteFileBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteFileBranchDefect))
 			}
 			return branches
 		}(),

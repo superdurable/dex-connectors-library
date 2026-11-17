@@ -49,6 +49,8 @@ type Mock struct {
 	createEmailRecord *connectormock.Mutation[keap.CreateEmailRecordInput, keap.EmailRecord]
 	sendEmail         *connectormock.Mutation[keap.SendEmailInput, keap.EmailSendReceipt]
 	deleteEmailRecord *connectormock.Mutation[keap.EmailRecordIDInput, keap.EmailRecordDeletion]
+	listFiles         *connectormock.Query[keap.ListFilesInput, keap.FilesPage]
+	deleteFile        *connectormock.Mutation[keap.FileIDInput, keap.FileDeletion]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -87,6 +89,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		createEmailRecord: connectormock.NewMutation[keap.CreateEmailRecordInput, keap.EmailRecord](t, keap.CreateEmailRecordDefinition),
 		sendEmail:         connectormock.NewMutation[keap.SendEmailInput, keap.EmailSendReceipt](t, keap.SendEmailDefinition),
 		deleteEmailRecord: connectormock.NewMutation[keap.EmailRecordIDInput, keap.EmailRecordDeletion](t, keap.DeleteEmailRecordDefinition),
+		listFiles:         connectormock.NewQuery[keap.ListFilesInput, keap.FilesPage](t, keap.ListFilesDefinition),
+		deleteFile:        connectormock.NewMutation[keap.FileIDInput, keap.FileDeletion](t, keap.DeleteFileDefinition),
 	}
 	mock.getContact.Default(GetContactDefault())
 	mock.listContacts.Default(ListContactsDefault())
@@ -119,6 +123,8 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createEmailRecord.Default(CreateEmailRecordDefault())
 	mock.sendEmail.Default(SendEmailDefault())
 	mock.deleteEmailRecord.Default(DeleteEmailRecordDefault())
+	mock.listFiles.Default(ListFilesDefault())
+	mock.deleteFile.Default(DeleteFileDefault())
 	connection, err := keap.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "keap", Name: connectionName})
 	if err != nil {
 		t.Fatalf("keap mock connection: %v", err)
@@ -285,6 +291,16 @@ func (mock *Mock) DeleteEmailRecord() *connectormock.Mutation[keap.EmailRecordID
 	return mock.deleteEmailRecord
 }
 
+// ListFiles returns the listFiles script.
+func (mock *Mock) ListFiles() *connectormock.Query[keap.ListFilesInput, keap.FilesPage] {
+	return mock.listFiles
+}
+
+// DeleteFile returns the deleteFile script.
+func (mock *Mock) DeleteFile() *connectormock.Mutation[keap.FileIDInput, keap.FileDeletion] {
+	return mock.deleteFile
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetContact() sdkgo.Query[keap.GetContactInput, keap.ContactProfile] {
@@ -379,6 +395,12 @@ func (operations mockOperations) SendEmail() sdkgo.Mutation[keap.SendEmailInput,
 }
 func (operations mockOperations) DeleteEmailRecord() sdkgo.Mutation[keap.EmailRecordIDInput, keap.EmailRecordDeletion] {
 	return operations.mock.deleteEmailRecord
+}
+func (operations mockOperations) ListFiles() sdkgo.Query[keap.ListFilesInput, keap.FilesPage] {
+	return operations.mock.listFiles
+}
+func (operations mockOperations) DeleteFile() sdkgo.Mutation[keap.FileIDInput, keap.FileDeletion] {
+	return operations.mock.deleteFile
 }
 
 // GetContactFound selects the found branch: Keap returned the contact.
@@ -1569,3 +1591,76 @@ func DeleteEmailRecordDeletedDefault() connectormock.Case[keap.EmailRecordDeleti
 func DeleteEmailRecordDefault() connectormock.Case[keap.EmailRecordDeletion] {
 	return DeleteEmailRecordDeletedDefault()
 }
+
+// ListFilesListed selects the listed branch: Keap returned a file page.
+func ListFilesListed(value keap.FilesPage, failure *sdkgo.Failure) connectormock.Case[keap.FilesPage] {
+	return connectormock.Branch(keap.ListFilesBranchListed, value, failure)
+}
+
+// ListFilesProviderRejected selects the providerRejected branch: Keap rejected the list request.
+func ListFilesProviderRejected(value keap.FilesPage, failure *sdkgo.Failure) connectormock.Case[keap.FilesPage] {
+	return connectormock.Branch(keap.ListFilesBranchProviderRejected, value, failure)
+}
+
+// ListFilesInvalidResponse selects the invalidResponse branch: Keap returned invalid file list JSON.
+func ListFilesInvalidResponse(value keap.FilesPage, failure *sdkgo.Failure) connectormock.Case[keap.FilesPage] {
+	return connectormock.Branch(keap.ListFilesBranchInvalidResponse, value, failure)
+}
+
+// ListFilesDefect selects the defect branch: Input or credentials are invalid.
+func ListFilesDefect(value keap.FilesPage, failure *sdkgo.Failure) connectormock.Case[keap.FilesPage] {
+	return connectormock.Branch(keap.ListFilesBranchDefect, value, failure)
+}
+
+// ListFilesRetry asks Dex to retry the listFiles Step, after the delay when it is positive.
+func ListFilesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.FilesPage] {
+	return connectormock.Retry[keap.FilesPage](failure, after)
+}
+
+// ListFilesListedDefault is the manifest mock listedDefault: A sample file-metadata page is returned.
+func ListFilesListedDefault() connectormock.Case[keap.FilesPage] {
+	value := connectormock.MustDecodeOutput[keap.FilesPage](`{"files":[{"id":"701","fileName":"example.pdf","fileSizeBytes":1024,"isPublic":false}],"nextPageToken":""}`)
+	return connectormock.Branch(keap.ListFilesBranchListed, value, nil)
+}
+
+// ListFilesDefault is the manifest default, listedDefault, which New installs.
+func ListFilesDefault() connectormock.Case[keap.FilesPage] { return ListFilesListedDefault() }
+
+// DeleteFileDeleted selects the deleted branch: Keap accepted the file deletion.
+func DeleteFileDeleted(value keap.FileDeletion, failure *sdkgo.Failure) connectormock.Case[keap.FileDeletion] {
+	return connectormock.Branch(keap.DeleteFileBranchDeleted, value, failure)
+}
+
+// DeleteFileNotFound selects the notFound branch: Keap did not find the file.
+func DeleteFileNotFound(value keap.FileDeletion, failure *sdkgo.Failure) connectormock.Case[keap.FileDeletion] {
+	return connectormock.Branch(keap.DeleteFileBranchNotFound, value, failure)
+}
+
+// DeleteFileProviderRejected selects the providerRejected branch: Keap rejected the deletion.
+func DeleteFileProviderRejected(value keap.FileDeletion, failure *sdkgo.Failure) connectormock.Case[keap.FileDeletion] {
+	return connectormock.Branch(keap.DeleteFileBranchProviderRejected, value, failure)
+}
+
+// DeleteFileInvalidResponse selects the invalidResponse branch: Keap returned invalid deletion JSON.
+func DeleteFileInvalidResponse(value keap.FileDeletion, failure *sdkgo.Failure) connectormock.Case[keap.FileDeletion] {
+	return connectormock.Branch(keap.DeleteFileBranchInvalidResponse, value, failure)
+}
+
+// DeleteFileDefect selects the defect branch: Input or credentials are invalid.
+func DeleteFileDefect(value keap.FileDeletion, failure *sdkgo.Failure) connectormock.Case[keap.FileDeletion] {
+	return connectormock.Branch(keap.DeleteFileBranchDefect, value, failure)
+}
+
+// DeleteFileRetry asks Dex to retry the deleteFile Step, after the delay when it is positive.
+func DeleteFileRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.FileDeletion] {
+	return connectormock.Retry[keap.FileDeletion](failure, after)
+}
+
+// DeleteFileDeletedDefault is the manifest mock deletedDefault: A sample file is deleted.
+func DeleteFileDeletedDefault() connectormock.Case[keap.FileDeletion] {
+	value := connectormock.MustDecodeOutput[keap.FileDeletion](`{"fileId":"701","deleted":true}`)
+	return connectormock.Branch(keap.DeleteFileBranchDeleted, value, nil)
+}
+
+// DeleteFileDefault is the manifest default, deletedDefault, which New installs.
+func DeleteFileDefault() connectormock.Case[keap.FileDeletion] { return DeleteFileDeletedDefault() }
