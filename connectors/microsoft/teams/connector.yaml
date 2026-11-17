@@ -160,7 +160,7 @@ spec:
       description: List one page of channels in a team using Channel.ReadBasic.All.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: A page of channels was listed.}
         - {id: notFound, goName: NotFound, description: The team is absent., optional: true}
@@ -181,7 +181,7 @@ spec:
       description: Read one channel's metadata using Channel.ReadBasic.All.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: The channel was found.}
         - {id: notFound, goName: NotFound, description: The team or channel is absent., optional: true}
@@ -202,7 +202,7 @@ spec:
       description: List one page of root channel messages using ChannelMessage.Read.All.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: A page of messages was listed.}
         - {id: notFound, goName: NotFound, description: The team or channel is absent., optional: true}
@@ -223,7 +223,7 @@ spec:
       description: Read one root channel message using ChannelMessage.Read.All.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: The message was found.}
         - {id: notFound, goName: NotFound, description: The message is absent., optional: true}
@@ -244,7 +244,7 @@ spec:
       description: List one page of the signed-in user's chat metadata using Chat.ReadBasic.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: A page of chats was listed.}
         - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the chat list., optional: true}
@@ -264,7 +264,7 @@ spec:
       description: Read one chat's metadata using Chat.ReadBasic.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: The chat was found.}
         - {id: notFound, goName: NotFound, description: The chat is absent., optional: true}

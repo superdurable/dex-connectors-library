@@ -204,7 +204,7 @@ func (operation GetAdGroupOperation) Invoke(call sdkgo.Call, input GetAdGroupInp
 	return sdkgo.NewQueryBranch(GetAdGroupBranchFound, page.AdGroups[0], nil, sdkgo.Receipt{})
 }
 
-// Invoke creates a paused ad group with a bounded send cap and name read-back.
+// Invoke creates a paused ad group with a bounded send cap.
 func (operation CreateAdGroupOperation) Invoke(call sdkgo.Call, input CreateAdGroupInput) sdkgo.MutationAttempt[AdGroupMutationResult] {
 	if !validAdvertisingID(input.AccountID) || !validAdvertisingID(input.CampaignID) || strings.TrimSpace(input.Name) != input.Name || input.Name == "" || len(input.Name) > 256 {
 		return adGroupWriteBranch(CreateAdGroupBranchDefect, AdGroupMutationResult{}, "createAdGroup", sdkgo.FailureValidation, "ad group create input is invalid")
@@ -216,19 +216,6 @@ func (operation CreateAdGroupOperation) Invoke(call sdkgo.Call, input CreateAdGr
 	decision := fence.Decide()
 	if decision.Kind == singledispatch.FailClosed {
 		return adGroupWriteBranch(CreateAdGroupBranchDefect, AdGroupMutationResult{}, "createAdGroup", sdkgo.FailureLocalDefect, "ad group dispatch checkpoint is invalid")
-	}
-	if decision.Kind == singledispatch.ReadBackRequired || decision.Kind == singledispatch.ReadBackThenResendAllowed {
-		readBack := operation.client.requestCampaign(call, http.MethodPost, adGroupsPath+"/QueryByCampaignId", input.AccountID, map[string]any{"CampaignId": input.CampaignID})
-		if readBack.status == http.StatusOK && readBack.err == nil {
-			page, decodeErr := decodeAdGroups(readBack.body)
-			if decodeErr == nil {
-				for _, group := range page.AdGroups {
-					if strings.EqualFold(group.Name, input.Name) {
-						return sdkgo.NewMutationBranch(CreateAdGroupBranchCreated, AdGroupMutationResult{AdGroupID: group.ID}, nil, sdkgo.Receipt{})
-					}
-				}
-			}
-		}
 	}
 	if decision.Kind != singledispatch.SendAllowed && decision.Kind != singledispatch.ReadBackThenResendAllowed {
 		return sdkgo.NewMutationUncertain(AdGroupMutationResult{}, campaignFailure("createAdGroup", sdkgo.FailureAvailability, "ad group create outcome cannot be confirmed"), sdkgo.Receipt{})
@@ -260,8 +247,14 @@ func (operation CreateAdGroupOperation) Invoke(call sdkgo.Call, input CreateAdGr
 		AdGroupIDs    []string          `json:"AdGroupIds"`
 		PartialErrors []json.RawMessage `json:"PartialErrors"`
 	}
-	if json.Unmarshal(response.body, &result) != nil || len(result.AdGroupIDs) != 1 || !validAdvertisingID(result.AdGroupIDs[0]) || len(result.PartialErrors) != 0 {
-		return sdkgo.NewMutationUncertain(AdGroupMutationResult{}, campaignFailure("createAdGroup", sdkgo.FailureProtocol, "ad group create response is incomplete"), sdkgo.Receipt{})
+	if json.Unmarshal(response.body, &result) != nil {
+		return sdkgo.NewMutationRetry[AdGroupMutationResult](campaignFailure("createAdGroup", sdkgo.FailureProtocol, "ad group create response is incomplete"), 0)
+	}
+	if len(result.PartialErrors) != 0 {
+		return adGroupWriteBranch(CreateAdGroupBranchProviderRejected, AdGroupMutationResult{}, "createAdGroup", sdkgo.FailureProviderRejection, "Microsoft Advertising rejected the ad group")
+	}
+	if len(result.AdGroupIDs) != 1 || !validAdvertisingID(result.AdGroupIDs[0]) {
+		return sdkgo.NewMutationRetry[AdGroupMutationResult](campaignFailure("createAdGroup", sdkgo.FailureProtocol, "ad group create response is incomplete"), 0)
 	}
 	if err := fence.RecordProviderID(result.AdGroupIDs[0]); err != nil {
 		return sdkgo.NewMutationUncertain(AdGroupMutationResult{}, campaignFailure("createAdGroup", sdkgo.FailureLocalDefect, "ad group checkpoint is unavailable"), sdkgo.Receipt{})

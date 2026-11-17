@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/microsoft/advertising/go"
 	"github.com/superdurable/dex-connectors-library/connectors/microsoft/advertising/go/microsoftadvertisingmock"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -28,7 +29,8 @@ func TestCampaignDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	adGroupFlow := NewAdGroupDiscoveryFlow(mock.Connection())
 	keywordFlow := NewKeywordDiscoveryFlow(mock.Connection())
 	adFlow := NewAdDiscoveryFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, inspectionFlow, adGroupFlow, keywordFlow, adFlow})
+	createFlow := &adGroupCreationProbeFlow{connection: mock.Connection()}
+	registry, err := dex.NewRegistry([]dex.Flow{flow, inspectionFlow, adGroupFlow, keywordFlow, adFlow, createFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -101,4 +103,63 @@ func TestCampaignDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, adResult.DecodeSingleOutput(&ads))
 	require.Equal(t, "55", ads.Ads[0].ID)
 	require.Len(t, mock.ListAds().Calls(), 1)
+	mock.CreateAdGroup().Default(microsoftadvertisingmock.CreateAdGroupUncertain(microsoftadvertising.AdGroupMutationResult{}, sdkgo.Failure{Kind: sdkgo.FailureAvailability, Provider: "microsoft-advertising", Operation: "createAdGroup", Message: "create outcome unknown"}))
+	createID := "microsoftadvertising-create-uncertain-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, createFlow, createID, microsoftadvertising.CreateAdGroupInput{AccountID: "12345", CampaignID: "98765", Name: "Probe"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	createResult, err := client.WaitForFlow(ctx, createID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, createResult.Status)
+	require.Len(t, mock.CreateAdGroup().Calls(), 1)
+}
+
+type adGroupCreationProbeFlow struct {
+	dex.FlowDefaults
+	connection microsoftadvertising.Connection
+}
+
+func (*adGroupCreationProbeFlow) GetFlowType() string {
+	return "MicrosoftAdvertisingAdGroupCreationProbe"
+}
+
+func (*adGroupCreationProbeFlow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{}
+}
+
+func (flow *adGroupCreationProbeFlow) GetSteps() []dex.StepDef {
+	return []dex.StepDef{
+		dex.DefineStartStep(startAdGroupCreationProbe{}),
+		dex.DefineStep(microsoftadvertising.NewCreateAdGroupStep(microsoftadvertising.CreateAdGroupStepConfig[microsoftadvertising.CreateAdGroupInput]{
+			StepType: "CallCreateAdGroupProbe", ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Microsoft Advertising", Explanation: "Create an ad group to verify uncertain outcome routing."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(input microsoftadvertising.CreateAdGroupInput) microsoftadvertising.CreateAdGroupInput {
+				return input
+			},
+			Created: sdkgo.GoTo(completeAdGroupCreationProbe{}),
+		})),
+		dex.DefineStep(completeAdGroupCreationProbe{}),
+	}
+}
+
+// dex:group group-id:request group-label:"Request"
+// dex:explanation text:"Pass the ad group input to the provider Step."
+type startAdGroupCreationProbe struct{ dex.StepDefaults }
+
+func (startAdGroupCreationProbe) WaitFor(dex.Context, microsoftadvertising.CreateAdGroupInput) (*dex.Wait, error) {
+	return dex.SkipWaitImmediately(), nil
+}
+
+func (startAdGroupCreationProbe) Execute(_ dex.Context, input microsoftadvertising.CreateAdGroupInput) (*dex.StepDecision, error) {
+	return dex.GoTo(sdkgo.StepRef[microsoftadvertising.CreateAdGroupInput]("CallCreateAdGroupProbe"), input), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Complete after a confirmed ad group creation."
+type completeAdGroupCreationProbe struct {
+	dex.StepDefaultsNoWaitFor[microsoftadvertising.CreateAdGroupResult]
+}
+
+func (completeAdGroupCreationProbe) Execute(_ dex.Context, result microsoftadvertising.CreateAdGroupResult) (*dex.StepDecision, error) {
+	return dex.GracefulComplete(result.Value), nil
 }

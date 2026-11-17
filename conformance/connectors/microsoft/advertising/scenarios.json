@@ -1411,47 +1411,14 @@
     },
     {
       "callId": "53c13e95-878b-5d7a-87d1-4025f417dfd8",
-      "exchanges": [
-        {
-          "body": "{\"Campaigns\":[]}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/CampaignManagement/v13/Campaigns/QueryByAccountId",
-          "requestBody": {
-            "AccountId": "12345",
-            "CampaignType": "App Audience Hotel ObjectiveBased PerformanceMax Search Shopping"
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer test-microsoft-advertising-token"
-            ],
-            "Content-Type": [
-              "application/json"
-            ],
-            "Customeraccountid": [
-              "12345"
-            ],
-            "Customerid": [
-              "73456"
-            ],
-            "Developertoken": [
-              "test-developer-token"
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "exchanges": [],
       "expected": {
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
         "output": {
           "campaignId": ""
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -4070,12 +4037,18 @@
       "callId": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
       "exchanges": [
         {
-          "body": "{\"AdGroups\":[{\"Id\":\"33\",\"Name\":\"Example\",\"Status\":\"Paused\"}]}",
+          "body": "{\"AdGroupIds\":[\"34\"]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/CampaignManagement/v13/AdGroups/QueryByCampaignId",
+          "path": "/CampaignManagement/v13/AdGroups",
           "requestBody": {
+            "AdGroups": [
+              {
+                "Name": "Example",
+                "Status": "Paused"
+              }
+            ],
             "CampaignId": "98765"
           },
           "requestHeaders": {
@@ -4104,8 +4077,15 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
+          "providerId": "34",
+          "sendCount": 2,
+          "state": "claimed"
+        },
         "output": {
-          "adGroupId": "33"
+          "adGroupId": "34"
         },
         "requestCount": 1,
         "retry": false,
@@ -4118,7 +4098,7 @@
         "campaignId": "98765",
         "name": "Example"
       },
-      "name": "createAdGroup-readback",
+      "name": "createAdGroup-resend-after-unconfirmed-name",
       "operation": "createAdGroup",
       "priorHeartbeat": {
         "attempt": 1,
@@ -4129,49 +4109,17 @@
     },
     {
       "callId": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
-      "exchanges": [
-        {
-          "body": "{\"AdGroups\":[]}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/CampaignManagement/v13/AdGroups/QueryByCampaignId",
-          "requestBody": {
-            "CampaignId": "98765"
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer test-microsoft-advertising-token"
-            ],
-            "Content-Type": [
-              "application/json"
-            ],
-            "Customeraccountid": [
-              "12345"
-            ],
-            "Customerid": [
-              "73456"
-            ],
-            "Developertoken": [
-              "test-developer-token"
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "exchanges": [],
       "expected": {
-        "branch": "defect",
-        "failureKind": "LOCAL_DEFECT",
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
         "output": {
           "adGroupId": ""
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "a2fa299c-f492-5659-a089-3e58eb56d9cf",
       "input": {
@@ -6101,13 +6049,23 @@
       "callId": "4ee2eafb-3470-55f4-b38e-80d849c4cd8c",
       "exchanges": [
         {
-          "body": "{\"Keywords\":[{\"Id\":\"44\",\"Text\":\"example shoes\",\"MatchType\":\"Exact\",\"Status\":\"Paused\"}]}",
+          "body": "{\"KeywordIds\":[\"45\"]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/CampaignManagement/v13/Keywords/QueryByAdGroupId",
+          "path": "/CampaignManagement/v13/Keywords",
           "requestBody": {
-            "AdGroupId": "33"
+            "AdGroupId": "33",
+            "Keywords": [
+              {
+                "Bid": {
+                  "Amount": 1.5
+                },
+                "MatchType": "Exact",
+                "Status": "Paused",
+                "Text": "example shoes"
+              }
+            ]
           },
           "requestHeaders": {
             "Accept": [
@@ -6135,8 +6093,15 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "4ee2eafb-3470-55f4-b38e-80d849c4cd8c",
+          "providerId": "45",
+          "sendCount": 2,
+          "state": "claimed"
+        },
         "output": {
-          "keywordId": "44"
+          "keywordId": "45"
         },
         "requestCount": 1,
         "retry": false,
@@ -6151,7 +6116,7 @@
         "matchType": "Exact",
         "text": "example shoes"
       },
-      "name": "createKeyword-readback",
+      "name": "createKeyword-resend-after-unconfirmed-text",
       "operation": "createKeyword",
       "priorHeartbeat": {
         "attempt": 1,
@@ -6162,49 +6127,17 @@
     },
     {
       "callId": "4ee2eafb-3470-55f4-b38e-80d849c4cd8c",
-      "exchanges": [
-        {
-          "body": "{\"Keywords\":[]}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/CampaignManagement/v13/Keywords/QueryByAdGroupId",
-          "requestBody": {
-            "AdGroupId": "33"
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer test-microsoft-advertising-token"
-            ],
-            "Content-Type": [
-              "application/json"
-            ],
-            "Customeraccountid": [
-              "12345"
-            ],
-            "Customerid": [
-              "73456"
-            ],
-            "Developertoken": [
-              "test-developer-token"
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "exchanges": [],
       "expected": {
-        "branch": "defect",
-        "failureKind": "LOCAL_DEFECT",
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
         "output": {
           "keywordId": ""
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "4ee2eafb-3470-55f4-b38e-80d849c4cd8c",
       "input": {
@@ -7432,19 +7365,16 @@
         }
       ],
       "expected": {
-        "branch": "defect",
-        "failureKind": "LOCAL_DEFECT",
+        "branch": "",
+        "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
           "callId": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "adId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7938,15 +7868,15 @@
       "callId": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
       "exchanges": [],
       "expected": {
-        "branch": "defect",
-        "failureKind": "LOCAL_DEFECT",
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
         "output": {
           "adId": ""
         },
         "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
       "input": {

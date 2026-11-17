@@ -493,6 +493,7 @@ func NewGetAdStep[IN any](config GetAdStepConfig[IN]) sdkgo.QueryStep[IN, GetAdI
 
 const CreateResponsiveSearchAdBranchCreated sdkgo.BranchID = "created"
 const CreateResponsiveSearchAdBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateResponsiveSearchAdBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const CreateResponsiveSearchAdBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var CreateResponsiveSearchAdDefinition = sdkgo.MutationDefinition{
@@ -500,6 +501,7 @@ var CreateResponsiveSearchAdDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateResponsiveSearchAdBranchCreated, Description: "Microsoft Advertising created the ad."},
 		{ID: CreateResponsiveSearchAdBranchProviderRejected, Description: "Microsoft Advertising rejected the ad.", Optional: true},
+		{ID: CreateResponsiveSearchAdBranchUncertain, Description: "The ad create outcome cannot be confirmed.", Optional: true},
 		{ID: CreateResponsiveSearchAdBranchDefect, Description: "The account, ad group, URL, or copy is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -524,6 +526,7 @@ type CreateResponsiveSearchAdStepConfig[IN any] struct {
 	MapToOperationInput               func(IN) CreateResponsiveSearchAdInput                 `connector:"mapToOperationInput"`
 	Created                           sdkgo.Target[CreateResponsiveSearchAdResult]           `connector:"branch=created"`
 	ProviderRejected                  sdkgo.Target[CreateResponsiveSearchAdResult]           `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateResponsiveSearchAdResult]           `connector:"branch=uncertain,optional"`
 	Defect                            sdkgo.Target[CreateResponsiveSearchAdResult]           `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AdMutationResult]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
@@ -543,12 +546,15 @@ func NewCreateResponsiveSearchAdStep[IN any](config CreateResponsiveSearchAdStep
 		Operation: config.Connection.operations.CreateResponsiveSearchAd(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateResponsiveSearchAdResult] {
-			branches := make([]sdkgo.BranchTarget[CreateResponsiveSearchAdResult], 0, 3)
+			branches := make([]sdkgo.BranchTarget[CreateResponsiveSearchAdResult], 0, 4)
 			if config.Created.HasStep() {
 				branches = append(branches, config.Created.BranchTarget(CreateResponsiveSearchAdBranchCreated))
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(CreateResponsiveSearchAdBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateResponsiveSearchAdBranchUncertain))
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(CreateResponsiveSearchAdBranchDefect))
@@ -855,6 +861,7 @@ func NewGetKeywordStep[IN any](config GetKeywordStepConfig[IN]) sdkgo.QueryStep[
 
 const CreateKeywordBranchCreated sdkgo.BranchID = "created"
 const CreateKeywordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateKeywordBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const CreateKeywordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var CreateKeywordDefinition = sdkgo.MutationDefinition{
@@ -862,6 +869,7 @@ var CreateKeywordDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateKeywordBranchCreated, Description: "Microsoft Advertising created the keyword."},
 		{ID: CreateKeywordBranchProviderRejected, Description: "Microsoft Advertising rejected the create.", Optional: true},
+		{ID: CreateKeywordBranchUncertain, Description: "The keyword create outcome cannot be confirmed.", Optional: true},
 		{ID: CreateKeywordBranchDefect, Description: "The account, ad group, text, or match type is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -886,6 +894,7 @@ type CreateKeywordStepConfig[IN any] struct {
 	MapToOperationInput               func(IN) CreateKeywordInput                                 `connector:"mapToOperationInput"`
 	Created                           sdkgo.Target[CreateKeywordResult]                           `connector:"branch=created"`
 	ProviderRejected                  sdkgo.Target[CreateKeywordResult]                           `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateKeywordResult]                           `connector:"branch=uncertain,optional"`
 	Defect                            sdkgo.Target[CreateKeywordResult]                           `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[KeywordMutationResult]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
@@ -905,12 +914,15 @@ func NewCreateKeywordStep[IN any](config CreateKeywordStepConfig[IN]) sdkgo.Muta
 		Operation: config.Connection.operations.CreateKeyword(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateKeywordResult] {
-			branches := make([]sdkgo.BranchTarget[CreateKeywordResult], 0, 3)
+			branches := make([]sdkgo.BranchTarget[CreateKeywordResult], 0, 4)
 			if config.Created.HasStep() {
 				branches = append(branches, config.Created.BranchTarget(CreateKeywordBranchCreated))
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(CreateKeywordBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateKeywordBranchUncertain))
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(CreateKeywordBranchDefect))
@@ -1217,6 +1229,7 @@ func NewGetAdGroupStep[IN any](config GetAdGroupStepConfig[IN]) sdkgo.QueryStep[
 
 const CreateAdGroupBranchCreated sdkgo.BranchID = "created"
 const CreateAdGroupBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateAdGroupBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const CreateAdGroupBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var CreateAdGroupDefinition = sdkgo.MutationDefinition{
@@ -1224,6 +1237,7 @@ var CreateAdGroupDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateAdGroupBranchCreated, Description: "Microsoft Advertising created the ad group."},
 		{ID: CreateAdGroupBranchProviderRejected, Description: "Microsoft Advertising rejected the create.", Optional: true},
+		{ID: CreateAdGroupBranchUncertain, Description: "The ad group create outcome cannot be confirmed.", Optional: true},
 		{ID: CreateAdGroupBranchDefect, Description: "The account, campaign, or name is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -1248,6 +1262,7 @@ type CreateAdGroupStepConfig[IN any] struct {
 	MapToOperationInput               func(IN) CreateAdGroupInput                                 `connector:"mapToOperationInput"`
 	Created                           sdkgo.Target[CreateAdGroupResult]                           `connector:"branch=created"`
 	ProviderRejected                  sdkgo.Target[CreateAdGroupResult]                           `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateAdGroupResult]                           `connector:"branch=uncertain,optional"`
 	Defect                            sdkgo.Target[CreateAdGroupResult]                           `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AdGroupMutationResult]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
@@ -1267,12 +1282,15 @@ func NewCreateAdGroupStep[IN any](config CreateAdGroupStepConfig[IN]) sdkgo.Muta
 		Operation: config.Connection.operations.CreateAdGroup(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateAdGroupResult] {
-			branches := make([]sdkgo.BranchTarget[CreateAdGroupResult], 0, 3)
+			branches := make([]sdkgo.BranchTarget[CreateAdGroupResult], 0, 4)
 			if config.Created.HasStep() {
 				branches = append(branches, config.Created.BranchTarget(CreateAdGroupBranchCreated))
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(CreateAdGroupBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateAdGroupBranchUncertain))
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(CreateAdGroupBranchDefect))

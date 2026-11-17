@@ -17,7 +17,9 @@ import connector_scenarios as conformance  # noqa: E402
 
 SCENARIOS = [
     scenario
-    for scenario in json.loads((ROOT / "conformance/connectors/microsoft/advertising/scenarios.json").read_text())["scenarios"]
+    for scenario in json.loads(
+        (ROOT / "conformance/connectors/microsoft/advertising/scenarios.json").read_text()
+    )["scenarios"]
     if scenario["operation"] == "listCampaigns"
 ]
 CONNECTION = sdk.ConnectionRef("microsoft-advertising", "microsoft-advertising")

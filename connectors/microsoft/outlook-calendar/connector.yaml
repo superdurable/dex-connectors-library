@@ -256,7 +256,7 @@ spec:
       kind: query
       description: List one bounded page of calendars in the connection's mailbox.
       idempotency: none
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: A page of calendars was listed.}
         - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the calendar list., optional: true}
@@ -275,7 +275,7 @@ spec:
       kind: query
       description: Read one calendar by its Graph ID.
       idempotency: none
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: The calendar was found.}
         - {id: notFound, goName: NotFound, description: The calendar is absent., optional: true}

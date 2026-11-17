@@ -256,8 +256,14 @@ func (operation CreateResponsiveSearchAdOperation) Invoke(call sdkgo.Call, input
 		AdIDs         []string          `json:"AdIds"`
 		PartialErrors []json.RawMessage `json:"PartialErrors"`
 	}
-	if json.Unmarshal(response.body, &wire) != nil || len(wire.AdIDs) != 1 || !validAdvertisingID(wire.AdIDs[0]) || len(wire.PartialErrors) != 0 {
-		return sdkgo.NewMutationUncertain(AdMutationResult{}, campaignFailure("createResponsiveSearchAd", sdkgo.FailureProtocol, "ad create response is incomplete"), sdkgo.Receipt{})
+	if json.Unmarshal(response.body, &wire) != nil {
+		return sdkgo.NewMutationRetry[AdMutationResult](campaignFailure("createResponsiveSearchAd", sdkgo.FailureProtocol, "ad create response is incomplete"), 0)
+	}
+	if len(wire.PartialErrors) != 0 {
+		return keywordWriteBranch(CreateResponsiveSearchAdBranchProviderRejected, AdMutationResult{}, "createResponsiveSearchAd", sdkgo.FailureProviderRejection, "Microsoft Advertising rejected the ad")
+	}
+	if len(wire.AdIDs) != 1 || !validAdvertisingID(wire.AdIDs[0]) {
+		return sdkgo.NewMutationRetry[AdMutationResult](campaignFailure("createResponsiveSearchAd", sdkgo.FailureProtocol, "ad create response is incomplete"), 0)
 	}
 	if err := fence.RecordProviderID(wire.AdIDs[0]); err != nil {
 		return sdkgo.NewMutationUncertain(AdMutationResult{}, campaignFailure("createResponsiveSearchAd", sdkgo.FailureLocalDefect, "ad checkpoint is unavailable"), sdkgo.Receipt{})

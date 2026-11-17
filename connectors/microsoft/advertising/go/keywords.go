@@ -210,7 +210,7 @@ func (operation GetKeywordOperation) Invoke(call sdkgo.Call, input GetKeywordInp
 	return sdkgo.NewQueryBranch(GetKeywordBranchFound, page.Keywords[0], nil, sdkgo.Receipt{})
 }
 
-// Invoke creates a paused keyword with bounded resends and exact phrase read-back.
+// Invoke creates a paused keyword with bounded resends.
 func (operation CreateKeywordOperation) Invoke(call sdkgo.Call, input CreateKeywordInput) sdkgo.MutationAttempt[KeywordMutationResult] {
 	if !validAdvertisingID(input.AccountID) || !validAdvertisingID(input.AdGroupID) || strings.TrimSpace(input.Text) != input.Text || input.Text == "" || len(input.Text) > 100 || !validKeywordMatchType(input.MatchType) || (input.Bid != nil && !isPositiveFinite(*input.Bid)) {
 		return keywordWriteBranch(CreateKeywordBranchDefect, KeywordMutationResult{}, "createKeyword", sdkgo.FailureValidation, "keyword create input is invalid")
@@ -222,19 +222,6 @@ func (operation CreateKeywordOperation) Invoke(call sdkgo.Call, input CreateKeyw
 	decision := fence.Decide()
 	if decision.Kind == singledispatch.FailClosed {
 		return keywordWriteBranch(CreateKeywordBranchDefect, KeywordMutationResult{}, "createKeyword", sdkgo.FailureLocalDefect, "keyword dispatch checkpoint is invalid")
-	}
-	if decision.Kind == singledispatch.ReadBackRequired || decision.Kind == singledispatch.ReadBackThenResendAllowed {
-		readBack := operation.client.requestCampaign(call, http.MethodPost, keywordsPath+"/QueryByAdGroupId", input.AccountID, map[string]any{"AdGroupId": input.AdGroupID})
-		if readBack.status == http.StatusOK && readBack.err == nil {
-			page, decodeErr := decodeKeywords(readBack.body)
-			if decodeErr == nil {
-				for _, keyword := range page.Keywords {
-					if strings.EqualFold(keyword.Text, input.Text) && keyword.MatchType == input.MatchType {
-						return sdkgo.NewMutationBranch(CreateKeywordBranchCreated, KeywordMutationResult{KeywordID: keyword.ID}, nil, sdkgo.Receipt{})
-					}
-				}
-			}
-		}
 	}
 	if decision.Kind != singledispatch.SendAllowed && decision.Kind != singledispatch.ReadBackThenResendAllowed {
 		return sdkgo.NewMutationUncertain(KeywordMutationResult{}, campaignFailure("createKeyword", sdkgo.FailureAvailability, "keyword create outcome cannot be confirmed"), sdkgo.Receipt{})
@@ -270,8 +257,14 @@ func (operation CreateKeywordOperation) Invoke(call sdkgo.Call, input CreateKeyw
 		KeywordIDs    []string          `json:"KeywordIds"`
 		PartialErrors []json.RawMessage `json:"PartialErrors"`
 	}
-	if json.Unmarshal(response.body, &wire) != nil || len(wire.KeywordIDs) != 1 || !validAdvertisingID(wire.KeywordIDs[0]) || len(wire.PartialErrors) != 0 {
-		return sdkgo.NewMutationUncertain(KeywordMutationResult{}, campaignFailure("createKeyword", sdkgo.FailureProtocol, "keyword create response is incomplete"), sdkgo.Receipt{})
+	if json.Unmarshal(response.body, &wire) != nil {
+		return sdkgo.NewMutationRetry[KeywordMutationResult](campaignFailure("createKeyword", sdkgo.FailureProtocol, "keyword create response is incomplete"), 0)
+	}
+	if len(wire.PartialErrors) != 0 {
+		return keywordWriteBranch(CreateKeywordBranchProviderRejected, KeywordMutationResult{}, "createKeyword", sdkgo.FailureProviderRejection, "Microsoft Advertising rejected the keyword")
+	}
+	if len(wire.KeywordIDs) != 1 || !validAdvertisingID(wire.KeywordIDs[0]) {
+		return sdkgo.NewMutationRetry[KeywordMutationResult](campaignFailure("createKeyword", sdkgo.FailureProtocol, "keyword create response is incomplete"), 0)
 	}
 	if err := fence.RecordProviderID(wire.KeywordIDs[0]); err != nil {
 		return sdkgo.NewMutationUncertain(KeywordMutationResult{}, campaignFailure("createKeyword", sdkgo.FailureLocalDefect, "keyword checkpoint is unavailable"), sdkgo.Receipt{})

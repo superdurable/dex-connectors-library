@@ -18,7 +18,9 @@ import connector_scenarios as conformance  # type: ignore[import-not-found]  # n
 
 SCENARIOS = [
     scenario
-    for scenario in json.loads((ROOT / "conformance/connectors/microsoft/azure-blob/scenarios.json").read_text())["scenarios"]
+    for scenario in json.loads(
+        (ROOT / "conformance/connectors/microsoft/azure-blob/scenarios.json").read_text()
+    )["scenarios"]
     if scenario["operation"] == "getBlob"
 ]
 CONNECTION = sdk.ConnectionRef("microsoft-azure-blob", "microsoft-azure-blob")

@@ -130,7 +130,7 @@ func (CreateCampaignOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateCampa
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates a campaign with bounded resends after read-back by its unique name.
+// Invoke creates a campaign with bounded resends.
 func (operation CreateCampaignOperation) Invoke(call sdkgo.Call, input CreateCampaignInput) sdkgo.MutationAttempt[CampaignMutationResult] {
 	if !validAdvertisingID(input.AccountID) || strings.TrimSpace(input.Name) != input.Name || input.Name == "" || len(input.Name) > 128 ||
 		!isPositiveFinite(input.DailyBudget) || input.TimeZone == "" || len(input.TimeZone) > 100 {
@@ -143,21 +143,6 @@ func (operation CreateCampaignOperation) Invoke(call sdkgo.Call, input CreateCam
 	decision := fence.Decide()
 	if decision.Kind == singledispatch.FailClosed {
 		return campaignWriteBranch("createCampaign", CreateCampaignBranchDefect, CampaignMutationResult{}, sdkgo.FailureLocalDefect, "campaign dispatch checkpoint is invalid")
-	}
-	if decision.Kind == singledispatch.ReadBackRequired || decision.Kind == singledispatch.ReadBackThenResendAllowed {
-		readBack := operation.client.requestCampaign(call, http.MethodPost, listCampaignsPath, input.AccountID, map[string]any{
-			"AccountId": input.AccountID, "CampaignType": allCampaignTypes,
-		})
-		if readBack.status == http.StatusOK && readBack.err == nil {
-			page, decodeErr := decodeCampaigns(readBack.body)
-			if decodeErr == nil {
-				for _, campaign := range page.Campaigns {
-					if strings.EqualFold(campaign.Name, input.Name) {
-						return sdkgo.NewMutationBranch(CreateCampaignBranchCreated, CampaignMutationResult{CampaignID: campaign.ID}, nil, sdkgo.Receipt{})
-					}
-				}
-			}
-		}
 	}
 	if decision.Kind != singledispatch.SendAllowed && decision.Kind != singledispatch.ReadBackThenResendAllowed {
 		return sdkgo.NewMutationUncertain(CampaignMutationResult{}, campaignFailure("createCampaign", sdkgo.FailureAvailability, "campaign create outcome cannot be confirmed"), sdkgo.Receipt{})
@@ -193,8 +178,14 @@ func (operation CreateCampaignOperation) Invoke(call sdkgo.Call, input CreateCam
 		CampaignIDs   []string          `json:"CampaignIds"`
 		PartialErrors []json.RawMessage `json:"PartialErrors"`
 	}
-	if json.Unmarshal(response.body, &result) != nil || len(result.CampaignIDs) != 1 || !validAdvertisingID(result.CampaignIDs[0]) || len(result.PartialErrors) != 0 {
-		return sdkgo.NewMutationUncertain(CampaignMutationResult{}, campaignFailure("createCampaign", sdkgo.FailureProtocol, "campaign create response is incomplete"), sdkgo.Receipt{})
+	if json.Unmarshal(response.body, &result) != nil {
+		return sdkgo.NewMutationRetry[CampaignMutationResult](campaignFailure("createCampaign", sdkgo.FailureProtocol, "campaign create response is incomplete"), 0)
+	}
+	if len(result.PartialErrors) != 0 {
+		return campaignWriteBranch("createCampaign", CreateCampaignBranchProviderRejected, CampaignMutationResult{}, sdkgo.FailureProviderRejection, "Microsoft Advertising rejected the campaign")
+	}
+	if len(result.CampaignIDs) != 1 || !validAdvertisingID(result.CampaignIDs[0]) {
+		return sdkgo.NewMutationRetry[CampaignMutationResult](campaignFailure("createCampaign", sdkgo.FailureProtocol, "campaign create response is incomplete"), 0)
 	}
 	if err := fence.RecordProviderID(result.CampaignIDs[0]); err != nil {
 		return sdkgo.NewMutationUncertain(CampaignMutationResult{}, campaignFailure("createCampaign", sdkgo.FailureLocalDefect, "campaign ID checkpoint is unavailable"), sdkgo.Receipt{})

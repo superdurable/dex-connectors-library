@@ -65,18 +65,18 @@ func TestCampaignSafeWrites(t *testing.T) {
 	}
 }
 
-func TestCreateCampaignChecksNameBeforeResend(t *testing.T) {
+func TestCreateCampaignDoesNotClaimExistingNameAfterLostResponse(t *testing.T) {
 	creates := 0
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.URL.Path == listCampaignsPath {
-			_, err := writer.Write([]byte(`{"Campaigns":[{"Id":"98765","Name":"Launch","CampaignType":"Search","Status":"Paused"}]}`))
-			require.NoError(t, err)
-			return
-		}
 		require.Equal(t, http.MethodPost, request.Method)
 		require.Equal(t, campaignsPath, request.URL.Path)
 		creates++
-		writer.WriteHeader(http.StatusInternalServerError)
+		if creates == 1 {
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		_, err := writer.Write([]byte(`{"CampaignIds":["98766"]}`))
+		require.NoError(t, err)
 	}))
 	defer server.Close()
 	client := testClient(t, server.URL)
@@ -89,6 +89,6 @@ func TestCreateCampaignChecksNameBeforeResend(t *testing.T) {
 	result, err := sdkgo.RunMutation(callContext, client.CreateCampaign(), testConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, CreateCampaignBranchCreated, result.Branch)
-	require.Equal(t, "98765", result.Value.CampaignID)
-	require.Equal(t, 1, creates)
+	require.Equal(t, "98766", result.Value.CampaignID)
+	require.Equal(t, 2, creates)
 }

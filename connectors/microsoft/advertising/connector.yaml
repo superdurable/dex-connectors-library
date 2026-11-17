@@ -142,10 +142,11 @@ spec:
       description: Create one paused responsive search ad.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
       branches:
         - {id: created, goName: Created, description: Microsoft Advertising created the ad.}
         - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the ad., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The ad create outcome cannot be confirmed., optional: true}
         - {id: defect, goName: Defect, description: "The account, ad group, URL, or copy is invalid.", optional: true}
       mocks:
         - {name: createdDefault, branch: created, default: true, description: One paused ad was created., output: {adId: '55'}}
@@ -222,10 +223,11 @@ spec:
       description: Create one paused keyword in an ad group.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
       branches:
         - {id: created, goName: Created, description: Microsoft Advertising created the keyword.}
         - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the create., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The keyword create outcome cannot be confirmed., optional: true}
         - {id: defect, goName: Defect, description: "The account, ad group, text, or match type is invalid.", optional: true}
       mocks:
         - {name: createdDefault, branch: created, default: true, description: One keyword was created., output: {keywordId: '44'}}
@@ -302,10 +304,11 @@ spec:
       description: Create a paused ad group with a unique name within its campaign.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
       branches:
         - {id: created, goName: Created, description: Microsoft Advertising created the ad group.}
         - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the create., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The ad group create outcome cannot be confirmed., optional: true}
         - {id: defect, goName: Defect, description: "The account, campaign, or name is invalid.", optional: true}
       mocks:
         - {name: createdDefault, branch: created, default: true, description: One ad group was created., output: {adGroupId: '33'}}

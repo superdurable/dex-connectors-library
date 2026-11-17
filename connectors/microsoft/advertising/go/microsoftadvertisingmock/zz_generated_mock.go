@@ -343,6 +343,11 @@ func CreateResponsiveSearchAdProviderRejected(value microsoftadvertising.AdMutat
 	return connectormock.Branch(microsoftadvertising.CreateResponsiveSearchAdBranchProviderRejected, value, failure)
 }
 
+// CreateResponsiveSearchAdUncertain returns an uncertain createResponsiveSearchAd outcome.
+func CreateResponsiveSearchAdUncertain(value microsoftadvertising.AdMutationResult, failure sdkgo.Failure) connectormock.Case[microsoftadvertising.AdMutationResult] {
+	return connectormock.Uncertain(value, failure)
+}
+
 // CreateResponsiveSearchAdDefect selects the defect branch: The account, ad group, URL, or copy is invalid.
 func CreateResponsiveSearchAdDefect(value microsoftadvertising.AdMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.AdMutationResult] {
 	return connectormock.Branch(microsoftadvertising.CreateResponsiveSearchAdBranchDefect, value, failure)
@@ -523,6 +528,11 @@ func CreateKeywordProviderRejected(value microsoftadvertising.KeywordMutationRes
 	return connectormock.Branch(microsoftadvertising.CreateKeywordBranchProviderRejected, value, failure)
 }
 
+// CreateKeywordUncertain returns an uncertain createKeyword outcome.
+func CreateKeywordUncertain(value microsoftadvertising.KeywordMutationResult, failure sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	return connectormock.Uncertain(value, failure)
+}
+
 // CreateKeywordDefect selects the defect branch: The account, ad group, text, or match type is invalid.
 func CreateKeywordDefect(value microsoftadvertising.KeywordMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordMutationResult] {
 	return connectormock.Branch(microsoftadvertising.CreateKeywordBranchDefect, value, failure)
@@ -701,6 +711,11 @@ func CreateAdGroupCreated(value microsoftadvertising.AdGroupMutationResult, fail
 // CreateAdGroupProviderRejected selects the providerRejected branch: Microsoft Advertising rejected the create.
 func CreateAdGroupProviderRejected(value microsoftadvertising.AdGroupMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.AdGroupMutationResult] {
 	return connectormock.Branch(microsoftadvertising.CreateAdGroupBranchProviderRejected, value, failure)
+}
+
+// CreateAdGroupUncertain returns an uncertain createAdGroup outcome.
+func CreateAdGroupUncertain(value microsoftadvertising.AdGroupMutationResult, failure sdkgo.Failure) connectormock.Case[microsoftadvertising.AdGroupMutationResult] {
+	return connectormock.Uncertain(value, failure)
 }
 
 // CreateAdGroupDefect selects the defect branch: The account, campaign, or name is invalid.
