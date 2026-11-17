@@ -121,7 +121,7 @@ spec:
       description: Create an empty survey with a title.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: SurveyMonkey created the survey.}
         - {id: providerRejected, goName: ProviderRejected, description: SurveyMonkey conclusively rejected the request., optional: true}
@@ -203,7 +203,7 @@ spec:
       description: Create a named weblink collector for a survey.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: SurveyMonkey created the collector.}
         - {id: providerRejected, goName: ProviderRejected, description: SurveyMonkey conclusively rejected the request., optional: true}

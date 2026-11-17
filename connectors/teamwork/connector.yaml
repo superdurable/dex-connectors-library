@@ -104,7 +104,7 @@ spec:
       description: Create a named project through Teamwork's V1 API.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Teamwork created the project.}
         - {id: providerRejected, goName: ProviderRejected, description: Teamwork conclusively rejected the create., optional: true}
@@ -186,7 +186,7 @@ spec:
       description: Create a named task in a task list.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Teamwork created the task.}
         - {id: providerRejected, goName: ProviderRejected, description: Teamwork conclusively rejected the create., optional: true}
