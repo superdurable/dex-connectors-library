@@ -54,6 +54,9 @@ type Operations interface {
 	ListForms() sdkgo.Query[ListFormsInput, FormsPage]
 	ListFormSubscribers() sdkgo.Query[ListFormSubscribersInput, SubscribersPage]
 	AddSubscriberToForm() sdkgo.Mutation[AddSubscriberToFormInput, SubscriberMetadata]
+	ListSequences() sdkgo.Query[ListSequencesInput, SequencesPage]
+	ListSequenceSubscribers() sdkgo.Query[ListSequenceSubscribersInput, SubscribersPage]
+	AddSubscriberToSequence() sdkgo.Mutation[AddSubscriberToSequenceInput, SubscriberMetadata]
 }
 
 type clientOperations struct{ client *Client }
@@ -99,6 +102,15 @@ func (operations clientOperations) ListFormSubscribers() sdkgo.Query[ListFormSub
 }
 func (operations clientOperations) AddSubscriberToForm() sdkgo.Mutation[AddSubscriberToFormInput, SubscriberMetadata] {
 	return operations.client.AddSubscriberToForm()
+}
+func (operations clientOperations) ListSequences() sdkgo.Query[ListSequencesInput, SequencesPage] {
+	return operations.client.ListSequences()
+}
+func (operations clientOperations) ListSequenceSubscribers() sdkgo.Query[ListSequenceSubscribersInput, SubscribersPage] {
+	return operations.client.ListSequenceSubscribers()
+}
+func (operations clientOperations) AddSubscriberToSequence() sdkgo.Mutation[AddSubscriberToSequenceInput, SubscriberMetadata] {
+	return operations.client.AddSubscriberToSequence()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -404,6 +416,7 @@ var UpsertSubscriberDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpsertSubscriberResult = sdkgo.MutationResult[SubscriberMetadata]
@@ -546,6 +559,7 @@ var CreateTagDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type CreateTagResult = sdkgo.MutationResult[TagMetadata]
@@ -619,6 +633,7 @@ var TagSubscriberDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type TagSubscriberResult = sdkgo.MutationResult[SubscriberMetadata]
@@ -696,6 +711,7 @@ var RemoveTagFromSubscriberDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type RemoveTagFromSubscriberResult = sdkgo.MutationResult[TagRemoval]
@@ -842,6 +858,7 @@ var CreateCustomFieldDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type CreateCustomFieldResult = sdkgo.MutationResult[CustomFieldMetadata]
@@ -915,6 +932,7 @@ var UpdateCustomFieldDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateCustomFieldResult = sdkgo.MutationResult[CustomFieldMetadata]
@@ -992,6 +1010,7 @@ var DeleteCustomFieldDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type DeleteCustomFieldResult = sdkgo.MutationResult[CustomFieldDeletion]
@@ -1217,6 +1236,7 @@ var AddSubscriberToFormDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type AddSubscriberToFormResult = sdkgo.MutationResult[SubscriberMetadata]
@@ -1271,5 +1291,235 @@ func NewAddSubscriberToFormStep[IN any](config AddSubscriberToFormStepConfig[IN]
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListSequencesBranchListed sdkgo.BranchID = "listed"
+const ListSequencesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSequencesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSequencesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSequencesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSequences"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSequencesBranchListed, Description: "Kit returned a sequence page."},
+		{ID: ListSequencesBranchProviderRejected, Description: "Kit rejected the list request.", Optional: true},
+		{ID: ListSequencesBranchInvalidResponse, Description: "Kit returned invalid sequence JSON.", Optional: true},
+		{ID: ListSequencesBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSequencesResult = sdkgo.QueryResult[SequencesPage]
+
+type ListSequencesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=kit"`
+	operationID                    struct{}                                         `connector:"operationId=listSequences"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSequencesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSequencesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListSequencesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSequencesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSequencesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SequencesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListSequencesStep[IN any](config ListSequencesStepConfig[IN]) sdkgo.QueryStep[IN, ListSequencesInput, SequencesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("kit connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSequencesInput, SequencesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSequences(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSequencesResult] {
+			branches := make([]sdkgo.BranchTarget[ListSequencesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSequencesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSequencesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSequencesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSequencesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListSequenceSubscribersBranchListed sdkgo.BranchID = "listed"
+const ListSequenceSubscribersBranchNotFound sdkgo.BranchID = "notFound"
+const ListSequenceSubscribersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSequenceSubscribersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSequenceSubscribersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSequenceSubscribersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSequenceSubscribers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSequenceSubscribersBranchListed, Description: "Kit returned a subscriber page."},
+		{ID: ListSequenceSubscribersBranchNotFound, Description: "Kit did not find the sequence.", Optional: true},
+		{ID: ListSequenceSubscribersBranchProviderRejected, Description: "Kit rejected the list request.", Optional: true},
+		{ID: ListSequenceSubscribersBranchInvalidResponse, Description: "Kit returned invalid subscriber JSON.", Optional: true},
+		{ID: ListSequenceSubscribersBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSequenceSubscribersResult = sdkgo.QueryResult[SubscribersPage]
+
+type ListSequenceSubscribersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=kit"`
+	operationID                    struct{}                                           `connector:"operationId=listSequenceSubscribers"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSequenceSubscribersInput              `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSequenceSubscribersResult]        `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListSequenceSubscribersResult]        `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListSequenceSubscribersResult]        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSequenceSubscribersResult]        `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSequenceSubscribersResult]        `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SubscribersPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewListSequenceSubscribersStep[IN any](config ListSequenceSubscribersStepConfig[IN]) sdkgo.QueryStep[IN, ListSequenceSubscribersInput, SubscribersPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("kit connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSequenceSubscribersInput, SubscribersPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSequenceSubscribers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSequenceSubscribersResult] {
+			branches := make([]sdkgo.BranchTarget[ListSequenceSubscribersResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSequenceSubscribersBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListSequenceSubscribersBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSequenceSubscribersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSequenceSubscribersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSequenceSubscribersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const AddSubscriberToSequenceBranchAdded sdkgo.BranchID = "added"
+const AddSubscriberToSequenceBranchNotFound sdkgo.BranchID = "notFound"
+const AddSubscriberToSequenceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const AddSubscriberToSequenceBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const AddSubscriberToSequenceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var AddSubscriberToSequenceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "addSubscriberToSequence"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: AddSubscriberToSequenceBranchAdded, Description: "Kit added or found the sequence membership."},
+		{ID: AddSubscriberToSequenceBranchNotFound, Description: "Kit did not find the sequence or subscriber.", Optional: true},
+		{ID: AddSubscriberToSequenceBranchProviderRejected, Description: "Kit rejected the sequence membership.", Optional: true},
+		{ID: AddSubscriberToSequenceBranchUncertain, Description: "The sequence-add outcome cannot be confirmed.", Optional: true},
+		{ID: AddSubscriberToSequenceBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type AddSubscriberToSequenceResult = sdkgo.MutationResult[SubscriberMetadata]
+
+type AddSubscriberToSequenceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=kit"`
+	operationID                       struct{}                                                 `connector:"operationId=addSubscriberToSequence"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) AddSubscriberToSequenceInput                    `connector:"mapToOperationInput"`
+	Added                             sdkgo.Target[AddSubscriberToSequenceResult]              `connector:"branch=added"`
+	NotFound                          sdkgo.Target[AddSubscriberToSequenceResult]              `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[AddSubscriberToSequenceResult]              `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[AddSubscriberToSequenceResult]              `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[AddSubscriberToSequenceResult]              `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SubscriberMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewAddSubscriberToSequenceStep[IN any](config AddSubscriberToSequenceStepConfig[IN]) sdkgo.MutationStep[IN, AddSubscriberToSequenceInput, SubscriberMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("kit connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AddSubscriberToSequenceInput, SubscriberMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.AddSubscriberToSequence(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[AddSubscriberToSequenceResult] {
+			branches := make([]sdkgo.BranchTarget[AddSubscriberToSequenceResult], 0, 5)
+			if config.Added.HasStep() {
+				branches = append(branches, config.Added.BranchTarget(AddSubscriberToSequenceBranchAdded))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(AddSubscriberToSequenceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(AddSubscriberToSequenceBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(AddSubscriberToSequenceBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(AddSubscriberToSequenceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

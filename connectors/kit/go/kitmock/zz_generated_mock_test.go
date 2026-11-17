@@ -72,6 +72,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[kit.SubscriberMetadata](`{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}`)
 			return err
 		}},
+		{name: "listSequences/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.SequencesPage](`{"sequences":[{"id":61,"name":"Welcome series","active":true,"repeat":false}],"nextCursor":""}`)
+			return err
+		}},
+		{name: "listSequenceSubscribers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.SubscribersPage](`{"subscribers":[{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}],"hasNextPage":false,"nextCursor":"","perPage":20}`)
+			return err
+		}},
+		{name: "addSubscriberToSequence/addedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.SubscriberMetadata](`{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -123,5 +135,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.AddSubscriberToForm().Definition().Operation.OperationID != "addSubscriberToForm" {
 		t.Errorf("addSubscriberToForm mock has another definition")
+	}
+	if mock.ListSequences().Definition().Operation.OperationID != "listSequences" {
+		t.Errorf("listSequences mock has another definition")
+	}
+	if mock.ListSequenceSubscribers().Definition().Operation.OperationID != "listSequenceSubscribers" {
+		t.Errorf("listSequenceSubscribers mock has another definition")
+	}
+	if mock.AddSubscriberToSequence().Definition().Operation.OperationID != "addSubscriberToSequence" {
+		t.Errorf("addSubscriberToSequence mock has another definition")
 	}
 }

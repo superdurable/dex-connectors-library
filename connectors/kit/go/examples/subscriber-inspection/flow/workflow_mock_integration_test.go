@@ -24,7 +24,7 @@ import (
 func TestSubscriberInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := kitmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, NewTagsFlow(mock.Connection()), NewCustomFieldsFlow(mock.Connection()), NewFormsFlow(mock.Connection())})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, NewTagsFlow(mock.Connection()), NewCustomFieldsFlow(mock.Connection()), NewFormsFlow(mock.Connection()), NewSequencesFlow(mock.Connection())})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -91,4 +91,16 @@ func TestSubscriberInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Len(t, forms.Forms, 1)
 	require.Equal(t, int64(53), forms.Forms[0].ID)
 	require.Len(t, mock.ListForms().Calls(), 1)
+	sequencesFlow := NewSequencesFlow(mock.Connection())
+	sequencesID := "kit-sequences-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, sequencesFlow, sequencesID, kit.ListSequencesInput{PerPage: 20}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	sequencesResult, err := client.WaitForFlow(ctx, sequencesID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, sequencesResult.Status, sequencesResult.ErrorMessage)
+	var sequences kit.SequencesPage
+	require.NoError(t, sequencesResult.DecodeSingleOutput(&sequences))
+	require.Len(t, sequences.Sequences, 1)
+	require.Equal(t, int64(61), sequences.Sequences[0].ID)
+	require.Len(t, mock.ListSequences().Calls(), 1)
 }

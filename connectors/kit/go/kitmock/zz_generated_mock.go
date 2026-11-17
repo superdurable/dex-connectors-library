@@ -32,6 +32,9 @@ type Mock struct {
 	listForms               *connectormock.Query[kit.ListFormsInput, kit.FormsPage]
 	listFormSubscribers     *connectormock.Query[kit.ListFormSubscribersInput, kit.SubscribersPage]
 	addSubscriberToForm     *connectormock.Mutation[kit.AddSubscriberToFormInput, kit.SubscriberMetadata]
+	listSequences           *connectormock.Query[kit.ListSequencesInput, kit.SequencesPage]
+	listSequenceSubscribers *connectormock.Query[kit.ListSequenceSubscribersInput, kit.SubscribersPage]
+	addSubscriberToSequence *connectormock.Mutation[kit.AddSubscriberToSequenceInput, kit.SubscriberMetadata]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -53,6 +56,9 @@ func New(t testing.TB, connectionName string) *Mock {
 		listForms:               connectormock.NewQuery[kit.ListFormsInput, kit.FormsPage](t, kit.ListFormsDefinition),
 		listFormSubscribers:     connectormock.NewQuery[kit.ListFormSubscribersInput, kit.SubscribersPage](t, kit.ListFormSubscribersDefinition),
 		addSubscriberToForm:     connectormock.NewMutation[kit.AddSubscriberToFormInput, kit.SubscriberMetadata](t, kit.AddSubscriberToFormDefinition),
+		listSequences:           connectormock.NewQuery[kit.ListSequencesInput, kit.SequencesPage](t, kit.ListSequencesDefinition),
+		listSequenceSubscribers: connectormock.NewQuery[kit.ListSequenceSubscribersInput, kit.SubscribersPage](t, kit.ListSequenceSubscribersDefinition),
+		addSubscriberToSequence: connectormock.NewMutation[kit.AddSubscriberToSequenceInput, kit.SubscriberMetadata](t, kit.AddSubscriberToSequenceDefinition),
 	}
 	mock.listSubscribers.Default(ListSubscribersDefault())
 	mock.getSubscriber.Default(GetSubscriberDefault())
@@ -68,6 +74,9 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listForms.Default(ListFormsDefault())
 	mock.listFormSubscribers.Default(ListFormSubscribersDefault())
 	mock.addSubscriberToForm.Default(AddSubscriberToFormDefault())
+	mock.listSequences.Default(ListSequencesDefault())
+	mock.listSequenceSubscribers.Default(ListSequenceSubscribersDefault())
+	mock.addSubscriberToSequence.Default(AddSubscriberToSequenceDefault())
 	connection, err := kit.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "kit", Name: connectionName})
 	if err != nil {
 		t.Fatalf("kit mock connection: %v", err)
@@ -149,6 +158,21 @@ func (mock *Mock) AddSubscriberToForm() *connectormock.Mutation[kit.AddSubscribe
 	return mock.addSubscriberToForm
 }
 
+// ListSequences returns the listSequences script.
+func (mock *Mock) ListSequences() *connectormock.Query[kit.ListSequencesInput, kit.SequencesPage] {
+	return mock.listSequences
+}
+
+// ListSequenceSubscribers returns the listSequenceSubscribers script.
+func (mock *Mock) ListSequenceSubscribers() *connectormock.Query[kit.ListSequenceSubscribersInput, kit.SubscribersPage] {
+	return mock.listSequenceSubscribers
+}
+
+// AddSubscriberToSequence returns the addSubscriberToSequence script.
+func (mock *Mock) AddSubscriberToSequence() *connectormock.Mutation[kit.AddSubscriberToSequenceInput, kit.SubscriberMetadata] {
+	return mock.addSubscriberToSequence
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListSubscribers() sdkgo.Query[kit.ListSubscribersInput, kit.SubscribersPage] {
@@ -192,6 +216,15 @@ func (operations mockOperations) ListFormSubscribers() sdkgo.Query[kit.ListFormS
 }
 func (operations mockOperations) AddSubscriberToForm() sdkgo.Mutation[kit.AddSubscriberToFormInput, kit.SubscriberMetadata] {
 	return operations.mock.addSubscriberToForm
+}
+func (operations mockOperations) ListSequences() sdkgo.Query[kit.ListSequencesInput, kit.SequencesPage] {
+	return operations.mock.listSequences
+}
+func (operations mockOperations) ListSequenceSubscribers() sdkgo.Query[kit.ListSequenceSubscribersInput, kit.SubscribersPage] {
+	return operations.mock.listSequenceSubscribers
+}
+func (operations mockOperations) AddSubscriberToSequence() sdkgo.Mutation[kit.AddSubscriberToSequenceInput, kit.SubscriberMetadata] {
+	return operations.mock.addSubscriberToSequence
 }
 
 // ListSubscribersListed selects the listed branch: Kit returned the selected subscriber page.
@@ -725,4 +758,122 @@ func AddSubscriberToFormAddedDefault() connectormock.Case[kit.SubscriberMetadata
 // AddSubscriberToFormDefault is the manifest default, addedDefault, which New installs.
 func AddSubscriberToFormDefault() connectormock.Case[kit.SubscriberMetadata] {
 	return AddSubscriberToFormAddedDefault()
+}
+
+// ListSequencesListed selects the listed branch: Kit returned a sequence page.
+func ListSequencesListed(value kit.SequencesPage, failure *sdkgo.Failure) connectormock.Case[kit.SequencesPage] {
+	return connectormock.Branch(kit.ListSequencesBranchListed, value, failure)
+}
+
+// ListSequencesProviderRejected selects the providerRejected branch: Kit rejected the list request.
+func ListSequencesProviderRejected(value kit.SequencesPage, failure *sdkgo.Failure) connectormock.Case[kit.SequencesPage] {
+	return connectormock.Branch(kit.ListSequencesBranchProviderRejected, value, failure)
+}
+
+// ListSequencesInvalidResponse selects the invalidResponse branch: Kit returned invalid sequence JSON.
+func ListSequencesInvalidResponse(value kit.SequencesPage, failure *sdkgo.Failure) connectormock.Case[kit.SequencesPage] {
+	return connectormock.Branch(kit.ListSequencesBranchInvalidResponse, value, failure)
+}
+
+// ListSequencesDefect selects the defect branch: Input or credentials are invalid.
+func ListSequencesDefect(value kit.SequencesPage, failure *sdkgo.Failure) connectormock.Case[kit.SequencesPage] {
+	return connectormock.Branch(kit.ListSequencesBranchDefect, value, failure)
+}
+
+// ListSequencesRetry asks Dex to retry the listSequences Step, after the delay when it is positive.
+func ListSequencesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.SequencesPage] {
+	return connectormock.Retry[kit.SequencesPage](failure, after)
+}
+
+// ListSequencesListedDefault is the manifest mock listedDefault: A sample sequence page is returned.
+func ListSequencesListedDefault() connectormock.Case[kit.SequencesPage] {
+	value := connectormock.MustDecodeOutput[kit.SequencesPage](`{"sequences":[{"id":61,"name":"Welcome series","active":true,"repeat":false}],"nextCursor":""}`)
+	return connectormock.Branch(kit.ListSequencesBranchListed, value, nil)
+}
+
+// ListSequencesDefault is the manifest default, listedDefault, which New installs.
+func ListSequencesDefault() connectormock.Case[kit.SequencesPage] {
+	return ListSequencesListedDefault()
+}
+
+// ListSequenceSubscribersListed selects the listed branch: Kit returned a subscriber page.
+func ListSequenceSubscribersListed(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListSequenceSubscribersBranchListed, value, failure)
+}
+
+// ListSequenceSubscribersNotFound selects the notFound branch: Kit did not find the sequence.
+func ListSequenceSubscribersNotFound(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListSequenceSubscribersBranchNotFound, value, failure)
+}
+
+// ListSequenceSubscribersProviderRejected selects the providerRejected branch: Kit rejected the list request.
+func ListSequenceSubscribersProviderRejected(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListSequenceSubscribersBranchProviderRejected, value, failure)
+}
+
+// ListSequenceSubscribersInvalidResponse selects the invalidResponse branch: Kit returned invalid subscriber JSON.
+func ListSequenceSubscribersInvalidResponse(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListSequenceSubscribersBranchInvalidResponse, value, failure)
+}
+
+// ListSequenceSubscribersDefect selects the defect branch: Input or credentials are invalid.
+func ListSequenceSubscribersDefect(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListSequenceSubscribersBranchDefect, value, failure)
+}
+
+// ListSequenceSubscribersRetry asks Dex to retry the listSequenceSubscribers Step, after the delay when it is positive.
+func ListSequenceSubscribersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Retry[kit.SubscribersPage](failure, after)
+}
+
+// ListSequenceSubscribersListedDefault is the manifest mock listedDefault: A sample sequence subscriber page is returned.
+func ListSequenceSubscribersListedDefault() connectormock.Case[kit.SubscribersPage] {
+	value := connectormock.MustDecodeOutput[kit.SubscribersPage](`{"subscribers":[{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}],"hasNextPage":false,"nextCursor":"","perPage":20}`)
+	return connectormock.Branch(kit.ListSequenceSubscribersBranchListed, value, nil)
+}
+
+// ListSequenceSubscribersDefault is the manifest default, listedDefault, which New installs.
+func ListSequenceSubscribersDefault() connectormock.Case[kit.SubscribersPage] {
+	return ListSequenceSubscribersListedDefault()
+}
+
+// AddSubscriberToSequenceAdded selects the added branch: Kit added or found the sequence membership.
+func AddSubscriberToSequenceAdded(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.AddSubscriberToSequenceBranchAdded, value, failure)
+}
+
+// AddSubscriberToSequenceNotFound selects the notFound branch: Kit did not find the sequence or subscriber.
+func AddSubscriberToSequenceNotFound(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.AddSubscriberToSequenceBranchNotFound, value, failure)
+}
+
+// AddSubscriberToSequenceProviderRejected selects the providerRejected branch: Kit rejected the sequence membership.
+func AddSubscriberToSequenceProviderRejected(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.AddSubscriberToSequenceBranchProviderRejected, value, failure)
+}
+
+// AddSubscriberToSequenceUncertain returns an uncertain addSubscriberToSequence outcome.
+func AddSubscriberToSequenceUncertain(value kit.SubscriberMetadata, failure sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// AddSubscriberToSequenceDefect selects the defect branch: Input or credentials are invalid.
+func AddSubscriberToSequenceDefect(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.AddSubscriberToSequenceBranchDefect, value, failure)
+}
+
+// AddSubscriberToSequenceRetry asks Dex to retry the addSubscriberToSequence Step, after the delay when it is positive.
+func AddSubscriberToSequenceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Retry[kit.SubscriberMetadata](failure, after)
+}
+
+// AddSubscriberToSequenceAddedDefault is the manifest mock addedDefault: A sample sequence subscriber is returned.
+func AddSubscriberToSequenceAddedDefault() connectormock.Case[kit.SubscriberMetadata] {
+	value := connectormock.MustDecodeOutput[kit.SubscriberMetadata](`{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}`)
+	return connectormock.Branch(kit.AddSubscriberToSequenceBranchAdded, value, nil)
+}
+
+// AddSubscriberToSequenceDefault is the manifest default, addedDefault, which New installs.
+func AddSubscriberToSequenceDefault() connectormock.Case[kit.SubscriberMetadata] {
+	return AddSubscriberToSequenceAddedDefault()
 }

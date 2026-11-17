@@ -4371,55 +4371,1305 @@
       "name": "addSubscriberToForm-notFound",
       "operation": "addSubscriberToForm"
     },
-  {
-    "callId": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
-    "exchanges": [
-      {
-        "body": "{\"subscriber\":{\"id\":204,\"email_address\":\"alice@example.com\",\"first_name\":\"Alice\",\"state\":\"active\"}}",
-        "headers": {},
-        "keyMode": "absent",
-        "method": "POST",
-        "path": "/forms/53/subscribers/204",
-        "requestBody": {
-          "referrer": "https://example.com/signup"
+    {
+      "callId": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
+      "exchanges": [
+        {
+          "body": "{\"subscriber\":{\"id\":204,\"email_address\":\"alice@example.com\",\"first_name\":\"Alice\",\"state\":\"active\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/forms/53/subscribers/204",
+          "requestBody": {
+            "referrer": "https://example.com/signup"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "emailAddress": "alice@example.com",
+          "firstName": "Alice",
+          "id": 204,
+          "state": "active"
         },
-        "requestHeaders": {
-          "Accept": [
-            "application/json"
-          ],
-          "Content-Type": [
-            "application/json"
-          ],
-          "X-Kit-Api-Key": [
-            "test-token"
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
+      "input": {
+        "formId": 53,
+        "referrer": "https://example.com/signup",
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToForm-existing",
+      "operation": "addSubscriberToForm"
+    },
+    {
+      "callId": "2ddfef08-72ec-4e16-86c7-4613b8716f02",
+      "exchanges": [
+        {
+          "body": "{\"subscribers\":[{\"id\":204,\"email_address\":\"alice@example.com\",\"first_name\":\"Alice\",\"state\":\"active\",\"fields\":{\"private\":\"not-persisted\"}}],\"pagination\":{\"has_next_page\":true,\"end_cursor\":\"cursor-2\",\"per_page\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sequences/61/subscribers",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasNextPage": true,
+          "nextCursor": "cursor-2",
+          "perPage": 3,
+          "subscribers": [
+            {
+              "emailAddress": "alice@example.com",
+              "firstName": "Alice",
+              "id": 204,
+              "state": "active"
+            }
           ]
         },
-        "status": 200
-      }
-    ],
-    "expected": {
-      "branch": "added",
-      "failureKind": "",
-      "output": {
-        "emailAddress": "alice@example.com",
-        "firstName": "Alice",
-        "id": 204,
-        "state": "active"
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
       },
-      "requestCount": 1,
-      "retry": false,
-      "retryAfterMs": 0,
-      "uncertain": false
+      "input": {
+        "after": "cursor-1",
+        "perPage": 3,
+        "sequenceId": 61
+      },
+      "name": "listSequenceSubscribers-success",
+      "operation": "listSequenceSubscribers"
     },
-    "idempotencyKey": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
-    "input": {
-      "formId": 53,
-      "referrer": "https://example.com/signup",
-      "subscriberId": 204
+    {
+      "callId": "78f73f38-1618-4c60-bbaf-a9236a865639",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sequences/61/subscribers",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasNextPage": false,
+          "nextCursor": "",
+          "perPage": 0,
+          "subscribers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 3,
+        "sequenceId": 61
+      },
+      "name": "listSequenceSubscribers-providerRejected",
+      "operation": "listSequenceSubscribers"
     },
-    "name": "addSubscriberToForm-existing",
-    "operation": "addSubscriberToForm"
-  }
+    {
+      "callId": "30f2c99b-6f66-4346-94da-5c712859c496",
+      "exchanges": [
+        {
+          "body": "{\"subscribers\":{},\"pagination\":{\"has_next_page\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sequences/61/subscribers",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasNextPage": false,
+          "nextCursor": "",
+          "perPage": 0,
+          "subscribers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 3,
+        "sequenceId": 61
+      },
+      "name": "listSequenceSubscribers-invalidResponse",
+      "operation": "listSequenceSubscribers"
+    },
+    {
+      "callId": "747772c5-392e-49e1-9431-4a1b8315fbd9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasNextPage": false,
+          "nextCursor": "",
+          "perPage": 0,
+          "subscribers": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "",
+        "perPage": 20,
+        "sequenceId": 0
+      },
+      "name": "listSequenceSubscribers-defect",
+      "operation": "listSequenceSubscribers"
+    },
+    {
+      "callId": "15653014-2b26-4a9a-8ad4-02bc81a232dc",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Rate limited\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sequences/61/subscribers",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 3,
+        "sequenceId": 61
+      },
+      "name": "listSequenceSubscribers-rateLimit",
+      "operation": "listSequenceSubscribers"
+    },
+    {
+      "callId": "06bd1ef5-71fc-4442-be42-d607055cd945",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sequences/61/subscribers",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 3,
+        "sequenceId": 61
+      },
+      "name": "listSequenceSubscribers-serverUnavailable",
+      "operation": "listSequenceSubscribers"
+    },
+    {
+      "callId": "b1bbf476-5b41-4154-87a0-01fe9fc97aad",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sequences/61/subscribers",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 3,
+        "sequenceId": 61
+      },
+      "name": "listSequenceSubscribers-transportFailure",
+      "operation": "listSequenceSubscribers"
+    },
+    {
+      "callId": "7b4c8ea1-6287-4c16-9bb6-28d4a8744178",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"No Result found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sequences/61/subscribers",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "hasNextPage": false,
+          "nextCursor": "",
+          "perPage": 0,
+          "subscribers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 3,
+        "sequenceId": 61
+      },
+      "name": "listSequenceSubscribers-notFound",
+      "operation": "listSequenceSubscribers"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"sequences\":[{\"id\":61,\"name\":\"Welcome series\",\"active\":true,\"repeat\":false}],\"pagination\":{\"has_next_page\":false,\"end_cursor\":\"cursor-2\",\"per_page\":20}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sequences",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "",
+          "sequences": [
+            {
+              "active": true,
+              "id": 61,
+              "name": "Welcome series",
+              "repeat": false
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listSequences-success",
+      "operation": "listSequences"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sequences",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextCursor": "",
+          "sequences": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listSequences-providerRejected",
+      "operation": "listSequences"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"sequences\":[{\"id\":61,\"name\":\"Welcome series\",\"active\":true,\"repeat\":false}],\"pagination\":{\"has_next_page\":false,\"end_cursor\":\"cursor-2\",\"per_page\":20}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sequences",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "",
+          "sequences": [
+            {
+              "active": true,
+              "id": 61,
+              "name": "Welcome series",
+              "repeat": false
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listSequences-invalidResponse",
+      "operation": "listSequences"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextCursor": "",
+          "sequences": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "",
+        "perPage": 1001
+      },
+      "name": "listSequences-defect",
+      "operation": "listSequences"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sequences",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listSequences-rateLimit",
+      "operation": "listSequences"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sequences",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listSequences-serverUnavailable",
+      "operation": "listSequences"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sequences",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listSequences-transportFailure",
+      "operation": "listSequences"
+    },
+    {
+      "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "exchanges": [
+        {
+          "body": "{\"subscriber\":{\"id\":204,\"email_address\":\"alice@example.com\",\"first_name\":\"Alice\",\"state\":\"active\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "emailAddress": "alice@example.com",
+          "firstName": "Alice",
+          "id": 204,
+          "state": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "input": {
+        "sequenceId": 61,
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToSequence-success",
+      "operation": "addSubscriberToSequence"
+    },
+    {
+      "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "input": {
+        "sequenceId": 61,
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToSequence-providerRejected",
+      "operation": "addSubscriberToSequence"
+    },
+    {
+      "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "input": {
+        "sequenceId": 61,
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToSequence-invalidResponse",
+      "operation": "addSubscriberToSequence"
+    },
+    {
+      "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "state": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "input": {
+        "sequenceId": 0,
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToSequence-defect",
+      "operation": "addSubscriberToSequence"
+    },
+    {
+      "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "input": {
+        "sequenceId": 61,
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToSequence-rateLimit",
+      "operation": "addSubscriberToSequence"
+    },
+    {
+      "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "input": {
+        "sequenceId": 61,
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToSequence-serverUnavailable",
+      "operation": "addSubscriberToSequence"
+    },
+    {
+      "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "input": {
+        "sequenceId": 61,
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToSequence-transportFailure",
+      "operation": "addSubscriberToSequence"
+    },
+    {
+      "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "input": {
+        "sequenceId": 61,
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToSequence-notFound",
+      "operation": "addSubscriberToSequence"
+    },
+    {
+      "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "exchanges": [
+        {
+          "body": "{\"subscriber\":{\"id\":204,\"email_address\":\"alice@example.com\",\"first_name\":\"Alice\",\"state\":\"active\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "emailAddress": "alice@example.com",
+          "firstName": "Alice",
+          "id": 204,
+          "state": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "input": {
+        "sequenceId": 61,
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToSequence-existing",
+      "operation": "addSubscriberToSequence"
+    },
+    {
+      "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "input": {
+        "sequenceId": 61,
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToSequence-serverFailure",
+      "operation": "addSubscriberToSequence"
+    },
+    {
+      "attempts": 3,
+      "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "state": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "input": {
+        "sequenceId": 61,
+        "subscriberId": 204
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addSubscriberToSequence-uncertain",
+      "operation": "addSubscriberToSequence"
+    }
   ],
   "schemaVersion": 1
 }
