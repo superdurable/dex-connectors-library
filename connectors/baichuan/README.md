@@ -31,3 +31,5 @@ GOWORK=off go vet ./...
 Provider tests use a local HTTP server. The example's integration test uses a
 real Dex Worker and Client with a generated mock. A real Baichuan account and
 Dex Web connection are needed for live verification.
+
+The [TypeScript package and runnable Flow](typescript/README.md) replay the Go-recorded provider contract and exercise the Flow against a real local Dex Server.
