@@ -44,6 +44,9 @@ type Operations interface {
 	UpdateContact() sdkgo.Mutation[UpdateContactInput, ContactChangeResult]
 	DeleteContact() sdkgo.Mutation[DeleteContactInput, ContactChangeResult]
 	ListAttributes() sdkgo.Query[ListAttributesInput, AttributesList]
+	CreateAttribute() sdkgo.Mutation[CreateAttributeInput, AttributeChangeResult]
+	UpdateAttribute() sdkgo.Mutation[UpdateAttributeInput, AttributeChangeResult]
+	DeleteAttribute() sdkgo.Mutation[DeleteAttributeInput, AttributeChangeResult]
 	ListSenders() sdkgo.Query[ListSendersInput, SendersList]
 	CreateSender() sdkgo.Mutation[CreateSenderInput, SenderChangeResult]
 	UpdateSender() sdkgo.Mutation[UpdateSenderInput, SenderChangeResult]
@@ -65,6 +68,15 @@ func (operations clientOperations) DeleteContact() sdkgo.Mutation[DeleteContactI
 }
 func (operations clientOperations) ListAttributes() sdkgo.Query[ListAttributesInput, AttributesList] {
 	return operations.client.ListAttributes()
+}
+func (operations clientOperations) CreateAttribute() sdkgo.Mutation[CreateAttributeInput, AttributeChangeResult] {
+	return operations.client.CreateAttribute()
+}
+func (operations clientOperations) UpdateAttribute() sdkgo.Mutation[UpdateAttributeInput, AttributeChangeResult] {
+	return operations.client.UpdateAttribute()
+}
+func (operations clientOperations) DeleteAttribute() sdkgo.Mutation[DeleteAttributeInput, AttributeChangeResult] {
+	return operations.client.DeleteAttribute()
 }
 func (operations clientOperations) ListSenders() sdkgo.Query[ListSendersInput, SendersList] {
 	return operations.client.ListSenders()
@@ -500,6 +512,226 @@ func NewListAttributesStep[IN any](config ListAttributesStepConfig[IN]) sdkgo.Qu
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ListAttributesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateAttributeBranchCreated sdkgo.BranchID = "created"
+const CreateAttributeBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateAttributeBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateAttributeBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateAttributeDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createAttribute"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateAttributeBranchCreated, Description: "Brevo created the attribute."},
+		{ID: CreateAttributeBranchProviderRejected, Description: "Brevo conclusively rejected the attribute.", Optional: true},
+		{ID: CreateAttributeBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateAttributeBranchUncertain, Description: "The attribute may have been created after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateAttributeResult = sdkgo.MutationResult[AttributeChangeResult]
+
+type CreateAttributeStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=brevo"`
+	operationID                       struct{}                                                    `connector:"operationId=createAttribute"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateAttributeInput                               `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateAttributeResult]                         `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateAttributeResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateAttributeResult]                         `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateAttributeResult]                         `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AttributeChangeResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateAttributeStep[IN any](config CreateAttributeStepConfig[IN]) sdkgo.MutationStep[IN, CreateAttributeInput, AttributeChangeResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("brevo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateAttributeInput, AttributeChangeResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateAttribute(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateAttributeResult] {
+			branches := make([]sdkgo.BranchTarget[CreateAttributeResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateAttributeBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateAttributeBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateAttributeBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateAttributeBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateAttributeBranchUpdated sdkgo.BranchID = "updated"
+const UpdateAttributeBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateAttributeBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateAttributeBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateAttributeDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateAttribute"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateAttributeBranchUpdated, Description: "Brevo updated the attribute."},
+		{ID: UpdateAttributeBranchNotFound, Description: "Brevo did not find the attribute.", Optional: true},
+		{ID: UpdateAttributeBranchProviderRejected, Description: "Brevo conclusively rejected the request.", Optional: true},
+		{ID: UpdateAttributeBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateAttributeResult = sdkgo.MutationResult[AttributeChangeResult]
+
+type UpdateAttributeStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=brevo"`
+	operationID                       struct{}                                                    `connector:"operationId=updateAttribute"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateAttributeInput                               `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateAttributeResult]                         `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateAttributeResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateAttributeResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateAttributeResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AttributeChangeResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateAttributeStep[IN any](config UpdateAttributeStepConfig[IN]) sdkgo.MutationStep[IN, UpdateAttributeInput, AttributeChangeResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("brevo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateAttributeInput, AttributeChangeResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateAttribute(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateAttributeResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateAttributeResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateAttributeBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateAttributeBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateAttributeBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateAttributeBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteAttributeBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteAttributeBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteAttributeBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteAttributeBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteAttributeDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteAttribute"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteAttributeBranchDeleted, Description: "Brevo deleted the attribute."},
+		{ID: DeleteAttributeBranchNotFound, Description: "Brevo did not find the attribute.", Optional: true},
+		{ID: DeleteAttributeBranchProviderRejected, Description: "Brevo conclusively rejected the request.", Optional: true},
+		{ID: DeleteAttributeBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteAttributeResult = sdkgo.MutationResult[AttributeChangeResult]
+
+type DeleteAttributeStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=brevo"`
+	operationID                       struct{}                                                    `connector:"operationId=deleteAttribute"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteAttributeInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteAttributeResult]                         `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteAttributeResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteAttributeResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteAttributeResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AttributeChangeResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteAttributeStep[IN any](config DeleteAttributeStepConfig[IN]) sdkgo.MutationStep[IN, DeleteAttributeInput, AttributeChangeResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("brevo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteAttributeInput, AttributeChangeResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteAttribute(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteAttributeResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteAttributeResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteAttributeBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteAttributeBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteAttributeBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteAttributeBranchDefect))
 			}
 			return branches
 		}(),

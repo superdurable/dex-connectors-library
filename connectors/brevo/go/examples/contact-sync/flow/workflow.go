@@ -17,14 +17,16 @@ const (
 	// FlowType is the stable Dex Flow identity.
 	FlowType = "BrevoContactSync"
 	// ConnectionName is the static Dex Web connection used by the Flow.
-	ConnectionName         = "brevo"
-	upsertStepType         = "UpsertBrevoContact"
-	listAttributesStepType = "ListBrevoAttributes"
-	updateSenderStepType   = "UpdateBrevoSender"
+	ConnectionName          = "brevo"
+	upsertStepType          = "UpsertBrevoContact"
+	listAttributesStepType  = "ListBrevoAttributes"
+	updateSenderStepType    = "UpdateBrevoSender"
+	updateAttributeStepType = "UpdateBrevoAttribute"
 )
 
 var outcomeAttribute = dex.DefineAttribute[brevo.ContactWriteResult]("brevo-contact-sync-outcome")
 var senderUpdateAttribute = dex.DefineAttribute[brevo.UpdateSenderInput]("brevo-sender-update")
+var attributeUpdateAttribute = dex.DefineAttribute[brevo.UpdateAttributeInput]("brevo-attribute-update")
 
 // Request is the Dex Web Start Flow input.
 type Request struct {
@@ -36,6 +38,10 @@ type Request struct {
 	SenderID int64 `json:"senderId,omitempty"`
 	// SenderName is required when SenderID is supplied.
 	SenderName string `json:"senderName,omitempty"`
+	// AttributeName optionally names a normal multiple-choice contact attribute.
+	AttributeName string `json:"attributeName,omitempty"`
+	// AttributeOptions replaces every option when AttributeName is supplied.
+	AttributeOptions []string `json:"attributeOptions,omitempty"`
 }
 
 // Flow creates or updates one Brevo contact.
@@ -50,7 +56,7 @@ func NewFlow(connection brevo.Connection) *Flow { return &Flow{connection: conne
 func (*Flow) GetFlowType() string { return FlowType }
 
 func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{outcomeAttribute, senderUpdateAttribute}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{outcomeAttribute, senderUpdateAttribute, attributeUpdateAttribute}}
 }
 
 func (flow *Flow) GetSteps() []dex.StepDef {
@@ -77,6 +83,13 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Updated:             sdkgo.GoTo(completeAfterSender{}),
 		})),
 		dex.DefineStep(completeAfterSender{}),
+		dex.DefineStep(brevo.NewUpdateAttributeStep(brevo.UpdateAttributeStepConfig[brevo.UpdateAttributeInput]{
+			StepType: updateAttributeStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "contact-sync", GroupLabel: "Contact sync", Explanation: "Replace the selected contact attribute's options in Brevo."},
+			MapToOperationInput: func(input brevo.UpdateAttributeInput) brevo.UpdateAttributeInput { return input },
+			Updated:             sdkgo.GoTo(completeAfterAttribute{}),
+		})),
+		dex.DefineStep(completeAfterAttribute{}),
 	}
 }
 
@@ -132,11 +145,17 @@ func (start) Execute(ctx dex.Context, request Request) (*dex.StepDecision, error
 	request.Email = strings.TrimSpace(request.Email)
 	request.FirstName = strings.TrimSpace(request.FirstName)
 	request.SenderName = strings.TrimSpace(request.SenderName)
-	if request.Email == "" || request.FirstName == "" || request.SenderID < 0 || (request.SenderID > 0 && request.SenderName == "") {
+	request.AttributeName = strings.TrimSpace(request.AttributeName)
+	if request.Email == "" || request.FirstName == "" || request.SenderID < 0 || (request.SenderID > 0 && request.SenderName == "") || (request.AttributeName != "" && len(request.AttributeOptions) == 0) || (request.AttributeName == "" && len(request.AttributeOptions) > 0) {
 		return dex.ForceFail("email and firstName are required"), nil
 	}
 	if request.SenderID > 0 {
 		if err := senderUpdateAttribute.Set(ctx, brevo.UpdateSenderInput{ID: request.SenderID, Name: request.SenderName}); err != nil {
+			return nil, err
+		}
+	}
+	if request.AttributeName != "" {
+		if err := attributeUpdateAttribute.Set(ctx, brevo.UpdateAttributeInput{Category: "normal", Name: request.AttributeName, Options: request.AttributeOptions}); err != nil {
 			return nil, err
 		}
 	}
@@ -172,6 +191,13 @@ func (completeAfterAttributes) Execute(ctx dex.Context, _ brevo.ListAttributesRe
 	if !errors.As(err, &missing) {
 		return nil, err
 	}
+	attribute, err := attributeUpdateAttribute.Get(ctx)
+	if err == nil {
+		return dex.GoTo(sdkgo.StepRef[brevo.UpdateAttributeInput](updateAttributeStepType), attribute), nil
+	}
+	if !errors.As(err, &missing) {
+		return nil, err
+	}
 	outcome, err := outcomeAttribute.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -186,6 +212,28 @@ type completeAfterSender struct {
 }
 
 func (completeAfterSender) Execute(ctx dex.Context, _ brevo.UpdateSenderResult) (*dex.StepDecision, error) {
+	attribute, err := attributeUpdateAttribute.Get(ctx)
+	var missing *dex.AttributeNotFoundError
+	if err == nil {
+		return dex.GoTo(sdkgo.StepRef[brevo.UpdateAttributeInput](updateAttributeStepType), attribute), nil
+	}
+	if !errors.As(err, &missing) {
+		return nil, err
+	}
+	outcome, err := outcomeAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// dex:group group-id:contact-sync group-label:"Contact sync"
+// dex:explanation text:"Complete after Brevo updates the selected contact attribute."
+type completeAfterAttribute struct {
+	dex.StepDefaultsNoWaitFor[brevo.UpdateAttributeResult]
+}
+
+func (completeAfterAttribute) Execute(ctx dex.Context, _ brevo.UpdateAttributeResult) (*dex.StepDecision, error) {
 	outcome, err := outcomeAttribute.Get(ctx)
 	if err != nil {
 		return nil, err

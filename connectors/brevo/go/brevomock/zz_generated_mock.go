@@ -22,6 +22,9 @@ type Mock struct {
 	updateContact         *connectormock.Mutation[brevo.UpdateContactInput, brevo.ContactChangeResult]
 	deleteContact         *connectormock.Mutation[brevo.DeleteContactInput, brevo.ContactChangeResult]
 	listAttributes        *connectormock.Query[brevo.ListAttributesInput, brevo.AttributesList]
+	createAttribute       *connectormock.Mutation[brevo.CreateAttributeInput, brevo.AttributeChangeResult]
+	updateAttribute       *connectormock.Mutation[brevo.UpdateAttributeInput, brevo.AttributeChangeResult]
+	deleteAttribute       *connectormock.Mutation[brevo.DeleteAttributeInput, brevo.AttributeChangeResult]
 	listSenders           *connectormock.Query[brevo.ListSendersInput, brevo.SendersList]
 	createSender          *connectormock.Mutation[brevo.CreateSenderInput, brevo.SenderChangeResult]
 	updateSender          *connectormock.Mutation[brevo.UpdateSenderInput, brevo.SenderChangeResult]
@@ -39,6 +42,9 @@ func New(t testing.TB, connectionName string) *Mock {
 		updateContact:         connectormock.NewMutation[brevo.UpdateContactInput, brevo.ContactChangeResult](t, brevo.UpdateContactDefinition),
 		deleteContact:         connectormock.NewMutation[brevo.DeleteContactInput, brevo.ContactChangeResult](t, brevo.DeleteContactDefinition),
 		listAttributes:        connectormock.NewQuery[brevo.ListAttributesInput, brevo.AttributesList](t, brevo.ListAttributesDefinition),
+		createAttribute:       connectormock.NewMutation[brevo.CreateAttributeInput, brevo.AttributeChangeResult](t, brevo.CreateAttributeDefinition),
+		updateAttribute:       connectormock.NewMutation[brevo.UpdateAttributeInput, brevo.AttributeChangeResult](t, brevo.UpdateAttributeDefinition),
+		deleteAttribute:       connectormock.NewMutation[brevo.DeleteAttributeInput, brevo.AttributeChangeResult](t, brevo.DeleteAttributeDefinition),
 		listSenders:           connectormock.NewQuery[brevo.ListSendersInput, brevo.SendersList](t, brevo.ListSendersDefinition),
 		createSender:          connectormock.NewMutation[brevo.CreateSenderInput, brevo.SenderChangeResult](t, brevo.CreateSenderDefinition),
 		updateSender:          connectormock.NewMutation[brevo.UpdateSenderInput, brevo.SenderChangeResult](t, brevo.UpdateSenderDefinition),
@@ -50,6 +56,9 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.updateContact.Default(UpdateContactDefault())
 	mock.deleteContact.Default(DeleteContactDefault())
 	mock.listAttributes.Default(ListAttributesDefault())
+	mock.createAttribute.Default(CreateAttributeDefault())
+	mock.updateAttribute.Default(UpdateAttributeDefault())
+	mock.deleteAttribute.Default(DeleteAttributeDefault())
 	mock.listSenders.Default(ListSendersDefault())
 	mock.createSender.Default(CreateSenderDefault())
 	mock.updateSender.Default(UpdateSenderDefault())
@@ -85,6 +94,21 @@ func (mock *Mock) DeleteContact() *connectormock.Mutation[brevo.DeleteContactInp
 // ListAttributes returns the listAttributes script.
 func (mock *Mock) ListAttributes() *connectormock.Query[brevo.ListAttributesInput, brevo.AttributesList] {
 	return mock.listAttributes
+}
+
+// CreateAttribute returns the createAttribute script.
+func (mock *Mock) CreateAttribute() *connectormock.Mutation[brevo.CreateAttributeInput, brevo.AttributeChangeResult] {
+	return mock.createAttribute
+}
+
+// UpdateAttribute returns the updateAttribute script.
+func (mock *Mock) UpdateAttribute() *connectormock.Mutation[brevo.UpdateAttributeInput, brevo.AttributeChangeResult] {
+	return mock.updateAttribute
+}
+
+// DeleteAttribute returns the deleteAttribute script.
+func (mock *Mock) DeleteAttribute() *connectormock.Mutation[brevo.DeleteAttributeInput, brevo.AttributeChangeResult] {
+	return mock.deleteAttribute
 }
 
 // ListSenders returns the listSenders script.
@@ -130,6 +154,15 @@ func (operations mockOperations) DeleteContact() sdkgo.Mutation[brevo.DeleteCont
 }
 func (operations mockOperations) ListAttributes() sdkgo.Query[brevo.ListAttributesInput, brevo.AttributesList] {
 	return operations.mock.listAttributes
+}
+func (operations mockOperations) CreateAttribute() sdkgo.Mutation[brevo.CreateAttributeInput, brevo.AttributeChangeResult] {
+	return operations.mock.createAttribute
+}
+func (operations mockOperations) UpdateAttribute() sdkgo.Mutation[brevo.UpdateAttributeInput, brevo.AttributeChangeResult] {
+	return operations.mock.updateAttribute
+}
+func (operations mockOperations) DeleteAttribute() sdkgo.Mutation[brevo.DeleteAttributeInput, brevo.AttributeChangeResult] {
+	return operations.mock.deleteAttribute
 }
 func (operations mockOperations) ListSenders() sdkgo.Query[brevo.ListSendersInput, brevo.SendersList] {
 	return operations.mock.listSenders
@@ -290,6 +323,114 @@ func ListAttributesListedDefault() connectormock.Case[brevo.AttributesList] {
 // ListAttributesDefault is the manifest default, listedDefault, which New installs.
 func ListAttributesDefault() connectormock.Case[brevo.AttributesList] {
 	return ListAttributesListedDefault()
+}
+
+// CreateAttributeCreated selects the created branch: Brevo created the attribute.
+func CreateAttributeCreated(value brevo.AttributeChangeResult, failure *sdkgo.Failure) connectormock.Case[brevo.AttributeChangeResult] {
+	return connectormock.Branch(brevo.CreateAttributeBranchCreated, value, failure)
+}
+
+// CreateAttributeProviderRejected selects the providerRejected branch: Brevo conclusively rejected the attribute.
+func CreateAttributeProviderRejected(value brevo.AttributeChangeResult, failure *sdkgo.Failure) connectormock.Case[brevo.AttributeChangeResult] {
+	return connectormock.Branch(brevo.CreateAttributeBranchProviderRejected, value, failure)
+}
+
+// CreateAttributeDefect selects the defect branch: Local input or credentials are invalid.
+func CreateAttributeDefect(value brevo.AttributeChangeResult, failure *sdkgo.Failure) connectormock.Case[brevo.AttributeChangeResult] {
+	return connectormock.Branch(brevo.CreateAttributeBranchDefect, value, failure)
+}
+
+// CreateAttributeUncertain returns an uncertain createAttribute outcome.
+func CreateAttributeUncertain(value brevo.AttributeChangeResult, failure sdkgo.Failure) connectormock.Case[brevo.AttributeChangeResult] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateAttributeRetry asks Dex to retry the createAttribute Step, after the delay when it is positive.
+func CreateAttributeRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[brevo.AttributeChangeResult] {
+	return connectormock.Retry[brevo.AttributeChangeResult](failure, after)
+}
+
+// CreateAttributeCreatedDefault is the manifest mock createdDefault: Sample created attribute.
+func CreateAttributeCreatedDefault() connectormock.Case[brevo.AttributeChangeResult] {
+	value := connectormock.MustDecodeOutput[brevo.AttributeChangeResult](`{"category":"normal","name":"CUSTOMER_CODE"}`)
+	return connectormock.Branch(brevo.CreateAttributeBranchCreated, value, nil)
+}
+
+// CreateAttributeDefault is the manifest default, createdDefault, which New installs.
+func CreateAttributeDefault() connectormock.Case[brevo.AttributeChangeResult] {
+	return CreateAttributeCreatedDefault()
+}
+
+// UpdateAttributeUpdated selects the updated branch: Brevo updated the attribute.
+func UpdateAttributeUpdated(value brevo.AttributeChangeResult, failure *sdkgo.Failure) connectormock.Case[brevo.AttributeChangeResult] {
+	return connectormock.Branch(brevo.UpdateAttributeBranchUpdated, value, failure)
+}
+
+// UpdateAttributeNotFound selects the notFound branch: Brevo did not find the attribute.
+func UpdateAttributeNotFound(value brevo.AttributeChangeResult, failure *sdkgo.Failure) connectormock.Case[brevo.AttributeChangeResult] {
+	return connectormock.Branch(brevo.UpdateAttributeBranchNotFound, value, failure)
+}
+
+// UpdateAttributeProviderRejected selects the providerRejected branch: Brevo conclusively rejected the request.
+func UpdateAttributeProviderRejected(value brevo.AttributeChangeResult, failure *sdkgo.Failure) connectormock.Case[brevo.AttributeChangeResult] {
+	return connectormock.Branch(brevo.UpdateAttributeBranchProviderRejected, value, failure)
+}
+
+// UpdateAttributeDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateAttributeDefect(value brevo.AttributeChangeResult, failure *sdkgo.Failure) connectormock.Case[brevo.AttributeChangeResult] {
+	return connectormock.Branch(brevo.UpdateAttributeBranchDefect, value, failure)
+}
+
+// UpdateAttributeRetry asks Dex to retry the updateAttribute Step, after the delay when it is positive.
+func UpdateAttributeRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[brevo.AttributeChangeResult] {
+	return connectormock.Retry[brevo.AttributeChangeResult](failure, after)
+}
+
+// UpdateAttributeUpdatedDefault is the manifest mock updatedDefault: Sample updated attribute.
+func UpdateAttributeUpdatedDefault() connectormock.Case[brevo.AttributeChangeResult] {
+	value := connectormock.MustDecodeOutput[brevo.AttributeChangeResult](`{"category":"normal","name":"CUSTOMER_TIER"}`)
+	return connectormock.Branch(brevo.UpdateAttributeBranchUpdated, value, nil)
+}
+
+// UpdateAttributeDefault is the manifest default, updatedDefault, which New installs.
+func UpdateAttributeDefault() connectormock.Case[brevo.AttributeChangeResult] {
+	return UpdateAttributeUpdatedDefault()
+}
+
+// DeleteAttributeDeleted selects the deleted branch: Brevo deleted the attribute.
+func DeleteAttributeDeleted(value brevo.AttributeChangeResult, failure *sdkgo.Failure) connectormock.Case[brevo.AttributeChangeResult] {
+	return connectormock.Branch(brevo.DeleteAttributeBranchDeleted, value, failure)
+}
+
+// DeleteAttributeNotFound selects the notFound branch: Brevo did not find the attribute.
+func DeleteAttributeNotFound(value brevo.AttributeChangeResult, failure *sdkgo.Failure) connectormock.Case[brevo.AttributeChangeResult] {
+	return connectormock.Branch(brevo.DeleteAttributeBranchNotFound, value, failure)
+}
+
+// DeleteAttributeProviderRejected selects the providerRejected branch: Brevo conclusively rejected the request.
+func DeleteAttributeProviderRejected(value brevo.AttributeChangeResult, failure *sdkgo.Failure) connectormock.Case[brevo.AttributeChangeResult] {
+	return connectormock.Branch(brevo.DeleteAttributeBranchProviderRejected, value, failure)
+}
+
+// DeleteAttributeDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteAttributeDefect(value brevo.AttributeChangeResult, failure *sdkgo.Failure) connectormock.Case[brevo.AttributeChangeResult] {
+	return connectormock.Branch(brevo.DeleteAttributeBranchDefect, value, failure)
+}
+
+// DeleteAttributeRetry asks Dex to retry the deleteAttribute Step, after the delay when it is positive.
+func DeleteAttributeRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[brevo.AttributeChangeResult] {
+	return connectormock.Retry[brevo.AttributeChangeResult](failure, after)
+}
+
+// DeleteAttributeDeletedDefault is the manifest mock deletedDefault: Sample deleted attribute.
+func DeleteAttributeDeletedDefault() connectormock.Case[brevo.AttributeChangeResult] {
+	value := connectormock.MustDecodeOutput[brevo.AttributeChangeResult](`{"category":"normal","name":"CUSTOMER_CODE"}`)
+	return connectormock.Branch(brevo.DeleteAttributeBranchDeleted, value, nil)
+}
+
+// DeleteAttributeDefault is the manifest default, deletedDefault, which New installs.
+func DeleteAttributeDefault() connectormock.Case[brevo.AttributeChangeResult] {
+	return DeleteAttributeDeletedDefault()
 }
 
 // ListSendersListed selects the listed branch: Brevo completed the operation.

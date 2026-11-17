@@ -135,6 +135,66 @@ spec:
           default: true
           description: Sample Brevo result.
           output: {attributes: [{name: FIRSTNAME, category: normal, type: text}]}
+    - name: createAttribute
+      goName: CreateAttribute
+      inputType: CreateAttributeInput
+      outputType: AttributeChangeResult
+      kind: mutation
+      description: Create a contact attribute with its type, options, or formula.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Brevo created the attribute.}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the attribute., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The attribute may have been created after the send cap., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample created attribute.
+          output: {category: normal, name: CUSTOMER_CODE}
+    - name: updateAttribute
+      goName: UpdateAttribute
+      inputType: UpdateAttributeInput
+      outputType: AttributeChangeResult
+      kind: mutation
+      description: Replace a contact attribute's choices or formula.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Brevo updated the attribute.}
+        - {id: notFound, goName: NotFound, description: Brevo did not find the attribute., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Sample updated attribute.
+          output: {category: normal, name: CUSTOMER_TIER}
+    - name: deleteAttribute
+      goName: DeleteAttribute
+      inputType: DeleteAttributeInput
+      outputType: AttributeChangeResult
+      kind: mutation
+      description: Delete a contact attribute by category and name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Brevo deleted the attribute.}
+        - {id: notFound, goName: NotFound, description: Brevo did not find the attribute., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Sample deleted attribute.
+          output: {category: normal, name: CUSTOMER_CODE}
     - name: listSenders
       goName: ListSenders
       inputType: ListSendersInput

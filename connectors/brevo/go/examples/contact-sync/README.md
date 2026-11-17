@@ -1,6 +1,6 @@
 # Brevo contact sync example
 
-This runnable Flow accepts an email and first name in Dex Web Start Flow, validates them, calls `brevo.NewCreateOrUpdateContactStep`, then lists contact attribute definitions. If `senderId` and `senderName` are supplied, it also calls `brevo.NewUpdateSenderStep` to set that sender's display name. The happy branches complete with the contact confirmation. Other branches remain unwired and fail the Flow. `ConnectionName` is statically `brevo`. Dex Web summary and display views show the completed provider outcome.
+This runnable Flow accepts an email and first name in Dex Web Start Flow, validates them, calls `brevo.NewCreateOrUpdateContactStep`, then lists contact attribute definitions. If `senderId` and `senderName` are supplied, it calls `brevo.NewUpdateSenderStep`. If `attributeName` and `attributeOptions` are supplied, it calls `brevo.NewUpdateAttributeStep` to replace all options of an existing normal multiple-choice attribute. The happy branches complete with the contact confirmation. Other branches remain unwired and fail the Flow. `ConnectionName` is statically `brevo`. Dex Web summary and display views show the completed provider outcome.
 
 ## Generate strict FDG 2.0
 
@@ -45,6 +45,8 @@ In Dex Web Connections, configure `brevo / brevo` using the [Brevo API key page]
 Use a real email address and a contact you are allowed to create or update when testing live. The example stores no credential in Flow input or output.
 
 To update a sender as part of the same Flow, add `senderId` as a positive numeric ID from `listSenders` and `senderName` as its new display name. Leave both absent to skip the sender update.
+
+To update an attribute, add an uppercase `attributeName` from `listAttributes` and a nonempty array of `attributeOptions` strings, each at most 200 characters. The options replace the complete existing set. Leave both absent to skip the attribute update.
 
 ## Tests
 

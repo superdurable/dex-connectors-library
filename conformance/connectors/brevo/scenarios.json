@@ -2916,6 +2916,1191 @@
           "state": "claimed"
         }
       }
+    },
+    {
+      "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts/attributes/normal/CUSTOMER_CODE",
+          "requestBody": {
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "category": "normal",
+          "name": "CUSTOMER_CODE"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "input": {
+        "category": "normal",
+        "name": "CUSTOMER_CODE",
+        "type": "text"
+      },
+      "name": "createAttribute-success",
+      "operation": "createAttribute"
+    },
+    {
+      "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts/attributes/normal/CUSTOMER_CODE",
+          "requestBody": {
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "category": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "input": {
+        "category": "normal",
+        "name": "CUSTOMER_CODE",
+        "type": "text"
+      },
+      "name": "createAttribute-providerRejected",
+      "operation": "createAttribute"
+    },
+    {
+      "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "category": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "input": {
+        "category": "bad",
+        "name": "CUSTOMER_CODE",
+        "type": "text"
+      },
+      "name": "createAttribute-defect",
+      "operation": "createAttribute"
+    },
+    {
+      "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts/attributes/normal/CUSTOMER_CODE",
+          "requestBody": {
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "input": {
+        "category": "normal",
+        "name": "CUSTOMER_CODE",
+        "type": "text"
+      },
+      "name": "createAttribute-429",
+      "operation": "createAttribute"
+    },
+    {
+      "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts/attributes/normal/CUSTOMER_CODE",
+          "requestBody": {
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "input": {
+        "category": "normal",
+        "name": "CUSTOMER_CODE",
+        "type": "text"
+      },
+      "name": "createAttribute-500",
+      "operation": "createAttribute"
+    },
+    {
+      "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts/attributes/normal/CUSTOMER_CODE",
+          "requestBody": {
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "input": {
+        "category": "normal",
+        "name": "CUSTOMER_CODE",
+        "type": "text"
+      },
+      "name": "createAttribute-transportFailure",
+      "operation": "createAttribute"
+    },
+    {
+      "callId": "72213af1-d927-5d12-8520-bebb1ea0832f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v3/contacts/attributes/normal/CUSTOMER_TIER",
+          "requestBody": {
+            "multiCategoryOptions": [
+              "Gold",
+              "Silver"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "category": "normal",
+          "name": "CUSTOMER_TIER"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "72213af1-d927-5d12-8520-bebb1ea0832f",
+      "input": {
+        "category": "normal",
+        "name": "CUSTOMER_TIER",
+        "options": [
+          "Gold",
+          "Silver"
+        ]
+      },
+      "name": "updateAttribute-success",
+      "operation": "updateAttribute"
+    },
+    {
+      "callId": "72213af1-d927-5d12-8520-bebb1ea0832f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v3/contacts/attributes/normal/CUSTOMER_TIER",
+          "requestBody": {
+            "multiCategoryOptions": [
+              "Gold",
+              "Silver"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "category": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "72213af1-d927-5d12-8520-bebb1ea0832f",
+      "input": {
+        "category": "normal",
+        "name": "CUSTOMER_TIER",
+        "options": [
+          "Gold",
+          "Silver"
+        ]
+      },
+      "name": "updateAttribute-notFound",
+      "operation": "updateAttribute"
+    },
+    {
+      "callId": "72213af1-d927-5d12-8520-bebb1ea0832f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v3/contacts/attributes/normal/CUSTOMER_TIER",
+          "requestBody": {
+            "multiCategoryOptions": [
+              "Gold",
+              "Silver"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "category": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "72213af1-d927-5d12-8520-bebb1ea0832f",
+      "input": {
+        "category": "normal",
+        "name": "CUSTOMER_TIER",
+        "options": [
+          "Gold",
+          "Silver"
+        ]
+      },
+      "name": "updateAttribute-providerRejected",
+      "operation": "updateAttribute"
+    },
+    {
+      "callId": "72213af1-d927-5d12-8520-bebb1ea0832f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "category": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "72213af1-d927-5d12-8520-bebb1ea0832f",
+      "input": {
+        "category": "normal",
+        "name": "bad",
+        "options": []
+      },
+      "name": "updateAttribute-defect",
+      "operation": "updateAttribute"
+    },
+    {
+      "callId": "72213af1-d927-5d12-8520-bebb1ea0832f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v3/contacts/attributes/normal/CUSTOMER_TIER",
+          "requestBody": {
+            "multiCategoryOptions": [
+              "Gold",
+              "Silver"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "72213af1-d927-5d12-8520-bebb1ea0832f",
+      "input": {
+        "category": "normal",
+        "name": "CUSTOMER_TIER",
+        "options": [
+          "Gold",
+          "Silver"
+        ]
+      },
+      "name": "updateAttribute-429",
+      "operation": "updateAttribute"
+    },
+    {
+      "callId": "72213af1-d927-5d12-8520-bebb1ea0832f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v3/contacts/attributes/normal/CUSTOMER_TIER",
+          "requestBody": {
+            "multiCategoryOptions": [
+              "Gold",
+              "Silver"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "72213af1-d927-5d12-8520-bebb1ea0832f",
+      "input": {
+        "category": "normal",
+        "name": "CUSTOMER_TIER",
+        "options": [
+          "Gold",
+          "Silver"
+        ]
+      },
+      "name": "updateAttribute-500",
+      "operation": "updateAttribute"
+    },
+    {
+      "callId": "72213af1-d927-5d12-8520-bebb1ea0832f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v3/contacts/attributes/normal/CUSTOMER_TIER",
+          "requestBody": {
+            "multiCategoryOptions": [
+              "Gold",
+              "Silver"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "72213af1-d927-5d12-8520-bebb1ea0832f",
+      "input": {
+        "category": "normal",
+        "name": "CUSTOMER_TIER",
+        "options": [
+          "Gold",
+          "Silver"
+        ]
+      },
+      "name": "updateAttribute-transportFailure",
+      "operation": "updateAttribute"
+    },
+    {
+      "callId": "39df3840-8666-508e-b964-0c667d93824b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/contacts/attributes/normal/CUSTOMER_CODE",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "category": "normal",
+          "name": "CUSTOMER_CODE"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "39df3840-8666-508e-b964-0c667d93824b",
+      "input": {
+        "category": "normal",
+        "name": "CUSTOMER_CODE"
+      },
+      "name": "deleteAttribute-success",
+      "operation": "deleteAttribute"
+    },
+    {
+      "callId": "39df3840-8666-508e-b964-0c667d93824b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/contacts/attributes/normal/CUSTOMER_CODE",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "category": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "39df3840-8666-508e-b964-0c667d93824b",
+      "input": {
+        "category": "normal",
+        "name": "CUSTOMER_CODE"
+      },
+      "name": "deleteAttribute-notFound",
+      "operation": "deleteAttribute"
+    },
+    {
+      "callId": "39df3840-8666-508e-b964-0c667d93824b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/contacts/attributes/normal/CUSTOMER_CODE",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "category": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "39df3840-8666-508e-b964-0c667d93824b",
+      "input": {
+        "category": "normal",
+        "name": "CUSTOMER_CODE"
+      },
+      "name": "deleteAttribute-providerRejected",
+      "operation": "deleteAttribute"
+    },
+    {
+      "callId": "39df3840-8666-508e-b964-0c667d93824b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "category": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "39df3840-8666-508e-b964-0c667d93824b",
+      "input": {
+        "category": "bad",
+        "name": "CUSTOMER_CODE"
+      },
+      "name": "deleteAttribute-defect",
+      "operation": "deleteAttribute"
+    },
+    {
+      "callId": "39df3840-8666-508e-b964-0c667d93824b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/contacts/attributes/normal/CUSTOMER_CODE",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "39df3840-8666-508e-b964-0c667d93824b",
+      "input": {
+        "category": "normal",
+        "name": "CUSTOMER_CODE"
+      },
+      "name": "deleteAttribute-429",
+      "operation": "deleteAttribute"
+    },
+    {
+      "callId": "39df3840-8666-508e-b964-0c667d93824b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/contacts/attributes/normal/CUSTOMER_CODE",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "39df3840-8666-508e-b964-0c667d93824b",
+      "input": {
+        "category": "normal",
+        "name": "CUSTOMER_CODE"
+      },
+      "name": "deleteAttribute-500",
+      "operation": "deleteAttribute"
+    },
+    {
+      "callId": "39df3840-8666-508e-b964-0c667d93824b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/contacts/attributes/normal/CUSTOMER_CODE",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "39df3840-8666-508e-b964-0c667d93824b",
+      "input": {
+        "category": "normal",
+        "name": "CUSTOMER_CODE"
+      },
+      "name": "deleteAttribute-transportFailure",
+      "operation": "deleteAttribute"
+    },
+    {
+      "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "category": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "input": {
+        "category": "normal",
+        "name": "CUSTOMER_CODE",
+        "type": "text"
+      },
+      "name": "createAttribute-uncertainAfterSendCap",
+      "operation": "createAttribute",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts/attributes/normal/CUSTOMER_TIER",
+          "requestBody": {
+            "multiCategoryOptions": [
+              "Gold",
+              "Silver"
+            ],
+            "type": "multiple-choice"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "category": "normal",
+          "name": "CUSTOMER_TIER"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "input": {
+        "category": "normal",
+        "name": "CUSTOMER_TIER",
+        "options": [
+          "Gold",
+          "Silver"
+        ],
+        "type": "multiple-choice"
+      },
+      "name": "createAttribute-multipleChoice",
+      "operation": "createAttribute"
+    },
+    {
+      "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts/attributes/category/CUSTOMER_STATUS",
+          "requestBody": {
+            "enumeration": [
+              {
+                "label": "Active",
+                "value": 1
+              }
+            ],
+            "type": "category"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "category": "category",
+          "name": "CUSTOMER_STATUS"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "input": {
+        "category": "category",
+        "enumeration": [
+          {
+            "label": "Active",
+            "value": 1
+          }
+        ],
+        "name": "CUSTOMER_STATUS",
+        "type": "category"
+      },
+      "name": "createAttribute-category",
+      "operation": "createAttribute"
+    },
+    {
+      "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts/attributes/calculated/TOTAL_SPEND",
+          "requestBody": {
+            "value": "1+1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "category": "calculated",
+          "name": "TOTAL_SPEND"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4938f15b-ddfc-5097-8205-1691fd66831d",
+      "input": {
+        "category": "calculated",
+        "name": "TOTAL_SPEND",
+        "value": "1+1"
+      },
+      "name": "createAttribute-calculated",
+      "operation": "createAttribute"
+    },
+    {
+      "callId": "72213af1-d927-5d12-8520-bebb1ea0832f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v3/contacts/attributes/category/CUSTOMER_STATUS",
+          "requestBody": {
+            "enumeration": [
+              {
+                "label": "Active",
+                "value": 1
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "category": "category",
+          "name": "CUSTOMER_STATUS"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "72213af1-d927-5d12-8520-bebb1ea0832f",
+      "input": {
+        "category": "category",
+        "enumeration": [
+          {
+            "label": "Active",
+            "value": 1
+          }
+        ],
+        "name": "CUSTOMER_STATUS"
+      },
+      "name": "updateAttribute-category",
+      "operation": "updateAttribute"
+    },
+    {
+      "callId": "72213af1-d927-5d12-8520-bebb1ea0832f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v3/contacts/attributes/calculated/TOTAL_SPEND",
+          "requestBody": {
+            "value": "1+2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "category": "calculated",
+          "name": "TOTAL_SPEND"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "72213af1-d927-5d12-8520-bebb1ea0832f",
+      "input": {
+        "category": "calculated",
+        "name": "TOTAL_SPEND",
+        "value": "1+2"
+      },
+      "name": "updateAttribute-calculated",
+      "operation": "updateAttribute"
     }
   ],
   "schemaVersion": 1

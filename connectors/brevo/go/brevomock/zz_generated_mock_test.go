@@ -32,6 +32,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[brevo.AttributesList](`{"attributes":[{"name":"FIRSTNAME","category":"normal","type":"text"}]}`)
 			return err
 		}},
+		{name: "createAttribute/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.AttributeChangeResult](`{"category":"normal","name":"CUSTOMER_CODE"}`)
+			return err
+		}},
+		{name: "updateAttribute/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.AttributeChangeResult](`{"category":"normal","name":"CUSTOMER_TIER"}`)
+			return err
+		}},
+		{name: "deleteAttribute/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.AttributeChangeResult](`{"category":"normal","name":"CUSTOMER_CODE"}`)
+			return err
+		}},
 		{name: "listSenders/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[brevo.SendersList](`{"senders":[{"id":1,"name":"Support","email":"support@example.com","active":true}]}`)
 			return err
@@ -68,6 +80,15 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListAttributes().Definition().Operation.OperationID != "listAttributes" {
 		t.Errorf("listAttributes mock has another definition")
+	}
+	if mock.CreateAttribute().Definition().Operation.OperationID != "createAttribute" {
+		t.Errorf("createAttribute mock has another definition")
+	}
+	if mock.UpdateAttribute().Definition().Operation.OperationID != "updateAttribute" {
+		t.Errorf("updateAttribute mock has another definition")
+	}
+	if mock.DeleteAttribute().Definition().Operation.OperationID != "deleteAttribute" {
+		t.Errorf("deleteAttribute mock has another definition")
 	}
 	if mock.ListSenders().Definition().Operation.OperationID != "listSenders" {
 		t.Errorf("listSenders mock has another definition")
