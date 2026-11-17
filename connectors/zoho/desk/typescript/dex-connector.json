@@ -1,10 +1,10 @@
 {
   "connectorId": "zoho-desk",
-  "releaseTag": "connectors/zoho/desk/go/v0.25.0",
+  "releaseTag": "connectors/zoho/desk/go/v0.25.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-zoho-desk",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -173,7 +173,7 @@
       "kind": "mutation",
       "operationId": "createTicket",
       "inputType": "CreateTicketInput",
-      "description": "Create one ticket in a department for a contact. Zoho Desk has no idempotency key, so the Step runs with sync durability and sends the request at most once per Step execution.",
+      "description": "Create one ticket in a department for a contact. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Zoho Desk has no idempotency key or ticket lookup by Call ID, so an unknown outcome resends the ticket while the send cap allows and selects uncertain at the cap.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -284,7 +284,7 @@
       "kind": "mutation",
       "operationId": "updateTicket",
       "inputType": "UpdateTicketInput",
-      "description": "Set the status, priority, assignee, or department of one ticket; a repeated attempt finds the change already applied and writes nothing.",
+      "description": "Set the status, priority, assignee, or department of one ticket. An unknown outcome of the change retries it, and a repeated attempt that finds the change already applied writes nothing.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -365,7 +365,7 @@
       "kind": "mutation",
       "operationId": "addComment",
       "inputType": "AddCommentInput",
-      "description": "Add one public or private plain-text comment to a ticket. Zoho Desk has no idempotency key, so the Step runs with sync durability and sends the request at most once per Step execution.",
+      "description": "Add one public or private plain-text comment to a ticket. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Zoho Desk has no idempotency key or comment lookup by Call ID, so an unknown outcome resends the comment while the send cap allows and selects uncertain at the cap.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

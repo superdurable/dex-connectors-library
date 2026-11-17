@@ -81,42 +81,45 @@ type contactRequestWire struct {
 func (CreateTicketOperation) Definition() sdkgo.MutationDefinition { return CreateTicketDefinition }
 
 // IdempotencyKey uses the stable connector Call ID. Zoho Desk documents no idempotency key, so the
-// key only correlates the Receipt; single dispatch comes from a Dex heartbeat checkpoint instead.
+// key only correlates the Receipt; the SDK single-dispatch fence bounds resends instead.
 func (CreateTicketOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateTicketInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /api/v1/tickets once per safe attempt. A 429, 503, or request that never left
-// the process retries; other unconfirmed outcomes select uncertain without resending.
+// Invoke sends POST /api/v1/tickets under the single-dispatch fence and the manifest send cap.
+// A 429, 503, or request that never left the process retries; another unknown outcome resends
+// while the cap allows and selects uncertain at the cap, because Zoho Desk has no ticket read-back by Call ID.
 func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicketInput) sdkgo.MutationAttempt[CreateTicketOutput] {
 	branches := singleDispatchBranches{providerRejected: CreateTicketBranchProviderRejected, defect: CreateTicketBranchDefect}
 	if err := validateCreateTicketInput(input); err != nil {
 		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, CreateTicketOutput{}, deskFailurePointer(sdkgo.FailureValidation, createTicketOperation, err.Error()), sdkgo.Receipt{})
 	}
-	if attempt, isTerminal := singleDispatchAttemptForEarlierDispatch[CreateTicketOutput](call, createTicketOperation,
-		operation.client.receipt(call, deskResponse{}, "")); isTerminal {
-		return attempt
+	permit, priorAttempt := beginDeskWrite[CreateTicketOutput](call, operation.client, createTicketOperation,
+		CreateTicketDefinition.StepDefaults.ExecuteMethodTimeout, CreateTicketBranchDefect)
+	if priorAttempt != nil {
+		return *priorAttempt
 	}
 	session, cancel, failure := operation.client.startSession(call, createTicketOperation)
 	if failure != nil {
-		return singleDispatchAttemptForSession[CreateTicketOutput](failure, branches)
+		return sessionAttemptForWrite[CreateTicketOutput](permit, failure, branches)
 	}
 	defer cancel()
-	if attempt, isTerminal := singleDispatchAttemptForRecord[CreateTicketOutput](call, createTicketOperation); isTerminal {
-		return attempt
-	}
-	result := operation.client.exchange(session, createTicketOperation, deskRequest{
+	result, dispatchAttempt := sendDeskWrite[CreateTicketOutput](permit, operation.client, session, createTicketOperation, deskRequest{
 		method: http.MethodPost, path: "/tickets", payload: buildCreateTicketRequest(input),
 	})
+	if dispatchAttempt != nil {
+		return *dispatchAttempt
+	}
 	receipt := operation.client.receipt(call, result.response, "")
-	if attempt, isTerminal := singleDispatchAttemptForExchange[CreateTicketOutput](call, result, receipt, branches); isTerminal {
+	if attempt, isTerminal := deskWriteAttemptForExchange[CreateTicketOutput](permit, call, operation.client, session, result, receipt, branches); isTerminal {
 		return attempt
 	}
 	ticket, _, err := decodeTicketBody(result.response.body, "")
 	if err != nil {
-		return sdkgo.NewMutationUncertain(CreateTicketOutput{}, deskFailure(sdkgo.FailureProtocol, createTicketOperation,
+		return acceptedWriteAttempt[CreateTicketOutput](permit, acceptedProviderID(result.response.body), deskFailure(sdkgo.FailureProtocol, createTicketOperation,
 			"Zoho Desk accepted the ticket but returned an invalid ticket: "+err.Error()), receipt)
 	}
+	recordAcceptedWrite(permit, ticket.ID)
 	return sdkgo.NewMutationBranch(CreateTicketBranchCreated, CreateTicketOutput{Ticket: ticket}, nil, operation.client.receipt(call, result.response, ticket.ID))
 }
 

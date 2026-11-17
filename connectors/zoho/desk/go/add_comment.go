@@ -52,43 +52,46 @@ type addCommentRequestWire struct {
 func (AddCommentOperation) Definition() sdkgo.MutationDefinition { return AddCommentDefinition }
 
 // IdempotencyKey uses the stable connector Call ID. Zoho Desk documents no idempotency key, so the
-// key only correlates the Receipt; single dispatch comes from a Dex heartbeat checkpoint instead.
+// key only correlates the Receipt; the SDK single-dispatch fence bounds resends instead.
 func (AddCommentOperation) IdempotencyKey(callID sdkgo.CallID, _ AddCommentInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /api/v1/tickets/{id}/comments once per safe attempt. A 429, 503, or request
-// that never left the process retries; other unconfirmed outcomes select uncertain without resending.
+// Invoke sends POST /api/v1/tickets/{id}/comments under the single-dispatch fence and the manifest
+// send cap. A 429, 503, or request that never left the process retries; another unknown outcome
+// resends while the cap allows and selects uncertain at the cap, because Zoho Desk has no comment read-back by Call ID.
 func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInput) sdkgo.MutationAttempt[AddCommentOutput] {
 	branches := singleDispatchBranches{notFound: AddCommentBranchNotFound, providerRejected: AddCommentBranchProviderRejected, defect: AddCommentBranchDefect}
 	if err := validateAddCommentInput(input); err != nil {
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, AddCommentOutput{}, deskFailurePointer(sdkgo.FailureValidation, addCommentOperation, err.Error()), sdkgo.Receipt{})
 	}
-	if attempt, isTerminal := singleDispatchAttemptForEarlierDispatch[AddCommentOutput](call, addCommentOperation,
-		operation.client.receipt(call, deskResponse{}, "")); isTerminal {
-		return attempt
+	permit, priorAttempt := beginDeskWrite[AddCommentOutput](call, operation.client, addCommentOperation,
+		AddCommentDefinition.StepDefaults.ExecuteMethodTimeout, AddCommentBranchDefect)
+	if priorAttempt != nil {
+		return *priorAttempt
 	}
 	session, cancel, failure := operation.client.startSession(call, addCommentOperation)
 	if failure != nil {
-		return singleDispatchAttemptForSession[AddCommentOutput](failure, branches)
+		return sessionAttemptForWrite[AddCommentOutput](permit, failure, branches)
 	}
 	defer cancel()
-	if attempt, isTerminal := singleDispatchAttemptForRecord[AddCommentOutput](call, addCommentOperation); isTerminal {
-		return attempt
-	}
-	result := operation.client.exchange(session, addCommentOperation, deskRequest{
+	result, dispatchAttempt := sendDeskWrite[AddCommentOutput](permit, operation.client, session, addCommentOperation, deskRequest{
 		method: http.MethodPost, path: ticketPath(input.TicketID) + "/comments",
 		payload: addCommentRequestWire{Content: input.Content, IsPublic: input.IsPublic, ContentType: plainTextType},
 	})
+	if dispatchAttempt != nil {
+		return *dispatchAttempt
+	}
 	receipt := operation.client.receipt(call, result.response, "")
-	if attempt, isTerminal := singleDispatchAttemptForExchange[AddCommentOutput](call, result, receipt, branches); isTerminal {
+	if attempt, isTerminal := deskWriteAttemptForExchange[AddCommentOutput](permit, call, operation.client, session, result, receipt, branches); isTerminal {
 		return attempt
 	}
 	comment, err := decodeAddedComment(result.response.body, input)
 	if err != nil {
-		return sdkgo.NewMutationUncertain(AddCommentOutput{}, deskFailure(sdkgo.FailureProtocol, addCommentOperation,
+		return acceptedWriteAttempt[AddCommentOutput](permit, acceptedProviderID(result.response.body), deskFailure(sdkgo.FailureProtocol, addCommentOperation,
 			"Zoho Desk accepted the comment but returned an invalid comment: "+err.Error()), receipt)
 	}
+	recordAcceptedWrite(permit, comment.ID)
 	return sdkgo.NewMutationBranch(AddCommentBranchAdded, AddCommentOutput{Comment: comment}, nil, operation.client.receipt(call, result.response, comment.ID))
 }
 

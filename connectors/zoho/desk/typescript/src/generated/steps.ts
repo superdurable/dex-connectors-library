@@ -76,7 +76,7 @@ export interface CreateTicketStepConfig<StepInput, OperationInput = CreateTicket
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Zoho Desk conclusively rejected the ticket, such as an unknown department, status, or assignee; no ticket was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request was sent but its outcome cannot be confirmed, so the ticket may exist; the connector never resends it. */
+  /** The ticket may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, a later attempt was refused after an earlier possible send, or Zoho Desk returned the ticket ID with an invalid ticket. The Step does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -106,7 +106,7 @@ export interface UpdateTicketStepConfig<StepInput, OperationInput = UpdateTicket
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Zoho Desk conclusively rejected the change, such as an unknown status, an assignee outside the department, or a blueprint that forbids the transition. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Zoho Desk returned an invalid or oversized ticket, so the change may have been applied. */
+  /** The ticket read before the change was invalid or oversized, so this attempt sent no change. An invalid answer after the change is sent repeats the absolute change instead. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -137,7 +137,7 @@ export interface AddCommentStepConfig<StepInput, OperationInput = AddCommentInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Zoho Desk conclusively rejected the comment; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request was sent but its outcome cannot be confirmed, so the comment may exist; the connector never resends it. */
+  /** The comment may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, a later attempt was refused after an earlier possible send, or Zoho Desk returned the comment ID with an invalid comment or another visibility. The Step does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

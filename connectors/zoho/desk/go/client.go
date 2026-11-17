@@ -4,8 +4,8 @@
 // Package desk implements Zoho Desk ticket operations as Dex connector Steps: searchTickets and
 // getTicket read tickets, updateTicket changes a ticket's status, priority, assignee, or department
 // so that a repeated attempt writes nothing twice, and createTicket and addComment create a ticket
-// or add one comment, sending each request at most once per Step execution because Zoho Desk
-// documents no idempotency key. The ticketChanged poll Trigger starts a Flow for each ticket created or
+// or add one comment under a single-dispatch fence: because Zoho Desk documents no idempotency key,
+// an unknown outcome is resent only while the Step's send cap allows. The ticketChanged poll Trigger starts a Flow for each ticket created or
 // changed in the organization; see NewProjectTicketTriggerRunner.
 //
 // A connection authorizes with Zoho OAuth in one Zoho data center, chosen by its authorization
@@ -36,6 +36,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -321,20 +322,12 @@ func queryAttemptForSession[OUT any](failure *sessionFailure, providerRejected s
 // exchange sends one request; after a 401 it forces one coordinated refresh and resends once,
 // because Zoho Desk rejects an expired or revoked token before acting on the request.
 func (client *Client) exchange(session *operationSession, operation string, request deskRequest) deskExchange {
-	var payload []byte
-	if request.payload != nil {
-		encoded, err := json.Marshal(request.payload)
-		if err != nil {
-			return deskExchange{outcome: exchangeDefect, failure: deskFailure(sdkgo.FailureLocalDefect, operation, errRequestNotBuilt.Error())}
-		}
-		payload = encoded
-	}
-	target := session.apiBaseURL + request.path
-	if len(request.query) != 0 {
-		target += "?" + request.query.Encode()
+	target, payload, err := encodeDeskRequest(session, request)
+	if err != nil {
+		return deskExchange{outcome: exchangeDefect, failure: deskFailure(sdkgo.FailureLocalDefect, operation, errRequestNotBuilt.Error())}
 	}
 	for attempt := 0; ; attempt++ {
-		result := client.exchangeOnce(session, operation, request.method, target, payload)
+		result := client.exchangeOnce(session, operation, request.method, target, payload, false)
 		if result.response.statusCode != http.StatusUnauthorized || attempt > 0 {
 			return result
 		}
@@ -349,7 +342,40 @@ func (client *Client) exchange(session *operationSession, operation string, requ
 	}
 }
 
-func (client *Client) exchangeOnce(session *operationSession, operation string, method string, target string, payload []byte) deskExchange {
+// exchangeFencedWrite sends one fenced write exactly once under the Dispatch context. A 401 is
+// returned without the inline refresh and resend, so the fence counts every send.
+func (client *Client) exchangeFencedWrite(requestContext context.Context, session *operationSession, operation string, request deskRequest) deskExchange {
+	target, payload, err := encodeDeskRequest(session, request)
+	if err != nil {
+		return deskExchange{outcome: exchangeDefect, failure: deskFailure(sdkgo.FailureLocalDefect, operation, errRequestNotBuilt.Error())}
+	}
+	if deadline, hasDeadline := session.context.Deadline(); hasDeadline {
+		var cancel context.CancelFunc
+		requestContext, cancel = context.WithDeadline(requestContext, deadline)
+		defer cancel()
+	}
+	fencedSession := *session
+	fencedSession.context = requestContext
+	return client.exchangeOnce(&fencedSession, operation, request.method, target, payload, true)
+}
+
+func encodeDeskRequest(session *operationSession, request deskRequest) (string, []byte, error) {
+	var payload []byte
+	if request.payload != nil {
+		encoded, err := json.Marshal(request.payload)
+		if err != nil {
+			return "", nil, err
+		}
+		payload = encoded
+	}
+	target := session.apiBaseURL + request.path
+	if len(request.query) != 0 {
+		target += "?" + request.query.Encode()
+	}
+	return target, payload, nil
+}
+
+func (client *Client) exchangeOnce(session *operationSession, operation string, method string, target string, payload []byte, isFencedWrite bool) deskExchange {
 	if session.context.Err() != nil {
 		return deskExchange{outcome: exchangeNotSent, failure: deskFailure(sdkgo.FailureTransport, operation, "the operation deadline passed before Zoho Desk was contacted; no request was sent")}
 	}
@@ -369,6 +395,11 @@ func (client *Client) exchangeOnce(session *operationSession, operation string, 
 	httpRequest.Header.Set("Accept", "application/json")
 	if payload != nil {
 		httpRequest.Header.Set("Content-Type", "application/json")
+	}
+	if isFencedWrite {
+		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+			return deskExchange{outcome: exchangeDefect, failure: deskFailure(sdkgo.FailureLocalDefect, operation, errRequestNotBuilt.Error())}
+		}
 	}
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {

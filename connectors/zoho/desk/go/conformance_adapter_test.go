@@ -27,6 +27,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			t.Fatal(err)
 		}
 		context.previousHeartbeat = previous.Value
+		if len(previous.Value) == 0 {
+			// An SDK Fence marker is restored as the flat heartbeat itself.
+			context.previousHeartbeat = append(json.RawMessage(nil), scenario.PriorHeartbeat...)
+		}
 		initialAttempt = previous.Attempt + 1
 	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {

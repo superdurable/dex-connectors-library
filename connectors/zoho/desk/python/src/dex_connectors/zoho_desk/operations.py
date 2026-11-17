@@ -8,8 +8,8 @@ import html
 import json
 import re
 import unicodedata
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import quote
 
@@ -25,10 +25,17 @@ from dex_connectors.sdk import (
     QueryDefinition,
     Receipt,
 )
+from dex_connectors.sdk.singledispatch import (
+    CheckpointError,
+    DecisionKind,
+    DispatchNotAllowedError,
+    Fence,
+    InsufficientAttemptTimeError,
+)
 
 from ._generated import definitions as d
 from ._generated.timestamps import parse_go_datetime
-from .client import _ID, Client, Exchange, failure
+from .client import _ID, Client, Credentials, Exchange, failure
 from .models import (
     AddCommentInput,
     AddCommentOutput,
@@ -612,88 +619,297 @@ def _zoho_time(value: datetime) -> str:
     return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:23] + "Z"
 
 
+# Only these statuses prove Zoho Desk applied nothing; any other non-2xx answer may have been applied.
+_DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+_WRITE_EXECUTE_TIMEOUT = timedelta(seconds=30)
+
+
 @dataclass(frozen=True)
-class _DispatchMarker:
-    dispatched_call_id: CallID = field(metadata={"dex_json_name": "zohoDeskDispatchedCallId"})
+class _WritePermit:
+    """A fence that allows this attempt to send, with its send-cap facts."""
+
+    fence: Fence
+    # No earlier attempt of this call may have sent.
+    is_first_send: bool
+    # This attempt's send leaves room under the cap for one more.
+    can_resend_unknown_outcome: bool
 
 
-async def _claim(call: Call, operation: str, empty: Any) -> MutationAttempt[Any] | None:
-    if call.context is None:
-        return MutationAttempt.uncertain(
+async def _begin_write(
+    client: Client, call: Call, operation: str, empty: Any
+) -> tuple[_WritePermit | None, MutationAttempt[Any] | None]:
+    """Decide whether this attempt may send.
+
+    Zoho Desk has no ticket or comment read-back by Call ID, so an earlier
+    possible send is resent while the send cap allows it.
+    """
+    try:
+        fence = Fence(call, _WRITE_EXECUTE_TIMEOUT, max_sends=call.max_sends)
+        decision = await fence.decide()
+    except ValueError:
+        return None, MutationAttempt.branch_result(
+            d.DEFECT,
             empty,
+            Receipt(),
+            failure(operation, FailureKind.LOCAL_DEFECT, "single-dispatch fence could not start"),
+        )
+    provider_id = decision.marker.provider_id if decision.marker else ""
+    if decision.kind == DecisionKind.FAIL_CLOSED:
+        # FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+        return None, MutationAttempt.retry(
             failure(
                 operation,
-                FailureKind.TRANSPORT,
-                "an earlier attempt of this Step may have sent the request, so it is not sent again",
-            ),
-            Receipt(),
-        )
-    try:
-        if call.context.has_last_heartbeat_value():
-            call.context.get_last_heartbeat_value(_DispatchMarker)
-            return MutationAttempt.uncertain(
-                empty,
-                failure(
-                    operation,
-                    FailureKind.TRANSPORT,
-                    "an earlier attempt of this Step may have sent the request, so it is not sent again",
-                ),
-                Receipt(),
+                FailureKind.AVAILABILITY,
+                "the dispatch checkpoint could not be read; nothing was sent in this attempt",
             )
-    except Exception:
-        return MutationAttempt.uncertain(
+        )
+    if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+        return None, MutationAttempt.uncertain(
             empty,
             failure(
                 operation,
                 FailureKind.TRANSPORT,
-                "an earlier attempt of this Step may have sent the request, so it is not sent again",
+                "earlier attempts may have sent the request and the send cap is reached, "
+                "so it is not sent again",
+            ),
+            client.receipt(call, Exchange(""), provider_id),
+        )
+    if decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED and provider_id:
+        # A saved provider ID proves Zoho Desk accepted the write, so it is never resent.
+        return None, MutationAttempt.uncertain(
+            empty,
+            failure(
+                operation,
+                FailureKind.TRANSPORT,
+                "Zoho Desk accepted an earlier attempt's write, and its answer was lost",
+            ),
+            client.receipt(call, Exchange(""), provider_id),
+        )
+    return (
+        _WritePermit(
+            fence,
+            decision.prior_send_upper_bound == 0,
+            decision.prior_send_upper_bound + 1 < call.max_sends,
+        ),
+        None,
+    )
+
+
+async def _session_write(
+    permit: _WritePermit, route: str, operation: str, empty: Any
+) -> MutationAttempt[Any]:
+    """Map a session that could not start; nothing was sent in this attempt."""
+    attempt = _session_mutation(route, operation, empty)
+    if not permit.is_first_send:
+        # notSent would hide the earlier possible send, so nothing is recorded.
+        if attempt.kind == "retry":
+            return attempt
+        assert attempt.failure is not None
+        return MutationAttempt.uncertain(
+            empty,
+            failure(
+                operation,
+                attempt.failure.kind,
+                "an earlier attempt may have sent the request, "
+                "and the connection needs reconnection to resend it",
             ),
             Receipt(),
         )
     try:
-        await call.context.heartbeat(_DispatchMarker(call.id))
+        await permit.fence.record_not_sent()
     except Exception:
         return MutationAttempt.retry(
+            failure(operation, FailureKind.AVAILABILITY, "Dex did not record the not-sent checkpoint")
+        )
+    return attempt
+
+
+async def _send_write(
+    permit: _WritePermit,
+    client: Client,
+    call: Call,
+    operation: str,
+    credentials: Credentials,
+    base: str,
+    path: str,
+    payload: dict[str, Any],
+) -> tuple[Exchange, MutationAttempt[Any] | None]:
+    """Dispatch one POST under the fence; a refused dispatch returns its Retry attempt."""
+    try:
+        result = await permit.fence.dispatch(
+            lambda _deadline: client.exchange(
+                call,
+                operation,
+                credentials,
+                base,
+                "POST",
+                path,
+                payload=payload,
+                resend_after_unauthorized=False,
+            )
+        )
+    except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
+        # Dispatch refused before sending, so nothing reached Zoho Desk in this attempt.
+        return Exchange(""), MutationAttempt.retry(
             failure(
                 operation,
                 FailureKind.AVAILABILITY,
                 "Dex did not record the dispatch checkpoint; nothing was sent",
             )
         )
-    return None
+    except TimeoutError:
+        result = Exchange(
+            "unavailable",
+            failure=failure(
+                operation, FailureKind.TRANSPORT, "the operation deadline passed before Zoho Desk answered"
+            ),
+        )
+    return result, None
 
 
-async def _clear(call: Call) -> None:
-    if call.context is None:
-        raise ValueError("Zoho Desk dispatch context is missing")
+async def _write_attempt_for_exchange(
+    permit: _WritePermit,
+    client: Client,
+    call: Call,
+    credentials: Credentials,
+    result: Exchange,
+    receipt: Receipt,
+    empty: Any,
+    not_found: str = "",
+) -> MutationAttempt[Any] | None:
+    """Map a sent write.
+
+    Only a definite refusal selects a refusal branch; any other outcome may
+    have been applied, so it resends while the send cap allows.
+    """
+    if result.outcome == "success":
+        return None
+    problem = _required_failure(result)
+    if result.outcome in ("rate_limited", "not_sent") or (
+        result.outcome == "unavailable" and result.status == 503
+    ):
+        try:
+            await permit.fence.record_can_resend()
+        except Exception:
+            # A lost checkpoint leaves the claim, so the next attempt counts this send toward the cap.
+            pass
+        return MutationAttempt.retry(problem, result.retry_after_seconds)
+    if result.outcome == "not_found":
+        return await _reject_write(permit, problem, receipt, empty, not_found or d.PROVIDER_REJECTED)
+    if result.outcome == "defect" and permit.is_first_send:
+        return await _reject_write(permit, problem, Receipt(), empty, d.DEFECT)
+    if result.outcome == "rejected" and result.status == 401:
+        return await _rejected_credential_write(permit, client, call, credentials, problem, receipt, empty)
+    if result.outcome == "rejected" and result.status in _DEFINITE_REFUSAL_STATUSES:
+        return await _reject_write(permit, problem, receipt, empty, d.PROVIDER_REJECTED)
+    return _resend_or_uncertain(permit, problem, result.retry_after_seconds, receipt, empty)
+
+
+async def _rejected_credential_write(
+    permit: _WritePermit,
+    client: Client,
+    call: Call,
+    credentials: Credentials,
+    problem: Failure,
+    receipt: Receipt,
+    empty: Any,
+) -> MutationAttempt[Any]:
+    """Refresh after a 401 outside the fence.
+
+    A changed token retries, because the 401 proves this send applied nothing;
+    otherwise the refusal gate decides.
+    """
+    replacement = await client.replace_rejected_credentials(call, credentials)
+    if replacement == "replacement":
+        try:
+            await permit.fence.record_can_resend()
+        except Exception:
+            return MutationAttempt.retry(
+                failure(
+                    problem.operation,
+                    FailureKind.AVAILABILITY,
+                    "Dex did not record the credential resend checkpoint",
+                )
+            )
+        return MutationAttempt.retry(
+            failure(
+                problem.operation,
+                FailureKind.AUTHENTICATION,
+                "Zoho Desk rejected the prior access token (HTTP 401); retry with its replacement",
+            )
+        )
+    if replacement == "unavailable":
+        problem = failure(
+            problem.operation,
+            problem.kind,
+            "Zoho Desk rejected the access token (HTTP 401); credential refresh is temporarily unavailable",
+        )
+    return await _reject_write(permit, problem, receipt, empty, d.PROVIDER_REJECTED)
+
+
+async def _reject_write(
+    permit: _WritePermit, problem: Failure, receipt: Receipt, empty: Any, branch: str
+) -> MutationAttempt[Any]:
+    """Select a refusal branch only when no earlier send of this call may have applied."""
+    if not permit.is_first_send:
+        return MutationAttempt.uncertain(empty, problem, receipt)
     try:
-        await call.context.heartbeat()
+        await permit.fence.record_can_resend()
     except Exception:
-        # A failed clear retains the marker, which prevents a duplicate write.
+        return MutationAttempt.retry(
+            failure(problem.operation, FailureKind.AVAILABILITY, "Dex did not record the refusal checkpoint")
+        )
+    return MutationAttempt.branch_result(branch, empty, receipt, problem)
+
+
+def _resend_or_uncertain(
+    permit: _WritePermit, problem: Failure, retry_after: float, receipt: Receipt, empty: Any
+) -> MutationAttempt[Any]:
+    """Retry an unknown outcome while the send cap allows another send."""
+    if permit.can_resend_unknown_outcome:
+        # The claim stays the last marker, so the next attempt counts this send.
+        return MutationAttempt.retry(problem, retry_after)
+    return MutationAttempt.uncertain(empty, problem, receipt)
+
+
+async def _accepted_write_attempt(
+    permit: _WritePermit,
+    client: Client,
+    call: Call,
+    result: Exchange,
+    problem: Failure,
+    receipt: Receipt,
+    empty: Any,
+) -> MutationAttempt[Any]:
+    """Handle a 2xx body that failed to decode.
+
+    A decoded provider ID proves acceptance, so only an ID-less answer is resent.
+    """
+    provider_id = _accepted_provider_id(result.body)
+    if provider_id:
+        await _record_accepted_write(permit, provider_id)
+        return MutationAttempt.uncertain(empty, problem, client.receipt(call, result, provider_id))
+    return _resend_or_uncertain(permit, problem, 0, receipt, empty)
+
+
+async def _record_accepted_write(permit: _WritePermit, provider_id: str) -> None:
+    try:
+        await permit.fence.record_provider_id(provider_id)
+    except Exception:
+        # Acceptance is already known if this extra checkpoint fails.
         pass
 
 
-def _single_dispatch_result(
-    result: Exchange, receipt: Receipt, empty: Any, operation: str, not_found: str = ""
-) -> MutationAttempt[Any] | None:
-    if result.outcome == "success":
-        return None
-    if result.outcome in ("rate_limited", "not_sent") or result.status == 503:
-        return MutationAttempt.retry(_required_failure(result), result.retry_after_seconds)
-    if result.outcome in ("unavailable", "invalid"):
-        return MutationAttempt.uncertain(empty, _required_failure(result), receipt)
-    branch = (
-        not_found
-        if result.outcome == "not_found" and not_found
-        else d.DEFECT
-        if result.outcome == "defect"
-        else d.PROVIDER_REJECTED
-    )
-    return MutationAttempt.branch_result(branch, empty, receipt, result.failure)
+def _accepted_provider_id(body: bytes) -> str:
+    """Return the valid id of a 2xx object body, or an empty string."""
+    try:
+        return _id(_object(json.loads(body)).get("id"))
+    except (ValueError, TypeError):
+        return ""
 
 
 class CreateTicketOperation:
-    """Create one ticket with a heartbeat dispatch checkpoint."""
+    """Create one ticket under the SDK single-dispatch fence and send cap."""
 
     def __init__(self, client: Client) -> None:
         self.client = client
@@ -707,7 +923,7 @@ class CreateTicketOperation:
         return IdempotencyKey(call_id)
 
     async def invoke(self, call: Call, input: CreateTicketInput) -> MutationAttempt[CreateTicketOutput]:
-        """Send once, retrying only when Zoho provably did not apply it."""
+        """Send the ticket; resend an unknown outcome only while the send cap allows."""
         empty = CreateTicketOutput(Ticket(status=""))
         try:
             _validate_text("subject", input.subject, 255)
@@ -751,23 +967,14 @@ class CreateTicketOperation:
             return MutationAttempt.branch_result(
                 d.DEFECT, empty, Receipt(), failure("createTicket", FailureKind.VALIDATION, str(error))
             )
-        if call.context is not None and call.context.has_last_heartbeat_value():
-            return MutationAttempt.uncertain(
-                empty,
-                failure(
-                    "createTicket",
-                    FailureKind.TRANSPORT,
-                    "an earlier attempt of this Step may have sent the request, so it is not sent again",
-                ),
-                self.client.receipt(call, Exchange("")),
-            )
+        permit, prior = await _begin_write(self.client, call, "createTicket", empty)
+        if permit is None:
+            assert prior is not None
+            return prior
         credentials, base, route = await self.client.resolve(call, "createTicket")
         if route:
-            return _session_mutation(route, "createTicket", empty)
+            return await _session_write(permit, route, "createTicket", empty)
         assert credentials is not None and base is not None
-        claimed = await _claim(call, "createTicket", empty)
-        if claimed:
-            return claimed
         payload: dict[str, Any] = {
             "subject": input.subject,
             "description": description,
@@ -786,30 +993,37 @@ class CreateTicketOperation:
             value = getattr(input, source)
             if value:
                 payload[target] = value
-        result = await self.client.exchange(
-            call, "createTicket", credentials, base, "POST", "/tickets", payload=payload
+        result, refused = await _send_write(
+            permit, self.client, call, "createTicket", credentials, base, "/tickets", payload
         )
+        if refused:
+            return refused
         receipt = self.client.receipt(call, result)
-        routed = _single_dispatch_result(result, receipt, empty, "createTicket")
+        routed = await _write_attempt_for_exchange(
+            permit, self.client, call, credentials, result, receipt, empty
+        )
         if routed:
-            if result.outcome in ("rate_limited", "not_sent", "defect") or result.status == 503:
-                await _clear(call)
             return routed
         try:
             ticket, _ = _ticket_body(result.body)
-            return MutationAttempt.branch_result(
-                d.CREATED, CreateTicketOutput(ticket), self.client.receipt(call, result, ticket.id)
-            )
         except ValueError as error:
-            return MutationAttempt.uncertain(
-                empty,
+            return await _accepted_write_attempt(
+                permit,
+                self.client,
+                call,
+                result,
                 failure(
                     "createTicket",
                     FailureKind.PROTOCOL,
                     "Zoho Desk accepted the ticket but returned an invalid ticket: " + str(error),
                 ),
                 receipt,
+                empty,
             )
+        await _record_accepted_write(permit, ticket.id)
+        return MutationAttempt.branch_result(
+            d.CREATED, CreateTicketOutput(ticket), self.client.receipt(call, result, ticket.id)
+        )
 
 
 class UpdateTicketOperation:
@@ -882,27 +1096,29 @@ class UpdateTicketOperation:
             call, "updateTicket", credentials, base, "PATCH", path, payload=change
         )
         receipt = self.client.receipt(call, result, input.ticket_id)
+        if result.outcome == "invalid" or (
+            result.outcome == "rejected" and result.status not in _DEFINITE_REFUSAL_STATUSES
+        ):
+            # The PATCH sets final values, so an unknown outcome repeats it.
+            return MutationAttempt.retry(_required_failure(result), result.retry_after_seconds)
         routed = _mutation_attempt(result, receipt, current_output, d.INVALID_RESPONSE, d.NOT_FOUND)
         if routed:
             return routed
         try:
             updated, _ = _ticket_body(result.body, input.ticket_id)
-            return MutationAttempt.branch_result(d.UPDATED, UpdateTicketOutput(updated), receipt)
         except ValueError as error:
-            return MutationAttempt.branch_result(
-                d.INVALID_RESPONSE,
-                current_output,
-                receipt,
+            return MutationAttempt.retry(
                 failure(
                     "updateTicket",
                     FailureKind.PROTOCOL,
-                    "Zoho Desk returned an invalid updated ticket: " + str(error),
-                ),
+                    "Zoho Desk accepted the change but returned an invalid updated ticket: " + str(error),
+                )
             )
+        return MutationAttempt.branch_result(d.UPDATED, UpdateTicketOutput(updated), receipt)
 
 
 class AddCommentOperation:
-    """Add a public or private comment with a heartbeat dispatch checkpoint."""
+    """Add a public or private comment under the SDK single-dispatch fence and send cap."""
 
     def __init__(self, client: Client) -> None:
         self.client = client
@@ -916,7 +1132,7 @@ class AddCommentOperation:
         return IdempotencyKey(call_id)
 
     async def invoke(self, call: Call, input: AddCommentInput) -> MutationAttempt[AddCommentOutput]:
-        """Send one comment and prevent a duplicate after uncertain delivery."""
+        """Send the comment; resend an unknown outcome only while the send cap allows."""
         empty = AddCommentOutput()
         try:
             _validate_id("ticketId", input.ticket_id)
@@ -925,52 +1141,51 @@ class AddCommentOperation:
             return MutationAttempt.branch_result(
                 d.DEFECT, empty, Receipt(), failure("addComment", FailureKind.VALIDATION, str(error))
             )
-        if call.context is not None and call.context.has_last_heartbeat_value():
-            return MutationAttempt.uncertain(
-                empty,
-                failure(
-                    "addComment",
-                    FailureKind.TRANSPORT,
-                    "an earlier attempt of this Step may have sent the request, so it is not sent again",
-                ),
-                self.client.receipt(call, Exchange("")),
-            )
+        permit, prior = await _begin_write(self.client, call, "addComment", empty)
+        if permit is None:
+            assert prior is not None
+            return prior
         credentials, base, route = await self.client.resolve(call, "addComment")
         if route:
-            return _session_mutation(route, "addComment", empty)
+            return await _session_write(permit, route, "addComment", empty)
         assert credentials is not None and base is not None
-        claimed = await _claim(call, "addComment", empty)
-        if claimed:
-            return claimed
-        result = await self.client.exchange(
+        result, refused = await _send_write(
+            permit,
+            self.client,
             call,
             "addComment",
             credentials,
             base,
-            "POST",
             _path(input.ticket_id) + "/comments",
-            payload={"content": input.content, "isPublic": input.is_public, "contentType": "plainText"},
+            {"content": input.content, "isPublic": input.is_public, "contentType": "plainText"},
         )
+        if refused:
+            return refused
         receipt = self.client.receipt(call, result)
-        routed = _single_dispatch_result(result, receipt, empty, "addComment", d.NOT_FOUND)
+        routed = await _write_attempt_for_exchange(
+            permit, self.client, call, credentials, result, receipt, empty, d.NOT_FOUND
+        )
         if routed:
-            if result.outcome in ("rate_limited", "not_sent", "defect") or result.status == 503:
-                await _clear(call)
             return routed
         try:
             comment = _comment(json.loads(result.body))
             if comment.is_public != input.is_public:
                 raise ValueError("comment response has another visibility than requested")
-            return MutationAttempt.branch_result(
-                d.ADDED, AddCommentOutput(comment), self.client.receipt(call, result, comment.id)
-            )
         except (ValueError, json.JSONDecodeError) as error:
-            return MutationAttempt.uncertain(
-                empty,
+            return await _accepted_write_attempt(
+                permit,
+                self.client,
+                call,
+                result,
                 failure(
                     "addComment",
                     FailureKind.PROTOCOL,
                     "Zoho Desk accepted the comment but returned an invalid comment: " + str(error),
                 ),
                 receipt,
+                empty,
             )
+        await _record_accepted_write(permit, comment.id)
+        return MutationAttempt.branch_result(
+            d.ADDED, AddCommentOutput(comment), self.client.receipt(call, result, comment.id)
+        )

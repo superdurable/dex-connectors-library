@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -45,8 +46,10 @@ func TestCreateTicketSendsEscapedHTMLAndZohoDeskNamesOnce(t *testing.T) {
 	require.JSONEq(t, `{"subject":"Double charge on order 88213","description":"I was charged &lt;b&gt;twice&lt;/b&gt;.<br>Order 88213 &amp; 88214.",
 		"departmentId":"`+testDepartmentID+`","contact":{"email":"jane@acme.example.com","firstName":"Jane","lastName":"Smith"},
 		"email":"jane@acme.example.com","status":"Open","priority":"High","assigneeId":"`+testAgentID+`"}`, request.body)
-	require.JSONEq(t, `{"zohoDeskDispatchedCallId":"`+string(result.Receipt.CallID)+`"}`, string(ctx.recordedHeartbeat),
-		"the dispatch marker is recorded before the request")
+	marker := recordedMarker(t, ctx)
+	require.Equal(t, result.Receipt.CallID, marker.CallID)
+	require.Equal(t, singledispatch.StateClaimed, marker.State, "the fence claim is recorded before the request")
+	require.Equal(t, "1892000000099001", marker.ProviderID, "the accepted ticket is checkpointed and never resent")
 }
 
 func TestCreateTicketForAnExistingContactOmitsUnsetFields(t *testing.T) {
@@ -61,46 +64,144 @@ func TestCreateTicketForAnExistingContactOmitsUnsetFields(t *testing.T) {
 		provider.request(0).body)
 }
 
-func TestCreateTicketNeverResendsARequestWhoseOutcomeIsUnknown(t *testing.T) {
+func TestCreateTicketResendsAnUnknownOutcomeBelowTheSendCap(t *testing.T) {
 	for _, test := range []struct {
-		name   string
-		reply  func(http.ResponseWriter)
-		branch sdkgo.BranchID
-		kind   sdkgo.FailureKind
+		name  string
+		reply func(http.ResponseWriter)
+		kind  sdkgo.FailureKind
 	}{
 		{name: "server error", reply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusInternalServerError, `{"errorCode":"INTERNAL_SERVER_ERROR","message":"SENTINEL"}`)
-		}, branch: desk.CreateTicketBranchUncertain, kind: sdkgo.FailureAvailability},
+		}, kind: sdkgo.FailureAvailability},
 		{name: "gateway timeout", reply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusGatewayTimeout, ``)
-		}, branch: desk.CreateTicketBranchUncertain, kind: sdkgo.FailureAvailability},
-		{name: "lost response", reply: func(response http.ResponseWriter) { dropConnection(t, response) },
-			branch: desk.CreateTicketBranchUncertain, kind: sdkgo.FailureTransport},
+		}, kind: sdkgo.FailureAvailability},
+		{name: "lost response", reply: func(response http.ResponseWriter) { dropConnection(t, response) }, kind: sdkgo.FailureTransport},
+		{name: "conflict", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusConflict, `{"errorCode":"CONFLICT","message":"SENTINEL"}`)
+		}, kind: sdkgo.FailureConflict},
 		{name: "malformed ticket", reply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusOK, `{"id":"SENTINEL"}`)
-		}, branch: desk.CreateTicketBranchUncertain, kind: sdkgo.FailureProtocol},
+		}, kind: sdkgo.FailureProtocol},
 		{name: "reflected token", reply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusOK, `{"id":"1","subject":"`+testAccessToken+`"}`)
-		}, branch: desk.CreateTicketBranchUncertain, kind: sdkgo.FailureProtocol},
+		}, kind: sdkgo.FailureProtocol},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+				if index == 0 {
+					test.reply(response)
+					return
+				}
+				writeJSON(t, response, http.StatusOK, ticketBodyJSON("1892000000099001", "Open", "Open"))
+			})
+			client := newDeskClient(t, provider.URL)
+			ctx := newDeskDexContext("create-" + test.name)
+			_, err := sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+			retry := requireRetry(t, err, test.kind)
+			require.NotContains(t, retry.Failure.Message, testAccessToken)
+			marker := recordedMarker(t, ctx)
+			require.Equal(t, singledispatch.StateClaimed, marker.State, "the claim stays, so the next attempt counts this send")
+			require.Equal(t, int32(1), marker.SendCount)
+
+			result, err := sdkgo.RunMutation(ctx.nextAttempt(), client.CreateTicket(), deskConnection, validCreateTicketInput())
+			require.NoError(t, err)
+			require.Equal(t, desk.CreateTicketBranchCreated, result.Branch, "one resend is below the send cap of three")
+			require.Equal(t, 2, provider.requestCount())
+		})
+	}
+}
+
+func TestCreateTicketSelectsUncertainAtTheSendCap(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusInternalServerError, `{"errorCode":"INTERNAL_SERVER_ERROR","message":"SENTINEL"}`)
+	})
+	client := newDeskClient(t, provider.URL)
+	ctx := newDeskDexContext("create-cap")
+	_, err := sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	ctx = ctx.nextAttempt()
+	_, err = sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	ctx = ctx.nextAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, desk.CreateTicketBranchUncertain, result.Branch, "the third possible send reaches the cap")
+	requireNoSentinel(t, result)
+	require.Equal(t, 3, provider.requestCount())
+
+	result, err = sdkgo.RunMutation(ctx.nextAttempt(), client.CreateTicket(), deskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, desk.CreateTicketBranchUncertain, result.Branch)
+	require.Equal(t, "earlier attempts may have sent the request and the send cap is reached, so it is not sent again", result.Failure.Message)
+	require.Equal(t, 3, provider.requestCount(), "nothing is sent at the cap")
+}
+
+func TestCreateTicketNeverResendsADefiniteRefusal(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		reply func(http.ResponseWriter)
+		kind  sdkgo.FailureKind
+	}{
 		{name: "invalid data", reply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusUnprocessableEntity, `{"errorCode":"INVALID_DATA","message":"SENTINEL","errors":[{"fieldName":"/departmentId","errorType":"invalid"}]}`)
-		}, branch: desk.CreateTicketBranchProviderRejected, kind: sdkgo.FailureValidation},
+		}, kind: sdkgo.FailureValidation},
 		{name: "scope mismatch", reply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusForbidden, `{"errorCode":"SCOPE_MISMATCH"}`)
-		}, branch: desk.CreateTicketBranchProviderRejected, kind: sdkgo.FailureAuthorization},
+		}, kind: sdkgo.FailureAuthorization},
+		{name: "unauthorized without refresh", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusUnauthorized, `{"errorCode":"INVALID_OAUTH","message":"SENTINEL"}`)
+		}, kind: sdkgo.FailureAuthentication},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) { test.reply(response) })
-			ctx := newDeskDexContext("create-" + test.name)
+			ctx := newDeskDexContext("create-refused-" + test.name)
 			result, err := sdkgo.RunMutation(ctx, newDeskClient(t, provider.URL).CreateTicket(), deskConnection, validCreateTicketInput())
-			require.NoError(t, err, "only a provable non-application is retried")
-			require.Equal(t, test.branch, result.Branch)
+			require.NoError(t, err)
+			require.Equal(t, desk.CreateTicketBranchProviderRejected, result.Branch)
 			require.Equal(t, test.kind, result.Failure.Kind)
 			requireNoSentinel(t, result)
-			require.NotEmpty(t, ctx.recordedHeartbeat, "the marker stays, so a replayed attempt sends nothing")
+			require.Equal(t, singledispatch.StateCanResend, recordedMarker(t, ctx).State, "canResend is recorded before the refusal branch")
 			require.Equal(t, 1, provider.requestCount())
 		})
 	}
+}
+
+func TestCreateTicketRefusalAfterAnEarlierPossibleSendIsUncertain(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		if index == 0 {
+			dropConnection(t, response)
+			return
+		}
+		writeJSON(t, response, http.StatusUnprocessableEntity, `{"errorCode":"INVALID_DATA"}`)
+	})
+	client := newDeskClient(t, provider.URL)
+	ctx := newDeskDexContext("create-refused-after-unknown")
+	_, err := sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+	requireRetry(t, err, sdkgo.FailureTransport)
+	result, err := sdkgo.RunMutation(ctx.nextAttempt(), client.CreateTicket(), deskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, desk.CreateTicketBranchUncertain, result.Branch, "the first send may have created the ticket")
+	require.Equal(t, 2, provider.requestCount())
+}
+
+func TestCreateTicketNeverResendsAnAcceptedTicket(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusOK, `{"id":"1892000000099004","subject":"SENTINEL"}`)
+	})
+	client := newDeskClient(t, provider.URL)
+	ctx := newDeskDexContext("create-accepted-invalid")
+	result, err := sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, desk.CreateTicketBranchUncertain, result.Branch, "a returned ticket ID proves the ticket exists")
+	require.Equal(t, "1892000000099004", result.Receipt.ProviderObjectID)
+	require.Equal(t, "1892000000099004", recordedMarker(t, ctx).ProviderID)
+
+	result, err = sdkgo.RunMutation(ctx.nextAttempt(), client.CreateTicket(), deskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, desk.CreateTicketBranchUncertain, result.Branch)
+	require.Equal(t, "Zoho Desk accepted an earlier attempt's write, and its answer was lost", result.Failure.Message)
+	require.Equal(t, 1, provider.requestCount(), "a saved provider ID is never resent")
 }
 
 func TestCreateTicketRetries429AndUnsentRequests(t *testing.T) {
@@ -114,13 +215,12 @@ func TestCreateTicketRetries429AndUnsentRequests(t *testing.T) {
 	var retryAfter *dex.RetryAfterError
 	require.ErrorAs(t, err, &retryAfter)
 	require.Equal(t, 34*time.Second, retryAfter.After)
-	require.Nil(t, ctx.recordedHeartbeat, "a 429 clears the marker so the retry may send")
-	require.Equal(t, 2, ctx.heartbeatCount)
+	require.Equal(t, singledispatch.StateCanResend, recordedMarker(t, ctx).State, "a 429 records canResend so the retry may send")
 
 	refused := newDeskDexContext("create-refused")
 	_, err = sdkgo.RunMutation(refused, newDeskClient(t, closedLoopbackURL(t)).CreateTicket(), deskConnection, validCreateTicketInput())
 	requireRetry(t, err, sdkgo.FailureTransport)
-	require.Nil(t, refused.recordedHeartbeat, "a refused connection sent nothing")
+	require.Equal(t, singledispatch.StateCanResend, recordedMarker(t, refused).State, "a refused connection sent nothing")
 
 	next := ctx.nextAttempt()
 	created := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
@@ -131,7 +231,7 @@ func TestCreateTicketRetries429AndUnsentRequests(t *testing.T) {
 	require.Equal(t, desk.CreateTicketBranchCreated, result.Branch)
 }
 
-func TestCreateTicketRetriesAfter503WithoutRetainingDispatchMarker(t *testing.T) {
+func TestCreateTicketRetriesAfter503AndRecordsCanResend(t *testing.T) {
 	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, attempt int) {
 		if attempt == 0 {
 			response.Header().Set("Retry-After", "2")
@@ -147,7 +247,7 @@ func TestCreateTicketRetriesAfter503WithoutRetainingDispatchMarker(t *testing.T)
 	var retryAfter *dex.RetryAfterError
 	require.ErrorAs(t, err, &retryAfter)
 	require.Equal(t, 2*time.Second, retryAfter.After)
-	require.Nil(t, ctx.recordedHeartbeat, "a 503 clears the dispatch marker before retry")
+	require.Equal(t, singledispatch.StateCanResend, recordedMarker(t, ctx).State, "a 503 records canResend before retry")
 	require.Equal(t, 1, provider.requestCount())
 
 	result, err := sdkgo.RunMutation(ctx.nextAttempt(), client.CreateTicket(), deskConnection, validCreateTicketInput())
@@ -156,14 +256,15 @@ func TestCreateTicketRetriesAfter503WithoutRetainingDispatchMarker(t *testing.T)
 	require.Equal(t, 2, provider.requestCount())
 }
 
-func TestCreateTicketAfterAnEarlierDispatchSendsNothing(t *testing.T) {
+// TestCreateTicketRetriesWithoutSendingAfterAnUntrustedCheckpoint covers markers written by
+// v0.25.0 and earlier, which the SDK fence treats as foreign and fails closed on.
+func TestCreateTicketRetriesWithoutSendingAfterAnUntrustedCheckpoint(t *testing.T) {
 	provider := newRecordingDesk(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
 	first := newDeskDexContext("create-replay")
 	first.recordedHeartbeat = json.RawMessage(`{"zohoDeskDispatchedCallId":"earlier"}`)
-	result, err := sdkgo.RunMutation(first.nextAttempt(), newDeskClient(t, provider.URL).CreateTicket(), deskConnection, validCreateTicketInput())
-	require.NoError(t, err)
-	require.Equal(t, desk.CreateTicketBranchUncertain, result.Branch)
-	require.Equal(t, "an earlier attempt of this Step may have sent the request, so it is not sent again", result.Failure.Message)
+	_, err := sdkgo.RunMutation(first.nextAttempt(), newDeskClient(t, provider.URL).CreateTicket(), deskConnection, validCreateTicketInput())
+	retry := requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Equal(t, "the dispatch checkpoint could not be read; nothing was sent in this attempt", retry.Failure.Message)
 
 	unrecordable := newDeskDexContext("create-unrecordable")
 	unrecordable.rejectsHeartbeat = true
@@ -172,24 +273,51 @@ func TestCreateTicketAfterAnEarlierDispatchSendsNothing(t *testing.T) {
 	require.Zero(t, provider.requestCount())
 }
 
-// TestCreateTicketAfterAnEarlierDispatchStaysUncertainWhenCredentialsFail checks the marker before
-// credentials, so a revoked authorization after a possible send is never reported as "nothing created".
-func TestCreateTicketAfterAnEarlierDispatchStaysUncertainWhenCredentialsFail(t *testing.T) {
-	provider := newRecordingDesk(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+// TestCreateTicketAfterAnEarlierPossibleSendStaysUncertainWhenCredentialsFail checks the fence
+// before credentials, so a revoked authorization after a possible send is never reported as "nothing created".
+func TestCreateTicketAfterAnEarlierPossibleSendStaysUncertainWhenCredentialsFail(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) { dropConnection(t, response) })
+	first := newDeskDexContext("create-revoked-after-send")
+	_, err := sdkgo.RunMutation(first, newDeskClient(t, provider.URL).CreateTicket(), deskConnection, validCreateTicketInput())
+	requireRetry(t, err, sdkgo.FailureTransport)
+
 	revoked := failingCredentialProvider{err: sdkgo.NewReauthorizationRequiredError(errors.New("invalid_code"))}
 	client, err := desk.New(desk.Config{OrgID: testOrganizationID}, revoked, desk.WithAPIBaseURL(provider.URL+"/api/v1"))
 	require.NoError(t, err)
-	first := newDeskDexContext("create-revoked-after-send")
-	first.recordedHeartbeat = json.RawMessage(`{"zohoDeskDispatchedCallId":"earlier"}`)
 	result, err := sdkgo.RunMutation(first.nextAttempt(), client.CreateTicket(), deskConnection, validCreateTicketInput())
 	require.NoError(t, err)
 	require.Equal(t, desk.CreateTicketBranchUncertain, result.Branch)
+
+	outage, err := desk.New(desk.Config{OrgID: testOrganizationID}, failingCredentialProvider{err: errors.New("Zoho token endpoint returned HTTP 503")},
+		desk.WithAPIBaseURL(provider.URL+"/api/v1"))
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(first.nextAttempt(), outage.CreateTicket(), deskConnection, validCreateTicketInput())
+	requireRetry(t, err, sdkgo.FailureAuthentication)
 
 	fresh := newDeskDexContext("create-revoked")
 	result, err = sdkgo.RunMutation(fresh, client.CreateTicket(), deskConnection, validCreateTicketInput())
 	require.NoError(t, err)
 	require.Equal(t, desk.CreateTicketBranchProviderRejected, result.Branch, "with no earlier send, a revoked authorization created nothing")
-	require.Zero(t, fresh.heartbeatCount, "no marker is recorded before credentials resolve")
+	require.Equal(t, singledispatch.StateNotSent, recordedMarker(t, fresh).State)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestCreateTicketRetriesAfterUnauthorizedWithARefreshedToken(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		require.Equal(t, "Zoho-oauthtoken 1000.rejected-token", request.Header.Get("Authorization"))
+		writeJSON(t, response, http.StatusUnauthorized, `{"errorCode":"INVALID_OAUTH","message":"SENTINEL The OAuth Token you provided is invalid."}`)
+	})
+	credentials := &rejectionRefreshingCredentialProvider{}
+	client, err := desk.New(desk.Config{OrgID: testOrganizationID}, credentials, desk.WithAPIBaseURL(provider.URL+"/api/v1"))
+	require.NoError(t, err)
+
+	ctx := newDeskDexContext("create-refresh")
+	_, err = sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+	retry := requireRetry(t, err, sdkgo.FailureAuthentication)
+	require.Equal(t, "Zoho Desk rejected the prior access token (HTTP 401); retry with its replacement", retry.Failure.Message)
+	require.Equal(t, 1, provider.requestCount(), "the fenced write is never resent inside one attempt")
+	require.Equal(t, 1, credentials.forcedRefreshes)
+	require.Equal(t, singledispatch.StateCanResend, recordedMarker(t, ctx).State, "a 401 proves nothing was created")
 }
 
 // TestCreateTicketRetriesAConnectionThatNeverCarriedTheRequest fails the TLS handshake against a
@@ -200,7 +328,7 @@ func TestCreateTicketRetriesAConnectionThatNeverCarriedTheRequest(t *testing.T) 
 	client := newDeskClient(t, strings.Replace(provider.URL, "http://", "https://", 1))
 	_, err := sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
 	requireRetry(t, err, sdkgo.FailureTransport)
-	require.Nil(t, ctx.recordedHeartbeat, "the marker is cleared, so the retry may send")
+	require.Equal(t, singledispatch.StateCanResend, recordedMarker(t, ctx).State, "the retry may send")
 	require.Zero(t, provider.requestCount())
 }
 
