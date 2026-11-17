@@ -58,4 +58,5 @@ func TestChannelReadUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "instagram", output.Service)
 	require.Equal(t, "Example Channel", output.Name)
 	require.Len(t, mock.GetChannel().Calls(), 1)
+	require.Len(t, mock.ListOrganizations().Calls(), 1)
 }

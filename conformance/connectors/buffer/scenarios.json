@@ -621,6 +621,2466 @@
       },
       "name": "getChannel-transportFailure",
       "operation": "getChannel"
+    },
+    {
+      "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"account\":{\"organizations\":[{\"id\":\"org-1\",\"name\":\"Acme\"}]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListOrganizations { account { organizations { id name } } }",
+            "variables": {}
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "organizations": [
+            {
+              "id": "org-1",
+              "name": "Acme"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOrganizations-success",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"denied\"}],\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListOrganizations { account { organizations { id name } } }",
+            "variables": {}
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "organizations": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOrganizations-providerRejected",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListOrganizations { account { organizations { id name } } }",
+            "variables": {}
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "organizations": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOrganizations-invalidResponse",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListOrganizations { account { organizations { id name } } }",
+            "variables": {}
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOrganizations-429",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListOrganizations { account { organizations { id name } } }",
+            "variables": {}
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOrganizations-503",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListOrganizations { account { organizations { id name } } }",
+            "variables": {}
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOrganizations-500",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListOrganizations { account { organizations { id name } } }",
+            "variables": {}
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOrganizations-transportFailure",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"channels\":[{\"id\":\"channel-1\",\"name\":\"Acme\",\"service\":\"instagram\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListChannels($input: ChannelsInput!) { channels(input: $input) { id name service } }",
+            "variables": {
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "channels": [
+            {
+              "id": "channel-1",
+              "name": "Acme",
+              "service": "instagram"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "org-1"
+      },
+      "name": "listChannels-success",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"denied\"}],\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListChannels($input: ChannelsInput!) { channels(input: $input) { id name service } }",
+            "variables": {
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "channels": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "org-1"
+      },
+      "name": "listChannels-providerRejected",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListChannels($input: ChannelsInput!) { channels(input: $input) { id name service } }",
+            "variables": {
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "channels": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "org-1"
+      },
+      "name": "listChannels-invalidResponse",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListChannels($input: ChannelsInput!) { channels(input: $input) { id name service } }",
+            "variables": {
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "org-1"
+      },
+      "name": "listChannels-429",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListChannels($input: ChannelsInput!) { channels(input: $input) { id name service } }",
+            "variables": {
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "org-1"
+      },
+      "name": "listChannels-503",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListChannels($input: ChannelsInput!) { channels(input: $input) { id name service } }",
+            "variables": {
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "org-1"
+      },
+      "name": "listChannels-500",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListChannels($input: ChannelsInput!) { channels(input: $input) { id name service } }",
+            "variables": {
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "org-1"
+      },
+      "name": "listChannels-transportFailure",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"post\":{\"id\":\"post-1\",\"text\":\"Hello\",\"channelId\":\"channel-1\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query GetPost($input: PostInput!) { post(input: $input) { id text channelId } }",
+            "variables": {
+              "input": {
+                "id": "post-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "channelId": "channel-1",
+          "id": "post-1",
+          "text": "Hello"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "post-1"
+      },
+      "name": "getPost-success",
+      "operation": "getPost"
+    },
+    {
+      "callId": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"denied\"}],\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query GetPost($input: PostInput!) { post(input: $input) { id text channelId } }",
+            "variables": {
+              "input": {
+                "id": "post-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "channelId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "post-1"
+      },
+      "name": "getPost-providerRejected",
+      "operation": "getPost"
+    },
+    {
+      "callId": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query GetPost($input: PostInput!) { post(input: $input) { id text channelId } }",
+            "variables": {
+              "input": {
+                "id": "post-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "channelId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "post-1"
+      },
+      "name": "getPost-invalidResponse",
+      "operation": "getPost"
+    },
+    {
+      "callId": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query GetPost($input: PostInput!) { post(input: $input) { id text channelId } }",
+            "variables": {
+              "input": {
+                "id": "post-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "post-1"
+      },
+      "name": "getPost-429",
+      "operation": "getPost"
+    },
+    {
+      "callId": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query GetPost($input: PostInput!) { post(input: $input) { id text channelId } }",
+            "variables": {
+              "input": {
+                "id": "post-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "post-1"
+      },
+      "name": "getPost-503",
+      "operation": "getPost"
+    },
+    {
+      "callId": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query GetPost($input: PostInput!) { post(input: $input) { id text channelId } }",
+            "variables": {
+              "input": {
+                "id": "post-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "post-1"
+      },
+      "name": "getPost-500",
+      "operation": "getPost"
+    },
+    {
+      "callId": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query GetPost($input: PostInput!) { post(input: $input) { id text channelId } }",
+            "variables": {
+              "input": {
+                "id": "post-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "post-1"
+      },
+      "name": "getPost-transportFailure",
+      "operation": "getPost"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"post\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query GetPost($input: PostInput!) { post(input: $input) { id text channelId } }",
+            "variables": {
+              "input": {
+                "id": "post-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "channelId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "post-1"
+      },
+      "name": "getPost-notFound",
+      "operation": "getPost"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"posts\":{\"edges\":[{\"node\":{\"id\":\"post-1\",\"text\":\"Hello\",\"channelId\":\"channel-1\"}}],\"pageInfo\":{\"endCursor\":\"cursor-2\",\"hasNextPage\":true}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListPosts($input: PostsInput!, $first: Int, $after: String) { posts(input: $input, first: $first, after: $after) { pageInfo { endCursor hasNextPage } edges { node { id text channelId } } } }",
+            "variables": {
+              "after": "cursor-1",
+              "first": 10,
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "endCursor": "cursor-2",
+          "hasNextPage": true,
+          "posts": [
+            {
+              "channelId": "channel-1",
+              "id": "post-1",
+              "text": "Hello"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "first": 10,
+        "organizationId": "org-1"
+      },
+      "name": "listPosts-success",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"denied\"}],\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListPosts($input: PostsInput!, $first: Int, $after: String) { posts(input: $input, first: $first, after: $after) { pageInfo { endCursor hasNextPage } edges { node { id text channelId } } } }",
+            "variables": {
+              "after": "cursor-1",
+              "first": 10,
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasNextPage": false,
+          "posts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "first": 10,
+        "organizationId": "org-1"
+      },
+      "name": "listPosts-providerRejected",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListPosts($input: PostsInput!, $first: Int, $after: String) { posts(input: $input, first: $first, after: $after) { pageInfo { endCursor hasNextPage } edges { node { id text channelId } } } }",
+            "variables": {
+              "after": "cursor-1",
+              "first": 10,
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasNextPage": false,
+          "posts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "first": 10,
+        "organizationId": "org-1"
+      },
+      "name": "listPosts-invalidResponse",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListPosts($input: PostsInput!, $first: Int, $after: String) { posts(input: $input, first: $first, after: $after) { pageInfo { endCursor hasNextPage } edges { node { id text channelId } } } }",
+            "variables": {
+              "after": "cursor-1",
+              "first": 10,
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "first": 10,
+        "organizationId": "org-1"
+      },
+      "name": "listPosts-429",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListPosts($input: PostsInput!, $first: Int, $after: String) { posts(input: $input, first: $first, after: $after) { pageInfo { endCursor hasNextPage } edges { node { id text channelId } } } }",
+            "variables": {
+              "after": "cursor-1",
+              "first": 10,
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "first": 10,
+        "organizationId": "org-1"
+      },
+      "name": "listPosts-503",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListPosts($input: PostsInput!, $first: Int, $after: String) { posts(input: $input, first: $first, after: $after) { pageInfo { endCursor hasNextPage } edges { node { id text channelId } } } }",
+            "variables": {
+              "after": "cursor-1",
+              "first": 10,
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "first": 10,
+        "organizationId": "org-1"
+      },
+      "name": "listPosts-500",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListPosts($input: PostsInput!, $first: Int, $after: String) { posts(input: $input, first: $first, after: $after) { pageInfo { endCursor hasNextPage } edges { node { id text channelId } } } }",
+            "variables": {
+              "after": "cursor-1",
+              "first": 10,
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "first": 10,
+        "organizationId": "org-1"
+      },
+      "name": "listPosts-transportFailure",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"createPost\":{\"__typename\":\"PostActionSuccess\",\"post\":{\"id\":\"post-1\",\"text\":\"Hello\",\"channelId\":\"channel-1\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "mode": "addToQueue",
+                "schedulingType": "automatic",
+                "text": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "channelId": "channel-1",
+          "id": "post-1",
+          "text": "Hello"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "input": {
+        "channelId": "channel-1",
+        "text": "Hello"
+      },
+      "name": "createPost-success",
+      "operation": "createPost"
+    },
+    {
+      "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"denied\"}],\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "mode": "addToQueue",
+                "schedulingType": "automatic",
+                "text": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "channelId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "input": {
+        "channelId": "channel-1",
+        "text": "Hello"
+      },
+      "name": "createPost-providerRejected",
+      "operation": "createPost"
+    },
+    {
+      "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "mode": "addToQueue",
+                "schedulingType": "automatic",
+                "text": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "input": {
+        "channelId": "channel-1",
+        "text": "Hello"
+      },
+      "name": "createPost-invalidResponse",
+      "operation": "createPost"
+    },
+    {
+      "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "mode": "addToQueue",
+                "schedulingType": "automatic",
+                "text": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "input": {
+        "channelId": "channel-1",
+        "text": "Hello"
+      },
+      "name": "createPost-429",
+      "operation": "createPost"
+    },
+    {
+      "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "mode": "addToQueue",
+                "schedulingType": "automatic",
+                "text": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "input": {
+        "channelId": "channel-1",
+        "text": "Hello"
+      },
+      "name": "createPost-503",
+      "operation": "createPost"
+    },
+    {
+      "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "mode": "addToQueue",
+                "schedulingType": "automatic",
+                "text": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "input": {
+        "channelId": "channel-1",
+        "text": "Hello"
+      },
+      "name": "createPost-500",
+      "operation": "createPost"
+    },
+    {
+      "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "mode": "addToQueue",
+                "schedulingType": "automatic",
+                "text": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "input": {
+        "channelId": "channel-1",
+        "text": "Hello"
+      },
+      "name": "createPost-transportFailure",
+      "operation": "createPost"
+    },
+    {
+      "callId": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"editPost\":{\"__typename\":\"PostActionSuccess\",\"post\":{\"id\":\"post-1\",\"text\":\"Updated\",\"channelId\":\"channel-1\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation EditPost($input: EditPostInput!) { editPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "id": "post-1",
+                "text": "Updated"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "channelId": "channel-1",
+          "id": "post-1",
+          "text": "Updated"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "input": {
+        "postId": "post-1",
+        "text": "Updated"
+      },
+      "name": "editPost-success",
+      "operation": "editPost"
+    },
+    {
+      "callId": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"denied\"}],\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation EditPost($input: EditPostInput!) { editPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "id": "post-1",
+                "text": "Updated"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "channelId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "input": {
+        "postId": "post-1",
+        "text": "Updated"
+      },
+      "name": "editPost-providerRejected",
+      "operation": "editPost"
+    },
+    {
+      "callId": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation EditPost($input: EditPostInput!) { editPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "id": "post-1",
+                "text": "Updated"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "channelId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "input": {
+        "postId": "post-1",
+        "text": "Updated"
+      },
+      "name": "editPost-invalidResponse",
+      "operation": "editPost"
+    },
+    {
+      "callId": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation EditPost($input: EditPostInput!) { editPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "id": "post-1",
+                "text": "Updated"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "input": {
+        "postId": "post-1",
+        "text": "Updated"
+      },
+      "name": "editPost-429",
+      "operation": "editPost"
+    },
+    {
+      "callId": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation EditPost($input: EditPostInput!) { editPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "id": "post-1",
+                "text": "Updated"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "input": {
+        "postId": "post-1",
+        "text": "Updated"
+      },
+      "name": "editPost-503",
+      "operation": "editPost"
+    },
+    {
+      "callId": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation EditPost($input: EditPostInput!) { editPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "id": "post-1",
+                "text": "Updated"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "input": {
+        "postId": "post-1",
+        "text": "Updated"
+      },
+      "name": "editPost-500",
+      "operation": "editPost"
+    },
+    {
+      "callId": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation EditPost($input: EditPostInput!) { editPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "id": "post-1",
+                "text": "Updated"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "input": {
+        "postId": "post-1",
+        "text": "Updated"
+      },
+      "name": "editPost-transportFailure",
+      "operation": "editPost"
+    },
+    {
+      "callId": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"deletePost\":{\"__typename\":\"DeletePostSuccess\",\"id\":\"post-1\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation DeletePost($input: DeletePostInput!) { deletePost(input: $input) { __typename } }",
+            "variables": {
+              "input": {
+                "id": "post-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "post-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "input": {
+        "postId": "post-1"
+      },
+      "name": "deletePost-success",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"denied\"}],\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation DeletePost($input: DeletePostInput!) { deletePost(input: $input) { __typename } }",
+            "variables": {
+              "input": {
+                "id": "post-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "input": {
+        "postId": "post-1"
+      },
+      "name": "deletePost-providerRejected",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation DeletePost($input: DeletePostInput!) { deletePost(input: $input) { __typename } }",
+            "variables": {
+              "input": {
+                "id": "post-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "input": {
+        "postId": "post-1"
+      },
+      "name": "deletePost-invalidResponse",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation DeletePost($input: DeletePostInput!) { deletePost(input: $input) { __typename } }",
+            "variables": {
+              "input": {
+                "id": "post-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "input": {
+        "postId": "post-1"
+      },
+      "name": "deletePost-429",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation DeletePost($input: DeletePostInput!) { deletePost(input: $input) { __typename } }",
+            "variables": {
+              "input": {
+                "id": "post-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "input": {
+        "postId": "post-1"
+      },
+      "name": "deletePost-503",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation DeletePost($input: DeletePostInput!) { deletePost(input: $input) { __typename } }",
+            "variables": {
+              "input": {
+                "id": "post-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "input": {
+        "postId": "post-1"
+      },
+      "name": "deletePost-500",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation DeletePost($input: DeletePostInput!) { deletePost(input: $input) { __typename } }",
+            "variables": {
+              "input": {
+                "id": "post-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e96ba321-6289-5f80-b632-7ea0809183b2",
+      "input": {
+        "postId": "post-1"
+      },
+      "name": "deletePost-transportFailure",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "channelId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "input": {
+        "channelId": "channel-1",
+        "text": "Hello"
+      },
+      "name": "createPost-uncertainAfterSendCap",
+      "operation": "createPost",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

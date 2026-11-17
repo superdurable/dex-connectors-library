@@ -17,8 +17,15 @@ import (
 
 // Mock is a scripted buffer connection. Script each operation through its accessor.
 type Mock struct {
-	connection buffer.Connection
-	getChannel *connectormock.Query[buffer.GetChannelInput, buffer.ChannelProfile]
+	connection        buffer.Connection
+	listOrganizations *connectormock.Query[buffer.ListOrganizationsInput, buffer.OrganizationsList]
+	listChannels      *connectormock.Query[buffer.ListChannelsInput, buffer.ChannelsList]
+	getPost           *connectormock.Query[buffer.GetPostInput, buffer.PostProfile]
+	listPosts         *connectormock.Query[buffer.ListPostsInput, buffer.PostsList]
+	createPost        *connectormock.Mutation[buffer.CreatePostInput, buffer.PostProfile]
+	editPost          *connectormock.Mutation[buffer.EditPostInput, buffer.PostProfile]
+	deletePost        *connectormock.Mutation[buffer.DeletePostInput, buffer.PostDeleteResult]
+	getChannel        *connectormock.Query[buffer.GetChannelInput, buffer.ChannelProfile]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +33,22 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getChannel: connectormock.NewQuery[buffer.GetChannelInput, buffer.ChannelProfile](t, buffer.GetChannelDefinition),
+		listOrganizations: connectormock.NewQuery[buffer.ListOrganizationsInput, buffer.OrganizationsList](t, buffer.ListOrganizationsDefinition),
+		listChannels:      connectormock.NewQuery[buffer.ListChannelsInput, buffer.ChannelsList](t, buffer.ListChannelsDefinition),
+		getPost:           connectormock.NewQuery[buffer.GetPostInput, buffer.PostProfile](t, buffer.GetPostDefinition),
+		listPosts:         connectormock.NewQuery[buffer.ListPostsInput, buffer.PostsList](t, buffer.ListPostsDefinition),
+		createPost:        connectormock.NewMutation[buffer.CreatePostInput, buffer.PostProfile](t, buffer.CreatePostDefinition),
+		editPost:          connectormock.NewMutation[buffer.EditPostInput, buffer.PostProfile](t, buffer.EditPostDefinition),
+		deletePost:        connectormock.NewMutation[buffer.DeletePostInput, buffer.PostDeleteResult](t, buffer.DeletePostDefinition),
+		getChannel:        connectormock.NewQuery[buffer.GetChannelInput, buffer.ChannelProfile](t, buffer.GetChannelDefinition),
 	}
+	mock.listOrganizations.Default(ListOrganizationsDefault())
+	mock.listChannels.Default(ListChannelsDefault())
+	mock.getPost.Default(GetPostDefault())
+	mock.listPosts.Default(ListPostsDefault())
+	mock.createPost.Default(CreatePostDefault())
+	mock.editPost.Default(EditPostDefault())
+	mock.deletePost.Default(DeletePostDefault())
 	mock.getChannel.Default(GetChannelDefault())
 	connection, err := buffer.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "buffer", Name: connectionName})
 	if err != nil {
@@ -40,6 +61,41 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() buffer.Connection { return mock.connection }
 
+// ListOrganizations returns the listOrganizations script.
+func (mock *Mock) ListOrganizations() *connectormock.Query[buffer.ListOrganizationsInput, buffer.OrganizationsList] {
+	return mock.listOrganizations
+}
+
+// ListChannels returns the listChannels script.
+func (mock *Mock) ListChannels() *connectormock.Query[buffer.ListChannelsInput, buffer.ChannelsList] {
+	return mock.listChannels
+}
+
+// GetPost returns the getPost script.
+func (mock *Mock) GetPost() *connectormock.Query[buffer.GetPostInput, buffer.PostProfile] {
+	return mock.getPost
+}
+
+// ListPosts returns the listPosts script.
+func (mock *Mock) ListPosts() *connectormock.Query[buffer.ListPostsInput, buffer.PostsList] {
+	return mock.listPosts
+}
+
+// CreatePost returns the createPost script.
+func (mock *Mock) CreatePost() *connectormock.Mutation[buffer.CreatePostInput, buffer.PostProfile] {
+	return mock.createPost
+}
+
+// EditPost returns the editPost script.
+func (mock *Mock) EditPost() *connectormock.Mutation[buffer.EditPostInput, buffer.PostProfile] {
+	return mock.editPost
+}
+
+// DeletePost returns the deletePost script.
+func (mock *Mock) DeletePost() *connectormock.Mutation[buffer.DeletePostInput, buffer.PostDeleteResult] {
+	return mock.deletePost
+}
+
 // GetChannel returns the getChannel script.
 func (mock *Mock) GetChannel() *connectormock.Query[buffer.GetChannelInput, buffer.ChannelProfile] {
 	return mock.getChannel
@@ -47,8 +103,278 @@ func (mock *Mock) GetChannel() *connectormock.Query[buffer.GetChannelInput, buff
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListOrganizations() sdkgo.Query[buffer.ListOrganizationsInput, buffer.OrganizationsList] {
+	return operations.mock.listOrganizations
+}
+func (operations mockOperations) ListChannels() sdkgo.Query[buffer.ListChannelsInput, buffer.ChannelsList] {
+	return operations.mock.listChannels
+}
+func (operations mockOperations) GetPost() sdkgo.Query[buffer.GetPostInput, buffer.PostProfile] {
+	return operations.mock.getPost
+}
+func (operations mockOperations) ListPosts() sdkgo.Query[buffer.ListPostsInput, buffer.PostsList] {
+	return operations.mock.listPosts
+}
+func (operations mockOperations) CreatePost() sdkgo.Mutation[buffer.CreatePostInput, buffer.PostProfile] {
+	return operations.mock.createPost
+}
+func (operations mockOperations) EditPost() sdkgo.Mutation[buffer.EditPostInput, buffer.PostProfile] {
+	return operations.mock.editPost
+}
+func (operations mockOperations) DeletePost() sdkgo.Mutation[buffer.DeletePostInput, buffer.PostDeleteResult] {
+	return operations.mock.deletePost
+}
 func (operations mockOperations) GetChannel() sdkgo.Query[buffer.GetChannelInput, buffer.ChannelProfile] {
 	return operations.mock.getChannel
+}
+
+// ListOrganizationsListed selects the listed branch: Buffer completed the operation.
+func ListOrganizationsListed(value buffer.OrganizationsList, failure *sdkgo.Failure) connectormock.Case[buffer.OrganizationsList] {
+	return connectormock.Branch(buffer.ListOrganizationsBranchListed, value, failure)
+}
+
+// ListOrganizationsProviderRejected selects the providerRejected branch: Buffer conclusively rejected the request.
+func ListOrganizationsProviderRejected(value buffer.OrganizationsList, failure *sdkgo.Failure) connectormock.Case[buffer.OrganizationsList] {
+	return connectormock.Branch(buffer.ListOrganizationsBranchProviderRejected, value, failure)
+}
+
+// ListOrganizationsInvalidResponse selects the invalidResponse branch: Buffer returned malformed or oversized JSON.
+func ListOrganizationsInvalidResponse(value buffer.OrganizationsList, failure *sdkgo.Failure) connectormock.Case[buffer.OrganizationsList] {
+	return connectormock.Branch(buffer.ListOrganizationsBranchInvalidResponse, value, failure)
+}
+
+// ListOrganizationsDefect selects the defect branch: Local input or credentials are invalid.
+func ListOrganizationsDefect(value buffer.OrganizationsList, failure *sdkgo.Failure) connectormock.Case[buffer.OrganizationsList] {
+	return connectormock.Branch(buffer.ListOrganizationsBranchDefect, value, failure)
+}
+
+// ListOrganizationsRetry asks Dex to retry the listOrganizations Step, after the delay when it is positive.
+func ListOrganizationsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[buffer.OrganizationsList] {
+	return connectormock.Retry[buffer.OrganizationsList](failure, after)
+}
+
+// ListOrganizationsListedDefault is the manifest mock listedDefault: Sample Buffer result.
+func ListOrganizationsListedDefault() connectormock.Case[buffer.OrganizationsList] {
+	value := connectormock.MustDecodeOutput[buffer.OrganizationsList](`{"organizations":[{"id":"org-1","name":"Example Organization"}]}`)
+	return connectormock.Branch(buffer.ListOrganizationsBranchListed, value, nil)
+}
+
+// ListOrganizationsDefault is the manifest default, listedDefault, which New installs.
+func ListOrganizationsDefault() connectormock.Case[buffer.OrganizationsList] {
+	return ListOrganizationsListedDefault()
+}
+
+// ListChannelsListed selects the listed branch: Buffer completed the operation.
+func ListChannelsListed(value buffer.ChannelsList, failure *sdkgo.Failure) connectormock.Case[buffer.ChannelsList] {
+	return connectormock.Branch(buffer.ListChannelsBranchListed, value, failure)
+}
+
+// ListChannelsProviderRejected selects the providerRejected branch: Buffer conclusively rejected the request.
+func ListChannelsProviderRejected(value buffer.ChannelsList, failure *sdkgo.Failure) connectormock.Case[buffer.ChannelsList] {
+	return connectormock.Branch(buffer.ListChannelsBranchProviderRejected, value, failure)
+}
+
+// ListChannelsInvalidResponse selects the invalidResponse branch: Buffer returned malformed or oversized JSON.
+func ListChannelsInvalidResponse(value buffer.ChannelsList, failure *sdkgo.Failure) connectormock.Case[buffer.ChannelsList] {
+	return connectormock.Branch(buffer.ListChannelsBranchInvalidResponse, value, failure)
+}
+
+// ListChannelsDefect selects the defect branch: Local input or credentials are invalid.
+func ListChannelsDefect(value buffer.ChannelsList, failure *sdkgo.Failure) connectormock.Case[buffer.ChannelsList] {
+	return connectormock.Branch(buffer.ListChannelsBranchDefect, value, failure)
+}
+
+// ListChannelsRetry asks Dex to retry the listChannels Step, after the delay when it is positive.
+func ListChannelsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[buffer.ChannelsList] {
+	return connectormock.Retry[buffer.ChannelsList](failure, after)
+}
+
+// ListChannelsListedDefault is the manifest mock listedDefault: Sample Buffer result.
+func ListChannelsListedDefault() connectormock.Case[buffer.ChannelsList] {
+	value := connectormock.MustDecodeOutput[buffer.ChannelsList](`{"channels":[{"id":"channel-1","name":"Example Channel","service":"instagram"}]}`)
+	return connectormock.Branch(buffer.ListChannelsBranchListed, value, nil)
+}
+
+// ListChannelsDefault is the manifest default, listedDefault, which New installs.
+func ListChannelsDefault() connectormock.Case[buffer.ChannelsList] {
+	return ListChannelsListedDefault()
+}
+
+// GetPostFound selects the found branch: Buffer completed the operation.
+func GetPostFound(value buffer.PostProfile, failure *sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Branch(buffer.GetPostBranchFound, value, failure)
+}
+
+// GetPostNotFound selects the notFound branch: Buffer did not find the post.
+func GetPostNotFound(value buffer.PostProfile, failure *sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Branch(buffer.GetPostBranchNotFound, value, failure)
+}
+
+// GetPostProviderRejected selects the providerRejected branch: Buffer conclusively rejected the request.
+func GetPostProviderRejected(value buffer.PostProfile, failure *sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Branch(buffer.GetPostBranchProviderRejected, value, failure)
+}
+
+// GetPostInvalidResponse selects the invalidResponse branch: Buffer returned malformed or oversized JSON.
+func GetPostInvalidResponse(value buffer.PostProfile, failure *sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Branch(buffer.GetPostBranchInvalidResponse, value, failure)
+}
+
+// GetPostDefect selects the defect branch: Local input or credentials are invalid.
+func GetPostDefect(value buffer.PostProfile, failure *sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Branch(buffer.GetPostBranchDefect, value, failure)
+}
+
+// GetPostRetry asks Dex to retry the getPost Step, after the delay when it is positive.
+func GetPostRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Retry[buffer.PostProfile](failure, after)
+}
+
+// GetPostFoundDefault is the manifest mock foundDefault: Sample Buffer result.
+func GetPostFoundDefault() connectormock.Case[buffer.PostProfile] {
+	value := connectormock.MustDecodeOutput[buffer.PostProfile](`{"id":"post-1","text":"Sample post","channelId":"channel-1"}`)
+	return connectormock.Branch(buffer.GetPostBranchFound, value, nil)
+}
+
+// GetPostDefault is the manifest default, foundDefault, which New installs.
+func GetPostDefault() connectormock.Case[buffer.PostProfile] { return GetPostFoundDefault() }
+
+// ListPostsListed selects the listed branch: Buffer completed the operation.
+func ListPostsListed(value buffer.PostsList, failure *sdkgo.Failure) connectormock.Case[buffer.PostsList] {
+	return connectormock.Branch(buffer.ListPostsBranchListed, value, failure)
+}
+
+// ListPostsProviderRejected selects the providerRejected branch: Buffer conclusively rejected the request.
+func ListPostsProviderRejected(value buffer.PostsList, failure *sdkgo.Failure) connectormock.Case[buffer.PostsList] {
+	return connectormock.Branch(buffer.ListPostsBranchProviderRejected, value, failure)
+}
+
+// ListPostsInvalidResponse selects the invalidResponse branch: Buffer returned malformed or oversized JSON.
+func ListPostsInvalidResponse(value buffer.PostsList, failure *sdkgo.Failure) connectormock.Case[buffer.PostsList] {
+	return connectormock.Branch(buffer.ListPostsBranchInvalidResponse, value, failure)
+}
+
+// ListPostsDefect selects the defect branch: Local input or credentials are invalid.
+func ListPostsDefect(value buffer.PostsList, failure *sdkgo.Failure) connectormock.Case[buffer.PostsList] {
+	return connectormock.Branch(buffer.ListPostsBranchDefect, value, failure)
+}
+
+// ListPostsRetry asks Dex to retry the listPosts Step, after the delay when it is positive.
+func ListPostsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[buffer.PostsList] {
+	return connectormock.Retry[buffer.PostsList](failure, after)
+}
+
+// ListPostsListedDefault is the manifest mock listedDefault: Sample Buffer result.
+func ListPostsListedDefault() connectormock.Case[buffer.PostsList] {
+	value := connectormock.MustDecodeOutput[buffer.PostsList](`{"posts":[{"id":"post-1","text":"Sample post","channelId":"channel-1"}],"endCursor":"cursor-1","hasNextPage":false}`)
+	return connectormock.Branch(buffer.ListPostsBranchListed, value, nil)
+}
+
+// ListPostsDefault is the manifest default, listedDefault, which New installs.
+func ListPostsDefault() connectormock.Case[buffer.PostsList] { return ListPostsListedDefault() }
+
+// CreatePostCreated selects the created branch: Buffer completed the operation.
+func CreatePostCreated(value buffer.PostProfile, failure *sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Branch(buffer.CreatePostBranchCreated, value, failure)
+}
+
+// CreatePostProviderRejected selects the providerRejected branch: Buffer conclusively rejected the request.
+func CreatePostProviderRejected(value buffer.PostProfile, failure *sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Branch(buffer.CreatePostBranchProviderRejected, value, failure)
+}
+
+// CreatePostUncertain returns an uncertain createPost outcome.
+func CreatePostUncertain(value buffer.PostProfile, failure sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreatePostDefect selects the defect branch: Local input or credentials are invalid.
+func CreatePostDefect(value buffer.PostProfile, failure *sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Branch(buffer.CreatePostBranchDefect, value, failure)
+}
+
+// CreatePostRetry asks Dex to retry the createPost Step, after the delay when it is positive.
+func CreatePostRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Retry[buffer.PostProfile](failure, after)
+}
+
+// CreatePostCreatedDefault is the manifest mock createdDefault: Sample Buffer result.
+func CreatePostCreatedDefault() connectormock.Case[buffer.PostProfile] {
+	value := connectormock.MustDecodeOutput[buffer.PostProfile](`{"id":"post-1","text":"Sample post","channelId":"channel-1"}`)
+	return connectormock.Branch(buffer.CreatePostBranchCreated, value, nil)
+}
+
+// CreatePostDefault is the manifest default, createdDefault, which New installs.
+func CreatePostDefault() connectormock.Case[buffer.PostProfile] { return CreatePostCreatedDefault() }
+
+// EditPostUpdated selects the updated branch: Buffer completed the operation.
+func EditPostUpdated(value buffer.PostProfile, failure *sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Branch(buffer.EditPostBranchUpdated, value, failure)
+}
+
+// EditPostProviderRejected selects the providerRejected branch: Buffer conclusively rejected the request.
+func EditPostProviderRejected(value buffer.PostProfile, failure *sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Branch(buffer.EditPostBranchProviderRejected, value, failure)
+}
+
+// EditPostInvalidResponse selects the invalidResponse branch: Buffer returned malformed or oversized JSON.
+func EditPostInvalidResponse(value buffer.PostProfile, failure *sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Branch(buffer.EditPostBranchInvalidResponse, value, failure)
+}
+
+// EditPostDefect selects the defect branch: Local input or credentials are invalid.
+func EditPostDefect(value buffer.PostProfile, failure *sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Branch(buffer.EditPostBranchDefect, value, failure)
+}
+
+// EditPostRetry asks Dex to retry the editPost Step, after the delay when it is positive.
+func EditPostRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Retry[buffer.PostProfile](failure, after)
+}
+
+// EditPostUpdatedDefault is the manifest mock updatedDefault: Sample Buffer result.
+func EditPostUpdatedDefault() connectormock.Case[buffer.PostProfile] {
+	value := connectormock.MustDecodeOutput[buffer.PostProfile](`{"id":"post-1","text":"Updated post","channelId":"channel-1"}`)
+	return connectormock.Branch(buffer.EditPostBranchUpdated, value, nil)
+}
+
+// EditPostDefault is the manifest default, updatedDefault, which New installs.
+func EditPostDefault() connectormock.Case[buffer.PostProfile] { return EditPostUpdatedDefault() }
+
+// DeletePostDeleted selects the deleted branch: Buffer completed the operation.
+func DeletePostDeleted(value buffer.PostDeleteResult, failure *sdkgo.Failure) connectormock.Case[buffer.PostDeleteResult] {
+	return connectormock.Branch(buffer.DeletePostBranchDeleted, value, failure)
+}
+
+// DeletePostProviderRejected selects the providerRejected branch: Buffer conclusively rejected the request.
+func DeletePostProviderRejected(value buffer.PostDeleteResult, failure *sdkgo.Failure) connectormock.Case[buffer.PostDeleteResult] {
+	return connectormock.Branch(buffer.DeletePostBranchProviderRejected, value, failure)
+}
+
+// DeletePostInvalidResponse selects the invalidResponse branch: Buffer returned malformed or oversized JSON.
+func DeletePostInvalidResponse(value buffer.PostDeleteResult, failure *sdkgo.Failure) connectormock.Case[buffer.PostDeleteResult] {
+	return connectormock.Branch(buffer.DeletePostBranchInvalidResponse, value, failure)
+}
+
+// DeletePostDefect selects the defect branch: Local input or credentials are invalid.
+func DeletePostDefect(value buffer.PostDeleteResult, failure *sdkgo.Failure) connectormock.Case[buffer.PostDeleteResult] {
+	return connectormock.Branch(buffer.DeletePostBranchDefect, value, failure)
+}
+
+// DeletePostRetry asks Dex to retry the deletePost Step, after the delay when it is positive.
+func DeletePostRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[buffer.PostDeleteResult] {
+	return connectormock.Retry[buffer.PostDeleteResult](failure, after)
+}
+
+// DeletePostDeletedDefault is the manifest mock deletedDefault: Sample Buffer result.
+func DeletePostDeletedDefault() connectormock.Case[buffer.PostDeleteResult] {
+	value := connectormock.MustDecodeOutput[buffer.PostDeleteResult](`{"id":"post-1"}`)
+	return connectormock.Branch(buffer.DeletePostBranchDeleted, value, nil)
+}
+
+// DeletePostDefault is the manifest default, deletedDefault, which New installs.
+func DeletePostDefault() connectormock.Case[buffer.PostDeleteResult] {
+	return DeletePostDeletedDefault()
 }
 
 // GetChannelFound selects the found branch: Buffer returned the channel.

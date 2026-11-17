@@ -16,8 +16,9 @@ const (
 	// FlowType is the stable example Flow identity.
 	FlowType = "BufferChannelRead"
 	// ConnectionName is the static Dex Web connection used by this example.
-	ConnectionName    = "buffer"
-	operationStepType = "CallGetChannel"
+	ConnectionName       = "buffer"
+	operationStepType    = "CallGetChannel"
+	organizationStepType = "CallListOrganizations"
 )
 
 var channelAttribute = dex.DefineAttribute[buffer.ChannelProfile]("buffer-channel-read")
@@ -45,7 +46,15 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Buffer", Explanation: "Find one channel by ID in Buffer."},
 			Connection:          flow.connection,
 			MapToOperationInput: MapToOperationInput,
-			Found:               sdkgo.GoTo(completeResult{}),
+			Found:               sdkgo.GoTo(saveChannelAndListOrganizations{}),
+		})),
+		dex.DefineStep(saveChannelAndListOrganizations{}),
+		dex.DefineStep(buffer.NewListOrganizationsStep(buffer.ListOrganizationsStepConfig[buffer.ListOrganizationsInput]{
+			StepType: organizationStepType, ConnectionName: ConnectionName,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Buffer", Explanation: "List organizations available to the Buffer API key."},
+			Connection:          flow.connection,
+			MapToOperationInput: mapOrganizationsInput,
+			Listed:              sdkgo.GoTo(completeResult{}),
 		})),
 		dex.DefineStep(completeResult{}),
 	}
@@ -102,18 +111,37 @@ func (startRequest) Execute(_ dex.Context, input buffer.GetChannelInput) (*dex.S
 	return dex.GoTo(sdkgo.StepRef[buffer.GetChannelInput](operationStepType), input), nil
 }
 
-// dex:group group-id:result group-label:"Result"
-// dex:explanation text:"Complete the Flow with the provider's typed result."
-type completeResult struct {
+// dex:group group-id:provider group-label:"Buffer"
+// dex:explanation text:"Persist the channel before discovering the account organizations."
+type saveChannelAndListOrganizations struct {
 	dex.StepDefaultsNoWaitFor[buffer.GetChannelResult]
 }
 
-func (completeResult) GetStepType() string { return "CompleteGetChannel" }
-func (completeResult) Execute(ctx dex.Context, result buffer.GetChannelResult) (*dex.StepDecision, error) {
+func (saveChannelAndListOrganizations) GetStepType() string { return "SaveChannelAndListOrganizations" }
+func (saveChannelAndListOrganizations) Execute(ctx dex.Context, result buffer.GetChannelResult) (*dex.StepDecision, error) {
 	if err := channelAttribute.Set(ctx, result.Value); err != nil {
 		return nil, err
 	}
-	return dex.GracefulComplete(result.Value), nil
+	return dex.GoTo(sdkgo.StepRef[buffer.ListOrganizationsInput](organizationStepType), buffer.ListOrganizationsInput{}), nil
+}
+
+func mapOrganizationsInput(input buffer.ListOrganizationsInput) buffer.ListOrganizationsInput {
+	return input
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Complete the Flow after organization discovery."
+type completeResult struct {
+	dex.StepDefaultsNoWaitFor[buffer.ListOrganizationsResult]
+}
+
+func (completeResult) GetStepType() string { return "CompleteGetChannel" }
+func (completeResult) Execute(ctx dex.Context, _ buffer.ListOrganizationsResult) (*dex.StepDecision, error) {
+	channel, err := channelAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(channel), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)

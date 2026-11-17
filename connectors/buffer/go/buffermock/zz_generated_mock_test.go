@@ -16,6 +16,34 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listOrganizations/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[buffer.OrganizationsList](`{"organizations":[{"id":"org-1","name":"Example Organization"}]}`)
+			return err
+		}},
+		{name: "listChannels/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[buffer.ChannelsList](`{"channels":[{"id":"channel-1","name":"Example Channel","service":"instagram"}]}`)
+			return err
+		}},
+		{name: "getPost/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[buffer.PostProfile](`{"id":"post-1","text":"Sample post","channelId":"channel-1"}`)
+			return err
+		}},
+		{name: "listPosts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[buffer.PostsList](`{"posts":[{"id":"post-1","text":"Sample post","channelId":"channel-1"}],"endCursor":"cursor-1","hasNextPage":false}`)
+			return err
+		}},
+		{name: "createPost/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[buffer.PostProfile](`{"id":"post-1","text":"Sample post","channelId":"channel-1"}`)
+			return err
+		}},
+		{name: "editPost/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[buffer.PostProfile](`{"id":"post-1","text":"Updated post","channelId":"channel-1"}`)
+			return err
+		}},
+		{name: "deletePost/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[buffer.PostDeleteResult](`{"id":"post-1"}`)
+			return err
+		}},
 		{name: "getChannel/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[buffer.ChannelProfile](`{"id":"channel-1","name":"Example Channel","service":"instagram"}`)
 			return err
@@ -30,6 +58,27 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListOrganizations().Definition().Operation.OperationID != "listOrganizations" {
+		t.Errorf("listOrganizations mock has another definition")
+	}
+	if mock.ListChannels().Definition().Operation.OperationID != "listChannels" {
+		t.Errorf("listChannels mock has another definition")
+	}
+	if mock.GetPost().Definition().Operation.OperationID != "getPost" {
+		t.Errorf("getPost mock has another definition")
+	}
+	if mock.ListPosts().Definition().Operation.OperationID != "listPosts" {
+		t.Errorf("listPosts mock has another definition")
+	}
+	if mock.CreatePost().Definition().Operation.OperationID != "createPost" {
+		t.Errorf("createPost mock has another definition")
+	}
+	if mock.EditPost().Definition().Operation.OperationID != "editPost" {
+		t.Errorf("editPost mock has another definition")
+	}
+	if mock.DeletePost().Definition().Operation.OperationID != "deletePost" {
+		t.Errorf("deletePost mock has another definition")
+	}
 	if mock.GetChannel().Definition().Operation.OperationID != "getChannel" {
 		t.Errorf("getChannel mock has another definition")
 	}
