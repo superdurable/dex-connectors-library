@@ -176,6 +176,125 @@ spec:
           default: true
           description: A sample ticket field is read.
           output: {field: {id: 34, title: Subject, type: subject, active: true, required: true}}
+    - name: listUsers
+      goName: ListUsers
+      inputType: ListUsersInput
+      outputType: ListUsersOutput
+      kind: query
+      description: List one cursor page of users visible to the authenticated agent.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Zendesk returned one user page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk rejected the list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zendesk returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Page input or credentials are invalid., optional: true}
+      pagination: {inputField: cursor, nextField: nextCursor}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample users are listed.
+          pages:
+            - {users: [{id: 7701, name: Jane Smith, email: jane@acme.example.com, role: end-user}], nextCursor: cursor-1}
+            - {users: [{id: 7702, name: Alex Lee, email: alex@acme.example.com, role: end-user}], nextCursor: cursor-2}
+            - {users: [], nextCursor: ""}
+    - name: getUser
+      goName: GetUser
+      inputType: GetUserInput
+      outputType: GetUserOutput
+      kind: query
+      description: Read one user by numeric Zendesk ID.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Zendesk returned the user.}
+        - {id: notFound, goName: NotFound, description: The user does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zendesk returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: User ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample end user is read.
+          output: {user: {id: 7701, name: Jane Smith, email: jane@acme.example.com, role: end-user}}
+    - name: searchUsers
+      goName: SearchUsers
+      inputType: SearchUsersInput
+      outputType: SearchUsersOutput
+      kind: query
+      description: Search users by a nonempty Zendesk query using offset pagination.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: searched, goName: Searched, description: Zendesk returned one matching user page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zendesk returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Search input or credentials are invalid., optional: true}
+      mocks:
+        - name: searchedDefault
+          branch: searched
+          default: true
+          description: One sample user matches the search.
+          output: {users: [{id: 7701, name: Jane Smith, email: jane@acme.example.com, role: end-user}], nextPage: 0}
+    - name: createUser
+      goName: CreateUser
+      inputType: CreateUserInput
+      outputType: CreateUserOutput
+      kind: mutation
+      description: Create an end user with an application-unique external ID for retry reconciliation.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Zendesk created or confirmed this end user.}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk conclusively rejected the create., optional: true}
+        - {id: defect, goName: Defect, description: User input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The create may have succeeded but could not be confirmed., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample end user is created.
+          output: {user: {id: 7701, name: Jane Smith, email: jane@acme.example.com, externalId: dex-jane-1, role: end-user}}
+    - name: updateUser
+      goName: UpdateUser
+      inputType: UpdateUserInput
+      outputType: UpdateUserOutput
+      kind: mutation
+      description: Replace selected end-user profile fields by user ID.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Zendesk returned the updated user.}
+        - {id: notFound, goName: NotFound, description: The user does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: User input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample end user is updated.
+          output: {user: {id: 7701, name: Jane Smith, email: jane@acme.example.com, role: end-user}}
+    - name: deleteUser
+      goName: DeleteUser
+      inputType: DeleteUserInput
+      outputType: DeleteUserOutput
+      kind: mutation
+      description: Delete one user by ID; Zendesk does not allow recovery.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Zendesk accepted the user deletion.}
+        - {id: notFound, goName: NotFound, description: The user does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: User ID or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample end user is deleted.
+          output: {userId: 7701}
     - name: searchTickets
       goName: SearchTickets
       inputType: SearchTicketsInput

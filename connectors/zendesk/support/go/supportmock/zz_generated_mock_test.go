@@ -52,6 +52,38 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[support.GetTicketFieldOutput](`{"field":{"id":34,"title":"Subject","type":"subject","active":true,"required":true}}`)
 			return err
 		}},
+		{name: "listUsers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.ListUsersOutput](`{"users":[{"id":7701,"name":"Jane Smith","email":"jane@acme.example.com","role":"end-user"}],"nextCursor":"cursor-1"}`)
+			return err
+		}},
+		{name: "listUsers/listedDefault/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.ListUsersOutput](`{"users":[{"id":7702,"name":"Alex Lee","email":"alex@acme.example.com","role":"end-user"}],"nextCursor":"cursor-2"}`)
+			return err
+		}},
+		{name: "listUsers/listedDefault/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.ListUsersOutput](`{"users":[],"nextCursor":""}`)
+			return err
+		}},
+		{name: "getUser/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.GetUserOutput](`{"user":{"id":7701,"name":"Jane Smith","email":"jane@acme.example.com","role":"end-user"}}`)
+			return err
+		}},
+		{name: "searchUsers/searchedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.SearchUsersOutput](`{"users":[{"id":7701,"name":"Jane Smith","email":"jane@acme.example.com","role":"end-user"}],"nextPage":0}`)
+			return err
+		}},
+		{name: "createUser/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.CreateUserOutput](`{"user":{"id":7701,"name":"Jane Smith","email":"jane@acme.example.com","externalId":"dex-jane-1","role":"end-user"}}`)
+			return err
+		}},
+		{name: "updateUser/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.UpdateUserOutput](`{"user":{"id":7701,"name":"Jane Smith","email":"jane@acme.example.com","role":"end-user"}}`)
+			return err
+		}},
+		{name: "deleteUser/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.DeleteUserOutput](`{"userId":7701}`)
+			return err
+		}},
 		{name: "searchTickets/customerIssueTickets/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[support.SearchTicketsOutput](`{"tickets":[{"id":35435,"agentUrl":"https://acme.zendesk.com/agent/tickets/35435","subject":"Double charge on order 88213","status":"pending","requesterId":7701,"tags":["billing-double-charge"],"createdAt":"2026-10-20T08:00:00Z","updatedAt":"2026-10-21T08:00:00Z"},{"id":35436,"agentUrl":"https://acme.zendesk.com/agent/tickets/35436","subject":"Double charge on order 88213","status":"pending","requesterId":7701,"tags":["billing-double-charge"],"createdAt":"2026-10-21T08:00:00Z","updatedAt":"2026-10-22T08:00:00Z"}],"nextCursor":"cursor-1"}`)
 			return err
@@ -104,6 +136,24 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetTicketField().Definition().Operation.OperationID != "getTicketField" {
 		t.Errorf("getTicketField mock has another definition")
+	}
+	if mock.ListUsers().Definition().Operation.OperationID != "listUsers" {
+		t.Errorf("listUsers mock has another definition")
+	}
+	if mock.GetUser().Definition().Operation.OperationID != "getUser" {
+		t.Errorf("getUser mock has another definition")
+	}
+	if mock.SearchUsers().Definition().Operation.OperationID != "searchUsers" {
+		t.Errorf("searchUsers mock has another definition")
+	}
+	if mock.CreateUser().Definition().Operation.OperationID != "createUser" {
+		t.Errorf("createUser mock has another definition")
+	}
+	if mock.UpdateUser().Definition().Operation.OperationID != "updateUser" {
+		t.Errorf("updateUser mock has another definition")
+	}
+	if mock.DeleteUser().Definition().Operation.OperationID != "deleteUser" {
+		t.Errorf("deleteUser mock has another definition")
 	}
 	if mock.SearchTickets().Definition().Operation.OperationID != "searchTickets" {
 		t.Errorf("searchTickets mock has another definition")

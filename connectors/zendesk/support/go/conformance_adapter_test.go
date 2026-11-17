@@ -53,5 +53,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"recoverSuspendedTicket": newConformanceMutationInvocation(t, scenario.Input, context, client.RecoverSuspendedTicket(), zendeskConnection, scenario.CallID),
 		"listTicketFields":       newConformanceQueryInvocation(t, scenario.Input, context, client.ListTicketFields(), zendeskConnection),
 		"getTicketField":         newConformanceQueryInvocation(t, scenario.Input, context, client.GetTicketField(), zendeskConnection),
+		"listUsers":              newConformanceQueryInvocation(t, scenario.Input, context, client.ListUsers(), zendeskConnection),
+		"getUser":                newConformanceQueryInvocation(t, scenario.Input, context, client.GetUser(), zendeskConnection),
+		"searchUsers":            newConformanceQueryInvocation(t, scenario.Input, context, client.SearchUsers(), zendeskConnection),
+		"createUser":             newConformanceMutationInvocation(t, scenario.Input, context, client.CreateUser(), zendeskConnection, scenario.CallID),
+		"updateUser":             newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateUser(), zendeskConnection, scenario.CallID),
+		"deleteUser":             newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteUser(), zendeskConnection, scenario.CallID),
 	}}
 }

@@ -5006,6 +5006,2312 @@
       },
       "name": "getTicketField-defect",
       "operation": "getTicketField"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000201",
+      "exchanges": [
+        {
+          "body": "{\"users\":[{\"id\":7701,\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\",\"external_id\":\"dex-jane-1\",\"role\":\"end-user\",\"phone\":\"+15551234567\",\"tags\":[\"vip\"],\"suspended\":true}],\"meta\":{\"has_more\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "",
+          "users": [
+            {
+              "email": "jane@acme.example.com",
+              "externalId": "dex-jane-1",
+              "id": 7701,
+              "name": "Jane Smith",
+              "phone": "+15551234567",
+              "role": "end-user",
+              "suspended": true,
+              "tags": [
+                "vip"
+              ]
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listUsers-success",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000202",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listUsers-rate-limit",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000203",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listUsers-service-unavailable",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000204",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listUsers-server-error",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000205",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listUsers-transport",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000206",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "nextCursor": "",
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listUsers-rejected",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000207",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listUsers-invalid-response",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000208",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextCursor": "",
+          "users": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 101
+      },
+      "name": "listUsers-defect",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000209",
+      "exchanges": [
+        {
+          "body": "{\"user\":{\"id\":7701,\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\",\"external_id\":\"dex-jane-1\",\"role\":\"end-user\",\"phone\":\"+15551234567\",\"tags\":[\"vip\"],\"suspended\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "user": {
+            "email": "jane@acme.example.com",
+            "externalId": "dex-jane-1",
+            "id": 7701,
+            "name": "Jane Smith",
+            "phone": "+15551234567",
+            "role": "end-user",
+            "suspended": true,
+            "tags": [
+              "vip"
+            ]
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7701
+      },
+      "name": "getUser-success",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000210",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7701
+      },
+      "name": "getUser-rate-limit",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000211",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7701
+      },
+      "name": "getUser-service-unavailable",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000212",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7701
+      },
+      "name": "getUser-server-error",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000213",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7701
+      },
+      "name": "getUser-transport",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000214",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "user": {
+            "id": 0,
+            "name": "",
+            "suspended": false
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7701
+      },
+      "name": "getUser-rejected",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000215",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "user": {
+            "id": 0,
+            "name": "",
+            "suspended": false
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7701
+      },
+      "name": "getUser-not-found",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000216",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "user": {
+            "id": 0,
+            "name": "",
+            "suspended": false
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7701
+      },
+      "name": "getUser-invalid-response",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000217",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "user": {
+            "id": 0,
+            "name": "",
+            "suspended": false
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 0
+      },
+      "name": "getUser-defect",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000218",
+      "exchanges": [
+        {
+          "body": "{\"users\":[{\"id\":7701,\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\",\"external_id\":\"dex-jane-1\",\"role\":\"end-user\",\"phone\":\"+15551234567\",\"tags\":[\"vip\"],\"suspended\":true}],\"next_page\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/search",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "query": [
+              "jane"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "nextPage": 0,
+          "users": [
+            {
+              "email": "jane@acme.example.com",
+              "externalId": "dex-jane-1",
+              "id": 7701,
+              "name": "Jane Smith",
+              "phone": "+15551234567",
+              "role": "end-user",
+              "suspended": true,
+              "tags": [
+                "vip"
+              ]
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "pageSize": 2,
+        "query": "jane"
+      },
+      "name": "searchUsers-success",
+      "operation": "searchUsers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000219",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/search",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "query": [
+              "jane"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "pageSize": 2,
+        "query": "jane"
+      },
+      "name": "searchUsers-rate-limit",
+      "operation": "searchUsers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000220",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/search",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "query": [
+              "jane"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "pageSize": 2,
+        "query": "jane"
+      },
+      "name": "searchUsers-service-unavailable",
+      "operation": "searchUsers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000221",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/search",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "query": [
+              "jane"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "pageSize": 2,
+        "query": "jane"
+      },
+      "name": "searchUsers-server-error",
+      "operation": "searchUsers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000222",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/search",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "query": [
+              "jane"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "pageSize": 2,
+        "query": "jane"
+      },
+      "name": "searchUsers-transport",
+      "operation": "searchUsers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000223",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/search",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "query": [
+              "jane"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "nextPage": 0,
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "pageSize": 2,
+        "query": "jane"
+      },
+      "name": "searchUsers-rejected",
+      "operation": "searchUsers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000224",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/search",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "query": [
+              "jane"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextPage": 0,
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "pageSize": 2,
+        "query": "jane"
+      },
+      "name": "searchUsers-invalid-response",
+      "operation": "searchUsers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000225",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextPage": 0,
+          "users": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": ""
+      },
+      "name": "searchUsers-defect",
+      "operation": "searchUsers"
+    },
+    {
+      "callId": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+      "exchanges": [
+        {
+          "body": "{\"user\":{\"id\":7701,\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\",\"external_id\":\"dex-jane-1\",\"role\":\"end-user\",\"phone\":\"+15551234567\",\"tags\":[\"vip\"],\"suspended\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "user": {
+              "email": "jane@acme.example.com",
+              "external_id": "dex-jane-1",
+              "name": "Jane Smith",
+              "role": "end-user"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+          "providerId": "7701",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "user": {
+            "email": "jane@acme.example.com",
+            "externalId": "dex-jane-1",
+            "id": 7701,
+            "name": "Jane Smith",
+            "phone": "+15551234567",
+            "role": "end-user",
+            "suspended": true,
+            "tags": [
+              "vip"
+            ]
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+      "input": {
+        "email": "jane@acme.example.com",
+        "externalId": "dex-jane-1",
+        "name": "Jane Smith"
+      },
+      "name": "createUser-success",
+      "operation": "createUser"
+    },
+    {
+      "callId": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "user": {
+              "email": "jane@acme.example.com",
+              "external_id": "dex-jane-1",
+              "name": "Jane Smith",
+              "role": "end-user"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+      "input": {
+        "email": "jane@acme.example.com",
+        "externalId": "dex-jane-1",
+        "name": "Jane Smith"
+      },
+      "name": "createUser-rate-limit",
+      "operation": "createUser"
+    },
+    {
+      "callId": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "user": {
+              "email": "jane@acme.example.com",
+              "external_id": "dex-jane-1",
+              "name": "Jane Smith",
+              "role": "end-user"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+      "input": {
+        "email": "jane@acme.example.com",
+        "externalId": "dex-jane-1",
+        "name": "Jane Smith"
+      },
+      "name": "createUser-service-unavailable",
+      "operation": "createUser"
+    },
+    {
+      "callId": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "user": {
+              "email": "jane@acme.example.com",
+              "external_id": "dex-jane-1",
+              "name": "Jane Smith",
+              "role": "end-user"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+      "input": {
+        "email": "jane@acme.example.com",
+        "externalId": "dex-jane-1",
+        "name": "Jane Smith"
+      },
+      "name": "createUser-server-error",
+      "operation": "createUser"
+    },
+    {
+      "callId": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "user": {
+              "email": "jane@acme.example.com",
+              "external_id": "dex-jane-1",
+              "name": "Jane Smith",
+              "role": "end-user"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+      "input": {
+        "email": "jane@acme.example.com",
+        "externalId": "dex-jane-1",
+        "name": "Jane Smith"
+      },
+      "name": "createUser-transport",
+      "operation": "createUser"
+    },
+    {
+      "callId": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "user": {
+              "email": "jane@acme.example.com",
+              "external_id": "dex-jane-1",
+              "name": "Jane Smith",
+              "role": "end-user"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "user": {
+            "id": 0,
+            "name": "",
+            "suspended": false
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+      "input": {
+        "email": "jane@acme.example.com",
+        "externalId": "dex-jane-1",
+        "name": "Jane Smith"
+      },
+      "name": "createUser-rejected",
+      "operation": "createUser"
+    },
+    {
+      "callId": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "user": {
+            "id": 0,
+            "name": "",
+            "suspended": false
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+      "input": {
+        "email": "jane@acme.example.com",
+        "externalId": "dex-jane-1",
+        "name": ""
+      },
+      "name": "createUser-defect",
+      "operation": "createUser"
+    },
+    {
+      "callId": "61ab92d4-2ea0-58d5-8a23-b0619dd1b729",
+      "exchanges": [
+        {
+          "body": "{\"user\":{\"id\":7701,\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\",\"external_id\":\"dex-jane-1\",\"role\":\"end-user\",\"phone\":\"+15551234567\",\"tags\":[\"vip\"],\"suspended\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/7701",
+          "requestBody": {
+            "user": {
+              "name": "Jane Smith",
+              "phone": "+15551234567",
+              "suspended": true,
+              "tags": [
+                "vip"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "user": {
+            "email": "jane@acme.example.com",
+            "externalId": "dex-jane-1",
+            "id": 7701,
+            "name": "Jane Smith",
+            "phone": "+15551234567",
+            "role": "end-user",
+            "suspended": true,
+            "tags": [
+              "vip"
+            ]
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "61ab92d4-2ea0-58d5-8a23-b0619dd1b729",
+      "input": {
+        "name": "Jane Smith",
+        "phone": "+15551234567",
+        "suspended": true,
+        "tags": [
+          "vip"
+        ],
+        "userId": 7701
+      },
+      "name": "updateUser-success",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "61ab92d4-2ea0-58d5-8a23-b0619dd1b729",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/7701",
+          "requestBody": {
+            "user": {
+              "name": "Jane Smith",
+              "phone": "+15551234567",
+              "suspended": true,
+              "tags": [
+                "vip"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "61ab92d4-2ea0-58d5-8a23-b0619dd1b729",
+      "input": {
+        "name": "Jane Smith",
+        "phone": "+15551234567",
+        "suspended": true,
+        "tags": [
+          "vip"
+        ],
+        "userId": 7701
+      },
+      "name": "updateUser-rate-limit",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "61ab92d4-2ea0-58d5-8a23-b0619dd1b729",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/7701",
+          "requestBody": {
+            "user": {
+              "name": "Jane Smith",
+              "phone": "+15551234567",
+              "suspended": true,
+              "tags": [
+                "vip"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "61ab92d4-2ea0-58d5-8a23-b0619dd1b729",
+      "input": {
+        "name": "Jane Smith",
+        "phone": "+15551234567",
+        "suspended": true,
+        "tags": [
+          "vip"
+        ],
+        "userId": 7701
+      },
+      "name": "updateUser-service-unavailable",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "61ab92d4-2ea0-58d5-8a23-b0619dd1b729",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/7701",
+          "requestBody": {
+            "user": {
+              "name": "Jane Smith",
+              "phone": "+15551234567",
+              "suspended": true,
+              "tags": [
+                "vip"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "61ab92d4-2ea0-58d5-8a23-b0619dd1b729",
+      "input": {
+        "name": "Jane Smith",
+        "phone": "+15551234567",
+        "suspended": true,
+        "tags": [
+          "vip"
+        ],
+        "userId": 7701
+      },
+      "name": "updateUser-server-error",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "61ab92d4-2ea0-58d5-8a23-b0619dd1b729",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/7701",
+          "requestBody": {
+            "user": {
+              "name": "Jane Smith",
+              "phone": "+15551234567",
+              "suspended": true,
+              "tags": [
+                "vip"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "61ab92d4-2ea0-58d5-8a23-b0619dd1b729",
+      "input": {
+        "name": "Jane Smith",
+        "phone": "+15551234567",
+        "suspended": true,
+        "tags": [
+          "vip"
+        ],
+        "userId": 7701
+      },
+      "name": "updateUser-transport",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "61ab92d4-2ea0-58d5-8a23-b0619dd1b729",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/7701",
+          "requestBody": {
+            "user": {
+              "name": "Jane Smith",
+              "phone": "+15551234567",
+              "suspended": true,
+              "tags": [
+                "vip"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "user": {
+            "id": 0,
+            "name": "",
+            "suspended": false
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "61ab92d4-2ea0-58d5-8a23-b0619dd1b729",
+      "input": {
+        "name": "Jane Smith",
+        "phone": "+15551234567",
+        "suspended": true,
+        "tags": [
+          "vip"
+        ],
+        "userId": 7701
+      },
+      "name": "updateUser-rejected",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "61ab92d4-2ea0-58d5-8a23-b0619dd1b729",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/7701",
+          "requestBody": {
+            "user": {
+              "name": "Jane Smith",
+              "phone": "+15551234567",
+              "suspended": true,
+              "tags": [
+                "vip"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "user": {
+            "id": 0,
+            "name": "",
+            "suspended": false
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "61ab92d4-2ea0-58d5-8a23-b0619dd1b729",
+      "input": {
+        "name": "Jane Smith",
+        "phone": "+15551234567",
+        "suspended": true,
+        "tags": [
+          "vip"
+        ],
+        "userId": 7701
+      },
+      "name": "updateUser-not-found",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "61ab92d4-2ea0-58d5-8a23-b0619dd1b729",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "user": {
+            "id": 0,
+            "name": "",
+            "suspended": false
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "61ab92d4-2ea0-58d5-8a23-b0619dd1b729",
+      "input": {
+        "userId": 0
+      },
+      "name": "updateUser-defect",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "74fbac13-aa2c-5e47-9a75-2d5fa18c09e9",
+      "exchanges": [
+        {
+          "body": "{\"user\":{\"id\":7701,\"name\":\"Jane Smith\",\"active\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/7701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "userId": 7701
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74fbac13-aa2c-5e47-9a75-2d5fa18c09e9",
+      "input": {
+        "userId": 7701
+      },
+      "name": "deleteUser-success",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "74fbac13-aa2c-5e47-9a75-2d5fa18c09e9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/7701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74fbac13-aa2c-5e47-9a75-2d5fa18c09e9",
+      "input": {
+        "userId": 7701
+      },
+      "name": "deleteUser-rate-limit",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "74fbac13-aa2c-5e47-9a75-2d5fa18c09e9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/7701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74fbac13-aa2c-5e47-9a75-2d5fa18c09e9",
+      "input": {
+        "userId": 7701
+      },
+      "name": "deleteUser-service-unavailable",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "74fbac13-aa2c-5e47-9a75-2d5fa18c09e9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/7701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74fbac13-aa2c-5e47-9a75-2d5fa18c09e9",
+      "input": {
+        "userId": 7701
+      },
+      "name": "deleteUser-server-error",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "74fbac13-aa2c-5e47-9a75-2d5fa18c09e9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/7701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74fbac13-aa2c-5e47-9a75-2d5fa18c09e9",
+      "input": {
+        "userId": 7701
+      },
+      "name": "deleteUser-transport",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "74fbac13-aa2c-5e47-9a75-2d5fa18c09e9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/7701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "userId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74fbac13-aa2c-5e47-9a75-2d5fa18c09e9",
+      "input": {
+        "userId": 7701
+      },
+      "name": "deleteUser-rejected",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "74fbac13-aa2c-5e47-9a75-2d5fa18c09e9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/7701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "userId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74fbac13-aa2c-5e47-9a75-2d5fa18c09e9",
+      "input": {
+        "userId": 7701
+      },
+      "name": "deleteUser-not-found",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "74fbac13-aa2c-5e47-9a75-2d5fa18c09e9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "userId": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74fbac13-aa2c-5e47-9a75-2d5fa18c09e9",
+      "input": {
+        "userId": 0
+      },
+      "name": "deleteUser-defect",
+      "operation": "deleteUser"
+    },
+    {
+      "attempts": 3,
+      "callId": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "user": {
+              "email": "jane@acme.example.com",
+              "external_id": "dex-jane-1",
+              "name": "Jane Smith",
+              "role": "end-user"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 502
+        },
+        {
+          "body": "{\"users\":[],\"meta\":{\"has_more\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "external_id": [
+              "dex-jane-1"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "user": {
+              "email": "jane@acme.example.com",
+              "external_id": "dex-jane-1",
+              "name": "Jane Smith",
+              "role": "end-user"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 502
+        },
+        {
+          "body": "{\"users\":[],\"meta\":{\"has_more\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "external_id": [
+              "dex-jane-1"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "user": {
+              "email": "jane@acme.example.com",
+              "external_id": "dex-jane-1",
+              "name": "Jane Smith",
+              "role": "end-user"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "user": {
+            "id": 0,
+            "name": "",
+            "suspended": false
+          }
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+      "input": {
+        "email": "jane@acme.example.com",
+        "externalId": "dex-jane-1",
+        "name": "Jane Smith"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createUser-uncertain-cap",
+      "operation": "createUser"
     }
   ],
   "schemaVersion": 1

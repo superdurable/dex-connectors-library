@@ -22,6 +22,12 @@ Flows. It exposes these operation-specific Dex Step factories:
 | `support.NewRecoverSuspendedTicketStep` | Mutation | `recovered` | `notFound`, `providerRejected`, `defect`, `uncertain` |
 | `support.NewListTicketFieldsStep` | Query | `listed` | `providerRejected`, `invalidResponse`, `defect` |
 | `support.NewGetTicketFieldStep` | Query | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewListUsersStep` | Query | `listed` | `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewGetUserStep` | Query | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewSearchUsersStep` | Query | `searched` | `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewCreateUserStep` | Mutation | `created` | `providerRejected`, `defect`, `uncertain` |
+| `support.NewUpdateUserStep` | Mutation | `updated` | `notFound`, `providerRejected`, `defect` |
+| `support.NewDeleteUserStep` | Mutation | `deleted` | `notFound`, `providerRejected`, `defect` |
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
@@ -115,6 +121,10 @@ against the documented values before any request.
 `listTickets` reads one cursor page of up to 100 non-archived tickets visible to the connection's agent. Pass the returned `nextCursor` to read another page; the first page is used when it is blank. For a complete account export, use the incremental export API instead.
 
 `listTicketFields` reads one cursor page of up to 100 system and custom field definitions; `getTicketField` reads one by positive ID. They return field ID, title, type, active, and required status. Provider field descriptions and other configuration are excluded from Flow results.
+
+`listUsers` reads up to 100 users per cursor page. `getUser` reads one by ID, and `searchUsers` uses Zendesk's offset search with a nonempty query and at most 10,000 matches. User responses include selected profile fields and omit notes, custom fields, and authentication details.
+
+`createUser` creates an end user with a required, account-unique `externalId` from the application. After an unknown result it reads users by that exact ID and confirms the name and email before resending, up to three sends. `updateUser` replaces supplied name, phone, tags, or suspension state; omitted fields are left alone. `deleteUser` removes a user and Zendesk does not offer recovery. These writes require a Zendesk administrator or an agent whose custom role can manage users. Updating a primary email address requires Zendesk's identity API and is outside `updateUser`.
 
 `deleteTicket` soft-deletes one ticket by ID. Zendesk requires an administrator or an agent with deletion permission. `recoverSuspendedTicket` converts one suspended ticket to a regular ticket; Zendesk changes its requester to the authenticated agent. Recovery has a three-send cap and selects `uncertain` after an unconfirmed final attempt. Operators can inspect the suspended-ticket queue and the recovered ticket before manually retrying.
 
