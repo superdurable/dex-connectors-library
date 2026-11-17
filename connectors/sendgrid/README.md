@@ -1,10 +1,10 @@
 # SendGrid connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/sendgrid/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/sendgrid/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/sendgrid`.
 
-Read SendGrid global statistics and transactional templates. The manifest is the source of generated Config, Credentials, Connection, operation factories, and mocks. See the runnable [statistics demo](go/examples/demo/README.md) and [template-list example](go/examples/template-list/README.md) for Worker and strict FDG 2.0 generation commands.
+Read SendGrid global statistics and transactional templates, and manage marketing contacts. The manifest is the source of generated Config, Credentials, Connection, operation factories, and mocks. See the runnable [statistics demo](go/examples/demo/README.md) and [template-list example](go/examples/template-list/README.md) for Worker and strict FDG 2.0 generation commands.
 
 ## Operations and provider references
 
@@ -12,6 +12,10 @@ Read SendGrid global statistics and transactional templates. The manifest is the
 | --- | --- | --- |
 | `getStats` | Query | https://www.twilio.com/docs/sendgrid/api-reference/stats/retrieve-global-email-statistics |
 | `listTemplates` | Query | https://www.twilio.com/docs/sendgrid/api-reference/transactional-templates/retrieve-paged-transactional-templates |
+| `getContact` | Query | https://www.twilio.com/docs/sendgrid/api-reference/contacts/get-a-contact-by-id |
+| `searchContacts` | Query | https://www.twilio.com/docs/sendgrid/api-reference/contacts/search-contacts |
+| `upsertContact` | Mutation, safe | https://www.twilio.com/docs/sendgrid/api-reference/contacts/add-or-update-a-contact |
+| `deleteContact` | Mutation, safe | https://www.twilio.com/docs/sendgrid/api-reference/contacts/delete-contacts |
 
 The examples use `sendgrid.NewGetStatsStep` and `sendgrid.NewListTemplatesStep` with the static `sendgrid` connection. Each operation is an operation-specific Query Step with the default one-hour retry policy. `listTemplates` always sends `page_size`: zero in `PageSize` selects 100, and explicit values must be 1–200. Pass `NextPageToken` from one result as the next call's `PageToken`; blank starts at page one. SendGrid's exact `_metadata.count` meaning remains unverified.
 
@@ -47,4 +51,4 @@ Both example Flow integration tests start real Dex Flows through the mock connec
 
 ## Unverified live behavior
 
-A real account key, regional base URL choice, read permissions, and Dex Web connection form have not been verified. `sendEmail` is omitted because the provider documentation reviewed does not establish a safe replay/deduplication guarantee.
+A real account key, regional base URL choice, contact write permissions, and Dex Web connection form have not been verified. The queued contact operations return a job ID; acceptance does not prove that asynchronous processing completed.

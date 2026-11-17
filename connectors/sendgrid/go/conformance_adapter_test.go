@@ -4,24 +4,28 @@
 package sendgrid
 
 import (
-    "net/http"
-    "testing"
+	"net/http"
+	"testing"
 
-    "github.com/stretchr/testify/require"
-    "github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/stretchr/testify/require"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
 const conformanceEndpointPath = ""
 const conformanceFixturePathPrefix = ""
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
-    t.Helper()
-    client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{
-        testConnection: {APIKey: sdkgo.NewSecretString(testAPIKey)},
-    }, WithHTTPClient(transport))
-    require.NoError(t, err)
-    return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-        "getStats": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetStats(), testConnection),
-        "listTemplates": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTemplates(), testConnection),
-    }}
+	t.Helper()
+	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{
+		testConnection: {APIKey: sdkgo.NewSecretString(testAPIKey)},
+	}, WithHTTPClient(transport))
+	require.NoError(t, err)
+	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+		"getStats":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetStats(), testConnection),
+		"listTemplates":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTemplates(), testConnection),
+		"getContact":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetContact(), testConnection),
+		"searchContacts": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.SearchContacts(), testConnection),
+		"upsertContact":  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpsertContact(), testConnection, scenario.CallID),
+		"deleteContact":  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteContact(), testConnection, scenario.CallID),
+	}}
 }

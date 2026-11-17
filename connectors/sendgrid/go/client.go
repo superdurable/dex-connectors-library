@@ -1,11 +1,12 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package sendgrid exposes typed sendgrid provider Queries to Dex Flows.
+// Package sendgrid exposes typed SendGrid provider operations to Dex Flows.
 package sendgrid
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -59,6 +60,10 @@ var errCredential = errors.New("provider credential unavailable")
 var errRequest = errors.New("provider request failed")
 
 func (client *Client) do(call sdkgo.Call, method, path string, query url.Values, payload []byte) ([]byte, int, time.Duration, error) {
+	return client.doWithContext(call.Context, call, method, path, query, payload)
+}
+
+func (client *Client) doWithContext(requestContext context.Context, call sdkgo.Call, method, path string, query url.Values, payload []byte) ([]byte, int, time.Duration, error) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil {
 		return nil, 0, 0, errCredential
@@ -74,7 +79,7 @@ func (client *Client) do(call sdkgo.Call, method, path string, query url.Values,
 	if encoded := query.Encode(); encoded != "" {
 		endpoint += "?" + encoded
 	}
-	request, err := http.NewRequestWithContext(call.Context, method, endpoint, bytes.NewReader(payload))
+	request, err := http.NewRequestWithContext(requestContext, method, endpoint, bytes.NewReader(payload))
 	if err != nil {
 		return nil, 0, 0, errRequest
 	}

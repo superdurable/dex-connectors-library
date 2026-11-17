@@ -24,6 +24,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[sendgrid.TemplatesOutput](`{"templates":[{"id":"d-meridian","name":"Meridian receipt","generation":"dynamic"}],"count":1}`)
 			return err
 		}},
+		{name: "getContact/foundContact/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sendgrid.Contact](`{"id":"c-123","email":"priya@example.com"}`)
+			return err
+		}},
+		{name: "searchContacts/contactsFound/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sendgrid.SearchContactsOutput](`{"contacts":[{"id":"c-123","email":"priya@example.com"}],"count":1}`)
+			return err
+		}},
+		{name: "upsertContact/contactQueued/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sendgrid.ContactJobOutput](`{"jobId":"job-123"}`)
+			return err
+		}},
+		{name: "deleteContact/contactDeletionQueued/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sendgrid.ContactJobOutput](`{"jobId":"job-456"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +55,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListTemplates().Definition().Operation.OperationID != "listTemplates" {
 		t.Errorf("listTemplates mock has another definition")
+	}
+	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
+		t.Errorf("getContact mock has another definition")
+	}
+	if mock.SearchContacts().Definition().Operation.OperationID != "searchContacts" {
+		t.Errorf("searchContacts mock has another definition")
+	}
+	if mock.UpsertContact().Definition().Operation.OperationID != "upsertContact" {
+		t.Errorf("upsertContact mock has another definition")
+	}
+	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
+		t.Errorf("deleteContact mock has another definition")
 	}
 }
