@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: productboard
   displayName: Productboard
-  description: List feature IDs and names through Productboard REST API v2.
+  description: List, read, create, rename, and delete features through Productboard REST API v2.
   company: Productboard
   categories: [project-management]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: productboard
   languages:
@@ -56,6 +56,88 @@ spec:
         - Save the connection. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. The connector requests only feature names; it never places the token in Flow state.
         - Run listFeatures with a blank pageCursor for the first page. For the next page, copy the non-secret nextCursor returned by the previous call into pageCursor; it is an opaque string, not a URL. Blank always starts again from the first page.
   operations:
+    - name: getFeature
+      goName: GetFeature
+      inputType: GetFeatureInput
+      outputType: FeatureMetadata
+      kind: query
+      description: Read a feature ID and name by its Productboard entity ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Productboard returned the feature.}
+        - {id: notFound, goName: NotFound, description: Productboard did not expose the feature., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Productboard conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Productboard returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The feature ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example feature was returned.
+          output: {id: "123e4567-e89b-12d3-a456-426614174000", name: Example feature}
+    - name: createFeature
+      goName: CreateFeature
+      inputType: CreateFeatureInput
+      outputType: FeatureMetadata
+      kind: mutation
+      description: Create a feature under a component; workspace-specific required fields may cause rejection.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Productboard created the feature.}
+        - {id: providerRejected, goName: ProviderRejected, description: Productboard conclusively rejected creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Productboard may have created the feature but its ID is unconfirmed., optional: true}
+        - {id: defect, goName: Defect, description: The name or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One example feature was created.
+          output: {id: "123e4567-e89b-12d3-a456-426614174000", name: Example feature}
+    - name: renameFeature
+      goName: RenameFeature
+      inputType: RenameFeatureInput
+      outputType: FeatureMetadata
+      kind: mutation
+      description: Replace one feature's name with an absolute value.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: renamed, goName: Renamed, description: Productboard renamed the feature.}
+        - {id: notFound, goName: NotFound, description: Productboard did not expose the feature., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Productboard conclusively rejected the rename., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Productboard returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: "The feature ID, name, or credentials are invalid.", optional: true}
+      mocks:
+        - name: renamedDefault
+          branch: renamed
+          default: true
+          description: One example feature was renamed.
+          output: {id: "123e4567-e89b-12d3-a456-426614174000", name: Renamed feature}
+    - name: deleteFeature
+      goName: DeleteFeature
+      inputType: DeleteFeatureInput
+      outputType: DeletedFeature
+      kind: mutation
+      description: Permanently delete one feature and its subfeatures by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Productboard deleted the feature.}
+        - {id: notFound, goName: NotFound, description: Productboard did not expose the feature., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Productboard conclusively rejected deletion., optional: true}
+        - {id: defect, goName: Defect, description: The feature ID or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One example feature was deleted.
+          output: {id: "123e4567-e89b-12d3-a456-426614174000"}
     - name: listFeatures
       goName: ListFeatures
       inputType: ListFeaturesInput
@@ -64,7 +146,7 @@ spec:
       description: List one page of feature IDs and names, with an opaque next-page cursor.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Productboard returned one feature page.}
         - {id: providerRejected, goName: ProviderRejected, description: Productboard conclusively rejected the request., optional: true}

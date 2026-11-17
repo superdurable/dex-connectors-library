@@ -1,6 +1,6 @@
 # Productboard feature discovery Flow
 
-This runnable Flow calls `listFeatures` through the static `productboard` connection. It saves the selected page in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+These runnable Flows call `listFeatures` or `getFeature` through the static `productboard` connection. Each saves its result in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -8,6 +8,7 @@ From `connectors/productboard/go`, run:
 
 ```bash
 dexcli visualize ./examples/feature-discovery/flow/workflow.go --schema-version 2.0 --json --out /tmp/productboard-feature-discovery-fdg
+dexcli visualize ./examples/feature-discovery/flow/feature_lookup.go --schema-version 2.0 --lint app --json --out /tmp/productboard-feature-lookup-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.
@@ -22,6 +23,6 @@ With the project's `DEX_PROJECT_*` environment set, run from `connectors/product
 GOWORK=off go run ./examples/feature-discovery
 ```
 
-Start `ProductboardFeatureDiscovery` with a unique Flow ID and input `{"pageCursor":""}`. Copy the returned `nextCursor` into `pageCursor` for another page. The Worker connects to Dex Server without an inbound listener.
+Start `ProductboardFeatureDiscovery` with a unique Flow ID and input `{"pageCursor":""}`. Copy the returned `nextCursor` into `pageCursor` for another page. To look up one feature, start `ProductboardFeatureLookup` with a unique Flow ID and input `{"featureId":"123e4567-e89b-12d3-a456-426614174000"}` using a real feature ID from your workspace. The Worker connects to Dex Server without an inbound listener.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`.

@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getFeature/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[productboard.FeatureMetadata](`{"id":"123e4567-e89b-12d3-a456-426614174000","name":"Example feature"}`)
+			return err
+		}},
+		{name: "createFeature/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[productboard.FeatureMetadata](`{"id":"123e4567-e89b-12d3-a456-426614174000","name":"Example feature"}`)
+			return err
+		}},
+		{name: "renameFeature/renamedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[productboard.FeatureMetadata](`{"id":"123e4567-e89b-12d3-a456-426614174000","name":"Renamed feature"}`)
+			return err
+		}},
+		{name: "deleteFeature/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[productboard.DeletedFeature](`{"id":"123e4567-e89b-12d3-a456-426614174000"}`)
+			return err
+		}},
 		{name: "listFeatures/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[productboard.FeaturesPage](`{"features":[{"id":"123e4567-e89b-12d3-a456-426614174000","name":"Example feature"}],"nextCursor":""}`)
 			return err
@@ -30,6 +46,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetFeature().Definition().Operation.OperationID != "getFeature" {
+		t.Errorf("getFeature mock has another definition")
+	}
+	if mock.CreateFeature().Definition().Operation.OperationID != "createFeature" {
+		t.Errorf("createFeature mock has another definition")
+	}
+	if mock.RenameFeature().Definition().Operation.OperationID != "renameFeature" {
+		t.Errorf("renameFeature mock has another definition")
+	}
+	if mock.DeleteFeature().Definition().Operation.OperationID != "deleteFeature" {
+		t.Errorf("deleteFeature mock has another definition")
+	}
 	if mock.ListFeatures().Definition().Operation.OperationID != "listFeatures" {
 		t.Errorf("listFeatures mock has another definition")
 	}

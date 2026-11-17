@@ -40,11 +40,27 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetFeature() sdkgo.Query[GetFeatureInput, FeatureMetadata]
+	CreateFeature() sdkgo.Mutation[CreateFeatureInput, FeatureMetadata]
+	RenameFeature() sdkgo.Mutation[RenameFeatureInput, FeatureMetadata]
+	DeleteFeature() sdkgo.Mutation[DeleteFeatureInput, DeletedFeature]
 	ListFeatures() sdkgo.Query[ListFeaturesInput, FeaturesPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetFeature() sdkgo.Query[GetFeatureInput, FeatureMetadata] {
+	return operations.client.GetFeature()
+}
+func (operations clientOperations) CreateFeature() sdkgo.Mutation[CreateFeatureInput, FeatureMetadata] {
+	return operations.client.CreateFeature()
+}
+func (operations clientOperations) RenameFeature() sdkgo.Mutation[RenameFeatureInput, FeatureMetadata] {
+	return operations.client.RenameFeature()
+}
+func (operations clientOperations) DeleteFeature() sdkgo.Mutation[DeleteFeatureInput, DeletedFeature] {
+	return operations.client.DeleteFeature()
+}
 func (operations clientOperations) ListFeatures() sdkgo.Query[ListFeaturesInput, FeaturesPage] {
 	return operations.client.ListFeatures()
 }
@@ -184,6 +200,309 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_token is required")
 	}
 	return nil
+}
+
+const GetFeatureBranchFound sdkgo.BranchID = "found"
+const GetFeatureBranchNotFound sdkgo.BranchID = "notFound"
+const GetFeatureBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetFeatureBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetFeatureBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetFeatureDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getFeature"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetFeatureBranchFound, Description: "Productboard returned the feature."},
+		{ID: GetFeatureBranchNotFound, Description: "Productboard did not expose the feature.", Optional: true},
+		{ID: GetFeatureBranchProviderRejected, Description: "Productboard conclusively rejected the request.", Optional: true},
+		{ID: GetFeatureBranchInvalidResponse, Description: "Productboard returned malformed or oversized JSON.", Optional: true},
+		{ID: GetFeatureBranchDefect, Description: "The feature ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetFeatureResult = sdkgo.QueryResult[FeatureMetadata]
+
+type GetFeatureStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=productboard"`
+	operationID                    struct{}                                           `connector:"operationId=getFeature"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetFeatureInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetFeatureResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetFeatureResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetFeatureResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetFeatureResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetFeatureResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[FeatureMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewGetFeatureStep[IN any](config GetFeatureStepConfig[IN]) sdkgo.QueryStep[IN, GetFeatureInput, FeatureMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("productboard connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetFeatureInput, FeatureMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetFeature(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetFeatureResult] {
+			branches := make([]sdkgo.BranchTarget[GetFeatureResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetFeatureBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetFeatureBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetFeatureBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetFeatureBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetFeatureBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateFeatureBranchCreated sdkgo.BranchID = "created"
+const CreateFeatureBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateFeatureBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateFeatureBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateFeatureDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createFeature"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateFeatureBranchCreated, Description: "Productboard created the feature."},
+		{ID: CreateFeatureBranchProviderRejected, Description: "Productboard conclusively rejected creation.", Optional: true},
+		{ID: CreateFeatureBranchUncertain, Description: "Productboard may have created the feature but its ID is unconfirmed.", Optional: true},
+		{ID: CreateFeatureBranchDefect, Description: "The name or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateFeatureResult = sdkgo.MutationResult[FeatureMetadata]
+
+type CreateFeatureStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=productboard"`
+	operationID                       struct{}                                              `connector:"operationId=createFeature"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateFeatureInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateFeatureResult]                     `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateFeatureResult]                     `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateFeatureResult]                     `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateFeatureResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[FeatureMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateFeatureStep[IN any](config CreateFeatureStepConfig[IN]) sdkgo.MutationStep[IN, CreateFeatureInput, FeatureMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("productboard connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateFeatureInput, FeatureMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateFeature(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateFeatureResult] {
+			branches := make([]sdkgo.BranchTarget[CreateFeatureResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateFeatureBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateFeatureBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateFeatureBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateFeatureBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const RenameFeatureBranchRenamed sdkgo.BranchID = "renamed"
+const RenameFeatureBranchNotFound sdkgo.BranchID = "notFound"
+const RenameFeatureBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RenameFeatureBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const RenameFeatureBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RenameFeatureDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "renameFeature"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RenameFeatureBranchRenamed, Description: "Productboard renamed the feature."},
+		{ID: RenameFeatureBranchNotFound, Description: "Productboard did not expose the feature.", Optional: true},
+		{ID: RenameFeatureBranchProviderRejected, Description: "Productboard conclusively rejected the rename.", Optional: true},
+		{ID: RenameFeatureBranchInvalidResponse, Description: "Productboard returned malformed or oversized JSON.", Optional: true},
+		{ID: RenameFeatureBranchDefect, Description: "The feature ID, name, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type RenameFeatureResult = sdkgo.MutationResult[FeatureMetadata]
+
+type RenameFeatureStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=productboard"`
+	operationID                       struct{}                                              `connector:"operationId=renameFeature"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) RenameFeatureInput                           `connector:"mapToOperationInput"`
+	Renamed                           sdkgo.Target[RenameFeatureResult]                     `connector:"branch=renamed"`
+	NotFound                          sdkgo.Target[RenameFeatureResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[RenameFeatureResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[RenameFeatureResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[RenameFeatureResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[FeatureMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewRenameFeatureStep[IN any](config RenameFeatureStepConfig[IN]) sdkgo.MutationStep[IN, RenameFeatureInput, FeatureMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("productboard connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, RenameFeatureInput, FeatureMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RenameFeature(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RenameFeatureResult] {
+			branches := make([]sdkgo.BranchTarget[RenameFeatureResult], 0, 5)
+			if config.Renamed.HasStep() {
+				branches = append(branches, config.Renamed.BranchTarget(RenameFeatureBranchRenamed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(RenameFeatureBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RenameFeatureBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(RenameFeatureBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RenameFeatureBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteFeatureBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteFeatureBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteFeatureBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteFeatureBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteFeatureDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteFeature"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteFeatureBranchDeleted, Description: "Productboard deleted the feature."},
+		{ID: DeleteFeatureBranchNotFound, Description: "Productboard did not expose the feature.", Optional: true},
+		{ID: DeleteFeatureBranchProviderRejected, Description: "Productboard conclusively rejected deletion.", Optional: true},
+		{ID: DeleteFeatureBranchDefect, Description: "The feature ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteFeatureResult = sdkgo.MutationResult[DeletedFeature]
+
+type DeleteFeatureStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=productboard"`
+	operationID                       struct{}                                             `connector:"operationId=deleteFeature"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteFeatureInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteFeatureResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteFeatureResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteFeatureResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteFeatureResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedFeature]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteFeatureStep[IN any](config DeleteFeatureStepConfig[IN]) sdkgo.MutationStep[IN, DeleteFeatureInput, DeletedFeature] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("productboard connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteFeatureInput, DeletedFeature]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteFeature(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteFeatureResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteFeatureResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteFeatureBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteFeatureBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteFeatureBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteFeatureBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListFeaturesBranchListed sdkgo.BranchID = "listed"

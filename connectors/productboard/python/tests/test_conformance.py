@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/productboard/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/productboard/scenarios.json")
+    if scenario["operation"] == "listFeatures"
+]
 CONNECTION = sdk.ConnectionRef("productboard", "productboard")
 TEST_CREDENTIALS = productboard.Credentials(sdk.SecretString("sample-productboard-token"))
 ADAPTER = conformance.PythonOperationAdapter(
