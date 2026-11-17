@@ -18,6 +18,13 @@ import (
 // Mock is a scripted ashby connection. Script each operation through its accessor.
 type Mock struct {
 	connection             ashby.Connection
+	listApplications       *connectormock.Query[ashby.ListApplicationsInput, ashby.ApplicationPage]
+	getApplication         *connectormock.Query[ashby.GetApplicationInput, ashby.ApplicationSummary]
+	createApplication      *connectormock.Mutation[ashby.CreateApplicationInput, ashby.ApplicationSummary]
+	changeApplicationStage *connectormock.Mutation[ashby.ChangeApplicationStageInput, ashby.ApplicationSummary]
+	transferApplication    *connectormock.Mutation[ashby.TransferApplicationInput, ashby.ApplicationSummary]
+	setApplicationSource   *connectormock.Mutation[ashby.SetApplicationSourceInput, ashby.ApplicationSummary]
+	deleteApplication      *connectormock.Mutation[ashby.DeleteApplicationInput, ashby.DeletedApplication]
 	listJobs               *connectormock.Query[ashby.ListJobsInput, ashby.JobPage]
 	getJob                 *connectormock.Query[ashby.GetJobInput, ashby.JobSummary]
 	searchJobs             *connectormock.Query[ashby.SearchJobsInput, ashby.JobSearchResults]
@@ -43,6 +50,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listApplications:       connectormock.NewQuery[ashby.ListApplicationsInput, ashby.ApplicationPage](t, ashby.ListApplicationsDefinition),
+		getApplication:         connectormock.NewQuery[ashby.GetApplicationInput, ashby.ApplicationSummary](t, ashby.GetApplicationDefinition),
+		createApplication:      connectormock.NewMutation[ashby.CreateApplicationInput, ashby.ApplicationSummary](t, ashby.CreateApplicationDefinition),
+		changeApplicationStage: connectormock.NewMutation[ashby.ChangeApplicationStageInput, ashby.ApplicationSummary](t, ashby.ChangeApplicationStageDefinition),
+		transferApplication:    connectormock.NewMutation[ashby.TransferApplicationInput, ashby.ApplicationSummary](t, ashby.TransferApplicationDefinition),
+		setApplicationSource:   connectormock.NewMutation[ashby.SetApplicationSourceInput, ashby.ApplicationSummary](t, ashby.SetApplicationSourceDefinition),
+		deleteApplication:      connectormock.NewMutation[ashby.DeleteApplicationInput, ashby.DeletedApplication](t, ashby.DeleteApplicationDefinition),
 		listJobs:               connectormock.NewQuery[ashby.ListJobsInput, ashby.JobPage](t, ashby.ListJobsDefinition),
 		getJob:                 connectormock.NewQuery[ashby.GetJobInput, ashby.JobSummary](t, ashby.GetJobDefinition),
 		searchJobs:             connectormock.NewQuery[ashby.SearchJobsInput, ashby.JobSearchResults](t, ashby.SearchJobsDefinition),
@@ -62,6 +76,13 @@ func New(t testing.TB, connectionName string) *Mock {
 		updateCandidate:        connectormock.NewMutation[ashby.UpdateCandidateInput, ashby.CandidateProfile](t, ashby.UpdateCandidateDefinition),
 		getCandidate:           connectormock.NewQuery[ashby.GetCandidateInput, ashby.CandidateProfile](t, ashby.GetCandidateDefinition),
 	}
+	mock.listApplications.Default(ListApplicationsDefault())
+	mock.getApplication.Default(GetApplicationDefault())
+	mock.createApplication.Default(CreateApplicationDefault())
+	mock.changeApplicationStage.Default(ChangeApplicationStageDefault())
+	mock.transferApplication.Default(TransferApplicationDefault())
+	mock.setApplicationSource.Default(SetApplicationSourceDefault())
+	mock.deleteApplication.Default(DeleteApplicationDefault())
 	mock.listJobs.Default(ListJobsDefault())
 	mock.getJob.Default(GetJobDefault())
 	mock.searchJobs.Default(SearchJobsDefault())
@@ -90,6 +111,41 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() ashby.Connection { return mock.connection }
+
+// ListApplications returns the listApplications script.
+func (mock *Mock) ListApplications() *connectormock.Query[ashby.ListApplicationsInput, ashby.ApplicationPage] {
+	return mock.listApplications
+}
+
+// GetApplication returns the getApplication script.
+func (mock *Mock) GetApplication() *connectormock.Query[ashby.GetApplicationInput, ashby.ApplicationSummary] {
+	return mock.getApplication
+}
+
+// CreateApplication returns the createApplication script.
+func (mock *Mock) CreateApplication() *connectormock.Mutation[ashby.CreateApplicationInput, ashby.ApplicationSummary] {
+	return mock.createApplication
+}
+
+// ChangeApplicationStage returns the changeApplicationStage script.
+func (mock *Mock) ChangeApplicationStage() *connectormock.Mutation[ashby.ChangeApplicationStageInput, ashby.ApplicationSummary] {
+	return mock.changeApplicationStage
+}
+
+// TransferApplication returns the transferApplication script.
+func (mock *Mock) TransferApplication() *connectormock.Mutation[ashby.TransferApplicationInput, ashby.ApplicationSummary] {
+	return mock.transferApplication
+}
+
+// SetApplicationSource returns the setApplicationSource script.
+func (mock *Mock) SetApplicationSource() *connectormock.Mutation[ashby.SetApplicationSourceInput, ashby.ApplicationSummary] {
+	return mock.setApplicationSource
+}
+
+// DeleteApplication returns the deleteApplication script.
+func (mock *Mock) DeleteApplication() *connectormock.Mutation[ashby.DeleteApplicationInput, ashby.DeletedApplication] {
+	return mock.deleteApplication
+}
 
 // ListJobs returns the listJobs script.
 func (mock *Mock) ListJobs() *connectormock.Query[ashby.ListJobsInput, ashby.JobPage] {
@@ -183,6 +239,27 @@ func (mock *Mock) GetCandidate() *connectormock.Query[ashby.GetCandidateInput, a
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListApplications() sdkgo.Query[ashby.ListApplicationsInput, ashby.ApplicationPage] {
+	return operations.mock.listApplications
+}
+func (operations mockOperations) GetApplication() sdkgo.Query[ashby.GetApplicationInput, ashby.ApplicationSummary] {
+	return operations.mock.getApplication
+}
+func (operations mockOperations) CreateApplication() sdkgo.Mutation[ashby.CreateApplicationInput, ashby.ApplicationSummary] {
+	return operations.mock.createApplication
+}
+func (operations mockOperations) ChangeApplicationStage() sdkgo.Mutation[ashby.ChangeApplicationStageInput, ashby.ApplicationSummary] {
+	return operations.mock.changeApplicationStage
+}
+func (operations mockOperations) TransferApplication() sdkgo.Mutation[ashby.TransferApplicationInput, ashby.ApplicationSummary] {
+	return operations.mock.transferApplication
+}
+func (operations mockOperations) SetApplicationSource() sdkgo.Mutation[ashby.SetApplicationSourceInput, ashby.ApplicationSummary] {
+	return operations.mock.setApplicationSource
+}
+func (operations mockOperations) DeleteApplication() sdkgo.Mutation[ashby.DeleteApplicationInput, ashby.DeletedApplication] {
+	return operations.mock.deleteApplication
+}
 func (operations mockOperations) ListJobs() sdkgo.Query[ashby.ListJobsInput, ashby.JobPage] {
 	return operations.mock.listJobs
 }
@@ -236,6 +313,258 @@ func (operations mockOperations) UpdateCandidate() sdkgo.Mutation[ashby.UpdateCa
 }
 func (operations mockOperations) GetCandidate() sdkgo.Query[ashby.GetCandidateInput, ashby.CandidateProfile] {
 	return operations.mock.getCandidate
+}
+
+// ListApplicationsListed selects the listed branch: Ashby returned the application result.
+func ListApplicationsListed(value ashby.ApplicationPage, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationPage] {
+	return connectormock.Branch(ashby.ListApplicationsBranchListed, value, failure)
+}
+
+// ListApplicationsProviderRejected selects the providerRejected branch: Ashby conclusively rejected the application request.
+func ListApplicationsProviderRejected(value ashby.ApplicationPage, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationPage] {
+	return connectormock.Branch(ashby.ListApplicationsBranchProviderRejected, value, failure)
+}
+
+// ListApplicationsInvalidResponse selects the invalidResponse branch: Ashby returned malformed or oversized JSON.
+func ListApplicationsInvalidResponse(value ashby.ApplicationPage, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationPage] {
+	return connectormock.Branch(ashby.ListApplicationsBranchInvalidResponse, value, failure)
+}
+
+// ListApplicationsDefect selects the defect branch: Local application input or credentials are invalid.
+func ListApplicationsDefect(value ashby.ApplicationPage, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationPage] {
+	return connectormock.Branch(ashby.ListApplicationsBranchDefect, value, failure)
+}
+
+// ListApplicationsRetry asks Dex to retry the listApplications Step, after the delay when it is positive.
+func ListApplicationsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ashby.ApplicationPage] {
+	return connectormock.Retry[ashby.ApplicationPage](failure, after)
+}
+
+// ListApplicationsListedDefault is the manifest mock listedDefault: A sample application is returned.
+func ListApplicationsListedDefault() connectormock.Case[ashby.ApplicationPage] {
+	value := connectormock.MustDecodeOutput[ashby.ApplicationPage](`{"applications":[{"id":"6d724bc1-2587-4915-adb3-d70c1dd940db","candidateId":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","jobId":"1be42b8e-cafd-4beb-8121-f4981eb20f42","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Active","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}],"moreDataAvailable":false}`)
+	return connectormock.Branch(ashby.ListApplicationsBranchListed, value, nil)
+}
+
+// ListApplicationsDefault is the manifest default, listedDefault, which New installs.
+func ListApplicationsDefault() connectormock.Case[ashby.ApplicationPage] {
+	return ListApplicationsListedDefault()
+}
+
+// GetApplicationFound selects the found branch: Ashby returned the application result.
+func GetApplicationFound(value ashby.ApplicationSummary, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Branch(ashby.GetApplicationBranchFound, value, failure)
+}
+
+// GetApplicationProviderRejected selects the providerRejected branch: Ashby conclusively rejected the application request.
+func GetApplicationProviderRejected(value ashby.ApplicationSummary, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Branch(ashby.GetApplicationBranchProviderRejected, value, failure)
+}
+
+// GetApplicationInvalidResponse selects the invalidResponse branch: Ashby returned malformed or oversized JSON.
+func GetApplicationInvalidResponse(value ashby.ApplicationSummary, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Branch(ashby.GetApplicationBranchInvalidResponse, value, failure)
+}
+
+// GetApplicationDefect selects the defect branch: Local application input or credentials are invalid.
+func GetApplicationDefect(value ashby.ApplicationSummary, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Branch(ashby.GetApplicationBranchDefect, value, failure)
+}
+
+// GetApplicationRetry asks Dex to retry the getApplication Step, after the delay when it is positive.
+func GetApplicationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Retry[ashby.ApplicationSummary](failure, after)
+}
+
+// GetApplicationFoundDefault is the manifest mock foundDefault: A sample application is returned.
+func GetApplicationFoundDefault() connectormock.Case[ashby.ApplicationSummary] {
+	value := connectormock.MustDecodeOutput[ashby.ApplicationSummary](`{"id":"6d724bc1-2587-4915-adb3-d70c1dd940db","candidateId":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","jobId":"1be42b8e-cafd-4beb-8121-f4981eb20f42","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Active","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+	return connectormock.Branch(ashby.GetApplicationBranchFound, value, nil)
+}
+
+// GetApplicationDefault is the manifest default, foundDefault, which New installs.
+func GetApplicationDefault() connectormock.Case[ashby.ApplicationSummary] {
+	return GetApplicationFoundDefault()
+}
+
+// CreateApplicationCreated selects the created branch: Ashby returned the application result.
+func CreateApplicationCreated(value ashby.ApplicationSummary, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Branch(ashby.CreateApplicationBranchCreated, value, failure)
+}
+
+// CreateApplicationProviderRejected selects the providerRejected branch: Ashby conclusively rejected the application request.
+func CreateApplicationProviderRejected(value ashby.ApplicationSummary, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Branch(ashby.CreateApplicationBranchProviderRejected, value, failure)
+}
+
+// CreateApplicationUncertain returns an uncertain createApplication outcome.
+func CreateApplicationUncertain(value ashby.ApplicationSummary, failure sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateApplicationDefect selects the defect branch: Local application input or credentials are invalid.
+func CreateApplicationDefect(value ashby.ApplicationSummary, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Branch(ashby.CreateApplicationBranchDefect, value, failure)
+}
+
+// CreateApplicationRetry asks Dex to retry the createApplication Step, after the delay when it is positive.
+func CreateApplicationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Retry[ashby.ApplicationSummary](failure, after)
+}
+
+// CreateApplicationCreatedDefault is the manifest mock createdDefault: A sample application is returned.
+func CreateApplicationCreatedDefault() connectormock.Case[ashby.ApplicationSummary] {
+	value := connectormock.MustDecodeOutput[ashby.ApplicationSummary](`{"id":"6d724bc1-2587-4915-adb3-d70c1dd940db","candidateId":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","jobId":"1be42b8e-cafd-4beb-8121-f4981eb20f42","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Lead","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+	return connectormock.Branch(ashby.CreateApplicationBranchCreated, value, nil)
+}
+
+// CreateApplicationDefault is the manifest default, createdDefault, which New installs.
+func CreateApplicationDefault() connectormock.Case[ashby.ApplicationSummary] {
+	return CreateApplicationCreatedDefault()
+}
+
+// ChangeApplicationStageChanged selects the changed branch: Ashby returned the application result.
+func ChangeApplicationStageChanged(value ashby.ApplicationSummary, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Branch(ashby.ChangeApplicationStageBranchChanged, value, failure)
+}
+
+// ChangeApplicationStageProviderRejected selects the providerRejected branch: Ashby conclusively rejected the application request.
+func ChangeApplicationStageProviderRejected(value ashby.ApplicationSummary, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Branch(ashby.ChangeApplicationStageBranchProviderRejected, value, failure)
+}
+
+// ChangeApplicationStageUncertain returns an uncertain changeApplicationStage outcome.
+func ChangeApplicationStageUncertain(value ashby.ApplicationSummary, failure sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// ChangeApplicationStageDefect selects the defect branch: Local application input or credentials are invalid.
+func ChangeApplicationStageDefect(value ashby.ApplicationSummary, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Branch(ashby.ChangeApplicationStageBranchDefect, value, failure)
+}
+
+// ChangeApplicationStageRetry asks Dex to retry the changeApplicationStage Step, after the delay when it is positive.
+func ChangeApplicationStageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Retry[ashby.ApplicationSummary](failure, after)
+}
+
+// ChangeApplicationStageChangedDefault is the manifest mock changedDefault: A sample application is returned.
+func ChangeApplicationStageChangedDefault() connectormock.Case[ashby.ApplicationSummary] {
+	value := connectormock.MustDecodeOutput[ashby.ApplicationSummary](`{"id":"6d724bc1-2587-4915-adb3-d70c1dd940db","candidateId":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","jobId":"1be42b8e-cafd-4beb-8121-f4981eb20f42","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Active","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+	return connectormock.Branch(ashby.ChangeApplicationStageBranchChanged, value, nil)
+}
+
+// ChangeApplicationStageDefault is the manifest default, changedDefault, which New installs.
+func ChangeApplicationStageDefault() connectormock.Case[ashby.ApplicationSummary] {
+	return ChangeApplicationStageChangedDefault()
+}
+
+// TransferApplicationTransferred selects the transferred branch: Ashby returned the application result.
+func TransferApplicationTransferred(value ashby.ApplicationSummary, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Branch(ashby.TransferApplicationBranchTransferred, value, failure)
+}
+
+// TransferApplicationProviderRejected selects the providerRejected branch: Ashby conclusively rejected the application request.
+func TransferApplicationProviderRejected(value ashby.ApplicationSummary, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Branch(ashby.TransferApplicationBranchProviderRejected, value, failure)
+}
+
+// TransferApplicationInvalidResponse selects the invalidResponse branch: Ashby returned malformed or oversized JSON.
+func TransferApplicationInvalidResponse(value ashby.ApplicationSummary, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Branch(ashby.TransferApplicationBranchInvalidResponse, value, failure)
+}
+
+// TransferApplicationDefect selects the defect branch: Local application input or credentials are invalid.
+func TransferApplicationDefect(value ashby.ApplicationSummary, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Branch(ashby.TransferApplicationBranchDefect, value, failure)
+}
+
+// TransferApplicationRetry asks Dex to retry the transferApplication Step, after the delay when it is positive.
+func TransferApplicationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Retry[ashby.ApplicationSummary](failure, after)
+}
+
+// TransferApplicationTransferredDefault is the manifest mock transferredDefault: A sample application is returned.
+func TransferApplicationTransferredDefault() connectormock.Case[ashby.ApplicationSummary] {
+	value := connectormock.MustDecodeOutput[ashby.ApplicationSummary](`{"id":"6d724bc1-2587-4915-adb3-d70c1dd940db","candidateId":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","jobId":"1be42b8e-cafd-4beb-8121-f4981eb20f42","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Active","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+	return connectormock.Branch(ashby.TransferApplicationBranchTransferred, value, nil)
+}
+
+// TransferApplicationDefault is the manifest default, transferredDefault, which New installs.
+func TransferApplicationDefault() connectormock.Case[ashby.ApplicationSummary] {
+	return TransferApplicationTransferredDefault()
+}
+
+// SetApplicationSourceSet selects the set branch: Ashby returned the application result.
+func SetApplicationSourceSet(value ashby.ApplicationSummary, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Branch(ashby.SetApplicationSourceBranchSet, value, failure)
+}
+
+// SetApplicationSourceProviderRejected selects the providerRejected branch: Ashby conclusively rejected the application request.
+func SetApplicationSourceProviderRejected(value ashby.ApplicationSummary, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Branch(ashby.SetApplicationSourceBranchProviderRejected, value, failure)
+}
+
+// SetApplicationSourceInvalidResponse selects the invalidResponse branch: Ashby returned malformed or oversized JSON.
+func SetApplicationSourceInvalidResponse(value ashby.ApplicationSummary, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Branch(ashby.SetApplicationSourceBranchInvalidResponse, value, failure)
+}
+
+// SetApplicationSourceDefect selects the defect branch: Local application input or credentials are invalid.
+func SetApplicationSourceDefect(value ashby.ApplicationSummary, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Branch(ashby.SetApplicationSourceBranchDefect, value, failure)
+}
+
+// SetApplicationSourceRetry asks Dex to retry the setApplicationSource Step, after the delay when it is positive.
+func SetApplicationSourceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ashby.ApplicationSummary] {
+	return connectormock.Retry[ashby.ApplicationSummary](failure, after)
+}
+
+// SetApplicationSourceSetDefault is the manifest mock setDefault: A sample application is returned.
+func SetApplicationSourceSetDefault() connectormock.Case[ashby.ApplicationSummary] {
+	value := connectormock.MustDecodeOutput[ashby.ApplicationSummary](`{"id":"6d724bc1-2587-4915-adb3-d70c1dd940db","candidateId":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","jobId":"1be42b8e-cafd-4beb-8121-f4981eb20f42","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Active","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+	return connectormock.Branch(ashby.SetApplicationSourceBranchSet, value, nil)
+}
+
+// SetApplicationSourceDefault is the manifest default, setDefault, which New installs.
+func SetApplicationSourceDefault() connectormock.Case[ashby.ApplicationSummary] {
+	return SetApplicationSourceSetDefault()
+}
+
+// DeleteApplicationDeleted selects the deleted branch: Ashby returned the application result.
+func DeleteApplicationDeleted(value ashby.DeletedApplication, failure *sdkgo.Failure) connectormock.Case[ashby.DeletedApplication] {
+	return connectormock.Branch(ashby.DeleteApplicationBranchDeleted, value, failure)
+}
+
+// DeleteApplicationProviderRejected selects the providerRejected branch: Ashby conclusively rejected the application request.
+func DeleteApplicationProviderRejected(value ashby.DeletedApplication, failure *sdkgo.Failure) connectormock.Case[ashby.DeletedApplication] {
+	return connectormock.Branch(ashby.DeleteApplicationBranchProviderRejected, value, failure)
+}
+
+// DeleteApplicationInvalidResponse selects the invalidResponse branch: Ashby returned malformed or oversized JSON.
+func DeleteApplicationInvalidResponse(value ashby.DeletedApplication, failure *sdkgo.Failure) connectormock.Case[ashby.DeletedApplication] {
+	return connectormock.Branch(ashby.DeleteApplicationBranchInvalidResponse, value, failure)
+}
+
+// DeleteApplicationDefect selects the defect branch: Local application input or credentials are invalid.
+func DeleteApplicationDefect(value ashby.DeletedApplication, failure *sdkgo.Failure) connectormock.Case[ashby.DeletedApplication] {
+	return connectormock.Branch(ashby.DeleteApplicationBranchDefect, value, failure)
+}
+
+// DeleteApplicationRetry asks Dex to retry the deleteApplication Step, after the delay when it is positive.
+func DeleteApplicationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ashby.DeletedApplication] {
+	return connectormock.Retry[ashby.DeletedApplication](failure, after)
+}
+
+// DeleteApplicationDeletedDefault is the manifest mock deletedDefault: A sample application is returned.
+func DeleteApplicationDeletedDefault() connectormock.Case[ashby.DeletedApplication] {
+	value := connectormock.MustDecodeOutput[ashby.DeletedApplication](`{"applicationId":"6d724bc1-2587-4915-adb3-d70c1dd940db"}`)
+	return connectormock.Branch(ashby.DeleteApplicationBranchDeleted, value, nil)
+}
+
+// DeleteApplicationDefault is the manifest default, deletedDefault, which New installs.
+func DeleteApplicationDefault() connectormock.Case[ashby.DeletedApplication] {
+	return DeleteApplicationDeletedDefault()
 }
 
 // ListJobsListed selects the listed branch: Ashby returned the job result.

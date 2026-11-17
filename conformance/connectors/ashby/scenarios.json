@@ -5,6 +5,2290 @@
       "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
       "exchanges": [
         {
+          "body": "{\"success\":true,\"results\":[{\"id\":\"6d724bc1-2587-4915-adb3-d70c1dd940db\",\"createdAt\":\"2024-01-15T10:30:00.000Z\",\"updatedAt\":\"2024-01-16T10:30:00.000Z\",\"status\":\"Active\",\"candidate\":{\"id\":\"e9ed20fd-d45f-4aad-8a00-a19bfba0083e\"},\"job\":{\"id\":\"1be42b8e-cafd-4beb-8121-f4981eb20f42\"},\"currentInterviewStage\":{\"id\":\"c153b3e9-8b97-4fc0-bad1-6c654122c1f8\"}}],\"moreDataAvailable\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.list",
+          "requestBody": {
+            "cursor": "start",
+            "limit": 20
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "applications": [
+            {
+              "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+              "createdAt": "2024-01-15T10:30:00.000Z",
+              "id": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+              "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8",
+              "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+              "status": "Active",
+              "updatedAt": "2024-01-16T10:30:00.000Z"
+            }
+          ],
+          "moreDataAvailable": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "start",
+        "limit": 20
+      },
+      "name": "listApplications-listed",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"missing_endpoint_permission\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.list",
+          "requestBody": {
+            "cursor": "start",
+            "limit": 20
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "applications": [],
+          "moreDataAvailable": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "start",
+        "limit": 20
+      },
+      "name": "listApplications-providerRejected",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.list",
+          "requestBody": {
+            "cursor": "start",
+            "limit": 20
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "applications": [],
+          "moreDataAvailable": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "start",
+        "limit": 20
+      },
+      "name": "listApplications-invalidResponse",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "applications": [],
+          "moreDataAvailable": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "start",
+        "limit": -1
+      },
+      "name": "listApplications-defect",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.list",
+          "requestBody": {
+            "cursor": "start",
+            "limit": 20
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "start",
+        "limit": 20
+      },
+      "name": "listApplications-retry429",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.list",
+          "requestBody": {
+            "cursor": "start",
+            "limit": 20
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "start",
+        "limit": 20
+      },
+      "name": "listApplications-retry503",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.list",
+          "requestBody": {
+            "cursor": "start",
+            "limit": 20
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "start",
+        "limit": 20
+      },
+      "name": "listApplications-transportFailure",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":{\"id\":\"6d724bc1-2587-4915-adb3-d70c1dd940db\",\"createdAt\":\"2024-01-15T10:30:00.000Z\",\"updatedAt\":\"2024-01-16T10:30:00.000Z\",\"status\":\"Active\",\"candidate\":{\"id\":\"e9ed20fd-d45f-4aad-8a00-a19bfba0083e\"},\"job\":{\"id\":\"1be42b8e-cafd-4beb-8121-f4981eb20f42\"},\"currentInterviewStage\":{\"id\":\"c153b3e9-8b97-4fc0-bad1-6c654122c1f8\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.info",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+          "createdAt": "2024-01-15T10:30:00.000Z",
+          "id": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+          "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8",
+          "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+          "status": "Active",
+          "updatedAt": "2024-01-16T10:30:00.000Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+      },
+      "name": "getApplication-found",
+      "operation": "getApplication"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"missing_endpoint_permission\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.info",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "candidateId": "",
+          "createdAt": "",
+          "id": "",
+          "interviewStageId": "",
+          "jobId": "",
+          "status": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+      },
+      "name": "getApplication-providerRejected",
+      "operation": "getApplication"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.info",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "candidateId": "",
+          "createdAt": "",
+          "id": "",
+          "interviewStageId": "",
+          "jobId": "",
+          "status": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+      },
+      "name": "getApplication-invalidResponse",
+      "operation": "getApplication"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "candidateId": "",
+          "createdAt": "",
+          "id": "",
+          "interviewStageId": "",
+          "jobId": "",
+          "status": "",
+          "updatedAt": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "applicationId": "invalid"
+      },
+      "name": "getApplication-defect",
+      "operation": "getApplication"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.info",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+      },
+      "name": "getApplication-retry429",
+      "operation": "getApplication"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.info",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+      },
+      "name": "getApplication-retry503",
+      "operation": "getApplication"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.info",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+      },
+      "name": "getApplication-transportFailure",
+      "operation": "getApplication"
+    },
+    {
+      "callId": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":{\"id\":\"6d724bc1-2587-4915-adb3-d70c1dd940db\",\"createdAt\":\"2024-01-15T10:30:00.000Z\",\"updatedAt\":\"2024-01-16T10:30:00.000Z\",\"status\":\"Lead\",\"candidate\":{\"id\":\"e9ed20fd-d45f-4aad-8a00-a19bfba0083e\"},\"job\":{\"id\":\"1be42b8e-cafd-4beb-8121-f4981eb20f42\"},\"currentInterviewStage\":{\"id\":\"c153b3e9-8b97-4fc0-bad1-6c654122c1f8\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.create",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+          "createdAt": "2024-01-15T10:30:00.000Z",
+          "id": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+          "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8",
+          "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+          "status": "Lead",
+          "updatedAt": "2024-01-16T10:30:00.000Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "createApplication-created",
+      "operation": "createApplication"
+    },
+    {
+      "callId": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"missing_endpoint_permission\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.create",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "candidateId": "",
+          "createdAt": "",
+          "id": "",
+          "interviewStageId": "",
+          "jobId": "",
+          "status": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "createApplication-providerRejected",
+      "operation": "createApplication"
+    },
+    {
+      "callId": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "candidateId": "",
+          "createdAt": "",
+          "id": "",
+          "interviewStageId": "",
+          "jobId": "",
+          "status": "",
+          "updatedAt": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+      "input": {
+        "candidateId": "invalid",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "createApplication-defect",
+      "operation": "createApplication"
+    },
+    {
+      "callId": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.create",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "createApplication-retry429",
+      "operation": "createApplication"
+    },
+    {
+      "callId": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.create",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "createApplication-retry503",
+      "operation": "createApplication"
+    },
+    {
+      "callId": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.create",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "createApplication-transportFailure",
+      "operation": "createApplication"
+    },
+    {
+      "callId": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.create",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "createApplication-retry500",
+      "operation": "createApplication"
+    },
+    {
+      "callId": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "candidateId": "",
+          "createdAt": "",
+          "id": "",
+          "interviewStageId": "",
+          "jobId": "",
+          "status": "",
+          "updatedAt": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "createApplication-uncertain",
+      "operation": "createApplication",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "63ec9b60-2cf2-55cb-83bf-a6ab38cc796b",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "98aab012-51a1-56fd-b69c-c74de04186d6",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":{\"id\":\"6d724bc1-2587-4915-adb3-d70c1dd940db\",\"createdAt\":\"2024-01-15T10:30:00.000Z\",\"updatedAt\":\"2024-01-16T10:30:00.000Z\",\"status\":\"Active\",\"candidate\":{\"id\":\"e9ed20fd-d45f-4aad-8a00-a19bfba0083e\"},\"job\":{\"id\":\"1be42b8e-cafd-4beb-8121-f4981eb20f42\"},\"currentInterviewStage\":{\"id\":\"c153b3e9-8b97-4fc0-bad1-6c654122c1f8\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.changeStage",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+            "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "changed",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "98aab012-51a1-56fd-b69c-c74de04186d6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+          "createdAt": "2024-01-15T10:30:00.000Z",
+          "id": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+          "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8",
+          "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+          "status": "Active",
+          "updatedAt": "2024-01-16T10:30:00.000Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98aab012-51a1-56fd-b69c-c74de04186d6",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+        "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8"
+      },
+      "name": "changeApplicationStage-changed",
+      "operation": "changeApplicationStage"
+    },
+    {
+      "callId": "98aab012-51a1-56fd-b69c-c74de04186d6",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"missing_endpoint_permission\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.changeStage",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+            "archiveReasonId": "c4524540-c59e-4921-b31e-196c7778f457",
+            "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "98aab012-51a1-56fd-b69c-c74de04186d6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "candidateId": "",
+          "createdAt": "",
+          "id": "",
+          "interviewStageId": "",
+          "jobId": "",
+          "status": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98aab012-51a1-56fd-b69c-c74de04186d6",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+        "archiveReasonId": "c4524540-c59e-4921-b31e-196c7778f457",
+        "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8"
+      },
+      "name": "changeApplicationStage-providerRejected",
+      "operation": "changeApplicationStage"
+    },
+    {
+      "callId": "98aab012-51a1-56fd-b69c-c74de04186d6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "candidateId": "",
+          "createdAt": "",
+          "id": "",
+          "interviewStageId": "",
+          "jobId": "",
+          "status": "",
+          "updatedAt": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98aab012-51a1-56fd-b69c-c74de04186d6",
+      "input": {
+        "applicationId": "invalid",
+        "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8"
+      },
+      "name": "changeApplicationStage-defect",
+      "operation": "changeApplicationStage"
+    },
+    {
+      "callId": "98aab012-51a1-56fd-b69c-c74de04186d6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.changeStage",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+            "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "98aab012-51a1-56fd-b69c-c74de04186d6",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98aab012-51a1-56fd-b69c-c74de04186d6",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+        "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8"
+      },
+      "name": "changeApplicationStage-retry429",
+      "operation": "changeApplicationStage"
+    },
+    {
+      "callId": "98aab012-51a1-56fd-b69c-c74de04186d6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.changeStage",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+            "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "98aab012-51a1-56fd-b69c-c74de04186d6",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98aab012-51a1-56fd-b69c-c74de04186d6",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+        "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8"
+      },
+      "name": "changeApplicationStage-retry503",
+      "operation": "changeApplicationStage"
+    },
+    {
+      "callId": "98aab012-51a1-56fd-b69c-c74de04186d6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.changeStage",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+            "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "98aab012-51a1-56fd-b69c-c74de04186d6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98aab012-51a1-56fd-b69c-c74de04186d6",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+        "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8"
+      },
+      "name": "changeApplicationStage-transportFailure",
+      "operation": "changeApplicationStage"
+    },
+    {
+      "callId": "98aab012-51a1-56fd-b69c-c74de04186d6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.changeStage",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+            "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "98aab012-51a1-56fd-b69c-c74de04186d6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98aab012-51a1-56fd-b69c-c74de04186d6",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+        "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8"
+      },
+      "name": "changeApplicationStage-retry500",
+      "operation": "changeApplicationStage"
+    },
+    {
+      "callId": "98aab012-51a1-56fd-b69c-c74de04186d6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.info",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "candidateId": "",
+          "createdAt": "",
+          "id": "",
+          "interviewStageId": "",
+          "jobId": "",
+          "status": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "98aab012-51a1-56fd-b69c-c74de04186d6",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+        "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8"
+      },
+      "name": "changeApplicationStage-uncertain",
+      "operation": "changeApplicationStage",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "98aab012-51a1-56fd-b69c-c74de04186d6",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "8c253596-ef54-5011-b8c1-ad9dae4cba06",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":{\"id\":\"6d724bc1-2587-4915-adb3-d70c1dd940db\",\"createdAt\":\"2024-01-15T10:30:00.000Z\",\"updatedAt\":\"2024-01-16T10:30:00.000Z\",\"status\":\"Active\",\"candidate\":{\"id\":\"e9ed20fd-d45f-4aad-8a00-a19bfba0083e\"},\"job\":{\"id\":\"1be42b8e-cafd-4beb-8121-f4981eb20f42\"},\"currentInterviewStage\":{\"id\":\"c153b3e9-8b97-4fc0-bad1-6c654122c1f8\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.transfer",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+            "interviewPlanId": "d3f4762e-1234-4abc-9876-aabbccddeeff",
+            "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8",
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+            "startAutomaticActivities": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "transferred",
+        "failureKind": "",
+        "output": {
+          "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+          "createdAt": "2024-01-15T10:30:00.000Z",
+          "id": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+          "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8",
+          "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+          "status": "Active",
+          "updatedAt": "2024-01-16T10:30:00.000Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8c253596-ef54-5011-b8c1-ad9dae4cba06",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+        "interviewPlanId": "d3f4762e-1234-4abc-9876-aabbccddeeff",
+        "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "transferApplication-transferred",
+      "operation": "transferApplication"
+    },
+    {
+      "callId": "8c253596-ef54-5011-b8c1-ad9dae4cba06",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"missing_endpoint_permission\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.transfer",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+            "interviewPlanId": "d3f4762e-1234-4abc-9876-aabbccddeeff",
+            "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8",
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+            "startAutomaticActivities": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "candidateId": "",
+          "createdAt": "",
+          "id": "",
+          "interviewStageId": "",
+          "jobId": "",
+          "status": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8c253596-ef54-5011-b8c1-ad9dae4cba06",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+        "interviewPlanId": "d3f4762e-1234-4abc-9876-aabbccddeeff",
+        "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "transferApplication-providerRejected",
+      "operation": "transferApplication"
+    },
+    {
+      "callId": "8c253596-ef54-5011-b8c1-ad9dae4cba06",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.transfer",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+            "interviewPlanId": "d3f4762e-1234-4abc-9876-aabbccddeeff",
+            "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8",
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+            "startAutomaticActivities": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "candidateId": "",
+          "createdAt": "",
+          "id": "",
+          "interviewStageId": "",
+          "jobId": "",
+          "status": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8c253596-ef54-5011-b8c1-ad9dae4cba06",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+        "interviewPlanId": "d3f4762e-1234-4abc-9876-aabbccddeeff",
+        "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "transferApplication-invalidResponse",
+      "operation": "transferApplication"
+    },
+    {
+      "callId": "8c253596-ef54-5011-b8c1-ad9dae4cba06",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "candidateId": "",
+          "createdAt": "",
+          "id": "",
+          "interviewStageId": "",
+          "jobId": "",
+          "status": "",
+          "updatedAt": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8c253596-ef54-5011-b8c1-ad9dae4cba06",
+      "input": {
+        "applicationId": "invalid",
+        "interviewPlanId": "d3f4762e-1234-4abc-9876-aabbccddeeff",
+        "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "transferApplication-defect",
+      "operation": "transferApplication"
+    },
+    {
+      "callId": "8c253596-ef54-5011-b8c1-ad9dae4cba06",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.transfer",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+            "interviewPlanId": "d3f4762e-1234-4abc-9876-aabbccddeeff",
+            "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8",
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+            "startAutomaticActivities": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8c253596-ef54-5011-b8c1-ad9dae4cba06",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+        "interviewPlanId": "d3f4762e-1234-4abc-9876-aabbccddeeff",
+        "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "transferApplication-retry429",
+      "operation": "transferApplication"
+    },
+    {
+      "callId": "8c253596-ef54-5011-b8c1-ad9dae4cba06",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.transfer",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+            "interviewPlanId": "d3f4762e-1234-4abc-9876-aabbccddeeff",
+            "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8",
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+            "startAutomaticActivities": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8c253596-ef54-5011-b8c1-ad9dae4cba06",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+        "interviewPlanId": "d3f4762e-1234-4abc-9876-aabbccddeeff",
+        "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "transferApplication-retry503",
+      "operation": "transferApplication"
+    },
+    {
+      "callId": "8c253596-ef54-5011-b8c1-ad9dae4cba06",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.transfer",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+            "interviewPlanId": "d3f4762e-1234-4abc-9876-aabbccddeeff",
+            "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8",
+            "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+            "startAutomaticActivities": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8c253596-ef54-5011-b8c1-ad9dae4cba06",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+        "interviewPlanId": "d3f4762e-1234-4abc-9876-aabbccddeeff",
+        "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8",
+        "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42"
+      },
+      "name": "transferApplication-transportFailure",
+      "operation": "transferApplication"
+    },
+    {
+      "callId": "80cd57c6-eec2-555a-980f-cc6b8c8e9502",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":{\"id\":\"6d724bc1-2587-4915-adb3-d70c1dd940db\",\"createdAt\":\"2024-01-15T10:30:00.000Z\",\"updatedAt\":\"2024-01-16T10:30:00.000Z\",\"status\":\"Active\",\"candidate\":{\"id\":\"e9ed20fd-d45f-4aad-8a00-a19bfba0083e\"},\"job\":{\"id\":\"1be42b8e-cafd-4beb-8121-f4981eb20f42\"},\"currentInterviewStage\":{\"id\":\"c153b3e9-8b97-4fc0-bad1-6c654122c1f8\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.changeSource",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+            "sourceId": "d4a0ca6b-1e2e-428c-93af-a97f2490ef5a"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "set",
+        "failureKind": "",
+        "output": {
+          "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+          "createdAt": "2024-01-15T10:30:00.000Z",
+          "id": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+          "interviewStageId": "c153b3e9-8b97-4fc0-bad1-6c654122c1f8",
+          "jobId": "1be42b8e-cafd-4beb-8121-f4981eb20f42",
+          "status": "Active",
+          "updatedAt": "2024-01-16T10:30:00.000Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "80cd57c6-eec2-555a-980f-cc6b8c8e9502",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+        "sourceId": "d4a0ca6b-1e2e-428c-93af-a97f2490ef5a"
+      },
+      "name": "setApplicationSource-set",
+      "operation": "setApplicationSource"
+    },
+    {
+      "callId": "80cd57c6-eec2-555a-980f-cc6b8c8e9502",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"missing_endpoint_permission\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.changeSource",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+            "sourceId": "d4a0ca6b-1e2e-428c-93af-a97f2490ef5a"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "candidateId": "",
+          "createdAt": "",
+          "id": "",
+          "interviewStageId": "",
+          "jobId": "",
+          "status": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "80cd57c6-eec2-555a-980f-cc6b8c8e9502",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+        "sourceId": "d4a0ca6b-1e2e-428c-93af-a97f2490ef5a"
+      },
+      "name": "setApplicationSource-providerRejected",
+      "operation": "setApplicationSource"
+    },
+    {
+      "callId": "80cd57c6-eec2-555a-980f-cc6b8c8e9502",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.changeSource",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+            "sourceId": "d4a0ca6b-1e2e-428c-93af-a97f2490ef5a"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "candidateId": "",
+          "createdAt": "",
+          "id": "",
+          "interviewStageId": "",
+          "jobId": "",
+          "status": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "80cd57c6-eec2-555a-980f-cc6b8c8e9502",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+        "sourceId": "d4a0ca6b-1e2e-428c-93af-a97f2490ef5a"
+      },
+      "name": "setApplicationSource-invalidResponse",
+      "operation": "setApplicationSource"
+    },
+    {
+      "callId": "80cd57c6-eec2-555a-980f-cc6b8c8e9502",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "candidateId": "",
+          "createdAt": "",
+          "id": "",
+          "interviewStageId": "",
+          "jobId": "",
+          "status": "",
+          "updatedAt": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "80cd57c6-eec2-555a-980f-cc6b8c8e9502",
+      "input": {
+        "applicationId": "invalid",
+        "sourceId": "d4a0ca6b-1e2e-428c-93af-a97f2490ef5a"
+      },
+      "name": "setApplicationSource-defect",
+      "operation": "setApplicationSource"
+    },
+    {
+      "callId": "80cd57c6-eec2-555a-980f-cc6b8c8e9502",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.changeSource",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+            "sourceId": "d4a0ca6b-1e2e-428c-93af-a97f2490ef5a"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "80cd57c6-eec2-555a-980f-cc6b8c8e9502",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+        "sourceId": "d4a0ca6b-1e2e-428c-93af-a97f2490ef5a"
+      },
+      "name": "setApplicationSource-retry429",
+      "operation": "setApplicationSource"
+    },
+    {
+      "callId": "80cd57c6-eec2-555a-980f-cc6b8c8e9502",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.changeSource",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+            "sourceId": "d4a0ca6b-1e2e-428c-93af-a97f2490ef5a"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "80cd57c6-eec2-555a-980f-cc6b8c8e9502",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+        "sourceId": "d4a0ca6b-1e2e-428c-93af-a97f2490ef5a"
+      },
+      "name": "setApplicationSource-retry503",
+      "operation": "setApplicationSource"
+    },
+    {
+      "callId": "80cd57c6-eec2-555a-980f-cc6b8c8e9502",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.changeSource",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+            "sourceId": "d4a0ca6b-1e2e-428c-93af-a97f2490ef5a"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "80cd57c6-eec2-555a-980f-cc6b8c8e9502",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db",
+        "sourceId": "d4a0ca6b-1e2e-428c-93af-a97f2490ef5a"
+      },
+      "name": "setApplicationSource-transportFailure",
+      "operation": "setApplicationSource"
+    },
+    {
+      "callId": "d4442bcf-e7d0-564e-adaa-e7bb0ef58d8d",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":{\"applicationId\":\"6d724bc1-2587-4915-adb3-d70c1dd940db\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.delete",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4442bcf-e7d0-564e-adaa-e7bb0ef58d8d",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+      },
+      "name": "deleteApplication-deleted",
+      "operation": "deleteApplication"
+    },
+    {
+      "callId": "d4442bcf-e7d0-564e-adaa-e7bb0ef58d8d",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"missing_endpoint_permission\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.delete",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "applicationId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4442bcf-e7d0-564e-adaa-e7bb0ef58d8d",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+      },
+      "name": "deleteApplication-providerRejected",
+      "operation": "deleteApplication"
+    },
+    {
+      "callId": "d4442bcf-e7d0-564e-adaa-e7bb0ef58d8d",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.delete",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "applicationId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4442bcf-e7d0-564e-adaa-e7bb0ef58d8d",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+      },
+      "name": "deleteApplication-invalidResponse",
+      "operation": "deleteApplication"
+    },
+    {
+      "callId": "d4442bcf-e7d0-564e-adaa-e7bb0ef58d8d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "applicationId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4442bcf-e7d0-564e-adaa-e7bb0ef58d8d",
+      "input": {
+        "applicationId": "invalid"
+      },
+      "name": "deleteApplication-defect",
+      "operation": "deleteApplication"
+    },
+    {
+      "callId": "d4442bcf-e7d0-564e-adaa-e7bb0ef58d8d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.delete",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4442bcf-e7d0-564e-adaa-e7bb0ef58d8d",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+      },
+      "name": "deleteApplication-retry429",
+      "operation": "deleteApplication"
+    },
+    {
+      "callId": "d4442bcf-e7d0-564e-adaa-e7bb0ef58d8d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.delete",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4442bcf-e7d0-564e-adaa-e7bb0ef58d8d",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+      },
+      "name": "deleteApplication-retry503",
+      "operation": "deleteApplication"
+    },
+    {
+      "callId": "d4442bcf-e7d0-564e-adaa-e7bb0ef58d8d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/application.delete",
+          "requestBody": {
+            "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4442bcf-e7d0-564e-adaa-e7bb0ef58d8d",
+      "input": {
+        "applicationId": "6d724bc1-2587-4915-adb3-d70c1dd940db"
+      },
+      "name": "deleteApplication-transportFailure",
+      "operation": "deleteApplication"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
           "body": "{\"success\":true,\"results\":[{\"id\":\"1be42b8e-cafd-4beb-8121-f4981eb20f42\",\"title\":\"Software Engineer\",\"status\":\"Draft\",\"createdAt\":\"2024-01-01T00:00:00.000Z\",\"updatedAt\":\"2024-01-15T10:30:00.000Z\"}],\"moreDataAvailable\":false}",
           "headers": {},
           "keyMode": "absent",

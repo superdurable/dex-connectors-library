@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: ashby
   displayName: Ashby
-  description: Create, search, and read candidates and jobs; manage names, tags, projects, notes, and job status in Ashby.
+  description: Create and read candidates, jobs, and applications; manage tags, notes, job status, and application stages in Ashby.
   company: Ashby
   categories: [hr-recruiting]
   version: v0.2.0
@@ -48,13 +48,155 @@ spec:
         goName: APIKey
         type: secretString
         required: true
-        description: Secret Ashby API key from Admin > API Keys. Grant Candidates and Jobs read/write permissions for the operations used; copy the complete opaque value once. Blank prevents calls. Dex uses it as the Basic username with an empty password.
+        description: Secret Ashby API key from Admin > API Keys. Grant Candidates and Jobs read/write permissions for the operations used, plus Candidates delete for application deletion; copy the complete opaque value once. Blank prevents calls. Dex uses it as the Basic username with an empty password.
     guide:
       startURL: https://app.ashbyhq.com
       steps:
-        - In Ashby, open Admin > API Keys and create or select an API key with Candidates read/write permissions for these operations. Copy the complete opaque secret into Dex Web api_key; blank is invalid. Revoke or rotate it on the same page. Confidential candidates require the separate confidential jobs and projects permission.
+        - In Ashby, open Admin > API Keys and create or select an API key with Candidates read/write and Jobs read/write permissions for the operations used; application.delete also requires Candidates delete. Copy the complete opaque secret into Dex Web api_key; blank is invalid. Revoke or rotate it on the same page. Confidential candidates require the separate confidential jobs and projects permission.
         - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Find the non-secret candidate UUID in Ashby or from candidate.list and pass it as candidateId; blank is invalid. For tag operations, find the non-secret tag UUID in Ashby Admin > Organization Settings > Candidate Tags or candidateTag.list (which additionally needs Hiring Process read permission) and pass it as tagId; blank is invalid. For project association, open Sourcing > Projects or use candidate.listProjects and pass the non-secret project UUID as projectId; blank is invalid. Candidate notes accept plaintext up to 8192 bytes; omit secrets. Results omit email, phone, resume, and note content.
+        - For jobs, open Jobs > Jobs to find a job UUID, and select its team and location in the job settings for createJob; blank IDs are invalid. For applications, open a candidate in Candidates > Search and select an application for its UUID. Use the job and interview-plan stage IDs from that application's job setup. Omit archiveReasonId unless moving to an Archived stage; then select a reason in Ashby settings. Find sourceId under Admin > Organization Settings > Sources. All IDs are non-secret UUIDs; blank IDs are invalid. Application results omit candidate contact information and forms.
   operations:
+    - name: listApplications
+      goName: ListApplications
+      inputType: ListApplicationsInput
+      outputType: ApplicationPage
+      kind: query
+      description: List a bounded page of Ashby application identities.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Ashby returned the application result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the application request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local application input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample application is returned.
+          output: {applications: [{id: 6d724bc1-2587-4915-adb3-d70c1dd940db, candidateId: e9ed20fd-d45f-4aad-8a00-a19bfba0083e, jobId: 1be42b8e-cafd-4beb-8121-f4981eb20f42, interviewStageId: c153b3e9-8b97-4fc0-bad1-6c654122c1f8, status: Active, createdAt: "2024-01-15T10:30:00.000Z", updatedAt: "2024-01-16T10:30:00.000Z"}], moreDataAvailable: false}
+    - name: getApplication
+      goName: GetApplication
+      inputType: GetApplicationInput
+      outputType: ApplicationSummary
+      kind: query
+      description: Read one Ashby application identity and stage.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Ashby returned the application result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the application request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local application input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample application is returned.
+          output: {id: 6d724bc1-2587-4915-adb3-d70c1dd940db, candidateId: e9ed20fd-d45f-4aad-8a00-a19bfba0083e, jobId: 1be42b8e-cafd-4beb-8121-f4981eb20f42, interviewStageId: c153b3e9-8b97-4fc0-bad1-6c654122c1f8, status: Active, createdAt: "2024-01-15T10:30:00.000Z", updatedAt: "2024-01-16T10:30:00.000Z"}
+    - name: createApplication
+      goName: CreateApplication
+      inputType: CreateApplicationInput
+      outputType: ApplicationSummary
+      kind: mutation
+      description: Consider an existing candidate for an Ashby job.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Ashby returned the application result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the application request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The application may have been created but the bounded send cap was reached., optional: true}
+        - {id: defect, goName: Defect, description: Local application input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample application is returned.
+          output: {id: 6d724bc1-2587-4915-adb3-d70c1dd940db, candidateId: e9ed20fd-d45f-4aad-8a00-a19bfba0083e, jobId: 1be42b8e-cafd-4beb-8121-f4981eb20f42, interviewStageId: c153b3e9-8b97-4fc0-bad1-6c654122c1f8, status: Lead, createdAt: "2024-01-15T10:30:00.000Z", updatedAt: "2024-01-16T10:30:00.000Z"}
+    - name: changeApplicationStage
+      goName: ChangeApplicationStage
+      inputType: ChangeApplicationStageInput
+      outputType: ApplicationSummary
+      kind: mutation
+      description: Move an Ashby application to an absolute interview stage.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: changed, goName: Changed, description: Ashby returned the application result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the application request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A stage automation may have run but the application stage could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local application input or credentials are invalid., optional: true}
+      mocks:
+        - name: changedDefault
+          branch: changed
+          default: true
+          description: A sample application is returned.
+          output: {id: 6d724bc1-2587-4915-adb3-d70c1dd940db, candidateId: e9ed20fd-d45f-4aad-8a00-a19bfba0083e, jobId: 1be42b8e-cafd-4beb-8121-f4981eb20f42, interviewStageId: c153b3e9-8b97-4fc0-bad1-6c654122c1f8, status: Active, createdAt: "2024-01-15T10:30:00.000Z", updatedAt: "2024-01-16T10:30:00.000Z"}
+    - name: transferApplication
+      goName: TransferApplication
+      inputType: TransferApplicationInput
+      outputType: ApplicationSummary
+      kind: mutation
+      description: Transfer an Ashby application to an absolute job and stage.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: transferred, goName: Transferred, description: Ashby returned the application result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the application request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local application input or credentials are invalid., optional: true}
+      mocks:
+        - name: transferredDefault
+          branch: transferred
+          default: true
+          description: A sample application is returned.
+          output: {id: 6d724bc1-2587-4915-adb3-d70c1dd940db, candidateId: e9ed20fd-d45f-4aad-8a00-a19bfba0083e, jobId: 1be42b8e-cafd-4beb-8121-f4981eb20f42, interviewStageId: c153b3e9-8b97-4fc0-bad1-6c654122c1f8, status: Active, createdAt: "2024-01-15T10:30:00.000Z", updatedAt: "2024-01-16T10:30:00.000Z"}
+    - name: setApplicationSource
+      goName: SetApplicationSource
+      inputType: SetApplicationSourceInput
+      outputType: ApplicationSummary
+      kind: mutation
+      description: Replace an Ashby application's source.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: set, goName: Set, description: Ashby returned the application result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the application request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local application input or credentials are invalid., optional: true}
+      mocks:
+        - name: setDefault
+          branch: set
+          default: true
+          description: A sample application is returned.
+          output: {id: 6d724bc1-2587-4915-adb3-d70c1dd940db, candidateId: e9ed20fd-d45f-4aad-8a00-a19bfba0083e, jobId: 1be42b8e-cafd-4beb-8121-f4981eb20f42, interviewStageId: c153b3e9-8b97-4fc0-bad1-6c654122c1f8, status: Active, createdAt: "2024-01-15T10:30:00.000Z", updatedAt: "2024-01-16T10:30:00.000Z"}
+    - name: deleteApplication
+      goName: DeleteApplication
+      inputType: DeleteApplicationInput
+      outputType: DeletedApplication
+      kind: mutation
+      description: Delete an Ashby application by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Ashby returned the application result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the application request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local application input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample application is returned.
+          output: {applicationId: 6d724bc1-2587-4915-adb3-d70c1dd940db}
+
     - name: listJobs
       goName: ListJobs
       inputType: ListJobsInput
