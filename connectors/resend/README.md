@@ -236,6 +236,15 @@ Every non-happy branch is optional. The example wires only the happy branch;
 an unwired optional outcome fails the Flow. Provider error response text and
 credentials never enter a Dex result, receipt, Stream, or log.
 
+## Account observability
+
+`GetUsage`, `ListLogs`, and `GetLog` are safe reads. Usage exposes daily and
+monthly counters; the optional `period` input can select one period. Log
+results deliberately omit provider request and response bodies because those
+can contain credentials or message content. The runnable
+[`account-usage` example](go/examples/account-usage/README.md) verifies the
+query through a real Dex Worker and generated provider mock.
+
 ## Mocks
 
 `resendmock.New(t, "mock")` binds the default manifest answers and the

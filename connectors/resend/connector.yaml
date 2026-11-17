@@ -1067,3 +1067,52 @@ spec:
       default: true
       description: One domain appears on the page.
       output: {data: [{id: domain-1, name: example.test, status: verified}], has_more: false}
+  - name: getUsage
+    goName: GetUsage
+    inputType: GetUsageInput
+    outputType: AccountUsage
+    kind: query
+    description: Get current daily and monthly email usage counters.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend returned current usage.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned invalid JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getUsageDefault, branch: found, default: true, description: Current account counters., output: {emails: {daily: {used: 2, limit: 100, sent: 2, received: 0}, monthly: {used: 20, limit: 3000, sent: 18, received: 2}}}}
+  - name: listLogs
+    goName: ListLogs
+    inputType: ListLogsInput
+    outputType: RequestLogPage
+    kind: query
+    description: List safe API request log metadata without request or response bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend returned a log page.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned invalid JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listLogsDefault, branch: listed, default: true, description: One request log., output: {data: [{id: 00000000-0000-0000-0000-000000000001, endpoint: /emails, method: POST, response_status: 200}], has_more: false}}
+  - name: getLog
+    goName: GetLog
+    inputType: GetLogInput
+    outputType: RequestLog
+    kind: query
+    description: Get safe API request log metadata without request or response bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend returned the log.}
+    - {id: notFound, goName: NotFound, description: The log does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned invalid JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getLogDefault, branch: found, default: true, description: One request log., output: {id: 00000000-0000-0000-0000-000000000001, endpoint: /emails, method: POST, response_status: 200}}

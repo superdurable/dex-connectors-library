@@ -97,6 +97,9 @@ type Operations interface {
 	ListContacts() sdkgo.Query[ListContactsInput, ContactPage]
 	GetDomain() sdkgo.Query[GetDomainInput, Domain]
 	ListDomains() sdkgo.Query[ListDomainsInput, DomainPage]
+	GetUsage() sdkgo.Query[GetUsageInput, AccountUsage]
+	ListLogs() sdkgo.Query[ListLogsInput, RequestLogPage]
+	GetLog() sdkgo.Query[GetLogInput, RequestLog]
 }
 
 type clientOperations struct{ client *Client }
@@ -271,6 +274,15 @@ func (operations clientOperations) GetDomain() sdkgo.Query[GetDomainInput, Domai
 }
 func (operations clientOperations) ListDomains() sdkgo.Query[ListDomainsInput, DomainPage] {
 	return operations.client.ListDomains()
+}
+func (operations clientOperations) GetUsage() sdkgo.Query[GetUsageInput, AccountUsage] {
+	return operations.client.GetUsage()
+}
+func (operations clientOperations) ListLogs() sdkgo.Query[ListLogsInput, RequestLogPage] {
+	return operations.client.ListLogs()
+}
+func (operations clientOperations) GetLog() sdkgo.Query[GetLogInput, RequestLog] {
+	return operations.client.GetLog()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -4672,6 +4684,225 @@ func NewListDomainsStep[IN any](config ListDomainsStepConfig[IN]) sdkgo.QuerySte
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ListDomainsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetUsageBranchFound sdkgo.BranchID = "found"
+const GetUsageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetUsageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetUsageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetUsageDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getUsage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetUsageBranchFound, Description: "Resend returned current usage."},
+		{ID: GetUsageBranchProviderRejected, Description: "Resend rejected the request.", Optional: true},
+		{ID: GetUsageBranchInvalidResponse, Description: "Resend returned invalid JSON.", Optional: true},
+		{ID: GetUsageBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetUsageResult = sdkgo.QueryResult[AccountUsage]
+
+type GetUsageStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=resend"`
+	operationID                    struct{}                                        `connector:"operationId=getUsage"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetUsageInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetUsageResult]                    `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetUsageResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetUsageResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetUsageResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AccountUsage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetUsageStep[IN any](config GetUsageStepConfig[IN]) sdkgo.QueryStep[IN, GetUsageInput, AccountUsage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetUsageInput, AccountUsage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetUsage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetUsageResult] {
+			branches := make([]sdkgo.BranchTarget[GetUsageResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetUsageBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetUsageBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetUsageBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetUsageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListLogsBranchListed sdkgo.BranchID = "listed"
+const ListLogsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListLogsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListLogsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListLogsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listLogs"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListLogsBranchListed, Description: "Resend returned a log page."},
+		{ID: ListLogsBranchProviderRejected, Description: "Resend rejected the request.", Optional: true},
+		{ID: ListLogsBranchInvalidResponse, Description: "Resend returned invalid JSON.", Optional: true},
+		{ID: ListLogsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListLogsResult = sdkgo.QueryResult[RequestLogPage]
+
+type ListLogsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=resend"`
+	operationID                    struct{}                                          `connector:"operationId=listLogs"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListLogsInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListLogsResult]                      `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListLogsResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListLogsResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListLogsResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[RequestLogPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewListLogsStep[IN any](config ListLogsStepConfig[IN]) sdkgo.QueryStep[IN, ListLogsInput, RequestLogPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListLogsInput, RequestLogPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListLogs(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListLogsResult] {
+			branches := make([]sdkgo.BranchTarget[ListLogsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListLogsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListLogsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListLogsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListLogsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetLogBranchFound sdkgo.BranchID = "found"
+const GetLogBranchNotFound sdkgo.BranchID = "notFound"
+const GetLogBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetLogBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetLogBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetLogDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getLog"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetLogBranchFound, Description: "Resend returned the log."},
+		{ID: GetLogBranchNotFound, Description: "The log does not exist.", Optional: true},
+		{ID: GetLogBranchProviderRejected, Description: "Resend rejected the request.", Optional: true},
+		{ID: GetLogBranchInvalidResponse, Description: "Resend returned invalid JSON.", Optional: true},
+		{ID: GetLogBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetLogResult = sdkgo.QueryResult[RequestLog]
+
+type GetLogStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=resend"`
+	operationID                    struct{}                                      `connector:"operationId=getLog"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetLogInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetLogResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetLogResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetLogResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetLogResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetLogResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[RequestLog]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewGetLogStep[IN any](config GetLogStepConfig[IN]) sdkgo.QueryStep[IN, GetLogInput, RequestLog] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetLogInput, RequestLog]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetLog(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetLogResult] {
+			branches := make([]sdkgo.BranchTarget[GetLogResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetLogBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetLogBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetLogBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetLogBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetLogBranchDefect))
 			}
 			return branches
 		}(),

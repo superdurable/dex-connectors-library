@@ -244,6 +244,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[resend.DomainPage](`{"data":[{"id":"domain-1","name":"example.test","status":"verified"}],"has_more":false}`)
 			return err
 		}},
+		{name: "getUsage/getUsageDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.AccountUsage](`{"emails":{"daily":{"used":2,"limit":100,"sent":2,"received":0},"monthly":{"used":20,"limit":3000,"sent":18,"received":2}}}`)
+			return err
+		}},
+		{name: "listLogs/listLogsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.RequestLogPage](`{"data":[{"id":"00000000-0000-0000-0000-000000000001","endpoint":"/emails","method":"POST","response_status":200}],"has_more":false}`)
+			return err
+		}},
+		{name: "getLog/getLogDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.RequestLog](`{"id":"00000000-0000-0000-0000-000000000001","endpoint":"/emails","method":"POST","response_status":200}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -424,5 +436,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListDomains().Definition().Operation.OperationID != "listDomains" {
 		t.Errorf("listDomains mock has another definition")
+	}
+	if mock.GetUsage().Definition().Operation.OperationID != "getUsage" {
+		t.Errorf("getUsage mock has another definition")
+	}
+	if mock.ListLogs().Definition().Operation.OperationID != "listLogs" {
+		t.Errorf("listLogs mock has another definition")
+	}
+	if mock.GetLog().Definition().Operation.OperationID != "getLog" {
+		t.Errorf("getLog mock has another definition")
 	}
 }

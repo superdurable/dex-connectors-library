@@ -75,6 +75,9 @@ type Mock struct {
 	listContacts                 *connectormock.Query[resend.ListContactsInput, resend.ContactPage]
 	getDomain                    *connectormock.Query[resend.GetDomainInput, resend.Domain]
 	listDomains                  *connectormock.Query[resend.ListDomainsInput, resend.DomainPage]
+	getUsage                     *connectormock.Query[resend.GetUsageInput, resend.AccountUsage]
+	listLogs                     *connectormock.Query[resend.ListLogsInput, resend.RequestLogPage]
+	getLog                       *connectormock.Query[resend.GetLogInput, resend.RequestLog]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -139,6 +142,9 @@ func New(t testing.TB, connectionName string) *Mock {
 		listContacts:                 connectormock.NewQuery[resend.ListContactsInput, resend.ContactPage](t, resend.ListContactsDefinition),
 		getDomain:                    connectormock.NewQuery[resend.GetDomainInput, resend.Domain](t, resend.GetDomainDefinition),
 		listDomains:                  connectormock.NewQuery[resend.ListDomainsInput, resend.DomainPage](t, resend.ListDomainsDefinition),
+		getUsage:                     connectormock.NewQuery[resend.GetUsageInput, resend.AccountUsage](t, resend.GetUsageDefinition),
+		listLogs:                     connectormock.NewQuery[resend.ListLogsInput, resend.RequestLogPage](t, resend.ListLogsDefinition),
+		getLog:                       connectormock.NewQuery[resend.GetLogInput, resend.RequestLog](t, resend.GetLogDefinition),
 	}
 	mock.createContact.Default(CreateContactDefault())
 	mock.createDomain.Default(CreateDomainDefault())
@@ -197,6 +203,9 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listContacts.Default(ListContactsDefault())
 	mock.getDomain.Default(GetDomainDefault())
 	mock.listDomains.Default(ListDomainsDefault())
+	mock.getUsage.Default(GetUsageDefault())
+	mock.listLogs.Default(ListLogsDefault())
+	mock.getLog.Default(GetLogDefault())
 	connection, err := resend.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "resend", Name: connectionName})
 	if err != nil {
 		t.Fatalf("resend mock connection: %v", err)
@@ -493,6 +502,21 @@ func (mock *Mock) ListDomains() *connectormock.Query[resend.ListDomainsInput, re
 	return mock.listDomains
 }
 
+// GetUsage returns the getUsage script.
+func (mock *Mock) GetUsage() *connectormock.Query[resend.GetUsageInput, resend.AccountUsage] {
+	return mock.getUsage
+}
+
+// ListLogs returns the listLogs script.
+func (mock *Mock) ListLogs() *connectormock.Query[resend.ListLogsInput, resend.RequestLogPage] {
+	return mock.listLogs
+}
+
+// GetLog returns the getLog script.
+func (mock *Mock) GetLog() *connectormock.Query[resend.GetLogInput, resend.RequestLog] {
+	return mock.getLog
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreateContact() sdkgo.Mutation[resend.CreateContactInput, resend.ContactReference] {
@@ -665,6 +689,15 @@ func (operations mockOperations) GetDomain() sdkgo.Query[resend.GetDomainInput, 
 }
 func (operations mockOperations) ListDomains() sdkgo.Query[resend.ListDomainsInput, resend.DomainPage] {
 	return operations.mock.listDomains
+}
+func (operations mockOperations) GetUsage() sdkgo.Query[resend.GetUsageInput, resend.AccountUsage] {
+	return operations.mock.getUsage
+}
+func (operations mockOperations) ListLogs() sdkgo.Query[resend.ListLogsInput, resend.RequestLogPage] {
+	return operations.mock.listLogs
+}
+func (operations mockOperations) GetLog() sdkgo.Query[resend.GetLogInput, resend.RequestLog] {
+	return operations.mock.getLog
 }
 
 // CreateContactCreated selects the created branch: Resend created or confirmed the contact.
@@ -2837,3 +2870,110 @@ func ListDomainsListDomainsDefault() connectormock.Case[resend.DomainPage] {
 func ListDomainsDefault() connectormock.Case[resend.DomainPage] {
 	return ListDomainsListDomainsDefault()
 }
+
+// GetUsageFound selects the found branch: Resend returned current usage.
+func GetUsageFound(value resend.AccountUsage, failure *sdkgo.Failure) connectormock.Case[resend.AccountUsage] {
+	return connectormock.Branch(resend.GetUsageBranchFound, value, failure)
+}
+
+// GetUsageProviderRejected selects the providerRejected branch: Resend rejected the request.
+func GetUsageProviderRejected(value resend.AccountUsage, failure *sdkgo.Failure) connectormock.Case[resend.AccountUsage] {
+	return connectormock.Branch(resend.GetUsageBranchProviderRejected, value, failure)
+}
+
+// GetUsageInvalidResponse selects the invalidResponse branch: Resend returned invalid JSON.
+func GetUsageInvalidResponse(value resend.AccountUsage, failure *sdkgo.Failure) connectormock.Case[resend.AccountUsage] {
+	return connectormock.Branch(resend.GetUsageBranchInvalidResponse, value, failure)
+}
+
+// GetUsageDefect selects the defect branch: Local input or credentials are invalid.
+func GetUsageDefect(value resend.AccountUsage, failure *sdkgo.Failure) connectormock.Case[resend.AccountUsage] {
+	return connectormock.Branch(resend.GetUsageBranchDefect, value, failure)
+}
+
+// GetUsageRetry asks Dex to retry the getUsage Step, after the delay when it is positive.
+func GetUsageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.AccountUsage] {
+	return connectormock.Retry[resend.AccountUsage](failure, after)
+}
+
+// GetUsageGetUsageDefault is the manifest mock getUsageDefault: Current account counters.
+func GetUsageGetUsageDefault() connectormock.Case[resend.AccountUsage] {
+	value := connectormock.MustDecodeOutput[resend.AccountUsage](`{"emails":{"daily":{"used":2,"limit":100,"sent":2,"received":0},"monthly":{"used":20,"limit":3000,"sent":18,"received":2}}}`)
+	return connectormock.Branch(resend.GetUsageBranchFound, value, nil)
+}
+
+// GetUsageDefault is the manifest default, getUsageDefault, which New installs.
+func GetUsageDefault() connectormock.Case[resend.AccountUsage] { return GetUsageGetUsageDefault() }
+
+// ListLogsListed selects the listed branch: Resend returned a log page.
+func ListLogsListed(value resend.RequestLogPage, failure *sdkgo.Failure) connectormock.Case[resend.RequestLogPage] {
+	return connectormock.Branch(resend.ListLogsBranchListed, value, failure)
+}
+
+// ListLogsProviderRejected selects the providerRejected branch: Resend rejected the request.
+func ListLogsProviderRejected(value resend.RequestLogPage, failure *sdkgo.Failure) connectormock.Case[resend.RequestLogPage] {
+	return connectormock.Branch(resend.ListLogsBranchProviderRejected, value, failure)
+}
+
+// ListLogsInvalidResponse selects the invalidResponse branch: Resend returned invalid JSON.
+func ListLogsInvalidResponse(value resend.RequestLogPage, failure *sdkgo.Failure) connectormock.Case[resend.RequestLogPage] {
+	return connectormock.Branch(resend.ListLogsBranchInvalidResponse, value, failure)
+}
+
+// ListLogsDefect selects the defect branch: Local input or credentials are invalid.
+func ListLogsDefect(value resend.RequestLogPage, failure *sdkgo.Failure) connectormock.Case[resend.RequestLogPage] {
+	return connectormock.Branch(resend.ListLogsBranchDefect, value, failure)
+}
+
+// ListLogsRetry asks Dex to retry the listLogs Step, after the delay when it is positive.
+func ListLogsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.RequestLogPage] {
+	return connectormock.Retry[resend.RequestLogPage](failure, after)
+}
+
+// ListLogsListLogsDefault is the manifest mock listLogsDefault: One request log.
+func ListLogsListLogsDefault() connectormock.Case[resend.RequestLogPage] {
+	value := connectormock.MustDecodeOutput[resend.RequestLogPage](`{"data":[{"id":"00000000-0000-0000-0000-000000000001","endpoint":"/emails","method":"POST","response_status":200}],"has_more":false}`)
+	return connectormock.Branch(resend.ListLogsBranchListed, value, nil)
+}
+
+// ListLogsDefault is the manifest default, listLogsDefault, which New installs.
+func ListLogsDefault() connectormock.Case[resend.RequestLogPage] { return ListLogsListLogsDefault() }
+
+// GetLogFound selects the found branch: Resend returned the log.
+func GetLogFound(value resend.RequestLog, failure *sdkgo.Failure) connectormock.Case[resend.RequestLog] {
+	return connectormock.Branch(resend.GetLogBranchFound, value, failure)
+}
+
+// GetLogNotFound selects the notFound branch: The log does not exist.
+func GetLogNotFound(value resend.RequestLog, failure *sdkgo.Failure) connectormock.Case[resend.RequestLog] {
+	return connectormock.Branch(resend.GetLogBranchNotFound, value, failure)
+}
+
+// GetLogProviderRejected selects the providerRejected branch: Resend rejected the request.
+func GetLogProviderRejected(value resend.RequestLog, failure *sdkgo.Failure) connectormock.Case[resend.RequestLog] {
+	return connectormock.Branch(resend.GetLogBranchProviderRejected, value, failure)
+}
+
+// GetLogInvalidResponse selects the invalidResponse branch: Resend returned invalid JSON.
+func GetLogInvalidResponse(value resend.RequestLog, failure *sdkgo.Failure) connectormock.Case[resend.RequestLog] {
+	return connectormock.Branch(resend.GetLogBranchInvalidResponse, value, failure)
+}
+
+// GetLogDefect selects the defect branch: Local input or credentials are invalid.
+func GetLogDefect(value resend.RequestLog, failure *sdkgo.Failure) connectormock.Case[resend.RequestLog] {
+	return connectormock.Branch(resend.GetLogBranchDefect, value, failure)
+}
+
+// GetLogRetry asks Dex to retry the getLog Step, after the delay when it is positive.
+func GetLogRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.RequestLog] {
+	return connectormock.Retry[resend.RequestLog](failure, after)
+}
+
+// GetLogGetLogDefault is the manifest mock getLogDefault: One request log.
+func GetLogGetLogDefault() connectormock.Case[resend.RequestLog] {
+	value := connectormock.MustDecodeOutput[resend.RequestLog](`{"id":"00000000-0000-0000-0000-000000000001","endpoint":"/emails","method":"POST","response_status":200}`)
+	return connectormock.Branch(resend.GetLogBranchFound, value, nil)
+}
+
+// GetLogDefault is the manifest default, getLogDefault, which New installs.
+func GetLogDefault() connectormock.Case[resend.RequestLog] { return GetLogGetLogDefault() }
