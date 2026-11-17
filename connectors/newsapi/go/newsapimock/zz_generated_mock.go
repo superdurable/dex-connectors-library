@@ -17,8 +17,10 @@ import (
 
 // Mock is a scripted newsapi connection. Script each operation through its accessor.
 type Mock struct {
-	connection     newsapi.Connection
-	searchArticles *connectormock.Query[newsapi.SearchArticlesInput, newsapi.ArticlePage]
+	connection      newsapi.Connection
+	searchArticles  *connectormock.Query[newsapi.SearchArticlesInput, newsapi.ArticlePage]
+	getTopHeadlines *connectormock.Query[newsapi.GetTopHeadlinesInput, newsapi.ArticlePage]
+	listSources     *connectormock.Query[newsapi.ListSourcesInput, newsapi.SourcesPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +28,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		searchArticles: connectormock.NewQuery[newsapi.SearchArticlesInput, newsapi.ArticlePage](t, newsapi.SearchArticlesDefinition),
+		searchArticles:  connectormock.NewQuery[newsapi.SearchArticlesInput, newsapi.ArticlePage](t, newsapi.SearchArticlesDefinition),
+		getTopHeadlines: connectormock.NewQuery[newsapi.GetTopHeadlinesInput, newsapi.ArticlePage](t, newsapi.GetTopHeadlinesDefinition),
+		listSources:     connectormock.NewQuery[newsapi.ListSourcesInput, newsapi.SourcesPage](t, newsapi.ListSourcesDefinition),
 	}
 	mock.searchArticles.Default(SearchArticlesDefault())
+	mock.getTopHeadlines.Default(GetTopHeadlinesDefault())
+	mock.listSources.Default(ListSourcesDefault())
 	connection, err := newsapi.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "newsapi", Name: connectionName})
 	if err != nil {
 		t.Fatalf("newsapi mock connection: %v", err)
@@ -45,10 +51,26 @@ func (mock *Mock) SearchArticles() *connectormock.Query[newsapi.SearchArticlesIn
 	return mock.searchArticles
 }
 
+// GetTopHeadlines returns the getTopHeadlines script.
+func (mock *Mock) GetTopHeadlines() *connectormock.Query[newsapi.GetTopHeadlinesInput, newsapi.ArticlePage] {
+	return mock.getTopHeadlines
+}
+
+// ListSources returns the listSources script.
+func (mock *Mock) ListSources() *connectormock.Query[newsapi.ListSourcesInput, newsapi.SourcesPage] {
+	return mock.listSources
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) SearchArticles() sdkgo.Query[newsapi.SearchArticlesInput, newsapi.ArticlePage] {
 	return operations.mock.searchArticles
+}
+func (operations mockOperations) GetTopHeadlines() sdkgo.Query[newsapi.GetTopHeadlinesInput, newsapi.ArticlePage] {
+	return operations.mock.getTopHeadlines
+}
+func (operations mockOperations) ListSources() sdkgo.Query[newsapi.ListSourcesInput, newsapi.SourcesPage] {
+	return operations.mock.listSources
 }
 
 // SearchArticlesSearched selects the searched branch: NewsAPI returned one page of matching articles, possibly empty.
@@ -92,3 +114,73 @@ func SearchArticlesInvalidKey() connectormock.Case[newsapi.ArticlePage] {
 func SearchArticlesDefault() connectormock.Case[newsapi.ArticlePage] {
 	return SearchArticlesSearchedDefaultAnswer()
 }
+
+// GetTopHeadlinesFound selects the found branch: NewsAPI returned a headline page.
+func GetTopHeadlinesFound(value newsapi.ArticlePage, failure *sdkgo.Failure) connectormock.Case[newsapi.ArticlePage] {
+	return connectormock.Branch(newsapi.GetTopHeadlinesBranchFound, value, failure)
+}
+
+// GetTopHeadlinesProviderRejected selects the providerRejected branch: NewsAPI rejected the request.
+func GetTopHeadlinesProviderRejected(value newsapi.ArticlePage, failure *sdkgo.Failure) connectormock.Case[newsapi.ArticlePage] {
+	return connectormock.Branch(newsapi.GetTopHeadlinesBranchProviderRejected, value, failure)
+}
+
+// GetTopHeadlinesInvalidResponse selects the invalidResponse branch: NewsAPI returned malformed or oversized data.
+func GetTopHeadlinesInvalidResponse(value newsapi.ArticlePage, failure *sdkgo.Failure) connectormock.Case[newsapi.ArticlePage] {
+	return connectormock.Branch(newsapi.GetTopHeadlinesBranchInvalidResponse, value, failure)
+}
+
+// GetTopHeadlinesDefect selects the defect branch: Local input or credentials are invalid.
+func GetTopHeadlinesDefect(value newsapi.ArticlePage, failure *sdkgo.Failure) connectormock.Case[newsapi.ArticlePage] {
+	return connectormock.Branch(newsapi.GetTopHeadlinesBranchDefect, value, failure)
+}
+
+// GetTopHeadlinesRetry asks Dex to retry the getTopHeadlines Step, after the delay when it is positive.
+func GetTopHeadlinesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[newsapi.ArticlePage] {
+	return connectormock.Retry[newsapi.ArticlePage](failure, after)
+}
+
+// GetTopHeadlinesFoundDefault is the manifest mock foundDefault: Example technology headlines.
+func GetTopHeadlinesFoundDefault() connectormock.Case[newsapi.ArticlePage] {
+	value := connectormock.MustDecodeOutput[newsapi.ArticlePage](`{"totalResults":0,"page":1,"hasMore":false,"articles":[]}`)
+	return connectormock.Branch(newsapi.GetTopHeadlinesBranchFound, value, nil)
+}
+
+// GetTopHeadlinesDefault is the manifest default, foundDefault, which New installs.
+func GetTopHeadlinesDefault() connectormock.Case[newsapi.ArticlePage] {
+	return GetTopHeadlinesFoundDefault()
+}
+
+// ListSourcesListed selects the listed branch: NewsAPI returned available publishers.
+func ListSourcesListed(value newsapi.SourcesPage, failure *sdkgo.Failure) connectormock.Case[newsapi.SourcesPage] {
+	return connectormock.Branch(newsapi.ListSourcesBranchListed, value, failure)
+}
+
+// ListSourcesProviderRejected selects the providerRejected branch: NewsAPI rejected the request.
+func ListSourcesProviderRejected(value newsapi.SourcesPage, failure *sdkgo.Failure) connectormock.Case[newsapi.SourcesPage] {
+	return connectormock.Branch(newsapi.ListSourcesBranchProviderRejected, value, failure)
+}
+
+// ListSourcesInvalidResponse selects the invalidResponse branch: NewsAPI returned malformed or oversized data.
+func ListSourcesInvalidResponse(value newsapi.SourcesPage, failure *sdkgo.Failure) connectormock.Case[newsapi.SourcesPage] {
+	return connectormock.Branch(newsapi.ListSourcesBranchInvalidResponse, value, failure)
+}
+
+// ListSourcesDefect selects the defect branch: Local input or credentials are invalid.
+func ListSourcesDefect(value newsapi.SourcesPage, failure *sdkgo.Failure) connectormock.Case[newsapi.SourcesPage] {
+	return connectormock.Branch(newsapi.ListSourcesBranchDefect, value, failure)
+}
+
+// ListSourcesRetry asks Dex to retry the listSources Step, after the delay when it is positive.
+func ListSourcesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[newsapi.SourcesPage] {
+	return connectormock.Retry[newsapi.SourcesPage](failure, after)
+}
+
+// ListSourcesListedDefault is the manifest mock listedDefault: Example available publisher.
+func ListSourcesListedDefault() connectormock.Case[newsapi.SourcesPage] {
+	value := connectormock.MustDecodeOutput[newsapi.SourcesPage](`{"sources":[{"id":"meridian-news","name":"Meridian News","url":"https://news.example.test","category":"technology","language":"en","country":"us"}]}`)
+	return connectormock.Branch(newsapi.ListSourcesBranchListed, value, nil)
+}
+
+// ListSourcesDefault is the manifest default, listedDefault, which New installs.
+func ListSourcesDefault() connectormock.Case[newsapi.SourcesPage] { return ListSourcesListedDefault() }

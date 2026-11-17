@@ -317,6 +317,10 @@ func setTimeParameter(query url.Values, name, value string) (time.Time, error) {
 }
 
 func (client *Client) newSearchRequest(call sdkgo.Call, query url.Values) (*http.Request, *sdkgo.Failure) {
+	return client.newProviderRequest(call, "/everything", query)
+}
+
+func (client *Client) newProviderRequest(call sdkgo.Call, path string, query url.Values) (*http.Request, *sdkgo.Failure) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil {
 		return nil, failurePointer(sdkgo.FailureAuthentication, "connection credentials are unavailable")
@@ -324,7 +328,7 @@ func (client *Client) newSearchRequest(call sdkgo.Call, query url.Values) (*http
 	if err := credentials.Validate(); err != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIKey.Reveal()) {
 		return nil, failurePointer(sdkgo.FailureAuthentication, "connection credentials are invalid")
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+"/everything?"+query.Encode(), nil)
+	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path+"?"+query.Encode(), nil)
 	if err != nil {
 		return nil, failurePointer(sdkgo.FailureLocalDefect, "NewsAPI request could not be built")
 	}

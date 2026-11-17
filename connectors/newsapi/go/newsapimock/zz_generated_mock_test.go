@@ -20,6 +20,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[newsapi.ArticlePage](`{"totalResults":2,"page":1,"hasMore":false,"articles":[{"source":{"id":"meridian-news","name":"Meridian News"},"author":"A. Rivera","title":"Meridian opens a research lab","description":"The company opens a new lab.","url":"https://news.example.test/meridian-lab","publishedAt":"2026-10-26T12:00:00Z","content":"Meridian opened its newest research lab."},{"source":{"id":"meridian-news","name":"Meridian News"},"author":null,"title":"Meridian reports quarterly results","description":null,"url":"https://news.example.test/meridian-results","publishedAt":"2026-10-25T12:00:00Z","content":null}]}`)
 			return err
 		}},
+		{name: "getTopHeadlines/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[newsapi.ArticlePage](`{"totalResults":0,"page":1,"hasMore":false,"articles":[]}`)
+			return err
+		}},
+		{name: "listSources/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[newsapi.SourcesPage](`{"sources":[{"id":"meridian-news","name":"Meridian News","url":"https://news.example.test","category":"technology","language":"en","country":"us"}]}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +40,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.SearchArticles().Definition().Operation.OperationID != "searchArticles" {
 		t.Errorf("searchArticles mock has another definition")
+	}
+	if mock.GetTopHeadlines().Definition().Operation.OperationID != "getTopHeadlines" {
+		t.Errorf("getTopHeadlines mock has another definition")
+	}
+	if mock.ListSources().Definition().Operation.OperationID != "listSources" {
+		t.Errorf("listSources mock has another definition")
 	}
 }

@@ -92,7 +92,17 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: MapToSearchArticlesInput,
 			Searched:            sdkgo.GoTo(companyArticlesFound{}),
 		})),
+		dex.DefineStep(newsapi.NewGetTopHeadlinesStep(newsapi.GetTopHeadlinesStepConfig[CompanyNewsRequest]{
+			StepType: "GetCompanyHeadlines", ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "newsapi", GroupLabel: "NewsAPI", Explanation: "Check current headlines mentioning the company."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(request CompanyNewsRequest) newsapi.GetTopHeadlinesInput {
+				return newsapi.GetTopHeadlinesInput{Query: request.Company}
+			},
+			Found: sdkgo.GoTo(companyHeadlinesChecked{}),
+		})),
 		dex.DefineStep(companyArticlesFound{}),
+		dex.DefineStep(companyHeadlinesChecked{}),
 	}
 }
 
@@ -209,7 +219,20 @@ func (recordCompanyNewsRequest) Execute(ctx dex.Context, request CompanyNewsRequ
 	if err := companyNewsRequestAttribute.Set(ctx, prepared); err != nil {
 		return nil, err
 	}
-	return dex.GoTo(sdkgo.StepRef[CompanyNewsRequest](searchCompanyArticlesStepType), prepared), nil
+	return dex.GoToMany(
+		dex.MovementOf(sdkgo.StepRef[CompanyNewsRequest](searchCompanyArticlesStepType), prepared),
+		dex.MovementOf(sdkgo.StepRef[CompanyNewsRequest]("GetCompanyHeadlines"), prepared),
+	), nil
+}
+
+// dex:group group-id:company-news group-label:"Company news"
+// dex:explanation text:"Finish the headline check after NewsAPI responds."
+type companyHeadlinesChecked struct {
+	dex.StepDefaultsNoWaitFor[newsapi.GetTopHeadlinesResult]
+}
+
+func (companyHeadlinesChecked) Execute(_ dex.Context, _ newsapi.GetTopHeadlinesResult) (*dex.StepDecision, error) {
+	return dex.DeadEnd(), nil
 }
 
 // dex:group group-id:company-news group-label:"Company news"

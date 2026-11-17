@@ -41,12 +41,20 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	SearchArticles() sdkgo.Query[SearchArticlesInput, ArticlePage]
+	GetTopHeadlines() sdkgo.Query[GetTopHeadlinesInput, ArticlePage]
+	ListSources() sdkgo.Query[ListSourcesInput, SourcesPage]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) SearchArticles() sdkgo.Query[SearchArticlesInput, ArticlePage] {
 	return operations.client.SearchArticles()
+}
+func (operations clientOperations) GetTopHeadlines() sdkgo.Query[GetTopHeadlinesInput, ArticlePage] {
+	return operations.client.GetTopHeadlines()
+}
+func (operations clientOperations) ListSources() sdkgo.Query[ListSourcesInput, SourcesPage] {
+	return operations.client.ListSources()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -249,6 +257,148 @@ func NewSearchArticlesStep[IN any](config SearchArticlesStepConfig[IN]) sdkgo.Qu
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(SearchArticlesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetTopHeadlinesBranchFound sdkgo.BranchID = "found"
+const GetTopHeadlinesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTopHeadlinesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTopHeadlinesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTopHeadlinesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTopHeadlines"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTopHeadlinesBranchFound, Description: "NewsAPI returned a headline page."},
+		{ID: GetTopHeadlinesBranchProviderRejected, Description: "NewsAPI rejected the request.", Optional: true},
+		{ID: GetTopHeadlinesBranchInvalidResponse, Description: "NewsAPI returned malformed or oversized data.", Optional: true},
+		{ID: GetTopHeadlinesBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTopHeadlinesResult = sdkgo.QueryResult[ArticlePage]
+
+type GetTopHeadlinesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=newsapi"`
+	operationID                    struct{}                                       `connector:"operationId=getTopHeadlines"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetTopHeadlinesInput                  `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTopHeadlinesResult]            `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetTopHeadlinesResult]            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTopHeadlinesResult]            `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTopHeadlinesResult]            `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ArticlePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewGetTopHeadlinesStep[IN any](config GetTopHeadlinesStepConfig[IN]) sdkgo.QueryStep[IN, GetTopHeadlinesInput, ArticlePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("newsapi connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetTopHeadlinesInput, ArticlePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTopHeadlines(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTopHeadlinesResult] {
+			branches := make([]sdkgo.BranchTarget[GetTopHeadlinesResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTopHeadlinesBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTopHeadlinesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTopHeadlinesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTopHeadlinesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListSourcesBranchListed sdkgo.BranchID = "listed"
+const ListSourcesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSourcesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSourcesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSourcesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSources"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSourcesBranchListed, Description: "NewsAPI returned available publishers."},
+		{ID: ListSourcesBranchProviderRejected, Description: "NewsAPI rejected the request.", Optional: true},
+		{ID: ListSourcesBranchInvalidResponse, Description: "NewsAPI returned malformed or oversized data.", Optional: true},
+		{ID: ListSourcesBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSourcesResult = sdkgo.QueryResult[SourcesPage]
+
+type ListSourcesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=newsapi"`
+	operationID                    struct{}                                       `connector:"operationId=listSources"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSourcesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSourcesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListSourcesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSourcesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSourcesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SourcesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListSourcesStep[IN any](config ListSourcesStepConfig[IN]) sdkgo.QueryStep[IN, ListSourcesInput, SourcesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("newsapi connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSourcesInput, SourcesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSources(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSourcesResult] {
+			branches := make([]sdkgo.BranchTarget[ListSourcesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSourcesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSourcesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSourcesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSourcesBranchDefect))
 			}
 			return branches
 		}(),
