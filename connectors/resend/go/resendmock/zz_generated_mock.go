@@ -120,6 +120,12 @@ type Mock struct {
 	listInboxes                  *connectormock.Query[resend.ListInboxesInput, resend.InboxPage]
 	updateInbox                  *connectormock.Mutation[resend.UpdateInboxInput, resend.InboxReference]
 	deleteInbox                  *connectormock.Mutation[resend.DeleteInboxInput, resend.DeletedInbox]
+	getInboxAgent                *connectormock.Query[resend.GetInboxAgentInput, resend.InboxAgentSettings]
+	updateInboxAgent             *connectormock.Mutation[resend.UpdateInboxAgentInput, resend.InboxAgentReference]
+	listInboxLabels              *connectormock.Query[resend.ListInboxLabelsInput, resend.InboxLabelList]
+	createInboxLabel             *connectormock.Mutation[resend.CreateInboxLabelInput, resend.InboxLabelReference]
+	updateInboxLabel             *connectormock.Mutation[resend.UpdateInboxLabelInput, resend.InboxLabelReference]
+	deleteInboxLabel             *connectormock.Mutation[resend.DeleteInboxLabelInput, resend.DeletedInboxLabel]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -229,6 +235,12 @@ func New(t testing.TB, connectionName string) *Mock {
 		listInboxes:                  connectormock.NewQuery[resend.ListInboxesInput, resend.InboxPage](t, resend.ListInboxesDefinition),
 		updateInbox:                  connectormock.NewMutation[resend.UpdateInboxInput, resend.InboxReference](t, resend.UpdateInboxDefinition),
 		deleteInbox:                  connectormock.NewMutation[resend.DeleteInboxInput, resend.DeletedInbox](t, resend.DeleteInboxDefinition),
+		getInboxAgent:                connectormock.NewQuery[resend.GetInboxAgentInput, resend.InboxAgentSettings](t, resend.GetInboxAgentDefinition),
+		updateInboxAgent:             connectormock.NewMutation[resend.UpdateInboxAgentInput, resend.InboxAgentReference](t, resend.UpdateInboxAgentDefinition),
+		listInboxLabels:              connectormock.NewQuery[resend.ListInboxLabelsInput, resend.InboxLabelList](t, resend.ListInboxLabelsDefinition),
+		createInboxLabel:             connectormock.NewMutation[resend.CreateInboxLabelInput, resend.InboxLabelReference](t, resend.CreateInboxLabelDefinition),
+		updateInboxLabel:             connectormock.NewMutation[resend.UpdateInboxLabelInput, resend.InboxLabelReference](t, resend.UpdateInboxLabelDefinition),
+		deleteInboxLabel:             connectormock.NewMutation[resend.DeleteInboxLabelInput, resend.DeletedInboxLabel](t, resend.DeleteInboxLabelDefinition),
 	}
 	mock.createContact.Default(CreateContactDefault())
 	mock.createDomain.Default(CreateDomainDefault())
@@ -332,6 +344,12 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listInboxes.Default(ListInboxesDefault())
 	mock.updateInbox.Default(UpdateInboxDefault())
 	mock.deleteInbox.Default(DeleteInboxDefault())
+	mock.getInboxAgent.Default(GetInboxAgentDefault())
+	mock.updateInboxAgent.Default(UpdateInboxAgentDefault())
+	mock.listInboxLabels.Default(ListInboxLabelsDefault())
+	mock.createInboxLabel.Default(CreateInboxLabelDefault())
+	mock.updateInboxLabel.Default(UpdateInboxLabelDefault())
+	mock.deleteInboxLabel.Default(DeleteInboxLabelDefault())
 	connection, err := resend.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "resend", Name: connectionName})
 	if err != nil {
 		t.Fatalf("resend mock connection: %v", err)
@@ -853,6 +871,36 @@ func (mock *Mock) DeleteInbox() *connectormock.Mutation[resend.DeleteInboxInput,
 	return mock.deleteInbox
 }
 
+// GetInboxAgent returns the getInboxAgent script.
+func (mock *Mock) GetInboxAgent() *connectormock.Query[resend.GetInboxAgentInput, resend.InboxAgentSettings] {
+	return mock.getInboxAgent
+}
+
+// UpdateInboxAgent returns the updateInboxAgent script.
+func (mock *Mock) UpdateInboxAgent() *connectormock.Mutation[resend.UpdateInboxAgentInput, resend.InboxAgentReference] {
+	return mock.updateInboxAgent
+}
+
+// ListInboxLabels returns the listInboxLabels script.
+func (mock *Mock) ListInboxLabels() *connectormock.Query[resend.ListInboxLabelsInput, resend.InboxLabelList] {
+	return mock.listInboxLabels
+}
+
+// CreateInboxLabel returns the createInboxLabel script.
+func (mock *Mock) CreateInboxLabel() *connectormock.Mutation[resend.CreateInboxLabelInput, resend.InboxLabelReference] {
+	return mock.createInboxLabel
+}
+
+// UpdateInboxLabel returns the updateInboxLabel script.
+func (mock *Mock) UpdateInboxLabel() *connectormock.Mutation[resend.UpdateInboxLabelInput, resend.InboxLabelReference] {
+	return mock.updateInboxLabel
+}
+
+// DeleteInboxLabel returns the deleteInboxLabel script.
+func (mock *Mock) DeleteInboxLabel() *connectormock.Mutation[resend.DeleteInboxLabelInput, resend.DeletedInboxLabel] {
+	return mock.deleteInboxLabel
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreateContact() sdkgo.Mutation[resend.CreateContactInput, resend.ContactReference] {
@@ -1160,6 +1208,24 @@ func (operations mockOperations) UpdateInbox() sdkgo.Mutation[resend.UpdateInbox
 }
 func (operations mockOperations) DeleteInbox() sdkgo.Mutation[resend.DeleteInboxInput, resend.DeletedInbox] {
 	return operations.mock.deleteInbox
+}
+func (operations mockOperations) GetInboxAgent() sdkgo.Query[resend.GetInboxAgentInput, resend.InboxAgentSettings] {
+	return operations.mock.getInboxAgent
+}
+func (operations mockOperations) UpdateInboxAgent() sdkgo.Mutation[resend.UpdateInboxAgentInput, resend.InboxAgentReference] {
+	return operations.mock.updateInboxAgent
+}
+func (operations mockOperations) ListInboxLabels() sdkgo.Query[resend.ListInboxLabelsInput, resend.InboxLabelList] {
+	return operations.mock.listInboxLabels
+}
+func (operations mockOperations) CreateInboxLabel() sdkgo.Mutation[resend.CreateInboxLabelInput, resend.InboxLabelReference] {
+	return operations.mock.createInboxLabel
+}
+func (operations mockOperations) UpdateInboxLabel() sdkgo.Mutation[resend.UpdateInboxLabelInput, resend.InboxLabelReference] {
+	return operations.mock.updateInboxLabel
+}
+func (operations mockOperations) DeleteInboxLabel() sdkgo.Mutation[resend.DeleteInboxLabelInput, resend.DeletedInboxLabel] {
+	return operations.mock.deleteInboxLabel
 }
 
 // CreateContactCreated selects the created branch: Resend created or confirmed the contact.
@@ -5045,4 +5111,245 @@ func DeleteInboxDeleteInboxDefault() connectormock.Case[resend.DeletedInbox] {
 // DeleteInboxDefault is the manifest default, deleteInboxDefault, which New installs.
 func DeleteInboxDefault() connectormock.Case[resend.DeletedInbox] {
 	return DeleteInboxDeleteInboxDefault()
+}
+
+// GetInboxAgentFound selects the found branch: Resend returned the agent settings.
+func GetInboxAgentFound(value resend.InboxAgentSettings, failure *sdkgo.Failure) connectormock.Case[resend.InboxAgentSettings] {
+	return connectormock.Branch(resend.GetInboxAgentBranchFound, value, failure)
+}
+
+// GetInboxAgentNotFound selects the notFound branch: The inbox does not exist.
+func GetInboxAgentNotFound(value resend.InboxAgentSettings, failure *sdkgo.Failure) connectormock.Case[resend.InboxAgentSettings] {
+	return connectormock.Branch(resend.GetInboxAgentBranchNotFound, value, failure)
+}
+
+// GetInboxAgentProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetInboxAgentProviderRejected(value resend.InboxAgentSettings, failure *sdkgo.Failure) connectormock.Case[resend.InboxAgentSettings] {
+	return connectormock.Branch(resend.GetInboxAgentBranchProviderRejected, value, failure)
+}
+
+// GetInboxAgentInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func GetInboxAgentInvalidResponse(value resend.InboxAgentSettings, failure *sdkgo.Failure) connectormock.Case[resend.InboxAgentSettings] {
+	return connectormock.Branch(resend.GetInboxAgentBranchInvalidResponse, value, failure)
+}
+
+// GetInboxAgentDefect selects the defect branch: Local input or credentials are invalid.
+func GetInboxAgentDefect(value resend.InboxAgentSettings, failure *sdkgo.Failure) connectormock.Case[resend.InboxAgentSettings] {
+	return connectormock.Branch(resend.GetInboxAgentBranchDefect, value, failure)
+}
+
+// GetInboxAgentRetry asks Dex to retry the getInboxAgent Step, after the delay when it is positive.
+func GetInboxAgentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.InboxAgentSettings] {
+	return connectormock.Retry[resend.InboxAgentSettings](failure, after)
+}
+
+// GetInboxAgentGetInboxAgentDefault is the manifest mock getInboxAgentDefault: Resend returned agent settings.
+func GetInboxAgentGetInboxAgentDefault() connectormock.Case[resend.InboxAgentSettings] {
+	value := connectormock.MustDecodeOutput[resend.InboxAgentSettings](`{"tone":"concise_professional","actions":["draft_reply"]}`)
+	return connectormock.Branch(resend.GetInboxAgentBranchFound, value, nil)
+}
+
+// GetInboxAgentDefault is the manifest default, getInboxAgentDefault, which New installs.
+func GetInboxAgentDefault() connectormock.Case[resend.InboxAgentSettings] {
+	return GetInboxAgentGetInboxAgentDefault()
+}
+
+// UpdateInboxAgentUpdated selects the updated branch: Resend updated agent settings.
+func UpdateInboxAgentUpdated(value resend.InboxAgentReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxAgentReference] {
+	return connectormock.Branch(resend.UpdateInboxAgentBranchUpdated, value, failure)
+}
+
+// UpdateInboxAgentNotFound selects the notFound branch: The inbox does not exist.
+func UpdateInboxAgentNotFound(value resend.InboxAgentReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxAgentReference] {
+	return connectormock.Branch(resend.UpdateInboxAgentBranchNotFound, value, failure)
+}
+
+// UpdateInboxAgentProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func UpdateInboxAgentProviderRejected(value resend.InboxAgentReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxAgentReference] {
+	return connectormock.Branch(resend.UpdateInboxAgentBranchProviderRejected, value, failure)
+}
+
+// UpdateInboxAgentInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func UpdateInboxAgentInvalidResponse(value resend.InboxAgentReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxAgentReference] {
+	return connectormock.Branch(resend.UpdateInboxAgentBranchInvalidResponse, value, failure)
+}
+
+// UpdateInboxAgentDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateInboxAgentDefect(value resend.InboxAgentReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxAgentReference] {
+	return connectormock.Branch(resend.UpdateInboxAgentBranchDefect, value, failure)
+}
+
+// UpdateInboxAgentRetry asks Dex to retry the updateInboxAgent Step, after the delay when it is positive.
+func UpdateInboxAgentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.InboxAgentReference] {
+	return connectormock.Retry[resend.InboxAgentReference](failure, after)
+}
+
+// UpdateInboxAgentUpdateInboxAgentDefault is the manifest mock updateInboxAgentDefault: Resend updated agent settings.
+func UpdateInboxAgentUpdateInboxAgentDefault() connectormock.Case[resend.InboxAgentReference] {
+	value := connectormock.MustDecodeOutput[resend.InboxAgentReference](`{"id":"agent-1"}`)
+	return connectormock.Branch(resend.UpdateInboxAgentBranchUpdated, value, nil)
+}
+
+// UpdateInboxAgentDefault is the manifest default, updateInboxAgentDefault, which New installs.
+func UpdateInboxAgentDefault() connectormock.Case[resend.InboxAgentReference] {
+	return UpdateInboxAgentUpdateInboxAgentDefault()
+}
+
+// ListInboxLabelsListed selects the listed branch: Resend listed the inbox labels.
+func ListInboxLabelsListed(value resend.InboxLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxLabelList] {
+	return connectormock.Branch(resend.ListInboxLabelsBranchListed, value, failure)
+}
+
+// ListInboxLabelsNotFound selects the notFound branch: The inbox does not exist.
+func ListInboxLabelsNotFound(value resend.InboxLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxLabelList] {
+	return connectormock.Branch(resend.ListInboxLabelsBranchNotFound, value, failure)
+}
+
+// ListInboxLabelsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListInboxLabelsProviderRejected(value resend.InboxLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxLabelList] {
+	return connectormock.Branch(resend.ListInboxLabelsBranchProviderRejected, value, failure)
+}
+
+// ListInboxLabelsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListInboxLabelsInvalidResponse(value resend.InboxLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxLabelList] {
+	return connectormock.Branch(resend.ListInboxLabelsBranchInvalidResponse, value, failure)
+}
+
+// ListInboxLabelsDefect selects the defect branch: Local input or credentials are invalid.
+func ListInboxLabelsDefect(value resend.InboxLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxLabelList] {
+	return connectormock.Branch(resend.ListInboxLabelsBranchDefect, value, failure)
+}
+
+// ListInboxLabelsRetry asks Dex to retry the listInboxLabels Step, after the delay when it is positive.
+func ListInboxLabelsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.InboxLabelList] {
+	return connectormock.Retry[resend.InboxLabelList](failure, after)
+}
+
+// ListInboxLabelsListInboxLabelsDefault is the manifest mock listInboxLabelsDefault: Resend listed inbox labels.
+func ListInboxLabelsListInboxLabelsDefault() connectormock.Case[resend.InboxLabelList] {
+	value := connectormock.MustDecodeOutput[resend.InboxLabelList](`{"data":[{"id":"label-1","name":"Support","color":"#D4A6FF"}]}`)
+	return connectormock.Branch(resend.ListInboxLabelsBranchListed, value, nil)
+}
+
+// ListInboxLabelsDefault is the manifest default, listInboxLabelsDefault, which New installs.
+func ListInboxLabelsDefault() connectormock.Case[resend.InboxLabelList] {
+	return ListInboxLabelsListInboxLabelsDefault()
+}
+
+// CreateInboxLabelCreated selects the created branch: Resend created the label.
+func CreateInboxLabelCreated(value resend.InboxLabelReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxLabelReference] {
+	return connectormock.Branch(resend.CreateInboxLabelBranchCreated, value, failure)
+}
+
+// CreateInboxLabelProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func CreateInboxLabelProviderRejected(value resend.InboxLabelReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxLabelReference] {
+	return connectormock.Branch(resend.CreateInboxLabelBranchProviderRejected, value, failure)
+}
+
+// CreateInboxLabelDefect selects the defect branch: Local input or credentials are invalid.
+func CreateInboxLabelDefect(value resend.InboxLabelReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxLabelReference] {
+	return connectormock.Branch(resend.CreateInboxLabelBranchDefect, value, failure)
+}
+
+// CreateInboxLabelUncertain returns an uncertain createInboxLabel outcome.
+func CreateInboxLabelUncertain(value resend.InboxLabelReference, failure sdkgo.Failure) connectormock.Case[resend.InboxLabelReference] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateInboxLabelRetry asks Dex to retry the createInboxLabel Step, after the delay when it is positive.
+func CreateInboxLabelRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.InboxLabelReference] {
+	return connectormock.Retry[resend.InboxLabelReference](failure, after)
+}
+
+// CreateInboxLabelCreateInboxLabelDefault is the manifest mock createInboxLabelDefault: Resend created the label.
+func CreateInboxLabelCreateInboxLabelDefault() connectormock.Case[resend.InboxLabelReference] {
+	value := connectormock.MustDecodeOutput[resend.InboxLabelReference](`{"id":"label-1"}`)
+	return connectormock.Branch(resend.CreateInboxLabelBranchCreated, value, nil)
+}
+
+// CreateInboxLabelDefault is the manifest default, createInboxLabelDefault, which New installs.
+func CreateInboxLabelDefault() connectormock.Case[resend.InboxLabelReference] {
+	return CreateInboxLabelCreateInboxLabelDefault()
+}
+
+// UpdateInboxLabelUpdated selects the updated branch: Resend updated the label.
+func UpdateInboxLabelUpdated(value resend.InboxLabelReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxLabelReference] {
+	return connectormock.Branch(resend.UpdateInboxLabelBranchUpdated, value, failure)
+}
+
+// UpdateInboxLabelNotFound selects the notFound branch: The label does not exist.
+func UpdateInboxLabelNotFound(value resend.InboxLabelReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxLabelReference] {
+	return connectormock.Branch(resend.UpdateInboxLabelBranchNotFound, value, failure)
+}
+
+// UpdateInboxLabelProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func UpdateInboxLabelProviderRejected(value resend.InboxLabelReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxLabelReference] {
+	return connectormock.Branch(resend.UpdateInboxLabelBranchProviderRejected, value, failure)
+}
+
+// UpdateInboxLabelInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func UpdateInboxLabelInvalidResponse(value resend.InboxLabelReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxLabelReference] {
+	return connectormock.Branch(resend.UpdateInboxLabelBranchInvalidResponse, value, failure)
+}
+
+// UpdateInboxLabelDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateInboxLabelDefect(value resend.InboxLabelReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxLabelReference] {
+	return connectormock.Branch(resend.UpdateInboxLabelBranchDefect, value, failure)
+}
+
+// UpdateInboxLabelRetry asks Dex to retry the updateInboxLabel Step, after the delay when it is positive.
+func UpdateInboxLabelRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.InboxLabelReference] {
+	return connectormock.Retry[resend.InboxLabelReference](failure, after)
+}
+
+// UpdateInboxLabelUpdateInboxLabelDefault is the manifest mock updateInboxLabelDefault: Resend updated the label.
+func UpdateInboxLabelUpdateInboxLabelDefault() connectormock.Case[resend.InboxLabelReference] {
+	value := connectormock.MustDecodeOutput[resend.InboxLabelReference](`{"id":"label-1"}`)
+	return connectormock.Branch(resend.UpdateInboxLabelBranchUpdated, value, nil)
+}
+
+// UpdateInboxLabelDefault is the manifest default, updateInboxLabelDefault, which New installs.
+func UpdateInboxLabelDefault() connectormock.Case[resend.InboxLabelReference] {
+	return UpdateInboxLabelUpdateInboxLabelDefault()
+}
+
+// DeleteInboxLabelDeleted selects the deleted branch: Resend deleted the label.
+func DeleteInboxLabelDeleted(value resend.DeletedInboxLabel, failure *sdkgo.Failure) connectormock.Case[resend.DeletedInboxLabel] {
+	return connectormock.Branch(resend.DeleteInboxLabelBranchDeleted, value, failure)
+}
+
+// DeleteInboxLabelNotFound selects the notFound branch: The label does not exist.
+func DeleteInboxLabelNotFound(value resend.DeletedInboxLabel, failure *sdkgo.Failure) connectormock.Case[resend.DeletedInboxLabel] {
+	return connectormock.Branch(resend.DeleteInboxLabelBranchNotFound, value, failure)
+}
+
+// DeleteInboxLabelProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func DeleteInboxLabelProviderRejected(value resend.DeletedInboxLabel, failure *sdkgo.Failure) connectormock.Case[resend.DeletedInboxLabel] {
+	return connectormock.Branch(resend.DeleteInboxLabelBranchProviderRejected, value, failure)
+}
+
+// DeleteInboxLabelInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func DeleteInboxLabelInvalidResponse(value resend.DeletedInboxLabel, failure *sdkgo.Failure) connectormock.Case[resend.DeletedInboxLabel] {
+	return connectormock.Branch(resend.DeleteInboxLabelBranchInvalidResponse, value, failure)
+}
+
+// DeleteInboxLabelDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteInboxLabelDefect(value resend.DeletedInboxLabel, failure *sdkgo.Failure) connectormock.Case[resend.DeletedInboxLabel] {
+	return connectormock.Branch(resend.DeleteInboxLabelBranchDefect, value, failure)
+}
+
+// DeleteInboxLabelRetry asks Dex to retry the deleteInboxLabel Step, after the delay when it is positive.
+func DeleteInboxLabelRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.DeletedInboxLabel] {
+	return connectormock.Retry[resend.DeletedInboxLabel](failure, after)
+}
+
+// DeleteInboxLabelDeleteInboxLabelDefault is the manifest mock deleteInboxLabelDefault: Resend deleted the label.
+func DeleteInboxLabelDeleteInboxLabelDefault() connectormock.Case[resend.DeletedInboxLabel] {
+	value := connectormock.MustDecodeOutput[resend.DeletedInboxLabel](`{"id":"label-1","deleted":true}`)
+	return connectormock.Branch(resend.DeleteInboxLabelBranchDeleted, value, nil)
+}
+
+// DeleteInboxLabelDefault is the manifest default, deleteInboxLabelDefault, which New installs.
+func DeleteInboxLabelDefault() connectormock.Case[resend.DeletedInboxLabel] {
+	return DeleteInboxLabelDeleteInboxLabelDefault()
 }

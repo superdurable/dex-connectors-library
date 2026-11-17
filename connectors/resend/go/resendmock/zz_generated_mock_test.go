@@ -424,6 +424,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[resend.DeletedInbox](`{"id":"inbox-1","deleted":true}`)
 			return err
 		}},
+		{name: "getInboxAgent/getInboxAgentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxAgentSettings](`{"tone":"concise_professional","actions":["draft_reply"]}`)
+			return err
+		}},
+		{name: "updateInboxAgent/updateInboxAgentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxAgentReference](`{"id":"agent-1"}`)
+			return err
+		}},
+		{name: "listInboxLabels/listInboxLabelsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxLabelList](`{"data":[{"id":"label-1","name":"Support","color":"#D4A6FF"}]}`)
+			return err
+		}},
+		{name: "createInboxLabel/createInboxLabelDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxLabelReference](`{"id":"label-1"}`)
+			return err
+		}},
+		{name: "updateInboxLabel/updateInboxLabelDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxLabelReference](`{"id":"label-1"}`)
+			return err
+		}},
+		{name: "deleteInboxLabel/deleteInboxLabelDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedInboxLabel](`{"id":"label-1","deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -739,5 +763,23 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteInbox().Definition().Operation.OperationID != "deleteInbox" {
 		t.Errorf("deleteInbox mock has another definition")
+	}
+	if mock.GetInboxAgent().Definition().Operation.OperationID != "getInboxAgent" {
+		t.Errorf("getInboxAgent mock has another definition")
+	}
+	if mock.UpdateInboxAgent().Definition().Operation.OperationID != "updateInboxAgent" {
+		t.Errorf("updateInboxAgent mock has another definition")
+	}
+	if mock.ListInboxLabels().Definition().Operation.OperationID != "listInboxLabels" {
+		t.Errorf("listInboxLabels mock has another definition")
+	}
+	if mock.CreateInboxLabel().Definition().Operation.OperationID != "createInboxLabel" {
+		t.Errorf("createInboxLabel mock has another definition")
+	}
+	if mock.UpdateInboxLabel().Definition().Operation.OperationID != "updateInboxLabel" {
+		t.Errorf("updateInboxLabel mock has another definition")
+	}
+	if mock.DeleteInboxLabel().Definition().Operation.OperationID != "deleteInboxLabel" {
+		t.Errorf("deleteInboxLabel mock has another definition")
 	}
 }

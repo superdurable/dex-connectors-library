@@ -1809,3 +1809,104 @@ spec:
     execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: deleteInboxDefault, branch: deleted, default: true, description: Resend completed the inbox request., output: {id: inbox-1, deleted: true}}
+  - name: getInboxAgent
+    goName: GetInboxAgent
+    inputType: GetInboxAgentInput
+    outputType: InboxAgentSettings
+    kind: query
+    description: Retrieve inbox agent tone and enabled actions without instructions.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend returned the agent settings.}
+    - {id: notFound, goName: NotFound, description: The inbox does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getInboxAgentDefault, branch: found, default: true, description: Resend returned agent settings., output: {tone: concise_professional, actions: [draft_reply]}}
+  - name: updateInboxAgent
+    goName: UpdateInboxAgent
+    inputType: UpdateInboxAgentInput
+    outputType: InboxAgentReference
+    kind: mutation
+    description: Replace selected inbox agent settings.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated agent settings.}
+    - {id: notFound, goName: NotFound, description: The inbox does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateInboxAgentDefault, branch: updated, default: true, description: Resend updated agent settings., output: {id: agent-1}}
+  - name: listInboxLabels
+    goName: ListInboxLabels
+    inputType: ListInboxLabelsInput
+    outputType: InboxLabelList
+    kind: query
+    description: List all labels on an inbox.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend listed the inbox labels.}
+    - {id: notFound, goName: NotFound, description: The inbox does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listInboxLabelsDefault, branch: listed, default: true, description: Resend listed inbox labels., output: {data: [{id: label-1, name: Support, color: '#D4A6FF'}]}}
+  - name: createInboxLabel
+    goName: CreateInboxLabel
+    inputType: CreateInboxLabelInput
+    outputType: InboxLabelReference
+    kind: mutation
+    description: Create a named inbox label.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend created the label.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming creation., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createInboxLabelDefault, branch: created, default: true, description: Resend created the label., output: {id: label-1}}
+  - name: updateInboxLabel
+    goName: UpdateInboxLabel
+    inputType: UpdateInboxLabelInput
+    outputType: InboxLabelReference
+    kind: mutation
+    description: Replace selected absolute label fields.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated the label.}
+    - {id: notFound, goName: NotFound, description: The label does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateInboxLabelDefault, branch: updated, default: true, description: Resend updated the label., output: {id: label-1}}
+  - name: deleteInboxLabel
+    goName: DeleteInboxLabel
+    inputType: DeleteInboxLabelInput
+    outputType: DeletedInboxLabel
+    kind: mutation
+    description: Delete a label from an inbox.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend deleted the label.}
+    - {id: notFound, goName: NotFound, description: The label does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteInboxLabelDefault, branch: deleted, default: true, description: Resend deleted the label., output: {id: label-1, deleted: true}}

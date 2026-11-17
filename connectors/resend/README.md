@@ -301,6 +301,17 @@ can contain credentials or message content. The runnable
 [`account-usage` example](go/examples/account-usage/README.md) verifies the
 query through a real Dex Worker and generated provider mock.
 
+## Inbox agents and labels
+
+`GetInboxAgent` exposes tone and enabled actions but deliberately omits
+instructions, which may contain sensitive content. `UpdateInboxAgent` makes
+absolute changes and supports explicit clears. Label listing and retrieval
+are safe reads, as are absolute label updates and deletion. `CreateInboxLabel`
+uses bounded `limited` retries and reads back the unique case-insensitive
+label name before another send. The runnable
+[`create-inbox-label` example](go/examples/create-inbox-label/README.md)
+exercises label creation through a real Dex Worker and generated provider mock.
+
 ## Mocks
 
 `resendmock.New(t, "mock")` binds the default manifest answers and the
