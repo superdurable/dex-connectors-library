@@ -2281,8 +2281,8 @@
         }
       ],
       "expected": {
-        "branch": "defect",
-        "failureKind": "LOCAL_DEFECT",
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
           "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
@@ -2297,7 +2297,7 @@
         "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
       "input": {

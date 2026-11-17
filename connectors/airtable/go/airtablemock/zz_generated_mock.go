@@ -116,6 +116,11 @@ func CreateRecordProviderRejected(value airtable.Record, failure *sdkgo.Failure)
 	return connectormock.Branch(airtable.CreateRecordBranchProviderRejected, value, failure)
 }
 
+// CreateRecordUncertain returns an uncertain createRecord outcome.
+func CreateRecordUncertain(value airtable.Record, failure sdkgo.Failure) connectormock.Case[airtable.Record] {
+	return connectormock.Uncertain(value, failure)
+}
+
 // CreateRecordDefect selects the defect branch: Local input or connector configuration is invalid.
 func CreateRecordDefect(value airtable.Record, failure *sdkgo.Failure) connectormock.Case[airtable.Record] {
 	return connectormock.Branch(airtable.CreateRecordBranchDefect, value, failure)

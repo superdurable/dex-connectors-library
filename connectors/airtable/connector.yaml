@@ -132,6 +132,7 @@ spec:
       branches:
         - {id: created, goName: Created, description: Airtable created and returned the record.}
         - {id: providerRejected, goName: ProviderRejected, description: Airtable conclusively rejected the create request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A previous create may have succeeded but cannot be confirmed after the send cap., optional: true}
         - {id: defect, goName: Defect, description: Local input or connector configuration is invalid., optional: true}
       execution:
         executeMethodTimeout: 30s

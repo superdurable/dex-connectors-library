@@ -277,6 +277,7 @@ func NewRecordChangedTrigger(config RecordChangedTriggerConfig) sdkgo.TriggerRun
 
 const CreateRecordBranchCreated sdkgo.BranchID = "created"
 const CreateRecordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateRecordBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const CreateRecordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var CreateRecordDefinition = sdkgo.MutationDefinition{
@@ -284,6 +285,7 @@ var CreateRecordDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateRecordBranchCreated, Description: "Airtable created and returned the record."},
 		{ID: CreateRecordBranchProviderRejected, Description: "Airtable conclusively rejected the create request.", Optional: true},
+		{ID: CreateRecordBranchUncertain, Description: "A previous create may have succeeded but cannot be confirmed after the send cap.", Optional: true},
 		{ID: CreateRecordBranchDefect, Description: "Local input or connector configuration is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -309,6 +311,7 @@ type CreateRecordStepConfig[IN any] struct {
 	MapToOperationInput               func(IN) CreateRecordInput                   `connector:"mapToOperationInput"`
 	Created                           sdkgo.Target[CreateRecordResult]             `connector:"branch=created"`
 	ProviderRejected                  sdkgo.Target[CreateRecordResult]             `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateRecordResult]             `connector:"branch=uncertain,optional"`
 	Defect                            sdkgo.Target[CreateRecordResult]             `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Record]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                             `connector:"stepOptionsOverride"`
@@ -329,12 +332,15 @@ func NewCreateRecordStep[IN any](config CreateRecordStepConfig[IN]) sdkgo.Mutati
 		Operation:       config.Connection.operations.CreateRecord(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateRecordResult] {
-			branches := make([]sdkgo.BranchTarget[CreateRecordResult], 0, 3)
+			branches := make([]sdkgo.BranchTarget[CreateRecordResult], 0, 4)
 			if config.Created.HasStep() {
 				branches = append(branches, config.Created.BranchTarget(CreateRecordBranchCreated))
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(CreateRecordBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateRecordBranchUncertain))
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(CreateRecordBranchDefect))
