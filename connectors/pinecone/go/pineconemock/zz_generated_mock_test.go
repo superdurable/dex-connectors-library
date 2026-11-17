@@ -16,6 +16,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "fetchVectors/defaultFetch/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pinecone.FetchedVectors](`{"vectors":[{"id":"vec-meridian","values":[0.1,0.2]}],"namespace":"example"}`)
+			return err
+		}},
+		{name: "listVectorIDs/defaultList/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pinecone.VectorIDPage](`{"ids":["vec-meridian"],"nextToken":""}`)
+			return err
+		}},
+		{name: "describeIndexStats/defaultStats/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pinecone.IndexStats](`{"dimension":2,"totalVectorCount":1}`)
+			return err
+		}},
+		{name: "updateVector/defaultUpdate/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pinecone.VectorAction](`{"ids":["vec-meridian"],"namespace":"example"}`)
+			return err
+		}},
+		{name: "deleteVectors/defaultDelete/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pinecone.VectorAction](`{"ids":["vec-meridian"],"namespace":"example"}`)
+			return err
+		}},
+		{name: "clearNamespace/defaultClear/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pinecone.VectorAction](`{"namespace":"example"}`)
+			return err
+		}},
 		{name: "upsertVectors/defaultUpsertVectors/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[pinecone.UpsertVectorsOutput](`{"upsertedCount":1}`)
 			return err
@@ -34,6 +58,24 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.FetchVectors().Definition().Operation.OperationID != "fetchVectors" {
+		t.Errorf("fetchVectors mock has another definition")
+	}
+	if mock.ListVectorIDs().Definition().Operation.OperationID != "listVectorIDs" {
+		t.Errorf("listVectorIDs mock has another definition")
+	}
+	if mock.DescribeIndexStats().Definition().Operation.OperationID != "describeIndexStats" {
+		t.Errorf("describeIndexStats mock has another definition")
+	}
+	if mock.UpdateVector().Definition().Operation.OperationID != "updateVector" {
+		t.Errorf("updateVector mock has another definition")
+	}
+	if mock.DeleteVectors().Definition().Operation.OperationID != "deleteVectors" {
+		t.Errorf("deleteVectors mock has another definition")
+	}
+	if mock.ClearNamespace().Definition().Operation.OperationID != "clearNamespace" {
+		t.Errorf("clearNamespace mock has another definition")
+	}
 	if mock.UpsertVectors().Definition().Operation.OperationID != "upsertVectors" {
 		t.Errorf("upsertVectors mock has another definition")
 	}

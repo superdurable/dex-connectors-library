@@ -18,3 +18,13 @@ func TestSampleFlowRegistersWithMockConnection(t *testing.T) {
 	require.NotNil(t, registry)
 	require.Len(t, flow.GetRPCs(), 2)
 }
+
+func TestVectorFetchFlowRegistersWithMockConnection(t *testing.T) {
+	mock := pineconemock.New(t, ConnectionName)
+	flow := NewVectorFetchFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	require.NotNil(t, registry)
+	require.Equal(t, VectorFetchFlowType, dex.GetFinalFlowType(flow))
+	require.Len(t, flow.GetRPCs(), 2)
+}

@@ -21,7 +21,13 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"upsertVectors": newConformanceMutationInvocation(t, scenario.Input, testContext{}, client.UpsertVectors(), connection, scenario.CallID),
-		"queryVectors":  newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.QueryVectors(), connection),
+		"upsertVectors":      newConformanceMutationInvocation(t, scenario.Input, testContext{}, client.UpsertVectors(), connection, scenario.CallID),
+		"queryVectors":       newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.QueryVectors(), connection),
+		"fetchVectors":       newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.FetchVectors(), connection),
+		"listVectorIDs":      newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.ListVectorIDs(), connection),
+		"describeIndexStats": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.DescribeIndexStats(), connection),
+		"updateVector":       newConformanceMutationInvocation(t, scenario.Input, testContext{}, client.UpdateVector(), connection, scenario.CallID),
+		"deleteVectors":      newConformanceMutationInvocation(t, scenario.Input, testContext{}, client.DeleteVectors(), connection, scenario.CallID),
+		"clearNamespace":     newConformanceMutationInvocation(t, scenario.Input, testContext{}, client.ClearNamespace(), connection, scenario.CallID),
 	}}
 }

@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: pinecone
   displayName: Pinecone
-  description: Pinecone REST connector with two bounded operations.
+  description: Pinecone REST connector for bounded vector and namespace operations.
   company: Pinecone
   categories: [ai, databases-storage]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: pinecone
   languages:
@@ -64,6 +64,102 @@ spec:
       - Paste the key into secret api_key; leave timeout and maxResponseBytes blank
         for their displayed defaults.
   operations:
+  - name: fetchVectors
+    goName: FetchVectors
+    inputType: FetchVectorsInput
+    outputType: FetchedVectors
+    kind: query
+    description: Fetch selected vector IDs from one namespace.
+    idempotency: none
+    authorization: required
+    execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+    branches:
+    - {id: fetched, goName: Fetched, description: Selected vectors were fetched.}
+    - {id: providerRejected, goName: ProviderRejected, description: Pinecone rejected the fetch., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Pinecone returned invalid JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    mocks:
+    - {name: defaultFetch, branch: fetched, description: One sample fetched vector., default: true, output: {vectors: [{id: vec-meridian, values: [0.1, 0.2]}], namespace: example}}
+  - name: listVectorIDs
+    goName: ListVectorIDs
+    inputType: ListVectorIDsInput
+    outputType: VectorIDPage
+    kind: query
+    description: List one page of vector IDs in a serverless index namespace.
+    idempotency: none
+    authorization: required
+    execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+    branches:
+    - {id: listed, goName: Listed, description: Vector IDs were listed.}
+    - {id: providerRejected, goName: ProviderRejected, description: Pinecone rejected the list., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Pinecone returned invalid JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    mocks:
+    - {name: defaultList, branch: listed, description: One sample ID page., default: true, output: {ids: [vec-meridian], nextToken: ''}}
+  - name: describeIndexStats
+    goName: DescribeIndexStats
+    inputType: DescribeIndexStatsInput
+    outputType: IndexStats
+    kind: query
+    description: Read vector counts and dimension for the configured index.
+    idempotency: none
+    authorization: required
+    execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+    branches:
+    - {id: described, goName: Described, description: Index statistics were read.}
+    - {id: providerRejected, goName: ProviderRejected, description: Pinecone rejected the read., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Pinecone returned invalid JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    mocks:
+    - {name: defaultStats, branch: described, description: Sample index statistics., default: true, output: {dimension: 2, totalVectorCount: 1}}
+  - name: updateVector
+    goName: UpdateVector
+    inputType: UpdateVectorInput
+    outputType: VectorAction
+    kind: mutation
+    description: Replace one vector's values and set named metadata fields.
+    idempotency: required
+    authorization: required
+    execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+    branches:
+    - {id: updated, goName: Updated, description: The vector was updated.}
+    - {id: providerRejected, goName: ProviderRejected, description: Pinecone rejected the update., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Pinecone returned invalid JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    mocks:
+    - {name: defaultUpdate, branch: updated, description: One sample vector was updated., default: true, output: {ids: [vec-meridian], namespace: example}}
+  - name: deleteVectors
+    goName: DeleteVectors
+    inputType: DeleteVectorsInput
+    outputType: VectorAction
+    kind: mutation
+    description: Delete selected vector IDs from one namespace.
+    idempotency: required
+    authorization: required
+    execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+    branches:
+    - {id: deleted, goName: Deleted, description: Selected vectors were deleted.}
+    - {id: providerRejected, goName: ProviderRejected, description: Pinecone rejected the deletion., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Pinecone returned invalid JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    mocks:
+    - {name: defaultDelete, branch: deleted, description: Sample vector IDs were deleted., default: true, output: {ids: [vec-meridian], namespace: example}}
+  - name: clearNamespace
+    goName: ClearNamespace
+    inputType: ClearNamespaceInput
+    outputType: VectorAction
+    kind: mutation
+    description: Delete all vectors from an explicitly named namespace.
+    idempotency: required
+    authorization: required
+    execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+    branches:
+    - {id: cleared, goName: Cleared, description: The namespace was cleared.}
+    - {id: providerRejected, goName: ProviderRejected, description: Pinecone rejected the clear., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Pinecone returned invalid JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    mocks:
+    - {name: defaultClear, branch: cleared, description: A sample namespace was cleared., default: true, output: {namespace: example}}
   - name: upsertVectors
     goName: UpsertVectors
     inputType: UpsertVectorsInput
