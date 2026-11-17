@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package bitbucket provides read-only Bitbucket Query operations for Dex Flows.
+// Package bitbucket provides typed Bitbucket Query and Mutation operations for Dex Flows.
 package bitbucket
 
 import (

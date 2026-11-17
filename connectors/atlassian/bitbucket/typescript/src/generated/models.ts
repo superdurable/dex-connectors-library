@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret Bitbucket workspace access token from https://bitbucket.org > workspace Settings > Access tokens > Create access token. Grant Repositories > Read and Pull requests > Read; copy the opaque token once into this secret field. Blank prevents calls. */
+  /** Secret Bitbucket workspace access token from https://bitbucket.org > workspace Settings > Access tokens > Create access token. Grant Repositories > Read and Pull requests > Read and Write for title updates; copy the opaque token once into this secret field. Blank prevents calls. */
   accessToken: SecretString;
 }
 

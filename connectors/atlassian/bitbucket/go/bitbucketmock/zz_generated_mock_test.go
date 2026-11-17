@@ -16,6 +16,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getRepository/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.Repository](`{"uuid":"{a1b2c3d4-1234-4567-89ab-1234567890ab}","name":"Meridian API","full_name":"meridian/api","is_private":true}`)
+			return err
+		}},
+		{name: "getPullRequest/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequest](`{"id":7,"title":"Add client tests","state":"OPEN"}`)
+			return err
+		}},
+		{name: "updatePullRequestTitle/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequest](`{"id":7,"title":"Add client and contract tests","state":"OPEN"}`)
+			return err
+		}},
 		{name: "listRepositories/defaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[bitbucket.RepositoryPage](`{"values":[{"uuid":"{a1b2c3d4-1234-4567-89ab-1234567890ab}","name":"Meridian API","full_name":"meridian/api","is_private":true}],"page":1,"pagelen":10}`)
 			return err
@@ -34,6 +46,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetRepository().Definition().Operation.OperationID != "getRepository" {
+		t.Errorf("getRepository mock has another definition")
+	}
+	if mock.GetPullRequest().Definition().Operation.OperationID != "getPullRequest" {
+		t.Errorf("getPullRequest mock has another definition")
+	}
+	if mock.UpdatePullRequestTitle().Definition().Operation.OperationID != "updatePullRequestTitle" {
+		t.Errorf("updatePullRequestTitle mock has another definition")
+	}
 	if mock.ListRepositories().Definition().Operation.OperationID != "listRepositories" {
 		t.Errorf("listRepositories mock has another definition")
 	}

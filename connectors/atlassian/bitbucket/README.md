@@ -1,10 +1,10 @@
 # Bitbucket connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket/go@v0.3.0` after this release publishes.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket`.
 
-Read-only Dex Query Steps for Bitbucket. The module is `github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket/go`. See the [runnable resource-read Flow](go/examples/resource-read/README.md).
+Typed Query and Mutation Steps for Bitbucket. The module is `github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket/go`. See the [runnable resource-read Flow](go/examples/resource-read/README.md), which also registers a pull request title update Flow.
 
 The Python package is [`dex-connector-atlassian-bitbucket`](python/README.md), imported as
 `dex_connectors.atlassian_bitbucket`.
@@ -17,10 +17,13 @@ The TypeScript package is [`@superdurable/connector-atlassian-bitbucket`](typesc
 | --- | --- | --- | --- |
 | `ListRepositories` | `ListRepositoriesInput` | `RepositoryPage` | `listed` |
 | `ListPullRequests` | `ListPullRequestsInput` | `PullRequestPage` | `listed` |
+| `GetRepository` | `GetRepositoryInput` | `Repository` | `found` |
+| `GetPullRequest` | `GetPullRequestInput` | `PullRequest` | `found` |
+| `UpdatePullRequestTitle` | `UpdatePullRequestTitleInput` | `PullRequest` | `updated` |
 
-Each operation has optional `notFound`, `providerRejected`, `invalidResponse`, and `defect` branches. Unwired optional branches fail the Flow. All reads use async Execute durability and the default one-hour retry budget.
+Each operation has optional `notFound`, `providerRejected`, `invalidResponse`, and `defect` branches. Unwired optional branches fail the Flow. All operations use async Execute durability and the default one-hour retry budget. Reads and absolute title replacement are safe to repeat. Only Go implements the three new operations.
 
-Workspace access tokens require Bitbucket Premium; grant Repositories > Read and Pull requests > Read. [Atlassian explains token creation](https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/) and [workspace token permissions](https://support.atlassian.com/bitbucket-cloud/docs/workspace-access-token-permissions/).
+Workspace access tokens require Bitbucket Premium; grant Repositories > Read and Pull requests > Read, plus Pull requests > Write for title updates. [Atlassian explains token creation](https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/) and [workspace token permissions](https://support.atlassian.com/bitbucket-cloud/docs/workspace-access-token-permissions/).
 
 ## Authentication and configuration
 
@@ -37,7 +40,7 @@ Follow the authorization guide in `connector.yaml` from [https://support.atlassi
 | Malformed or oversized JSON | `invalidResponse` |
 | Invalid local input or unavailable credentials | `defect` |
 
-Provider error text is never copied into a Failure. Responses are bounded and redirects are not followed. The APIs are read-only, so there is no `uncertain` branch.
+Provider error text is never copied into a Failure. Responses are bounded and redirects are not followed. The title update is an absolute replacement, so repeating it does not add another effect and has no `uncertain` branch.
 
 ## Mocks
 
