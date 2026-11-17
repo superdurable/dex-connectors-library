@@ -8,4 +8,4 @@ Sign in to the [Get Note Open Platform](https://www.biji.com/openapi), create an
 
 ## Example and verification
 
-The [runnable Flow](go/examples/get-note-task-status/) starts with a task ID from `data.tasks[0].task_id` of a prior note-save call and completes with a typed `GetNoteTaskStatusOutput`. Its default mock returns a completed task. Live Get Note authorization and status response variation remain unverified without a user-controlled Dex Web Connection.
+The [Go Flow](go/examples/get-note-task-status/) and [TypeScript Flow](typescript/examples/task-status/) start with a task ID from `data.tasks[0].task_id` of a prior note-save call and completes with a typed `GetNoteTaskStatusOutput`. Their default mock returns a completed task. Live Get Note authorization and status response variation remain unverified without a user-controlled Dex Web Connection.
