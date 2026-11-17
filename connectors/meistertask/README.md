@@ -8,6 +8,8 @@ The Go, Python, and TypeScript `getTask` Query reads a task's numeric ID, name, 
 
 `listSections` requests one page with optional `active`, `trashed`, or `all` status. `getSection` reads a section by positive decimal `sectionId`. `updateSection` sets an absolute name or status (`1` active, `2` trashed). `createSection` requires a positive parent `projectId` and a nonempty name; section names are not unique, so inspect the section list if its bounded create selects `uncertain`.
 
+`listComments` and `getComment` read comment IDs, parent task IDs, and author IDs without persisting comment text. `createComment` adds Markdown `text` to a task with a three-send cap; repeated text is valid, so inspect the task comments when its result is `uncertain`. `deleteComment` removes a comment by positive decimal ID and repeats safely. The [comment API reference](https://developers.meistertask.com/reference/comment) documents these endpoints. Find IDs in the task's Comments view or `GET /tasks/{taskId}/comments`; blank IDs or text are invalid. Page and item values are positive integers, with zero choosing provider defaults.
+
 ## Connect
 
 At the [MindMeister API page](https://www.mindmeister.com/api), add a personal access token with `userinfo.profile`, `userinfo.email`, and `meistertask` scopes. Save the secret token as `api_token` in Dex Web Connections. See [MeisterTask authentication](https://developers.meistertask.com/reference/authentication) and [personal access token setup](https://developers.mindmeister.com/docs/personal-access-token). The token owner must be able to view the task. MindMeister account activation may require a team administrator.

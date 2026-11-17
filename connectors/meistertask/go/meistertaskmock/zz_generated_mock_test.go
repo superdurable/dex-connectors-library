@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listComments/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.CommentsPage](`{"comments":[{"id":"2","taskId":"15","personId":"7"}],"page":1}`)
+			return err
+		}},
+		{name: "getComment/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.CommentSummary](`{"id":"2","taskId":"15","personId":"7"}`)
+			return err
+		}},
+		{name: "deleteComment/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.DeletedComment](`{"commentId":"2"}`)
+			return err
+		}},
+		{name: "createComment/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.CommentSummary](`{"id":"2","taskId":"15","personId":"7"}`)
+			return err
+		}},
 		{name: "listSections/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[meistertask.SectionsPage](`{"sections":[{"id":"72","name":"Example Section","status":"1","projectId":"123"}],"page":1}`)
 			return err
@@ -74,6 +90,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListComments().Definition().Operation.OperationID != "listComments" {
+		t.Errorf("listComments mock has another definition")
+	}
+	if mock.GetComment().Definition().Operation.OperationID != "getComment" {
+		t.Errorf("getComment mock has another definition")
+	}
+	if mock.DeleteComment().Definition().Operation.OperationID != "deleteComment" {
+		t.Errorf("deleteComment mock has another definition")
+	}
+	if mock.CreateComment().Definition().Operation.OperationID != "createComment" {
+		t.Errorf("createComment mock has another definition")
+	}
 	if mock.ListSections().Definition().Operation.OperationID != "listSections" {
 		t.Errorf("listSections mock has another definition")
 	}

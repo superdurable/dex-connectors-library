@@ -18,6 +18,10 @@ import (
 // Mock is a scripted meistertask connection. Script each operation through its accessor.
 type Mock struct {
 	connection    meistertask.Connection
+	listComments  *connectormock.Query[meistertask.ListCommentsInput, meistertask.CommentsPage]
+	getComment    *connectormock.Query[meistertask.GetCommentInput, meistertask.CommentSummary]
+	deleteComment *connectormock.Mutation[meistertask.DeleteCommentInput, meistertask.DeletedComment]
+	createComment *connectormock.Mutation[meistertask.CreateCommentInput, meistertask.CommentSummary]
 	listSections  *connectormock.Query[meistertask.ListSectionsInput, meistertask.SectionsPage]
 	getSection    *connectormock.Query[meistertask.GetSectionInput, meistertask.SectionSummary]
 	updateSection *connectormock.Mutation[meistertask.UpdateSectionInput, meistertask.SectionSummary]
@@ -37,6 +41,10 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listComments:  connectormock.NewQuery[meistertask.ListCommentsInput, meistertask.CommentsPage](t, meistertask.ListCommentsDefinition),
+		getComment:    connectormock.NewQuery[meistertask.GetCommentInput, meistertask.CommentSummary](t, meistertask.GetCommentDefinition),
+		deleteComment: connectormock.NewMutation[meistertask.DeleteCommentInput, meistertask.DeletedComment](t, meistertask.DeleteCommentDefinition),
+		createComment: connectormock.NewMutation[meistertask.CreateCommentInput, meistertask.CommentSummary](t, meistertask.CreateCommentDefinition),
 		listSections:  connectormock.NewQuery[meistertask.ListSectionsInput, meistertask.SectionsPage](t, meistertask.ListSectionsDefinition),
 		getSection:    connectormock.NewQuery[meistertask.GetSectionInput, meistertask.SectionSummary](t, meistertask.GetSectionDefinition),
 		updateSection: connectormock.NewMutation[meistertask.UpdateSectionInput, meistertask.SectionSummary](t, meistertask.UpdateSectionDefinition),
@@ -50,6 +58,10 @@ func New(t testing.TB, connectionName string) *Mock {
 		updateTask:    connectormock.NewMutation[meistertask.UpdateTaskInput, meistertask.TaskSummary](t, meistertask.UpdateTaskDefinition),
 		createTask:    connectormock.NewMutation[meistertask.CreateTaskInput, meistertask.TaskSummary](t, meistertask.CreateTaskDefinition),
 	}
+	mock.listComments.Default(ListCommentsDefault())
+	mock.getComment.Default(GetCommentDefault())
+	mock.deleteComment.Default(DeleteCommentDefault())
+	mock.createComment.Default(CreateCommentDefault())
 	mock.listSections.Default(ListSectionsDefault())
 	mock.getSection.Default(GetSectionDefault())
 	mock.updateSection.Default(UpdateSectionDefault())
@@ -72,6 +84,26 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() meistertask.Connection { return mock.connection }
+
+// ListComments returns the listComments script.
+func (mock *Mock) ListComments() *connectormock.Query[meistertask.ListCommentsInput, meistertask.CommentsPage] {
+	return mock.listComments
+}
+
+// GetComment returns the getComment script.
+func (mock *Mock) GetComment() *connectormock.Query[meistertask.GetCommentInput, meistertask.CommentSummary] {
+	return mock.getComment
+}
+
+// DeleteComment returns the deleteComment script.
+func (mock *Mock) DeleteComment() *connectormock.Mutation[meistertask.DeleteCommentInput, meistertask.DeletedComment] {
+	return mock.deleteComment
+}
+
+// CreateComment returns the createComment script.
+func (mock *Mock) CreateComment() *connectormock.Mutation[meistertask.CreateCommentInput, meistertask.CommentSummary] {
+	return mock.createComment
+}
 
 // ListSections returns the listSections script.
 func (mock *Mock) ListSections() *connectormock.Query[meistertask.ListSectionsInput, meistertask.SectionsPage] {
@@ -135,6 +167,18 @@ func (mock *Mock) CreateTask() *connectormock.Mutation[meistertask.CreateTaskInp
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListComments() sdkgo.Query[meistertask.ListCommentsInput, meistertask.CommentsPage] {
+	return operations.mock.listComments
+}
+func (operations mockOperations) GetComment() sdkgo.Query[meistertask.GetCommentInput, meistertask.CommentSummary] {
+	return operations.mock.getComment
+}
+func (operations mockOperations) DeleteComment() sdkgo.Mutation[meistertask.DeleteCommentInput, meistertask.DeletedComment] {
+	return operations.mock.deleteComment
+}
+func (operations mockOperations) CreateComment() sdkgo.Mutation[meistertask.CreateCommentInput, meistertask.CommentSummary] {
+	return operations.mock.createComment
+}
 func (operations mockOperations) ListSections() sdkgo.Query[meistertask.ListSectionsInput, meistertask.SectionsPage] {
 	return operations.mock.listSections
 }
@@ -170,6 +214,155 @@ func (operations mockOperations) UpdateTask() sdkgo.Mutation[meistertask.UpdateT
 }
 func (operations mockOperations) CreateTask() sdkgo.Mutation[meistertask.CreateTaskInput, meistertask.TaskSummary] {
 	return operations.mock.createTask
+}
+
+// ListCommentsListed selects the listed branch: MeisterTask returned the comment outcome.
+func ListCommentsListed(value meistertask.CommentsPage, failure *sdkgo.Failure) connectormock.Case[meistertask.CommentsPage] {
+	return connectormock.Branch(meistertask.ListCommentsBranchListed, value, failure)
+}
+
+// ListCommentsProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func ListCommentsProviderRejected(value meistertask.CommentsPage, failure *sdkgo.Failure) connectormock.Case[meistertask.CommentsPage] {
+	return connectormock.Branch(meistertask.ListCommentsBranchProviderRejected, value, failure)
+}
+
+// ListCommentsInvalidResponse selects the invalidResponse branch: MeisterTask returned malformed or oversized JSON.
+func ListCommentsInvalidResponse(value meistertask.CommentsPage, failure *sdkgo.Failure) connectormock.Case[meistertask.CommentsPage] {
+	return connectormock.Branch(meistertask.ListCommentsBranchInvalidResponse, value, failure)
+}
+
+// ListCommentsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListCommentsDefect(value meistertask.CommentsPage, failure *sdkgo.Failure) connectormock.Case[meistertask.CommentsPage] {
+	return connectormock.Branch(meistertask.ListCommentsBranchDefect, value, failure)
+}
+
+// ListCommentsRetry asks Dex to retry the listComments Step, after the delay when it is positive.
+func ListCommentsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.CommentsPage] {
+	return connectormock.Retry[meistertask.CommentsPage](failure, after)
+}
+
+// ListCommentsListedDefault is the manifest mock listedDefault: A sample comment outcome is available.
+func ListCommentsListedDefault() connectormock.Case[meistertask.CommentsPage] {
+	value := connectormock.MustDecodeOutput[meistertask.CommentsPage](`{"comments":[{"id":"2","taskId":"15","personId":"7"}],"page":1}`)
+	return connectormock.Branch(meistertask.ListCommentsBranchListed, value, nil)
+}
+
+// ListCommentsDefault is the manifest default, listedDefault, which New installs.
+func ListCommentsDefault() connectormock.Case[meistertask.CommentsPage] {
+	return ListCommentsListedDefault()
+}
+
+// GetCommentFound selects the found branch: MeisterTask returned the comment outcome.
+func GetCommentFound(value meistertask.CommentSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.CommentSummary] {
+	return connectormock.Branch(meistertask.GetCommentBranchFound, value, failure)
+}
+
+// GetCommentNotFound selects the notFound branch: MeisterTask did not expose the comment.
+func GetCommentNotFound(value meistertask.CommentSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.CommentSummary] {
+	return connectormock.Branch(meistertask.GetCommentBranchNotFound, value, failure)
+}
+
+// GetCommentProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func GetCommentProviderRejected(value meistertask.CommentSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.CommentSummary] {
+	return connectormock.Branch(meistertask.GetCommentBranchProviderRejected, value, failure)
+}
+
+// GetCommentInvalidResponse selects the invalidResponse branch: MeisterTask returned malformed or oversized JSON.
+func GetCommentInvalidResponse(value meistertask.CommentSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.CommentSummary] {
+	return connectormock.Branch(meistertask.GetCommentBranchInvalidResponse, value, failure)
+}
+
+// GetCommentDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetCommentDefect(value meistertask.CommentSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.CommentSummary] {
+	return connectormock.Branch(meistertask.GetCommentBranchDefect, value, failure)
+}
+
+// GetCommentRetry asks Dex to retry the getComment Step, after the delay when it is positive.
+func GetCommentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.CommentSummary] {
+	return connectormock.Retry[meistertask.CommentSummary](failure, after)
+}
+
+// GetCommentFoundDefault is the manifest mock foundDefault: A sample comment outcome is available.
+func GetCommentFoundDefault() connectormock.Case[meistertask.CommentSummary] {
+	value := connectormock.MustDecodeOutput[meistertask.CommentSummary](`{"id":"2","taskId":"15","personId":"7"}`)
+	return connectormock.Branch(meistertask.GetCommentBranchFound, value, nil)
+}
+
+// GetCommentDefault is the manifest default, foundDefault, which New installs.
+func GetCommentDefault() connectormock.Case[meistertask.CommentSummary] {
+	return GetCommentFoundDefault()
+}
+
+// DeleteCommentDeleted selects the deleted branch: MeisterTask returned the comment outcome.
+func DeleteCommentDeleted(value meistertask.DeletedComment, failure *sdkgo.Failure) connectormock.Case[meistertask.DeletedComment] {
+	return connectormock.Branch(meistertask.DeleteCommentBranchDeleted, value, failure)
+}
+
+// DeleteCommentNotFound selects the notFound branch: MeisterTask did not expose the comment.
+func DeleteCommentNotFound(value meistertask.DeletedComment, failure *sdkgo.Failure) connectormock.Case[meistertask.DeletedComment] {
+	return connectormock.Branch(meistertask.DeleteCommentBranchNotFound, value, failure)
+}
+
+// DeleteCommentProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func DeleteCommentProviderRejected(value meistertask.DeletedComment, failure *sdkgo.Failure) connectormock.Case[meistertask.DeletedComment] {
+	return connectormock.Branch(meistertask.DeleteCommentBranchProviderRejected, value, failure)
+}
+
+// DeleteCommentDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteCommentDefect(value meistertask.DeletedComment, failure *sdkgo.Failure) connectormock.Case[meistertask.DeletedComment] {
+	return connectormock.Branch(meistertask.DeleteCommentBranchDefect, value, failure)
+}
+
+// DeleteCommentRetry asks Dex to retry the deleteComment Step, after the delay when it is positive.
+func DeleteCommentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.DeletedComment] {
+	return connectormock.Retry[meistertask.DeletedComment](failure, after)
+}
+
+// DeleteCommentDeletedDefault is the manifest mock deletedDefault: A sample comment outcome is available.
+func DeleteCommentDeletedDefault() connectormock.Case[meistertask.DeletedComment] {
+	value := connectormock.MustDecodeOutput[meistertask.DeletedComment](`{"commentId":"2"}`)
+	return connectormock.Branch(meistertask.DeleteCommentBranchDeleted, value, nil)
+}
+
+// DeleteCommentDefault is the manifest default, deletedDefault, which New installs.
+func DeleteCommentDefault() connectormock.Case[meistertask.DeletedComment] {
+	return DeleteCommentDeletedDefault()
+}
+
+// CreateCommentCreated selects the created branch: MeisterTask returned the comment outcome.
+func CreateCommentCreated(value meistertask.CommentSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.CommentSummary] {
+	return connectormock.Branch(meistertask.CreateCommentBranchCreated, value, failure)
+}
+
+// CreateCommentProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func CreateCommentProviderRejected(value meistertask.CommentSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.CommentSummary] {
+	return connectormock.Branch(meistertask.CreateCommentBranchProviderRejected, value, failure)
+}
+
+// CreateCommentUncertain returns an uncertain createComment outcome.
+func CreateCommentUncertain(value meistertask.CommentSummary, failure sdkgo.Failure) connectormock.Case[meistertask.CommentSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateCommentDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateCommentDefect(value meistertask.CommentSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.CommentSummary] {
+	return connectormock.Branch(meistertask.CreateCommentBranchDefect, value, failure)
+}
+
+// CreateCommentRetry asks Dex to retry the createComment Step, after the delay when it is positive.
+func CreateCommentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.CommentSummary] {
+	return connectormock.Retry[meistertask.CommentSummary](failure, after)
+}
+
+// CreateCommentCreatedDefault is the manifest mock createdDefault: A sample comment outcome is available.
+func CreateCommentCreatedDefault() connectormock.Case[meistertask.CommentSummary] {
+	value := connectormock.MustDecodeOutput[meistertask.CommentSummary](`{"id":"2","taskId":"15","personId":"7"}`)
+	return connectormock.Branch(meistertask.CreateCommentBranchCreated, value, nil)
+}
+
+// CreateCommentDefault is the manifest default, createdDefault, which New installs.
+func CreateCommentDefault() connectormock.Case[meistertask.CommentSummary] {
+	return CreateCommentCreatedDefault()
 }
 
 // ListSectionsListed selects the listed branch: MeisterTask returned the section.

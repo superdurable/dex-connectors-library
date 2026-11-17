@@ -40,6 +40,10 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListComments() sdkgo.Query[ListCommentsInput, CommentsPage]
+	GetComment() sdkgo.Query[GetCommentInput, CommentSummary]
+	DeleteComment() sdkgo.Mutation[DeleteCommentInput, DeletedComment]
+	CreateComment() sdkgo.Mutation[CreateCommentInput, CommentSummary]
 	ListSections() sdkgo.Query[ListSectionsInput, SectionsPage]
 	GetSection() sdkgo.Query[GetSectionInput, SectionSummary]
 	UpdateSection() sdkgo.Mutation[UpdateSectionInput, SectionSummary]
@@ -56,6 +60,18 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListComments() sdkgo.Query[ListCommentsInput, CommentsPage] {
+	return operations.client.ListComments()
+}
+func (operations clientOperations) GetComment() sdkgo.Query[GetCommentInput, CommentSummary] {
+	return operations.client.GetComment()
+}
+func (operations clientOperations) DeleteComment() sdkgo.Mutation[DeleteCommentInput, DeletedComment] {
+	return operations.client.DeleteComment()
+}
+func (operations clientOperations) CreateComment() sdkgo.Mutation[CreateCommentInput, CommentSummary] {
+	return operations.client.CreateComment()
+}
 func (operations clientOperations) ListSections() sdkgo.Query[ListSectionsInput, SectionsPage] {
 	return operations.client.ListSections()
 }
@@ -228,6 +244,302 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_token is required")
 	}
 	return nil
+}
+
+const ListCommentsBranchListed sdkgo.BranchID = "listed"
+const ListCommentsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCommentsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCommentsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCommentsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listComments"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCommentsBranchListed, Description: "MeisterTask returned the comment outcome."},
+		{ID: ListCommentsBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
+		{ID: ListCommentsBranchInvalidResponse, Description: "MeisterTask returned malformed or oversized JSON.", Optional: true},
+		{ID: ListCommentsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCommentsResult = sdkgo.QueryResult[CommentsPage]
+
+type ListCommentsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=meistertask"`
+	operationID                    struct{}                                        `connector:"operationId=listComments"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCommentsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCommentsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListCommentsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCommentsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCommentsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CommentsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListCommentsStep[IN any](config ListCommentsStepConfig[IN]) sdkgo.QueryStep[IN, ListCommentsInput, CommentsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meistertask connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCommentsInput, CommentsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListComments(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCommentsResult] {
+			branches := make([]sdkgo.BranchTarget[ListCommentsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCommentsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCommentsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCommentsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCommentsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetCommentBranchFound sdkgo.BranchID = "found"
+const GetCommentBranchNotFound sdkgo.BranchID = "notFound"
+const GetCommentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCommentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCommentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCommentDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getComment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCommentBranchFound, Description: "MeisterTask returned the comment outcome."},
+		{ID: GetCommentBranchNotFound, Description: "MeisterTask did not expose the comment.", Optional: true},
+		{ID: GetCommentBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
+		{ID: GetCommentBranchInvalidResponse, Description: "MeisterTask returned malformed or oversized JSON.", Optional: true},
+		{ID: GetCommentBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCommentResult = sdkgo.QueryResult[CommentSummary]
+
+type GetCommentStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=meistertask"`
+	operationID                    struct{}                                          `connector:"operationId=getComment"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCommentInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCommentResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCommentResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCommentResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCommentResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCommentResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CommentSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewGetCommentStep[IN any](config GetCommentStepConfig[IN]) sdkgo.QueryStep[IN, GetCommentInput, CommentSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meistertask connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCommentInput, CommentSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetComment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCommentResult] {
+			branches := make([]sdkgo.BranchTarget[GetCommentResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCommentBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCommentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCommentBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCommentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCommentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteCommentBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteCommentBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteCommentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteCommentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteCommentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteComment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteCommentBranchDeleted, Description: "MeisterTask returned the comment outcome."},
+		{ID: DeleteCommentBranchNotFound, Description: "MeisterTask did not expose the comment.", Optional: true},
+		{ID: DeleteCommentBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
+		{ID: DeleteCommentBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteCommentResult = sdkgo.MutationResult[DeletedComment]
+
+type DeleteCommentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=meistertask"`
+	operationID                       struct{}                                             `connector:"operationId=deleteComment"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteCommentInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteCommentResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteCommentResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteCommentResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteCommentResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedComment]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteCommentStep[IN any](config DeleteCommentStepConfig[IN]) sdkgo.MutationStep[IN, DeleteCommentInput, DeletedComment] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meistertask connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteCommentInput, DeletedComment]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteComment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteCommentResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteCommentResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteCommentBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteCommentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteCommentBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteCommentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateCommentBranchCreated sdkgo.BranchID = "created"
+const CreateCommentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateCommentBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateCommentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateCommentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createComment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateCommentBranchCreated, Description: "MeisterTask returned the comment outcome."},
+		{ID: CreateCommentBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
+		{ID: CreateCommentBranchUncertain, Description: "Creation may have succeeded; inspect task comments before manual retry.", Optional: true},
+		{ID: CreateCommentBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateCommentResult = sdkgo.MutationResult[CommentSummary]
+
+type CreateCommentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=meistertask"`
+	operationID                       struct{}                                             `connector:"operationId=createComment"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateCommentInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateCommentResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateCommentResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateCommentResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateCommentResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CommentSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateCommentStep[IN any](config CreateCommentStepConfig[IN]) sdkgo.MutationStep[IN, CreateCommentInput, CommentSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meistertask connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateCommentInput, CommentSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateComment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateCommentResult] {
+			branches := make([]sdkgo.BranchTarget[CreateCommentResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateCommentBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateCommentBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateCommentBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateCommentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
 }
 
 const ListSectionsBranchListed sdkgo.BranchID = "listed"

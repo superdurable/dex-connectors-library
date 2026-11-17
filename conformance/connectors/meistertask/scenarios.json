@@ -3947,6 +3947,1127 @@
       ],
       "name": "createSection-uncertain",
       "operation": "createSection"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "[{\"id\":2,\"task_id\":15,\"person_id\":7,\"text\":\"Looks good\",\"text_html\":\"\u003cp\u003eLooks good\u003c/p\u003e\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/15/comments",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "comments": [
+            {
+              "id": "2",
+              "personId": "7",
+              "taskId": "15"
+            }
+          ],
+          "page": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 1,
+        "taskId": "15"
+      },
+      "name": "listComments-success",
+      "operation": "listComments"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/15/comments",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "comments": [],
+          "page": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 1,
+        "taskId": "15"
+      },
+      "name": "listComments-providerRejected",
+      "operation": "listComments"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/15/comments",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "comments": [],
+          "page": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 1,
+        "taskId": "15"
+      },
+      "name": "listComments-invalidResponse",
+      "operation": "listComments"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/15/comments",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 1,
+        "taskId": "15"
+      },
+      "name": "listComments-429",
+      "operation": "listComments"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/15/comments",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 1,
+        "taskId": "15"
+      },
+      "name": "listComments-503",
+      "operation": "listComments"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/15/comments",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 1,
+        "taskId": "15"
+      },
+      "name": "listComments-transport",
+      "operation": "listComments"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{\"id\":2,\"task_id\":15,\"person_id\":7,\"text\":\"Looks good\",\"text_html\":\"\u003cp\u003eLooks good\u003c/p\u003e\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/comments/2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "2",
+          "personId": "7",
+          "taskId": "15"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentId": "2"
+      },
+      "name": "getComment-success",
+      "operation": "getComment"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/comments/2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "personId": "",
+          "taskId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentId": "2"
+      },
+      "name": "getComment-notFound",
+      "operation": "getComment"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/comments/2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "personId": "",
+          "taskId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentId": "2"
+      },
+      "name": "getComment-providerRejected",
+      "operation": "getComment"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/comments/2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "personId": "",
+          "taskId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentId": "2"
+      },
+      "name": "getComment-invalidResponse",
+      "operation": "getComment"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/comments/2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentId": "2"
+      },
+      "name": "getComment-429",
+      "operation": "getComment"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/comments/2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentId": "2"
+      },
+      "name": "getComment-503",
+      "operation": "getComment"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/comments/2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentId": "2"
+      },
+      "name": "getComment-transport",
+      "operation": "getComment"
+    },
+    {
+      "callId": "2898f89e-ddaf-5bc1-9e39-f744d4e2d9bc",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/comments/2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "commentId": "2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2898f89e-ddaf-5bc1-9e39-f744d4e2d9bc",
+      "input": {
+        "commentId": "2"
+      },
+      "name": "deleteComment-success",
+      "operation": "deleteComment"
+    },
+    {
+      "callId": "2898f89e-ddaf-5bc1-9e39-f744d4e2d9bc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/comments/2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "commentId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2898f89e-ddaf-5bc1-9e39-f744d4e2d9bc",
+      "input": {
+        "commentId": "2"
+      },
+      "name": "deleteComment-notFound",
+      "operation": "deleteComment"
+    },
+    {
+      "callId": "2898f89e-ddaf-5bc1-9e39-f744d4e2d9bc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/comments/2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "commentId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2898f89e-ddaf-5bc1-9e39-f744d4e2d9bc",
+      "input": {
+        "commentId": "2"
+      },
+      "name": "deleteComment-providerRejected",
+      "operation": "deleteComment"
+    },
+    {
+      "callId": "2898f89e-ddaf-5bc1-9e39-f744d4e2d9bc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/comments/2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2898f89e-ddaf-5bc1-9e39-f744d4e2d9bc",
+      "input": {
+        "commentId": "2"
+      },
+      "name": "deleteComment-429",
+      "operation": "deleteComment"
+    },
+    {
+      "callId": "2898f89e-ddaf-5bc1-9e39-f744d4e2d9bc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/comments/2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2898f89e-ddaf-5bc1-9e39-f744d4e2d9bc",
+      "input": {
+        "commentId": "2"
+      },
+      "name": "deleteComment-503",
+      "operation": "deleteComment"
+    },
+    {
+      "callId": "2898f89e-ddaf-5bc1-9e39-f744d4e2d9bc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/comments/2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2898f89e-ddaf-5bc1-9e39-f744d4e2d9bc",
+      "input": {
+        "commentId": "2"
+      },
+      "name": "deleteComment-transport",
+      "operation": "deleteComment"
+    },
+    {
+      "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "exchanges": [
+        {
+          "body": "{\"id\":2,\"task_id\":15,\"person_id\":7,\"text\":\"Looks good\",\"text_html\":\"\u003cp\u003eLooks good\u003c/p\u003e\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/comments",
+          "requestBody": {
+            "text": "Looks good"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+          "providerId": "2",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "2",
+          "personId": "7",
+          "taskId": "15"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "input": {
+        "taskId": "15",
+        "text": "Looks good"
+      },
+      "name": "createComment-success",
+      "operation": "createComment"
+    },
+    {
+      "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/comments",
+          "requestBody": {
+            "text": "Looks good"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "personId": "",
+          "taskId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "input": {
+        "taskId": "15",
+        "text": "Looks good"
+      },
+      "name": "createComment-providerRejected",
+      "operation": "createComment"
+    },
+    {
+      "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/comments",
+          "requestBody": {
+            "text": "Looks good"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "input": {
+        "taskId": "15",
+        "text": "Looks good"
+      },
+      "name": "createComment-429",
+      "operation": "createComment"
+    },
+    {
+      "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/comments",
+          "requestBody": {
+            "text": "Looks good"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "input": {
+        "taskId": "15",
+        "text": "Looks good"
+      },
+      "name": "createComment-503",
+      "operation": "createComment"
+    },
+    {
+      "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/comments",
+          "requestBody": {
+            "text": "Looks good"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "input": {
+        "taskId": "15",
+        "text": "Looks good"
+      },
+      "name": "createComment-transport",
+      "operation": "createComment"
+    },
+    {
+      "attempts": 3,
+      "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/comments",
+          "requestBody": {
+            "text": "Looks good"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/comments",
+          "requestBody": {
+            "text": "Looks good"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/comments",
+          "requestBody": {
+            "text": "Looks good"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "personId": "",
+          "taskId": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "input": {
+        "taskId": "15",
+        "text": "Looks good"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createComment-uncertain",
+      "operation": "createComment"
     }
   ],
   "schemaVersion": 1
