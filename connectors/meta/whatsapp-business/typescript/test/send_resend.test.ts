@@ -95,6 +95,13 @@ describe('WhatsApp bounded resend of unconfirmed messages', () => {
     expect(requests).toHaveLength(1);
   });
 
+  it('retries a transient Graph refusal after checkpointing canResend', async () => {
+    const { client } = newClient([{ status: 400, body: '{"error":{"code":131000,"is_transient":true}}' }]);
+    const context = new AttemptContext();
+    expect(await send(client, context)).toBeInstanceOf(RetryError);
+    expect(context.marker).toMatchObject({ state: 'canResend' });
+  });
+
   it('selects uncertain for a refusal of a resend after a possible send', async () => {
     const { client, requests } = newClient([serverFailure, { status: 400, body: '{"error":{"code":100}}' }]);
     const context = new AttemptContext();

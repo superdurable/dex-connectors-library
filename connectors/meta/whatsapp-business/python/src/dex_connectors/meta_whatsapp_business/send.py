@@ -260,7 +260,9 @@ async def _classify_response(
     graph_error = decode_graph_error(body) if body is not None and 400 <= status < 500 else None
     # A Graph or Cloud API throttling code means Meta refused the send before processing it.
     is_rate_limited = status == 429 or (graph_error is not None and graph_error.is_throttled)
-    if is_rate_limited or status == 503:
+    # A Graph 4xx marked is_transient is a transient refusal, not a definite one.
+    is_transient_refusal = graph_error is not None and graph_error.is_transient
+    if is_rate_limited or is_transient_refusal or status == 503:
         try:
             await attempt.fence.record_can_resend()
         except Exception:

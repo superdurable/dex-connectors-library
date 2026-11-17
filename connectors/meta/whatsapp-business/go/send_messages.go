@@ -217,7 +217,9 @@ func (attempt messageSend) classifyResponse(response *http.Response, maxResponse
 	isClientError := response.StatusCode >= 400 && response.StatusCode < 500
 	// A Graph or Cloud API throttling code means Meta refused the send before processing it.
 	isRateLimited := response.StatusCode == http.StatusTooManyRequests || (isClientError && readErr == nil && isGraphThrottleBody(responseBody))
-	if isRateLimited || response.StatusCode == http.StatusServiceUnavailable {
+	// A Graph 4xx marked is_transient is a transient refusal, not a definite one.
+	isTransientRefusal := isClientError && readErr == nil && isGraphTransientBody(responseBody)
+	if isRateLimited || isTransientRefusal || response.StatusCode == http.StatusServiceUnavailable {
 		if err := attempt.fence.RecordCanResend(); err != nil {
 			return retryMessage(attempt.operationName, sdkgo.FailureAvailability, "Meta retry checkpoint is unavailable", 0)
 		}

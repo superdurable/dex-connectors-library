@@ -102,6 +102,22 @@ func TestSendTemplateMessageRetries429(t *testing.T) {
 	require.Equal(t, 2, requests)
 }
 
+func TestSendTextMessageRetriesTransientGraphRefusal(t *testing.T) {
+	server, requests := newScriptedSendServer(t, []int{http.StatusBadRequest, http.StatusOK},
+		[]string{`{"error":{"code":131000,"is_transient":true}}`, sentTextBody})
+	client := newTestClient(t, server.URL, 0)
+	ctx := singledispatchtest.NewContext("whatsapp-transient", "send-text")
+	_, err := sdkgo.RunMutation(ctx, client.SendTextMessage(), testConnection, testTextInput)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "is_transient means Meta did not process the send")
+	require.Equal(t, singledispatch.StateCanResend, lastSendMarker(t, ctx).State)
+	ctx.AdvanceAttempt()
+	sent, err := sdkgo.RunMutation(ctx, client.SendTextMessage(), testConnection, testTextInput)
+	require.NoError(t, err)
+	require.Equal(t, SendTextMessageBranchSent, sent.Branch)
+	require.Equal(t, 2, *requests)
+}
+
 func TestSendTextMessageResendsUnknownOutcomeBelowCap(t *testing.T) {
 	for _, response := range []struct {
 		status int

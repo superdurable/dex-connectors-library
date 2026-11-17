@@ -141,8 +141,11 @@ export class WhatsAppBusinessClient {
     const status = response.status;
     const retryAfterMs = parseRetryAfter(headerValue(response.headers['retry-after']));
     // A Graph or Cloud API throttling code means Meta refused the send before processing it.
-    const isRateLimited = status === 429 || (isBodyReadable && status >= 400 && status < 500 && decodeGraphError(response.body)?.isThrottled === true);
-    if (isRateLimited || status === 503) {
+    const graphError = isBodyReadable && status >= 400 && status < 500 ? decodeGraphError(response.body) : undefined;
+    const isRateLimited = status === 429 || graphError?.isThrottled === true;
+    // A Graph 4xx marked is_transient is a transient refusal, not a definite one.
+    const isTransientRefusal = graphError?.isTransient === true;
+    if (isRateLimited || isTransientRefusal || status === 503) {
       try { await fence.recordCanResend(); }
       catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'Meta retry checkpoint is unavailable')); }
       const kind = isRateLimited ? 'RATE_LIMIT' : 'AVAILABILITY';
