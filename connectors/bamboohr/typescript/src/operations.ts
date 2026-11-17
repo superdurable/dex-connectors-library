@@ -225,7 +225,7 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
     const canResendUnknownOutcome = priorSendUpperBound + 1 < (operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1);
     const hasPossibleEarlierSend = priorSendUpperBound > 0;
     const credential = await this.client.resolveKey(call);
-    if (credential.kind !== 'resolved' && decision.kind === 'readBackThenResendAllowed') {
+    if (credential.kind !== 'resolved' && hasPossibleEarlierSend) {
       // notSent would hide the earlier possible send, so nothing is recorded.
       if (credential.kind === 'terminal') return newMutationUncertain(zeroAdd, failure('addEmployee', 'AUTHENTICATION', 'an earlier attempt may have added the employee, and the connection credentials are unavailable to resend it; reconnect the connection'), receipt);
       return newMutationRetry(failure('addEmployee', 'AVAILABILITY', 'connection credentials could not be read; nothing was sent in this attempt'));

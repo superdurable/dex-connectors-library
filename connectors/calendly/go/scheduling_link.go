@@ -85,7 +85,7 @@ func (operation CreateSchedulingLinkOperation) Invoke(call sdkgo.Call, input Cre
 			calendlyFailurePointer(operationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
 	credentials, err := client.resolveCredentials(call)
-	if err != nil && decision.Kind == singledispatch.ReadBackThenResendAllowed {
+	if err != nil && hasPossibleEarlierSend {
 		// notSent would hide the earlier possible send, so nothing is recorded.
 		if errors.Is(err, errCalendlyCredentialsUnavailable) {
 			return sdkgo.NewMutationRetry[SchedulingLink](calendlyFailure(operationID, sdkgo.FailureAvailability, err.Error()), 0)

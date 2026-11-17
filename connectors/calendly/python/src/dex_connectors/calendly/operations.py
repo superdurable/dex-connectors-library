@@ -869,7 +869,7 @@ class CreateSchedulingLinkOperation:
                 "defect", output, Receipt(), failure(operation, FailureKind.VALIDATION, str(error))
             )
         credentials, kind, message = await self.client.resolve_credentials(call)
-        if kind is not None and decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED:
+        if kind is not None and has_possible_earlier_send:
             # notSent would hide the earlier possible send, so nothing is recorded.
             if kind == FailureKind.AVAILABILITY:
                 return MutationAttempt.retry(failure(operation, kind, message))

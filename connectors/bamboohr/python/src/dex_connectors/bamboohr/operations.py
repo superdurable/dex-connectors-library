@@ -828,7 +828,7 @@ class AddEmployeeOperation:
         can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
         has_possible_earlier_send = decision.prior_send_upper_bound > 0
         credentials, failure = await self.client.resolve_credentials(call, "addEmployee")
-        if failure is not None and is_earlier_send_unresolved:
+        if failure is not None and has_possible_earlier_send:
             # notSent would hide the earlier possible send, so nothing is recorded.
             return _add_uncertain(
                 receipt,

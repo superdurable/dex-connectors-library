@@ -116,7 +116,7 @@ func (operation AddEmployeeOperation) Invoke(call sdkgo.Call, input AddEmployeeI
 	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
 	credentials, credentialErr := operation.client.credentials.Resolve(call)
 	isUnusableCredentials := credentialErr == nil && validateResolvedCredentials(credentials) != nil
-	if (credentialErr != nil || isUnusableCredentials) && decision.Kind == singledispatch.ReadBackThenResendAllowed {
+	if (credentialErr != nil || isUnusableCredentials) && hasPossibleEarlierSend {
 		// notSent would hide the earlier possible send, so nothing is recorded.
 		if isTerminalAddEmployeeCredentialError(credentialErr) || isUnusableCredentials {
 			return addEmployeeUncertain(receipt, sdkgo.FailureAuthentication, "an earlier attempt may have added the employee, and the connection credentials are unavailable to resend it; reconnect the connection")

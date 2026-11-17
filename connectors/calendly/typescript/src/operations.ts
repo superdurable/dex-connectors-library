@@ -404,7 +404,7 @@ export class CreateSchedulingLinkOperation implements Mutation<CreateSchedulingL
     try { parseResourceURI(input.eventTypeUri, 'event_types', 'event type'); }
     catch (error) { return newMutationBranch('defect', output, {}, failure('createSchedulingLink', 'VALIDATION', (error as Error).message)); }
     const resolved = await this.client.resolveCredentials(call);
-    if (resolved.kind !== 'resolved' && decision.kind === 'readBackThenResendAllowed') {
+    if (resolved.kind !== 'resolved' && hasPossibleEarlierSend) {
       // notSent would hide the earlier possible send, so nothing is recorded.
       if (resolved.kind === 'transient') return newMutationRetry(failure('createSchedulingLink', 'AVAILABILITY', resolved.message));
       return newMutationUncertain(output, failure('createSchedulingLink', 'AUTHENTICATION', 'an earlier scheduling link request may have been accepted, and the connection credentials are unavailable to resend it; reconnect the connection'), this.client.receipt(call));
