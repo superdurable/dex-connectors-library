@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: paddle
   displayName: Paddle
-  description: Read selected Paddle transaction status through the Paddle Billing API.
+  description: Read transactions and manage customers through the Paddle Billing API.
   company: Paddle
   categories: [finance-payments]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: paddle
   languages:
@@ -33,12 +33,12 @@ spec:
       - name: timeout
         goName: Timeout
         type: duration
-        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow transaction reads.
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow Billing operations.
         default: 15s
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete transaction response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large transactions.
+        description: Maximum complete Billing API response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large pages or transactions.
         default: 1048576
   auth:
     type: apiKey
@@ -48,13 +48,115 @@ spec:
         goName: APIKey
         type: secretString
         required: true
-        description: Secret Paddle server-side API key from My account > Settings > Authentication > API keys > New API key. Grant transaction.read, copy the complete pdl_sdbx_apikey_ or pdl_live_apikey_ value when shown; blank prevents calls. Dex sends it only in the Authorization Bearer header. Match the key to baseUrl.
+        description: Secret Paddle server-side API key from My account > Settings > Authentication > API keys > New API key. Grant transaction.read plus customer.read and customer.write for Go customer operations; copy the complete pdl_sdbx_apikey_ or pdl_live_apikey_ value when shown. Blank prevents calls. Dex sends it only in the Authorization Bearer header. Match the key to baseUrl.
     guide:
       startURL: https://sandbox-vendors.paddle.com
       steps:
-        - Sign in to the Paddle Sandbox or Live dashboard, open My account > Settings > Authentication > API keys > New API key. Enter a name and description, grant transaction.read, set an expiry, and click Save. Copy the complete secret key, shown only once, into Dex Web secret api_key. Choose Rotatable during creation if rotation is needed; revoke or rotate the key on the same API keys page. Blank is invalid.
-        - Leave baseUrl blank for a pdl_sdbx_apikey_ Sandbox key. For a pdl_live_apikey_ Live key use https://api.paddle.com. Leave timeout and maxResponseBytes blank for their displayed defaults. Find the non-secret txn_ transaction ID on the Paddle Transactions page or from an API response and pass it as transactionId; blank is invalid.
+        - Sign in to the Paddle Sandbox or Live dashboard, open My account > Settings > Authentication > API keys > New API key. Enter a name and description, grant transaction.read and, for Go customer operations, customer.read and customer.write, set an expiry, and click Save. Copy the complete secret key, shown only once, into Dex Web secret api_key. Choose Rotatable during creation if rotation is needed; revoke or rotate the key on the same API keys page. Blank is invalid.
+        - Leave baseUrl blank for a pdl_sdbx_apikey_ Sandbox key. For a pdl_live_apikey_ Live key use https://api.paddle.com. Leave timeout and maxResponseBytes blank for their displayed defaults. Find non-secret txn_ and ctm_ IDs on the Paddle Transactions and Customers pages or in API responses. Use a unique customer email and optional full name for createCustomer; blank email or ID is invalid.
   operations:
+    - name: listCustomers
+      goName: ListCustomers
+      inputType: ListCustomersInput
+      outputType: CustomerPage
+      kind: query
+      description: List Paddle customers with cursor pagination.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Paddle returned a customer page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Paddle rejected the listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Paddle returned malformed customer JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample customer page is returned.
+          output: {items: [{id: ctm_01hv8wptq8987qeep44cyrewp9, email: customer@example.com, name: Sample Customer, status: active}], hasMore: false, nextCursor: ''}
+    - name: getCustomer
+      goName: GetCustomer
+      inputType: CustomerIDInput
+      outputType: PaddleCustomer
+      kind: query
+      description: Read a Paddle customer.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Paddle returned the customer.}
+        - {id: notFound, goName: NotFound, description: Customer is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Paddle rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Paddle returned malformed customer JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample customer is returned.
+          output: {id: ctm_01hv8wptq8987qeep44cyrewp9, email: customer@example.com, name: Sample Customer, status: active}
+    - name: createCustomer
+      goName: CreateCustomer
+      inputType: CreateCustomerInput
+      outputType: PaddleCustomer
+      kind: mutation
+      description: Create a Paddle customer by unique email address.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Paddle created the customer.}
+        - {id: providerRejected, goName: ProviderRejected, description: Paddle rejected creation., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample customer is created.
+          output: {id: ctm_01hv8wptq8987qeep44cyrewp9, email: customer@example.com, name: Sample Customer, status: active}
+    - name: updateCustomer
+      goName: UpdateCustomer
+      inputType: UpdateCustomerInput
+      outputType: PaddleCustomer
+      kind: mutation
+      description: Replace a Paddle customer's name and email.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Paddle updated the customer.}
+        - {id: notFound, goName: NotFound, description: Customer is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Paddle rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Paddle returned malformed customer JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample customer is updated.
+          output: {id: ctm_01hv8wptq8987qeep44cyrewp9, email: customer@example.com, name: Sample Customer, status: active}
+    - name: archiveCustomer
+      goName: ArchiveCustomer
+      inputType: CustomerIDInput
+      outputType: PaddleCustomer
+      kind: mutation
+      description: Archive a Paddle customer.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: archived, goName: Archived, description: Paddle archived the customer.}
+        - {id: notFound, goName: NotFound, description: Customer is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Paddle rejected archival., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Paddle returned malformed customer JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: archivedDefault
+          branch: archived
+          default: true
+          description: A sample customer is archived.
+          output: {id: ctm_01hv8wptq8987qeep44cyrewp9, email: customer@example.com, name: Sample Customer, status: archived}
     - name: getTransaction
       goName: GetTransaction
       inputType: GetTransactionInput
@@ -63,7 +165,7 @@ spec:
       description: Read one transaction's ID, status, and currency without customer or payment details.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Paddle returned the transaction.}
         - {id: notFound, goName: NotFound, description: Paddle did not expose the transaction., optional: true}

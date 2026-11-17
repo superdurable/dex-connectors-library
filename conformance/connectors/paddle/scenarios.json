@@ -278,6 +278,2088 @@
       },
       "name": "getTransaction-transportFailure",
       "operation": "getTransaction"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"ctm_01hv8wptq8987qeep44cyrewp9\",\"email\":\"customer@example.com\",\"name\":\"Sample Customer\",\"status\":\"active\"}],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "after": [
+              "ctm_01hv8wptq8987qeep44cyrewp9"
+            ],
+            "email": [
+              "customer@example.com"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": false,
+          "items": [
+            {
+              "email": "customer@example.com",
+              "id": "ctm_01hv8wptq8987qeep44cyrewp9",
+              "name": "Sample Customer",
+              "status": "active"
+            }
+          ],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "perPage": 2
+      },
+      "name": "listCustomers-listed",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "after": [
+              "ctm_01hv8wptq8987qeep44cyrewp9"
+            ],
+            "email": [
+              "customer@example.com"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "perPage": 2
+      },
+      "name": "listCustomers-provider-rejected",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "after": [
+              "ctm_01hv8wptq8987qeep44cyrewp9"
+            ],
+            "email": [
+              "customer@example.com"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "perPage": 2
+      },
+      "name": "listCustomers-invalid-response",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "after": [
+              "ctm_01hv8wptq8987qeep44cyrewp9"
+            ],
+            "email": [
+              "customer@example.com"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "perPage": 2
+      },
+      "name": "listCustomers-rate-limit",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "after": [
+              "ctm_01hv8wptq8987qeep44cyrewp9"
+            ],
+            "email": [
+              "customer@example.com"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "perPage": 2
+      },
+      "name": "listCustomers-service-unavailable",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "after": [
+              "ctm_01hv8wptq8987qeep44cyrewp9"
+            ],
+            "email": [
+              "customer@example.com"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "perPage": 2
+      },
+      "name": "listCustomers-server-error",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "after": [
+              "ctm_01hv8wptq8987qeep44cyrewp9"
+            ],
+            "email": [
+              "customer@example.com"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "perPage": 2
+      },
+      "name": "listCustomers-transport",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000008",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "nextCursor": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "perPage": 0
+      },
+      "name": "listCustomers-defect",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000009",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"ctm_01hv8wptq8987qeep44cyrewp9\",\"email\":\"customer@example.com\",\"name\":\"Sample Customer\",\"status\":\"active\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "email": "customer@example.com",
+          "id": "ctm_01hv8wptq8987qeep44cyrewp9",
+          "name": "Sample Customer",
+          "status": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "getCustomer-found",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000010",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "getCustomer-not-found",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000011",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "getCustomer-provider-rejected",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000012",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "getCustomer-invalid-response",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000013",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "getCustomer-rate-limit",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000014",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "getCustomer-service-unavailable",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000015",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "getCustomer-server-error",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000016",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "getCustomer-transport",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000017",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "bad"
+      },
+      "name": "getCustomer-defect",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"ctm_01hv8wptq8987qeep44cyrewp9\",\"email\":\"customer@example.com\",\"name\":\"Sample Customer\",\"status\":\"active\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+          "providerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "email": "customer@example.com",
+          "id": "ctm_01hv8wptq8987qeep44cyrewp9",
+          "name": "Sample Customer",
+          "status": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "input": {
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "createCustomer-created",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "email": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "input": {
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "createCustomer-provider-rejected",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "input": {
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "createCustomer-rate-limit",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "input": {
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "createCustomer-service-unavailable",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "input": {
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "createCustomer-server-error",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "input": {
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "createCustomer-transport",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "input": {
+        "email": "bad",
+        "name": "Sample Customer"
+      },
+      "name": "createCustomer-defect",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"ctm_01hv8wptq8987qeep44cyrewp9\",\"email\":\"customer@example.com\",\"name\":\"Sample Customer\",\"status\":\"active\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "email": "customer@example.com",
+          "id": "ctm_01hv8wptq8987qeep44cyrewp9",
+          "name": "Sample Customer",
+          "status": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "updateCustomer-updated",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "updateCustomer-not-found",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "updateCustomer-provider-rejected",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "updateCustomer-invalid-response",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "updateCustomer-rate-limit",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "updateCustomer-service-unavailable",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "updateCustomer-server-error",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "updateCustomer-transport",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "input": {
+        "customerId": "bad",
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "updateCustomer-defect",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"ctm_01hv8wptq8987qeep44cyrewp9\",\"email\":\"customer@example.com\",\"name\":\"Sample Customer\",\"status\":\"archived\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "archived",
+        "failureKind": "",
+        "output": {
+          "email": "customer@example.com",
+          "id": "ctm_01hv8wptq8987qeep44cyrewp9",
+          "name": "Sample Customer",
+          "status": "archived"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "archiveCustomer-archived",
+      "operation": "archiveCustomer"
+    },
+    {
+      "callId": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "archiveCustomer-not-found",
+      "operation": "archiveCustomer"
+    },
+    {
+      "callId": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "archiveCustomer-provider-rejected",
+      "operation": "archiveCustomer"
+    },
+    {
+      "callId": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "archiveCustomer-invalid-response",
+      "operation": "archiveCustomer"
+    },
+    {
+      "callId": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "archiveCustomer-rate-limit",
+      "operation": "archiveCustomer"
+    },
+    {
+      "callId": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "archiveCustomer-service-unavailable",
+      "operation": "archiveCustomer"
+    },
+    {
+      "callId": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "archiveCustomer-server-error",
+      "operation": "archiveCustomer"
+    },
+    {
+      "callId": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "archiveCustomer-transport",
+      "operation": "archiveCustomer"
+    },
+    {
+      "callId": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "input": {
+        "customerId": "bad"
+      },
+      "name": "archiveCustomer-defect",
+      "operation": "archiveCustomer"
+    },
+    {
+      "attempts": 2,
+      "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[{\"id\":\"ctm_01hv8wptq8987qeep44cyrewp9\",\"email\":\"customer@example.com\",\"name\":\"Sample Customer\",\"status\":\"active\"}],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "email": [
+              "customer@example.com"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "email": "customer@example.com",
+          "id": "ctm_01hv8wptq8987qeep44cyrewp9",
+          "name": "Sample Customer",
+          "status": "active"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "input": {
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCustomer-read-back",
+      "operation": "createCustomer"
+    },
+    {
+      "attempts": 4,
+      "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "email": [
+              "customer@example.com"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "email": [
+              "customer@example.com"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "email": [
+              "customer@example.com"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "LOCAL_DEFECT",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 6,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "input": {
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 5,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 3,
+            "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+            "sendCount": 3,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCustomer-send-cap",
+      "operation": "createCustomer"
     }
   ],
   "schemaVersion": 1

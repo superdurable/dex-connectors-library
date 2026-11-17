@@ -24,7 +24,8 @@ import (
 func TestTransactionInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := paddlemock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	customerFlow := NewCustomerFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, customerFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -57,4 +58,14 @@ func TestTransactionInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "txn_01hv8wptq8987qeep44cyrewp9", output.ID)
 	require.Equal(t, "completed", output.Status)
 	require.Len(t, mock.GetTransaction().Calls(), 1)
+	customerFlowID := "paddle-customer-list-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, customerFlow, customerFlowID, paddle.ListCustomersInput{PerPage: 2}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	customerResult, err := client.WaitForFlow(ctx, customerFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, customerResult.Status, customerResult.ErrorMessage)
+	var page paddle.CustomerPage
+	require.NoError(t, customerResult.DecodeSingleOutput(&page))
+	require.Equal(t, "ctm_01hv8wptq8987qeep44cyrewp9", page.Items[0].ID)
+	require.Len(t, mock.ListCustomers().Calls(), 1)
 }

@@ -17,8 +17,13 @@ import (
 
 // Mock is a scripted paddle connection. Script each operation through its accessor.
 type Mock struct {
-	connection     paddle.Connection
-	getTransaction *connectormock.Query[paddle.GetTransactionInput, paddle.TransactionStatus]
+	connection      paddle.Connection
+	listCustomers   *connectormock.Query[paddle.ListCustomersInput, paddle.CustomerPage]
+	getCustomer     *connectormock.Query[paddle.CustomerIDInput, paddle.PaddleCustomer]
+	createCustomer  *connectormock.Mutation[paddle.CreateCustomerInput, paddle.PaddleCustomer]
+	updateCustomer  *connectormock.Mutation[paddle.UpdateCustomerInput, paddle.PaddleCustomer]
+	archiveCustomer *connectormock.Mutation[paddle.CustomerIDInput, paddle.PaddleCustomer]
+	getTransaction  *connectormock.Query[paddle.GetTransactionInput, paddle.TransactionStatus]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +31,18 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getTransaction: connectormock.NewQuery[paddle.GetTransactionInput, paddle.TransactionStatus](t, paddle.GetTransactionDefinition),
+		listCustomers:   connectormock.NewQuery[paddle.ListCustomersInput, paddle.CustomerPage](t, paddle.ListCustomersDefinition),
+		getCustomer:     connectormock.NewQuery[paddle.CustomerIDInput, paddle.PaddleCustomer](t, paddle.GetCustomerDefinition),
+		createCustomer:  connectormock.NewMutation[paddle.CreateCustomerInput, paddle.PaddleCustomer](t, paddle.CreateCustomerDefinition),
+		updateCustomer:  connectormock.NewMutation[paddle.UpdateCustomerInput, paddle.PaddleCustomer](t, paddle.UpdateCustomerDefinition),
+		archiveCustomer: connectormock.NewMutation[paddle.CustomerIDInput, paddle.PaddleCustomer](t, paddle.ArchiveCustomerDefinition),
+		getTransaction:  connectormock.NewQuery[paddle.GetTransactionInput, paddle.TransactionStatus](t, paddle.GetTransactionDefinition),
 	}
+	mock.listCustomers.Default(ListCustomersDefault())
+	mock.getCustomer.Default(GetCustomerDefault())
+	mock.createCustomer.Default(CreateCustomerDefault())
+	mock.updateCustomer.Default(UpdateCustomerDefault())
+	mock.archiveCustomer.Default(ArchiveCustomerDefault())
 	mock.getTransaction.Default(GetTransactionDefault())
 	connection, err := paddle.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "paddle", Name: connectionName})
 	if err != nil {
@@ -40,6 +55,31 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() paddle.Connection { return mock.connection }
 
+// ListCustomers returns the listCustomers script.
+func (mock *Mock) ListCustomers() *connectormock.Query[paddle.ListCustomersInput, paddle.CustomerPage] {
+	return mock.listCustomers
+}
+
+// GetCustomer returns the getCustomer script.
+func (mock *Mock) GetCustomer() *connectormock.Query[paddle.CustomerIDInput, paddle.PaddleCustomer] {
+	return mock.getCustomer
+}
+
+// CreateCustomer returns the createCustomer script.
+func (mock *Mock) CreateCustomer() *connectormock.Mutation[paddle.CreateCustomerInput, paddle.PaddleCustomer] {
+	return mock.createCustomer
+}
+
+// UpdateCustomer returns the updateCustomer script.
+func (mock *Mock) UpdateCustomer() *connectormock.Mutation[paddle.UpdateCustomerInput, paddle.PaddleCustomer] {
+	return mock.updateCustomer
+}
+
+// ArchiveCustomer returns the archiveCustomer script.
+func (mock *Mock) ArchiveCustomer() *connectormock.Mutation[paddle.CustomerIDInput, paddle.PaddleCustomer] {
+	return mock.archiveCustomer
+}
+
 // GetTransaction returns the getTransaction script.
 func (mock *Mock) GetTransaction() *connectormock.Query[paddle.GetTransactionInput, paddle.TransactionStatus] {
 	return mock.getTransaction
@@ -47,8 +87,211 @@ func (mock *Mock) GetTransaction() *connectormock.Query[paddle.GetTransactionInp
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListCustomers() sdkgo.Query[paddle.ListCustomersInput, paddle.CustomerPage] {
+	return operations.mock.listCustomers
+}
+func (operations mockOperations) GetCustomer() sdkgo.Query[paddle.CustomerIDInput, paddle.PaddleCustomer] {
+	return operations.mock.getCustomer
+}
+func (operations mockOperations) CreateCustomer() sdkgo.Mutation[paddle.CreateCustomerInput, paddle.PaddleCustomer] {
+	return operations.mock.createCustomer
+}
+func (operations mockOperations) UpdateCustomer() sdkgo.Mutation[paddle.UpdateCustomerInput, paddle.PaddleCustomer] {
+	return operations.mock.updateCustomer
+}
+func (operations mockOperations) ArchiveCustomer() sdkgo.Mutation[paddle.CustomerIDInput, paddle.PaddleCustomer] {
+	return operations.mock.archiveCustomer
+}
 func (operations mockOperations) GetTransaction() sdkgo.Query[paddle.GetTransactionInput, paddle.TransactionStatus] {
 	return operations.mock.getTransaction
+}
+
+// ListCustomersListed selects the listed branch: Paddle returned a customer page.
+func ListCustomersListed(value paddle.CustomerPage, failure *sdkgo.Failure) connectormock.Case[paddle.CustomerPage] {
+	return connectormock.Branch(paddle.ListCustomersBranchListed, value, failure)
+}
+
+// ListCustomersProviderRejected selects the providerRejected branch: Paddle rejected the listing.
+func ListCustomersProviderRejected(value paddle.CustomerPage, failure *sdkgo.Failure) connectormock.Case[paddle.CustomerPage] {
+	return connectormock.Branch(paddle.ListCustomersBranchProviderRejected, value, failure)
+}
+
+// ListCustomersInvalidResponse selects the invalidResponse branch: Paddle returned malformed customer JSON.
+func ListCustomersInvalidResponse(value paddle.CustomerPage, failure *sdkgo.Failure) connectormock.Case[paddle.CustomerPage] {
+	return connectormock.Branch(paddle.ListCustomersBranchInvalidResponse, value, failure)
+}
+
+// ListCustomersDefect selects the defect branch: Input or credentials are invalid.
+func ListCustomersDefect(value paddle.CustomerPage, failure *sdkgo.Failure) connectormock.Case[paddle.CustomerPage] {
+	return connectormock.Branch(paddle.ListCustomersBranchDefect, value, failure)
+}
+
+// ListCustomersRetry asks Dex to retry the listCustomers Step, after the delay when it is positive.
+func ListCustomersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paddle.CustomerPage] {
+	return connectormock.Retry[paddle.CustomerPage](failure, after)
+}
+
+// ListCustomersListedDefault is the manifest mock listedDefault: A sample customer page is returned.
+func ListCustomersListedDefault() connectormock.Case[paddle.CustomerPage] {
+	value := connectormock.MustDecodeOutput[paddle.CustomerPage](`{"items":[{"id":"ctm_01hv8wptq8987qeep44cyrewp9","email":"customer@example.com","name":"Sample Customer","status":"active"}],"hasMore":false,"nextCursor":""}`)
+	return connectormock.Branch(paddle.ListCustomersBranchListed, value, nil)
+}
+
+// ListCustomersDefault is the manifest default, listedDefault, which New installs.
+func ListCustomersDefault() connectormock.Case[paddle.CustomerPage] {
+	return ListCustomersListedDefault()
+}
+
+// GetCustomerFound selects the found branch: Paddle returned the customer.
+func GetCustomerFound(value paddle.PaddleCustomer, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Branch(paddle.GetCustomerBranchFound, value, failure)
+}
+
+// GetCustomerNotFound selects the notFound branch: Customer is absent.
+func GetCustomerNotFound(value paddle.PaddleCustomer, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Branch(paddle.GetCustomerBranchNotFound, value, failure)
+}
+
+// GetCustomerProviderRejected selects the providerRejected branch: Paddle rejected the lookup.
+func GetCustomerProviderRejected(value paddle.PaddleCustomer, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Branch(paddle.GetCustomerBranchProviderRejected, value, failure)
+}
+
+// GetCustomerInvalidResponse selects the invalidResponse branch: Paddle returned malformed customer JSON.
+func GetCustomerInvalidResponse(value paddle.PaddleCustomer, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Branch(paddle.GetCustomerBranchInvalidResponse, value, failure)
+}
+
+// GetCustomerDefect selects the defect branch: Input or credentials are invalid.
+func GetCustomerDefect(value paddle.PaddleCustomer, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Branch(paddle.GetCustomerBranchDefect, value, failure)
+}
+
+// GetCustomerRetry asks Dex to retry the getCustomer Step, after the delay when it is positive.
+func GetCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Retry[paddle.PaddleCustomer](failure, after)
+}
+
+// GetCustomerFoundDefault is the manifest mock foundDefault: A sample customer is returned.
+func GetCustomerFoundDefault() connectormock.Case[paddle.PaddleCustomer] {
+	value := connectormock.MustDecodeOutput[paddle.PaddleCustomer](`{"id":"ctm_01hv8wptq8987qeep44cyrewp9","email":"customer@example.com","name":"Sample Customer","status":"active"}`)
+	return connectormock.Branch(paddle.GetCustomerBranchFound, value, nil)
+}
+
+// GetCustomerDefault is the manifest default, foundDefault, which New installs.
+func GetCustomerDefault() connectormock.Case[paddle.PaddleCustomer] { return GetCustomerFoundDefault() }
+
+// CreateCustomerCreated selects the created branch: Paddle created the customer.
+func CreateCustomerCreated(value paddle.PaddleCustomer, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Branch(paddle.CreateCustomerBranchCreated, value, failure)
+}
+
+// CreateCustomerProviderRejected selects the providerRejected branch: Paddle rejected creation.
+func CreateCustomerProviderRejected(value paddle.PaddleCustomer, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Branch(paddle.CreateCustomerBranchProviderRejected, value, failure)
+}
+
+// CreateCustomerDefect selects the defect branch: Input or credentials are invalid.
+func CreateCustomerDefect(value paddle.PaddleCustomer, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Branch(paddle.CreateCustomerBranchDefect, value, failure)
+}
+
+// CreateCustomerRetry asks Dex to retry the createCustomer Step, after the delay when it is positive.
+func CreateCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Retry[paddle.PaddleCustomer](failure, after)
+}
+
+// CreateCustomerCreatedDefault is the manifest mock createdDefault: A sample customer is created.
+func CreateCustomerCreatedDefault() connectormock.Case[paddle.PaddleCustomer] {
+	value := connectormock.MustDecodeOutput[paddle.PaddleCustomer](`{"id":"ctm_01hv8wptq8987qeep44cyrewp9","email":"customer@example.com","name":"Sample Customer","status":"active"}`)
+	return connectormock.Branch(paddle.CreateCustomerBranchCreated, value, nil)
+}
+
+// CreateCustomerDefault is the manifest default, createdDefault, which New installs.
+func CreateCustomerDefault() connectormock.Case[paddle.PaddleCustomer] {
+	return CreateCustomerCreatedDefault()
+}
+
+// UpdateCustomerUpdated selects the updated branch: Paddle updated the customer.
+func UpdateCustomerUpdated(value paddle.PaddleCustomer, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Branch(paddle.UpdateCustomerBranchUpdated, value, failure)
+}
+
+// UpdateCustomerNotFound selects the notFound branch: Customer is absent.
+func UpdateCustomerNotFound(value paddle.PaddleCustomer, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Branch(paddle.UpdateCustomerBranchNotFound, value, failure)
+}
+
+// UpdateCustomerProviderRejected selects the providerRejected branch: Paddle rejected the update.
+func UpdateCustomerProviderRejected(value paddle.PaddleCustomer, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Branch(paddle.UpdateCustomerBranchProviderRejected, value, failure)
+}
+
+// UpdateCustomerInvalidResponse selects the invalidResponse branch: Paddle returned malformed customer JSON.
+func UpdateCustomerInvalidResponse(value paddle.PaddleCustomer, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Branch(paddle.UpdateCustomerBranchInvalidResponse, value, failure)
+}
+
+// UpdateCustomerDefect selects the defect branch: Input or credentials are invalid.
+func UpdateCustomerDefect(value paddle.PaddleCustomer, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Branch(paddle.UpdateCustomerBranchDefect, value, failure)
+}
+
+// UpdateCustomerRetry asks Dex to retry the updateCustomer Step, after the delay when it is positive.
+func UpdateCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Retry[paddle.PaddleCustomer](failure, after)
+}
+
+// UpdateCustomerUpdatedDefault is the manifest mock updatedDefault: A sample customer is updated.
+func UpdateCustomerUpdatedDefault() connectormock.Case[paddle.PaddleCustomer] {
+	value := connectormock.MustDecodeOutput[paddle.PaddleCustomer](`{"id":"ctm_01hv8wptq8987qeep44cyrewp9","email":"customer@example.com","name":"Sample Customer","status":"active"}`)
+	return connectormock.Branch(paddle.UpdateCustomerBranchUpdated, value, nil)
+}
+
+// UpdateCustomerDefault is the manifest default, updatedDefault, which New installs.
+func UpdateCustomerDefault() connectormock.Case[paddle.PaddleCustomer] {
+	return UpdateCustomerUpdatedDefault()
+}
+
+// ArchiveCustomerArchived selects the archived branch: Paddle archived the customer.
+func ArchiveCustomerArchived(value paddle.PaddleCustomer, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Branch(paddle.ArchiveCustomerBranchArchived, value, failure)
+}
+
+// ArchiveCustomerNotFound selects the notFound branch: Customer is absent.
+func ArchiveCustomerNotFound(value paddle.PaddleCustomer, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Branch(paddle.ArchiveCustomerBranchNotFound, value, failure)
+}
+
+// ArchiveCustomerProviderRejected selects the providerRejected branch: Paddle rejected archival.
+func ArchiveCustomerProviderRejected(value paddle.PaddleCustomer, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Branch(paddle.ArchiveCustomerBranchProviderRejected, value, failure)
+}
+
+// ArchiveCustomerInvalidResponse selects the invalidResponse branch: Paddle returned malformed customer JSON.
+func ArchiveCustomerInvalidResponse(value paddle.PaddleCustomer, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Branch(paddle.ArchiveCustomerBranchInvalidResponse, value, failure)
+}
+
+// ArchiveCustomerDefect selects the defect branch: Input or credentials are invalid.
+func ArchiveCustomerDefect(value paddle.PaddleCustomer, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Branch(paddle.ArchiveCustomerBranchDefect, value, failure)
+}
+
+// ArchiveCustomerRetry asks Dex to retry the archiveCustomer Step, after the delay when it is positive.
+func ArchiveCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paddle.PaddleCustomer] {
+	return connectormock.Retry[paddle.PaddleCustomer](failure, after)
+}
+
+// ArchiveCustomerArchivedDefault is the manifest mock archivedDefault: A sample customer is archived.
+func ArchiveCustomerArchivedDefault() connectormock.Case[paddle.PaddleCustomer] {
+	value := connectormock.MustDecodeOutput[paddle.PaddleCustomer](`{"id":"ctm_01hv8wptq8987qeep44cyrewp9","email":"customer@example.com","name":"Sample Customer","status":"archived"}`)
+	return connectormock.Branch(paddle.ArchiveCustomerBranchArchived, value, nil)
+}
+
+// ArchiveCustomerDefault is the manifest default, archivedDefault, which New installs.
+func ArchiveCustomerDefault() connectormock.Case[paddle.PaddleCustomer] {
+	return ArchiveCustomerArchivedDefault()
 }
 
 // GetTransactionFound selects the found branch: Paddle returned the transaction.

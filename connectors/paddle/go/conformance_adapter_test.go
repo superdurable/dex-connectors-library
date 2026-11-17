@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 const conformanceEndpointPath = "/api"
@@ -21,7 +22,15 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		reference: {APIKey: sdkgo.NewSecretString("sample-paddle-api-key")},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+	context := singledispatchtest.NewContext("conformance-flow", "paddle-customer")
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 { context.AdvanceAttempt() }
+	}, actions: map[string]conformanceOperationInvocation{
 		"getTransaction": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTransaction(), reference),
+		"listCustomers": newConformanceQueryInvocation(t, scenario.Input, context, client.ListCustomers(), reference),
+		"getCustomer": newConformanceQueryInvocation(t, scenario.Input, context, client.GetCustomer(), reference),
+		"createCustomer": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateCustomer(), reference, scenario.CallID),
+		"updateCustomer": newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateCustomer(), reference, scenario.CallID),
+		"archiveCustomer": newConformanceMutationInvocation(t, scenario.Input, context, client.ArchiveCustomer(), reference, scenario.CallID),
 	}}
 }

@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listCustomers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.CustomerPage](`{"items":[{"id":"ctm_01hv8wptq8987qeep44cyrewp9","email":"customer@example.com","name":"Sample Customer","status":"active"}],"hasMore":false,"nextCursor":""}`)
+			return err
+		}},
+		{name: "getCustomer/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleCustomer](`{"id":"ctm_01hv8wptq8987qeep44cyrewp9","email":"customer@example.com","name":"Sample Customer","status":"active"}`)
+			return err
+		}},
+		{name: "createCustomer/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleCustomer](`{"id":"ctm_01hv8wptq8987qeep44cyrewp9","email":"customer@example.com","name":"Sample Customer","status":"active"}`)
+			return err
+		}},
+		{name: "updateCustomer/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleCustomer](`{"id":"ctm_01hv8wptq8987qeep44cyrewp9","email":"customer@example.com","name":"Sample Customer","status":"active"}`)
+			return err
+		}},
+		{name: "archiveCustomer/archivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleCustomer](`{"id":"ctm_01hv8wptq8987qeep44cyrewp9","email":"customer@example.com","name":"Sample Customer","status":"archived"}`)
+			return err
+		}},
 		{name: "getTransaction/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[paddle.TransactionStatus](`{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"completed","currencyCode":"USD"}`)
 			return err
@@ -30,6 +50,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListCustomers().Definition().Operation.OperationID != "listCustomers" {
+		t.Errorf("listCustomers mock has another definition")
+	}
+	if mock.GetCustomer().Definition().Operation.OperationID != "getCustomer" {
+		t.Errorf("getCustomer mock has another definition")
+	}
+	if mock.CreateCustomer().Definition().Operation.OperationID != "createCustomer" {
+		t.Errorf("createCustomer mock has another definition")
+	}
+	if mock.UpdateCustomer().Definition().Operation.OperationID != "updateCustomer" {
+		t.Errorf("updateCustomer mock has another definition")
+	}
+	if mock.ArchiveCustomer().Definition().Operation.OperationID != "archiveCustomer" {
+		t.Errorf("archiveCustomer mock has another definition")
+	}
 	if mock.GetTransaction().Definition().Operation.OperationID != "getTransaction" {
 		t.Errorf("getTransaction mock has another definition")
 	}
