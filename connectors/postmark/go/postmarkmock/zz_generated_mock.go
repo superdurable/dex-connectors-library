@@ -17,21 +17,22 @@ import (
 
 // Mock is a scripted postmark connection. Script each operation through its accessor.
 type Mock struct {
-	connection           postmark.Connection
-	listOutboundMessages *connectormock.Query[postmark.ListOutboundMessagesInput, postmark.MessagePage]
-	getMessageDetails    *connectormock.Query[postmark.GetMessageDetailsInput, postmark.MessageDetails]
-	sendEmail            *connectormock.Mutation[postmark.SendEmailInput, postmark.SentEmail]
-	listTemplates        *connectormock.Query[postmark.ListTemplatesInput, postmark.TemplatePage]
-	getTemplate          *connectormock.Query[postmark.GetTemplateInput, postmark.Template]
-	createTemplate       *connectormock.Mutation[postmark.CreateTemplateInput, postmark.Template]
-	updateTemplate       *connectormock.Mutation[postmark.UpdateTemplateInput, postmark.Template]
-	deleteTemplate       *connectormock.Mutation[postmark.DeleteTemplateInput, postmark.DeletedTemplate]
-	listBounces          *connectormock.Query[postmark.ListBouncesInput, postmark.BouncePage]
-	getBounce            *connectormock.Query[postmark.GetBounceInput, postmark.Bounce]
-	activateBounce       *connectormock.Mutation[postmark.ActivateBounceInput, postmark.Bounce]
-	listSuppressions     *connectormock.Query[postmark.ListSuppressionsInput, postmark.SuppressionPage]
-	createSuppression    *connectormock.Mutation[postmark.CreateSuppressionInput, postmark.SuppressionAction]
-	deleteSuppression    *connectormock.Mutation[postmark.DeleteSuppressionInput, postmark.SuppressionAction]
+	connection            postmark.Connection
+	listOutboundMessages  *connectormock.Query[postmark.ListOutboundMessagesInput, postmark.MessagePage]
+	getMessageDetails     *connectormock.Query[postmark.GetMessageDetailsInput, postmark.MessageDetails]
+	sendEmail             *connectormock.Mutation[postmark.SendEmailInput, postmark.SentEmail]
+	listTemplates         *connectormock.Query[postmark.ListTemplatesInput, postmark.TemplatePage]
+	getTemplate           *connectormock.Query[postmark.GetTemplateInput, postmark.Template]
+	createTemplate        *connectormock.Mutation[postmark.CreateTemplateInput, postmark.Template]
+	updateTemplate        *connectormock.Mutation[postmark.UpdateTemplateInput, postmark.Template]
+	deleteTemplate        *connectormock.Mutation[postmark.DeleteTemplateInput, postmark.DeletedTemplate]
+	listBounces           *connectormock.Query[postmark.ListBouncesInput, postmark.BouncePage]
+	getBounce             *connectormock.Query[postmark.GetBounceInput, postmark.Bounce]
+	activateBounce        *connectormock.Mutation[postmark.ActivateBounceInput, postmark.Bounce]
+	listSuppressions      *connectormock.Query[postmark.ListSuppressionsInput, postmark.SuppressionPage]
+	createSuppression     *connectormock.Mutation[postmark.CreateSuppressionInput, postmark.SuppressionAction]
+	deleteSuppression     *connectormock.Mutation[postmark.DeleteSuppressionInput, postmark.SuppressionAction]
+	sendEmailWithTemplate *connectormock.Mutation[postmark.SendEmailWithTemplateInput, postmark.SentEmail]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -39,20 +40,21 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listOutboundMessages: connectormock.NewQuery[postmark.ListOutboundMessagesInput, postmark.MessagePage](t, postmark.ListOutboundMessagesDefinition),
-		getMessageDetails:    connectormock.NewQuery[postmark.GetMessageDetailsInput, postmark.MessageDetails](t, postmark.GetMessageDetailsDefinition),
-		sendEmail:            connectormock.NewMutation[postmark.SendEmailInput, postmark.SentEmail](t, postmark.SendEmailDefinition),
-		listTemplates:        connectormock.NewQuery[postmark.ListTemplatesInput, postmark.TemplatePage](t, postmark.ListTemplatesDefinition),
-		getTemplate:          connectormock.NewQuery[postmark.GetTemplateInput, postmark.Template](t, postmark.GetTemplateDefinition),
-		createTemplate:       connectormock.NewMutation[postmark.CreateTemplateInput, postmark.Template](t, postmark.CreateTemplateDefinition),
-		updateTemplate:       connectormock.NewMutation[postmark.UpdateTemplateInput, postmark.Template](t, postmark.UpdateTemplateDefinition),
-		deleteTemplate:       connectormock.NewMutation[postmark.DeleteTemplateInput, postmark.DeletedTemplate](t, postmark.DeleteTemplateDefinition),
-		listBounces:          connectormock.NewQuery[postmark.ListBouncesInput, postmark.BouncePage](t, postmark.ListBouncesDefinition),
-		getBounce:            connectormock.NewQuery[postmark.GetBounceInput, postmark.Bounce](t, postmark.GetBounceDefinition),
-		activateBounce:       connectormock.NewMutation[postmark.ActivateBounceInput, postmark.Bounce](t, postmark.ActivateBounceDefinition),
-		listSuppressions:     connectormock.NewQuery[postmark.ListSuppressionsInput, postmark.SuppressionPage](t, postmark.ListSuppressionsDefinition),
-		createSuppression:    connectormock.NewMutation[postmark.CreateSuppressionInput, postmark.SuppressionAction](t, postmark.CreateSuppressionDefinition),
-		deleteSuppression:    connectormock.NewMutation[postmark.DeleteSuppressionInput, postmark.SuppressionAction](t, postmark.DeleteSuppressionDefinition),
+		listOutboundMessages:  connectormock.NewQuery[postmark.ListOutboundMessagesInput, postmark.MessagePage](t, postmark.ListOutboundMessagesDefinition),
+		getMessageDetails:     connectormock.NewQuery[postmark.GetMessageDetailsInput, postmark.MessageDetails](t, postmark.GetMessageDetailsDefinition),
+		sendEmail:             connectormock.NewMutation[postmark.SendEmailInput, postmark.SentEmail](t, postmark.SendEmailDefinition),
+		listTemplates:         connectormock.NewQuery[postmark.ListTemplatesInput, postmark.TemplatePage](t, postmark.ListTemplatesDefinition),
+		getTemplate:           connectormock.NewQuery[postmark.GetTemplateInput, postmark.Template](t, postmark.GetTemplateDefinition),
+		createTemplate:        connectormock.NewMutation[postmark.CreateTemplateInput, postmark.Template](t, postmark.CreateTemplateDefinition),
+		updateTemplate:        connectormock.NewMutation[postmark.UpdateTemplateInput, postmark.Template](t, postmark.UpdateTemplateDefinition),
+		deleteTemplate:        connectormock.NewMutation[postmark.DeleteTemplateInput, postmark.DeletedTemplate](t, postmark.DeleteTemplateDefinition),
+		listBounces:           connectormock.NewQuery[postmark.ListBouncesInput, postmark.BouncePage](t, postmark.ListBouncesDefinition),
+		getBounce:             connectormock.NewQuery[postmark.GetBounceInput, postmark.Bounce](t, postmark.GetBounceDefinition),
+		activateBounce:        connectormock.NewMutation[postmark.ActivateBounceInput, postmark.Bounce](t, postmark.ActivateBounceDefinition),
+		listSuppressions:      connectormock.NewQuery[postmark.ListSuppressionsInput, postmark.SuppressionPage](t, postmark.ListSuppressionsDefinition),
+		createSuppression:     connectormock.NewMutation[postmark.CreateSuppressionInput, postmark.SuppressionAction](t, postmark.CreateSuppressionDefinition),
+		deleteSuppression:     connectormock.NewMutation[postmark.DeleteSuppressionInput, postmark.SuppressionAction](t, postmark.DeleteSuppressionDefinition),
+		sendEmailWithTemplate: connectormock.NewMutation[postmark.SendEmailWithTemplateInput, postmark.SentEmail](t, postmark.SendEmailWithTemplateDefinition),
 	}
 	mock.listOutboundMessages.Default(ListOutboundMessagesDefault())
 	mock.getMessageDetails.Default(GetMessageDetailsDefault())
@@ -68,6 +70,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listSuppressions.Default(ListSuppressionsDefault())
 	mock.createSuppression.Default(CreateSuppressionDefault())
 	mock.deleteSuppression.Default(DeleteSuppressionDefault())
+	mock.sendEmailWithTemplate.Default(SendEmailWithTemplateDefault())
 	connection, err := postmark.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "postmark", Name: connectionName})
 	if err != nil {
 		t.Fatalf("postmark mock connection: %v", err)
@@ -149,6 +152,11 @@ func (mock *Mock) DeleteSuppression() *connectormock.Mutation[postmark.DeleteSup
 	return mock.deleteSuppression
 }
 
+// SendEmailWithTemplate returns the sendEmailWithTemplate script.
+func (mock *Mock) SendEmailWithTemplate() *connectormock.Mutation[postmark.SendEmailWithTemplateInput, postmark.SentEmail] {
+	return mock.sendEmailWithTemplate
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListOutboundMessages() sdkgo.Query[postmark.ListOutboundMessagesInput, postmark.MessagePage] {
@@ -192,6 +200,9 @@ func (operations mockOperations) CreateSuppression() sdkgo.Mutation[postmark.Cre
 }
 func (operations mockOperations) DeleteSuppression() sdkgo.Mutation[postmark.DeleteSuppressionInput, postmark.SuppressionAction] {
 	return operations.mock.deleteSuppression
+}
+func (operations mockOperations) SendEmailWithTemplate() sdkgo.Mutation[postmark.SendEmailWithTemplateInput, postmark.SentEmail] {
+	return operations.mock.sendEmailWithTemplate
 }
 
 // ListOutboundMessagesListed selects the listed branch: Postmark returned the requested result.
@@ -692,4 +703,40 @@ func DeleteSuppressionDeleteSuppressionDefault() connectormock.Case[postmark.Sup
 // DeleteSuppressionDefault is the manifest default, deleteSuppressionDefault, which New installs.
 func DeleteSuppressionDefault() connectormock.Case[postmark.SuppressionAction] {
 	return DeleteSuppressionDeleteSuppressionDefault()
+}
+
+// SendEmailWithTemplateSent selects the sent branch: Postmark accepted the templated email.
+func SendEmailWithTemplateSent(value postmark.SentEmail, failure *sdkgo.Failure) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Branch(postmark.SendEmailWithTemplateBranchSent, value, failure)
+}
+
+// SendEmailWithTemplateProviderRejected selects the providerRejected branch: Postmark definitively refused the templated email.
+func SendEmailWithTemplateProviderRejected(value postmark.SentEmail, failure *sdkgo.Failure) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Branch(postmark.SendEmailWithTemplateBranchProviderRejected, value, failure)
+}
+
+// SendEmailWithTemplateUncertain returns an uncertain sendEmailWithTemplate outcome.
+func SendEmailWithTemplateUncertain(value postmark.SentEmail, failure sdkgo.Failure) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendEmailWithTemplateDefect selects the defect branch: Local template input or connection credentials are invalid.
+func SendEmailWithTemplateDefect(value postmark.SentEmail, failure *sdkgo.Failure) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Branch(postmark.SendEmailWithTemplateBranchDefect, value, failure)
+}
+
+// SendEmailWithTemplateRetry asks Dex to retry the sendEmailWithTemplate Step, after the delay when it is positive.
+func SendEmailWithTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Retry[postmark.SentEmail](failure, after)
+}
+
+// SendEmailWithTemplateSendEmailWithTemplateDefault is the manifest mock sendEmailWithTemplateDefault: Postmark accepted one templated email.
+func SendEmailWithTemplateSendEmailWithTemplateDefault() connectormock.Case[postmark.SentEmail] {
+	value := connectormock.MustDecodeOutput[postmark.SentEmail](`{"messageId":"0ac29aee-e1cd-480d-b08d-4f48548ff48d","to":"recipient@example.com"}`)
+	return connectormock.Branch(postmark.SendEmailWithTemplateBranchSent, value, nil)
+}
+
+// SendEmailWithTemplateDefault is the manifest default, sendEmailWithTemplateDefault, which New installs.
+func SendEmailWithTemplateDefault() connectormock.Case[postmark.SentEmail] {
+	return SendEmailWithTemplateSendEmailWithTemplateDefault()
 }

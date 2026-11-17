@@ -40,7 +40,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{example.NewFlow(connection), example.NewSendFlow(connection), example.NewTemplateFlow(connection), example.NewBounceFlow(connection), example.NewSuppressionFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{example.NewFlow(connection), example.NewSendFlow(connection), example.NewTemplateFlow(connection), example.NewBounceFlow(connection), example.NewSuppressionFlow(connection), example.NewTemplateSendFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register example Flow: %w", err)
 	}

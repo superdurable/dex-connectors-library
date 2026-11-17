@@ -72,6 +72,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[postmark.SuppressionAction](`{"emailAddress":"recipient@example.com","status":"Deleted"}`)
 			return err
 		}},
+		{name: "sendEmailWithTemplate/sendEmailWithTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.SentEmail](`{"messageId":"0ac29aee-e1cd-480d-b08d-4f48548ff48d","to":"recipient@example.com"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -123,5 +127,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteSuppression().Definition().Operation.OperationID != "deleteSuppression" {
 		t.Errorf("deleteSuppression mock has another definition")
+	}
+	if mock.SendEmailWithTemplate().Definition().Operation.OperationID != "sendEmailWithTemplate" {
+		t.Errorf("sendEmailWithTemplate mock has another definition")
 	}
 }

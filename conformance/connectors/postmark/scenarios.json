@@ -5628,6 +5628,774 @@
       },
       "name": "deleteSuppression-defect",
       "operation": "deleteSuppression"
+    },
+    {
+      "callId": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0,\"Message\":\"OK\",\"MessageID\":\"msg-2\",\"To\":\"recipient@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email/withTemplate",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "07c09372-9575-5545-a6a0-6c05a0b02b5d"
+            },
+            "TemplateAlias": "welcome-v1",
+            "TemplateModel": {
+              "name": "Ada"
+            },
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+          "providerId": "msg-2",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "MessageID": "msg-2",
+          "To": "recipient@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+      "input": {
+        "from": "sender@example.com",
+        "templateAlias": "welcome-v1",
+        "templateModel": {
+          "name": "Ada"
+        },
+        "to": "recipient@example.com"
+      },
+      "name": "sendEmailWithTemplate-success",
+      "operation": "sendEmailWithTemplate"
+    },
+    {
+      "callId": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":1101,\"Message\":\"Template missing\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email/withTemplate",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "07c09372-9575-5545-a6a0-6c05a0b02b5d"
+            },
+            "TemplateAlias": "welcome-v1",
+            "TemplateModel": {
+              "name": "Ada"
+            },
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "MessageID": "",
+          "To": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+      "input": {
+        "from": "sender@example.com",
+        "templateAlias": "welcome-v1",
+        "templateModel": {
+          "name": "Ada"
+        },
+        "to": "recipient@example.com"
+      },
+      "name": "sendEmailWithTemplate-provider-rejected",
+      "operation": "sendEmailWithTemplate"
+    },
+    {
+      "callId": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email/withTemplate",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "07c09372-9575-5545-a6a0-6c05a0b02b5d"
+            },
+            "TemplateAlias": "welcome-v1",
+            "TemplateModel": {
+              "name": "Ada"
+            },
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+      "input": {
+        "from": "sender@example.com",
+        "templateAlias": "welcome-v1",
+        "templateModel": {
+          "name": "Ada"
+        },
+        "to": "recipient@example.com"
+      },
+      "name": "sendEmailWithTemplate-rate-limited",
+      "operation": "sendEmailWithTemplate"
+    },
+    {
+      "callId": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email/withTemplate",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "07c09372-9575-5545-a6a0-6c05a0b02b5d"
+            },
+            "TemplateAlias": "welcome-v1",
+            "TemplateModel": {
+              "name": "Ada"
+            },
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+      "input": {
+        "from": "sender@example.com",
+        "templateAlias": "welcome-v1",
+        "templateModel": {
+          "name": "Ada"
+        },
+        "to": "recipient@example.com"
+      },
+      "name": "sendEmailWithTemplate-service-unavailable",
+      "operation": "sendEmailWithTemplate"
+    },
+    {
+      "callId": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email/withTemplate",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "07c09372-9575-5545-a6a0-6c05a0b02b5d"
+            },
+            "TemplateAlias": "welcome-v1",
+            "TemplateModel": {
+              "name": "Ada"
+            },
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+      "input": {
+        "from": "sender@example.com",
+        "templateAlias": "welcome-v1",
+        "templateModel": {
+          "name": "Ada"
+        },
+        "to": "recipient@example.com"
+      },
+      "name": "sendEmailWithTemplate-unknown-5xx",
+      "operation": "sendEmailWithTemplate"
+    },
+    {
+      "callId": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email/withTemplate",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "07c09372-9575-5545-a6a0-6c05a0b02b5d"
+            },
+            "TemplateAlias": "welcome-v1",
+            "TemplateModel": {
+              "name": "Ada"
+            },
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+      "input": {
+        "from": "sender@example.com",
+        "templateAlias": "welcome-v1",
+        "templateModel": {
+          "name": "Ada"
+        },
+        "to": "recipient@example.com"
+      },
+      "name": "sendEmailWithTemplate-transport",
+      "operation": "sendEmailWithTemplate"
+    },
+    {
+      "callId": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "MessageID": "",
+          "To": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+      "input": {
+        "from": "sender@example.com",
+        "templateAlias": "",
+        "templateModel": {
+          "name": "Ada"
+        },
+        "to": "recipient@example.com"
+      },
+      "name": "sendEmailWithTemplate-defect",
+      "operation": "sendEmailWithTemplate"
+    },
+    {
+      "attempts": 2,
+      "callId": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email/withTemplate",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "07c09372-9575-5545-a6a0-6c05a0b02b5d"
+            },
+            "TemplateAlias": "welcome-v1",
+            "TemplateModel": {
+              "name": "Ada"
+            },
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"TotalCount\":1,\"Messages\":[{\"MessageID\":\"msg-2\",\"Subject\":\"Welcome Ada\",\"To\":[{\"Email\":\"recipient@example.com\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/outbound",
+          "query": {
+            "count": [
+              "50"
+            ],
+            "metadata_dex_call_id": [
+              "07c09372-9575-5545-a6a0-6c05a0b02b5d"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "MessageID": "msg-2",
+          "To": "recipient@example.com"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+      "input": {
+        "from": "sender@example.com",
+        "templateAlias": "welcome-v1",
+        "templateModel": {
+          "name": "Ada"
+        },
+        "to": "recipient@example.com"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendEmailWithTemplate-confirm-after-unknown",
+      "operation": "sendEmailWithTemplate"
+    },
+    {
+      "attempts": 4,
+      "callId": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email/withTemplate",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "07c09372-9575-5545-a6a0-6c05a0b02b5d"
+            },
+            "TemplateAlias": "welcome-v1",
+            "TemplateModel": {
+              "name": "Ada"
+            },
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"TotalCount\":0,\"Messages\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/outbound",
+          "query": {
+            "count": [
+              "50"
+            ],
+            "metadata_dex_call_id": [
+              "07c09372-9575-5545-a6a0-6c05a0b02b5d"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email/withTemplate",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "07c09372-9575-5545-a6a0-6c05a0b02b5d"
+            },
+            "TemplateAlias": "welcome-v1",
+            "TemplateModel": {
+              "name": "Ada"
+            },
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"TotalCount\":0,\"Messages\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/outbound",
+          "query": {
+            "count": [
+              "50"
+            ],
+            "metadata_dex_call_id": [
+              "07c09372-9575-5545-a6a0-6c05a0b02b5d"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/email/withTemplate",
+          "requestBody": {
+            "From": "sender@example.com",
+            "Metadata": {
+              "dex_call_id": "07c09372-9575-5545-a6a0-6c05a0b02b5d"
+            },
+            "TemplateAlias": "welcome-v1",
+            "TemplateModel": {
+              "name": "Ada"
+            },
+            "To": "recipient@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"TotalCount\":0,\"Messages\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/outbound",
+          "query": {
+            "count": [
+              "50"
+            ],
+            "metadata_dex_call_id": [
+              "07c09372-9575-5545-a6a0-6c05a0b02b5d"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "MessageID": "",
+          "To": ""
+        },
+        "requestCount": 6,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+      "input": {
+        "from": "sender@example.com",
+        "templateAlias": "welcome-v1",
+        "templateModel": {
+          "name": "Ada"
+        },
+        "to": "recipient@example.com"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 5,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 3,
+            "callId": "07c09372-9575-5545-a6a0-6c05a0b02b5d",
+            "sendCount": 3,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendEmailWithTemplate-cap-uncertain",
+      "operation": "sendEmailWithTemplate"
     }
   ],
   "schemaVersion": 1

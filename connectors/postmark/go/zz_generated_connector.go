@@ -54,6 +54,7 @@ type Operations interface {
 	ListSuppressions() sdkgo.Query[ListSuppressionsInput, SuppressionPage]
 	CreateSuppression() sdkgo.Mutation[CreateSuppressionInput, SuppressionAction]
 	DeleteSuppression() sdkgo.Mutation[DeleteSuppressionInput, SuppressionAction]
+	SendEmailWithTemplate() sdkgo.Mutation[SendEmailWithTemplateInput, SentEmail]
 }
 
 type clientOperations struct{ client *Client }
@@ -99,6 +100,9 @@ func (operations clientOperations) CreateSuppression() sdkgo.Mutation[CreateSupp
 }
 func (operations clientOperations) DeleteSuppression() sdkgo.Mutation[DeleteSuppressionInput, SuppressionAction] {
 	return operations.client.DeleteSuppression()
+}
+func (operations clientOperations) SendEmailWithTemplate() sdkgo.Mutation[SendEmailWithTemplateInput, SentEmail] {
+	return operations.client.SendEmailWithTemplate()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -1244,5 +1248,81 @@ func NewDeleteSuppressionStep[IN any](config DeleteSuppressionStepConfig[IN]) sd
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SendEmailWithTemplateBranchSent sdkgo.BranchID = "sent"
+const SendEmailWithTemplateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendEmailWithTemplateBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendEmailWithTemplateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendEmailWithTemplateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendEmailWithTemplate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendEmailWithTemplateBranchSent, Description: "Postmark accepted the templated email."},
+		{ID: SendEmailWithTemplateBranchProviderRejected, Description: "Postmark definitively refused the templated email.", Optional: true},
+		{ID: SendEmailWithTemplateBranchUncertain, Description: "The capped send could not be confirmed from outbound activity.", Optional: true},
+		{ID: SendEmailWithTemplateBranchDefect, Description: "Local template input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendEmailWithTemplateResult = sdkgo.MutationResult[SentEmail]
+
+type SendEmailWithTemplateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                        `connector:"connectorId=postmark"`
+	operationID                       struct{}                                        `connector:"operationId=sendEmailWithTemplate"`
+	StepType                          string                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                        Connection                                      `connector:"connection"`
+	ConnectionName                    string                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendEmailWithTemplateInput             `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendEmailWithTemplateResult]       `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendEmailWithTemplateResult]       `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendEmailWithTemplateResult]       `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendEmailWithTemplateResult]       `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentEmail]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendEmailWithTemplateStep[IN any](config SendEmailWithTemplateStepConfig[IN]) sdkgo.MutationStep[IN, SendEmailWithTemplateInput, SentEmail] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("postmark connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendEmailWithTemplateInput, SentEmail]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendEmailWithTemplate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendEmailWithTemplateResult] {
+			branches := make([]sdkgo.BranchTarget[SendEmailWithTemplateResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendEmailWithTemplateBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendEmailWithTemplateBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendEmailWithTemplateBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendEmailWithTemplateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

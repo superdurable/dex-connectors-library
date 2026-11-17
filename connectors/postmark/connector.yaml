@@ -591,3 +591,41 @@ spec:
       output:
         emailAddress: recipient@example.com
         status: Deleted
+  - name: sendEmailWithTemplate
+    goName: SendEmailWithTemplate
+    inputType: SendEmailWithTemplateInput
+    outputType: SentEmail
+    kind: mutation
+    description: Send one transactional email using a Postmark template alias and model.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: sent
+      goName: Sent
+      description: Postmark accepted the templated email.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark definitively refused the templated email.
+      optional: true
+    - id: uncertain
+      goName: Uncertain
+      description: The capped send could not be confirmed from outbound activity.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local template input or connection credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: sync
+      dispatchFence: true
+      repeatOnUnknown: limited
+      maxSends: 3
+    mocks:
+    - name: sendEmailWithTemplateDefault
+      branch: sent
+      description: Postmark accepted one templated email.
+      default: true
+      output:
+        messageId: 0ac29aee-e1cd-480d-b08d-4f48548ff48d
+        to: recipient@example.com

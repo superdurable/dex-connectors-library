@@ -35,6 +35,7 @@ uses the static `postmark` connection and a real Dex Worker and Client.
 | `listSuppressions` | query | SuppressionPage |
 | `createSuppression` | safe mutation | SuppressionAction |
 | `deleteSuppression` | safe mutation | SuppressionAction |
+| `sendEmailWithTemplate` | limited mutation | SentEmail |
 
 `sendEmail` accepts one plain text message from a verified sender. Postmark does
 not document a deduplication key for sends, so the connector uses Dex's durable
@@ -42,6 +43,9 @@ dispatch fence and a call-specific `dex_call_id` metadata marker. After an unkno
 outcome it searches outbound activity for that marker before another possible send.
 It permits up to three possible sends and selects `uncertain` if the cap is reached
 without confirmation. Outbound messages expire after the server's retention period.
+`sendEmailWithTemplate` sends through a server template alias with a rendering
+model and applies the same three-send fence and unique outbound-activity marker.
+Keep secrets out of template model values because they enter the Flow input.
 
 `createTemplate` assigns a unique `dex-<call ID>` alias so a retry can read back
 the exact new template before another possible creation. Supply the template name,
