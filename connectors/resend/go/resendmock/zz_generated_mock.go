@@ -61,6 +61,16 @@ type Mock struct {
 	listContactProperties        *connectormock.Query[resend.ListContactPropertiesInput, resend.ContactPropertyPage]
 	updateContactProperty        *connectormock.Mutation[resend.UpdateContactPropertyInput, resend.ContactPropertyReference]
 	deleteContactProperty        *connectormock.Mutation[resend.DeleteContactPropertyInput, resend.DeletedContactProperty]
+	createBroadcast              *connectormock.Mutation[resend.CreateBroadcastInput, resend.BroadcastReference]
+	getBroadcast                 *connectormock.Query[resend.GetBroadcastInput, resend.Broadcast]
+	listBroadcasts               *connectormock.Query[resend.ListBroadcastsInput, resend.BroadcastPage]
+	updateBroadcast              *connectormock.Mutation[resend.UpdateBroadcastInput, resend.BroadcastReference]
+	deleteBroadcast              *connectormock.Mutation[resend.DeleteBroadcastInput, resend.DeletedBroadcast]
+	sendBroadcast                *connectormock.Mutation[resend.SendBroadcastInput, resend.BroadcastReference]
+	cancelBroadcast              *connectormock.Mutation[resend.CancelBroadcastInput, resend.BroadcastReference]
+	duplicateBroadcast           *connectormock.Mutation[resend.DuplicateBroadcastInput, resend.BroadcastReference]
+	listBroadcastRecipients      *connectormock.Query[resend.ListBroadcastRecipientsInput, resend.BroadcastRecipientPage]
+	listBroadcastClickedLinks    *connectormock.Query[resend.ListBroadcastClickedLinksInput, resend.BroadcastClickedLinkPage]
 	getContact                   *connectormock.Query[resend.GetContactInput, resend.Contact]
 	listContacts                 *connectormock.Query[resend.ListContactsInput, resend.ContactPage]
 	getDomain                    *connectormock.Query[resend.GetDomainInput, resend.Domain]
@@ -115,6 +125,16 @@ func New(t testing.TB, connectionName string) *Mock {
 		listContactProperties:        connectormock.NewQuery[resend.ListContactPropertiesInput, resend.ContactPropertyPage](t, resend.ListContactPropertiesDefinition),
 		updateContactProperty:        connectormock.NewMutation[resend.UpdateContactPropertyInput, resend.ContactPropertyReference](t, resend.UpdateContactPropertyDefinition),
 		deleteContactProperty:        connectormock.NewMutation[resend.DeleteContactPropertyInput, resend.DeletedContactProperty](t, resend.DeleteContactPropertyDefinition),
+		createBroadcast:              connectormock.NewMutation[resend.CreateBroadcastInput, resend.BroadcastReference](t, resend.CreateBroadcastDefinition),
+		getBroadcast:                 connectormock.NewQuery[resend.GetBroadcastInput, resend.Broadcast](t, resend.GetBroadcastDefinition),
+		listBroadcasts:               connectormock.NewQuery[resend.ListBroadcastsInput, resend.BroadcastPage](t, resend.ListBroadcastsDefinition),
+		updateBroadcast:              connectormock.NewMutation[resend.UpdateBroadcastInput, resend.BroadcastReference](t, resend.UpdateBroadcastDefinition),
+		deleteBroadcast:              connectormock.NewMutation[resend.DeleteBroadcastInput, resend.DeletedBroadcast](t, resend.DeleteBroadcastDefinition),
+		sendBroadcast:                connectormock.NewMutation[resend.SendBroadcastInput, resend.BroadcastReference](t, resend.SendBroadcastDefinition),
+		cancelBroadcast:              connectormock.NewMutation[resend.CancelBroadcastInput, resend.BroadcastReference](t, resend.CancelBroadcastDefinition),
+		duplicateBroadcast:           connectormock.NewMutation[resend.DuplicateBroadcastInput, resend.BroadcastReference](t, resend.DuplicateBroadcastDefinition),
+		listBroadcastRecipients:      connectormock.NewQuery[resend.ListBroadcastRecipientsInput, resend.BroadcastRecipientPage](t, resend.ListBroadcastRecipientsDefinition),
+		listBroadcastClickedLinks:    connectormock.NewQuery[resend.ListBroadcastClickedLinksInput, resend.BroadcastClickedLinkPage](t, resend.ListBroadcastClickedLinksDefinition),
 		getContact:                   connectormock.NewQuery[resend.GetContactInput, resend.Contact](t, resend.GetContactDefinition),
 		listContacts:                 connectormock.NewQuery[resend.ListContactsInput, resend.ContactPage](t, resend.ListContactsDefinition),
 		getDomain:                    connectormock.NewQuery[resend.GetDomainInput, resend.Domain](t, resend.GetDomainDefinition),
@@ -163,6 +183,16 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listContactProperties.Default(ListContactPropertiesDefault())
 	mock.updateContactProperty.Default(UpdateContactPropertyDefault())
 	mock.deleteContactProperty.Default(DeleteContactPropertyDefault())
+	mock.createBroadcast.Default(CreateBroadcastDefault())
+	mock.getBroadcast.Default(GetBroadcastDefault())
+	mock.listBroadcasts.Default(ListBroadcastsDefault())
+	mock.updateBroadcast.Default(UpdateBroadcastDefault())
+	mock.deleteBroadcast.Default(DeleteBroadcastDefault())
+	mock.sendBroadcast.Default(SendBroadcastDefault())
+	mock.cancelBroadcast.Default(CancelBroadcastDefault())
+	mock.duplicateBroadcast.Default(DuplicateBroadcastDefault())
+	mock.listBroadcastRecipients.Default(ListBroadcastRecipientsDefault())
+	mock.listBroadcastClickedLinks.Default(ListBroadcastClickedLinksDefault())
 	mock.getContact.Default(GetContactDefault())
 	mock.listContacts.Default(ListContactsDefault())
 	mock.getDomain.Default(GetDomainDefault())
@@ -393,6 +423,56 @@ func (mock *Mock) DeleteContactProperty() *connectormock.Mutation[resend.DeleteC
 	return mock.deleteContactProperty
 }
 
+// CreateBroadcast returns the createBroadcast script.
+func (mock *Mock) CreateBroadcast() *connectormock.Mutation[resend.CreateBroadcastInput, resend.BroadcastReference] {
+	return mock.createBroadcast
+}
+
+// GetBroadcast returns the getBroadcast script.
+func (mock *Mock) GetBroadcast() *connectormock.Query[resend.GetBroadcastInput, resend.Broadcast] {
+	return mock.getBroadcast
+}
+
+// ListBroadcasts returns the listBroadcasts script.
+func (mock *Mock) ListBroadcasts() *connectormock.Query[resend.ListBroadcastsInput, resend.BroadcastPage] {
+	return mock.listBroadcasts
+}
+
+// UpdateBroadcast returns the updateBroadcast script.
+func (mock *Mock) UpdateBroadcast() *connectormock.Mutation[resend.UpdateBroadcastInput, resend.BroadcastReference] {
+	return mock.updateBroadcast
+}
+
+// DeleteBroadcast returns the deleteBroadcast script.
+func (mock *Mock) DeleteBroadcast() *connectormock.Mutation[resend.DeleteBroadcastInput, resend.DeletedBroadcast] {
+	return mock.deleteBroadcast
+}
+
+// SendBroadcast returns the sendBroadcast script.
+func (mock *Mock) SendBroadcast() *connectormock.Mutation[resend.SendBroadcastInput, resend.BroadcastReference] {
+	return mock.sendBroadcast
+}
+
+// CancelBroadcast returns the cancelBroadcast script.
+func (mock *Mock) CancelBroadcast() *connectormock.Mutation[resend.CancelBroadcastInput, resend.BroadcastReference] {
+	return mock.cancelBroadcast
+}
+
+// DuplicateBroadcast returns the duplicateBroadcast script.
+func (mock *Mock) DuplicateBroadcast() *connectormock.Mutation[resend.DuplicateBroadcastInput, resend.BroadcastReference] {
+	return mock.duplicateBroadcast
+}
+
+// ListBroadcastRecipients returns the listBroadcastRecipients script.
+func (mock *Mock) ListBroadcastRecipients() *connectormock.Query[resend.ListBroadcastRecipientsInput, resend.BroadcastRecipientPage] {
+	return mock.listBroadcastRecipients
+}
+
+// ListBroadcastClickedLinks returns the listBroadcastClickedLinks script.
+func (mock *Mock) ListBroadcastClickedLinks() *connectormock.Query[resend.ListBroadcastClickedLinksInput, resend.BroadcastClickedLinkPage] {
+	return mock.listBroadcastClickedLinks
+}
+
 // GetContact returns the getContact script.
 func (mock *Mock) GetContact() *connectormock.Query[resend.GetContactInput, resend.Contact] {
 	return mock.getContact
@@ -543,6 +623,36 @@ func (operations mockOperations) UpdateContactProperty() sdkgo.Mutation[resend.U
 }
 func (operations mockOperations) DeleteContactProperty() sdkgo.Mutation[resend.DeleteContactPropertyInput, resend.DeletedContactProperty] {
 	return operations.mock.deleteContactProperty
+}
+func (operations mockOperations) CreateBroadcast() sdkgo.Mutation[resend.CreateBroadcastInput, resend.BroadcastReference] {
+	return operations.mock.createBroadcast
+}
+func (operations mockOperations) GetBroadcast() sdkgo.Query[resend.GetBroadcastInput, resend.Broadcast] {
+	return operations.mock.getBroadcast
+}
+func (operations mockOperations) ListBroadcasts() sdkgo.Query[resend.ListBroadcastsInput, resend.BroadcastPage] {
+	return operations.mock.listBroadcasts
+}
+func (operations mockOperations) UpdateBroadcast() sdkgo.Mutation[resend.UpdateBroadcastInput, resend.BroadcastReference] {
+	return operations.mock.updateBroadcast
+}
+func (operations mockOperations) DeleteBroadcast() sdkgo.Mutation[resend.DeleteBroadcastInput, resend.DeletedBroadcast] {
+	return operations.mock.deleteBroadcast
+}
+func (operations mockOperations) SendBroadcast() sdkgo.Mutation[resend.SendBroadcastInput, resend.BroadcastReference] {
+	return operations.mock.sendBroadcast
+}
+func (operations mockOperations) CancelBroadcast() sdkgo.Mutation[resend.CancelBroadcastInput, resend.BroadcastReference] {
+	return operations.mock.cancelBroadcast
+}
+func (operations mockOperations) DuplicateBroadcast() sdkgo.Mutation[resend.DuplicateBroadcastInput, resend.BroadcastReference] {
+	return operations.mock.duplicateBroadcast
+}
+func (operations mockOperations) ListBroadcastRecipients() sdkgo.Query[resend.ListBroadcastRecipientsInput, resend.BroadcastRecipientPage] {
+	return operations.mock.listBroadcastRecipients
+}
+func (operations mockOperations) ListBroadcastClickedLinks() sdkgo.Query[resend.ListBroadcastClickedLinksInput, resend.BroadcastClickedLinkPage] {
+	return operations.mock.listBroadcastClickedLinks
 }
 func (operations mockOperations) GetContact() sdkgo.Query[resend.GetContactInput, resend.Contact] {
 	return operations.mock.getContact
@@ -2201,6 +2311,381 @@ func DeleteContactPropertyDeleteContactPropertyDefault() connectormock.Case[rese
 // DeleteContactPropertyDefault is the manifest default, deleteContactPropertyDefault, which New installs.
 func DeleteContactPropertyDefault() connectormock.Case[resend.DeletedContactProperty] {
 	return DeleteContactPropertyDeleteContactPropertyDefault()
+}
+
+// CreateBroadcastCreated selects the created branch: Resend created the broadcast.
+func CreateBroadcastCreated(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.CreateBroadcastBranchCreated, value, failure)
+}
+
+// CreateBroadcastProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func CreateBroadcastProviderRejected(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.CreateBroadcastBranchProviderRejected, value, failure)
+}
+
+// CreateBroadcastDefect selects the defect branch: Local input or connection is invalid.
+func CreateBroadcastDefect(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.CreateBroadcastBranchDefect, value, failure)
+}
+
+// CreateBroadcastRetry asks Dex to retry the createBroadcast Step, after the delay when it is positive.
+func CreateBroadcastRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Retry[resend.BroadcastReference](failure, after)
+}
+
+// CreateBroadcastCreateBroadcastDefault is the manifest mock createBroadcastDefault: Resend created the broadcast.
+func CreateBroadcastCreateBroadcastDefault() connectormock.Case[resend.BroadcastReference] {
+	value := connectormock.MustDecodeOutput[resend.BroadcastReference](`{"id":"broadcast-1"}`)
+	return connectormock.Branch(resend.CreateBroadcastBranchCreated, value, nil)
+}
+
+// CreateBroadcastDefault is the manifest default, createBroadcastDefault, which New installs.
+func CreateBroadcastDefault() connectormock.Case[resend.BroadcastReference] {
+	return CreateBroadcastCreateBroadcastDefault()
+}
+
+// GetBroadcastFound selects the found branch: Resend found the broadcast.
+func GetBroadcastFound(value resend.Broadcast, failure *sdkgo.Failure) connectormock.Case[resend.Broadcast] {
+	return connectormock.Branch(resend.GetBroadcastBranchFound, value, failure)
+}
+
+// GetBroadcastNotFound selects the notFound branch: The broadcast does not exist.
+func GetBroadcastNotFound(value resend.Broadcast, failure *sdkgo.Failure) connectormock.Case[resend.Broadcast] {
+	return connectormock.Branch(resend.GetBroadcastBranchNotFound, value, failure)
+}
+
+// GetBroadcastProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetBroadcastProviderRejected(value resend.Broadcast, failure *sdkgo.Failure) connectormock.Case[resend.Broadcast] {
+	return connectormock.Branch(resend.GetBroadcastBranchProviderRejected, value, failure)
+}
+
+// GetBroadcastInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func GetBroadcastInvalidResponse(value resend.Broadcast, failure *sdkgo.Failure) connectormock.Case[resend.Broadcast] {
+	return connectormock.Branch(resend.GetBroadcastBranchInvalidResponse, value, failure)
+}
+
+// GetBroadcastDefect selects the defect branch: Local input or connection is invalid.
+func GetBroadcastDefect(value resend.Broadcast, failure *sdkgo.Failure) connectormock.Case[resend.Broadcast] {
+	return connectormock.Branch(resend.GetBroadcastBranchDefect, value, failure)
+}
+
+// GetBroadcastRetry asks Dex to retry the getBroadcast Step, after the delay when it is positive.
+func GetBroadcastRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.Broadcast] {
+	return connectormock.Retry[resend.Broadcast](failure, after)
+}
+
+// GetBroadcastGetBroadcastDefault is the manifest mock getBroadcastDefault: Resend found the broadcast.
+func GetBroadcastGetBroadcastDefault() connectormock.Case[resend.Broadcast] {
+	value := connectormock.MustDecodeOutput[resend.Broadcast](`{"id":"broadcast-1","name":"Newsletter","segment_id":"segment-1","from":"news@example.test","subject":"Hello","status":"draft"}`)
+	return connectormock.Branch(resend.GetBroadcastBranchFound, value, nil)
+}
+
+// GetBroadcastDefault is the manifest default, getBroadcastDefault, which New installs.
+func GetBroadcastDefault() connectormock.Case[resend.Broadcast] {
+	return GetBroadcastGetBroadcastDefault()
+}
+
+// ListBroadcastsListed selects the listed branch: Resend listed the broadcast.
+func ListBroadcastsListed(value resend.BroadcastPage, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastPage] {
+	return connectormock.Branch(resend.ListBroadcastsBranchListed, value, failure)
+}
+
+// ListBroadcastsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListBroadcastsProviderRejected(value resend.BroadcastPage, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastPage] {
+	return connectormock.Branch(resend.ListBroadcastsBranchProviderRejected, value, failure)
+}
+
+// ListBroadcastsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListBroadcastsInvalidResponse(value resend.BroadcastPage, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastPage] {
+	return connectormock.Branch(resend.ListBroadcastsBranchInvalidResponse, value, failure)
+}
+
+// ListBroadcastsDefect selects the defect branch: Local input or connection is invalid.
+func ListBroadcastsDefect(value resend.BroadcastPage, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastPage] {
+	return connectormock.Branch(resend.ListBroadcastsBranchDefect, value, failure)
+}
+
+// ListBroadcastsRetry asks Dex to retry the listBroadcasts Step, after the delay when it is positive.
+func ListBroadcastsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.BroadcastPage] {
+	return connectormock.Retry[resend.BroadcastPage](failure, after)
+}
+
+// ListBroadcastsListBroadcastsDefault is the manifest mock listBroadcastsDefault: Resend listed the broadcast.
+func ListBroadcastsListBroadcastsDefault() connectormock.Case[resend.BroadcastPage] {
+	value := connectormock.MustDecodeOutput[resend.BroadcastPage](`{"data":[{"id":"broadcast-1","name":"Newsletter","segment_id":"segment-1","status":"draft"}],"has_more":false}`)
+	return connectormock.Branch(resend.ListBroadcastsBranchListed, value, nil)
+}
+
+// ListBroadcastsDefault is the manifest default, listBroadcastsDefault, which New installs.
+func ListBroadcastsDefault() connectormock.Case[resend.BroadcastPage] {
+	return ListBroadcastsListBroadcastsDefault()
+}
+
+// UpdateBroadcastUpdated selects the updated branch: Resend updated the broadcast.
+func UpdateBroadcastUpdated(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.UpdateBroadcastBranchUpdated, value, failure)
+}
+
+// UpdateBroadcastNotFound selects the notFound branch: The broadcast does not exist.
+func UpdateBroadcastNotFound(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.UpdateBroadcastBranchNotFound, value, failure)
+}
+
+// UpdateBroadcastProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func UpdateBroadcastProviderRejected(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.UpdateBroadcastBranchProviderRejected, value, failure)
+}
+
+// UpdateBroadcastInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func UpdateBroadcastInvalidResponse(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.UpdateBroadcastBranchInvalidResponse, value, failure)
+}
+
+// UpdateBroadcastDefect selects the defect branch: Local input or connection is invalid.
+func UpdateBroadcastDefect(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.UpdateBroadcastBranchDefect, value, failure)
+}
+
+// UpdateBroadcastRetry asks Dex to retry the updateBroadcast Step, after the delay when it is positive.
+func UpdateBroadcastRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Retry[resend.BroadcastReference](failure, after)
+}
+
+// UpdateBroadcastUpdateBroadcastDefault is the manifest mock updateBroadcastDefault: Resend updated the broadcast.
+func UpdateBroadcastUpdateBroadcastDefault() connectormock.Case[resend.BroadcastReference] {
+	value := connectormock.MustDecodeOutput[resend.BroadcastReference](`{"id":"broadcast-1"}`)
+	return connectormock.Branch(resend.UpdateBroadcastBranchUpdated, value, nil)
+}
+
+// UpdateBroadcastDefault is the manifest default, updateBroadcastDefault, which New installs.
+func UpdateBroadcastDefault() connectormock.Case[resend.BroadcastReference] {
+	return UpdateBroadcastUpdateBroadcastDefault()
+}
+
+// DeleteBroadcastDeleted selects the deleted branch: Resend deleted the broadcast.
+func DeleteBroadcastDeleted(value resend.DeletedBroadcast, failure *sdkgo.Failure) connectormock.Case[resend.DeletedBroadcast] {
+	return connectormock.Branch(resend.DeleteBroadcastBranchDeleted, value, failure)
+}
+
+// DeleteBroadcastNotFound selects the notFound branch: The broadcast does not exist.
+func DeleteBroadcastNotFound(value resend.DeletedBroadcast, failure *sdkgo.Failure) connectormock.Case[resend.DeletedBroadcast] {
+	return connectormock.Branch(resend.DeleteBroadcastBranchNotFound, value, failure)
+}
+
+// DeleteBroadcastProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func DeleteBroadcastProviderRejected(value resend.DeletedBroadcast, failure *sdkgo.Failure) connectormock.Case[resend.DeletedBroadcast] {
+	return connectormock.Branch(resend.DeleteBroadcastBranchProviderRejected, value, failure)
+}
+
+// DeleteBroadcastInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func DeleteBroadcastInvalidResponse(value resend.DeletedBroadcast, failure *sdkgo.Failure) connectormock.Case[resend.DeletedBroadcast] {
+	return connectormock.Branch(resend.DeleteBroadcastBranchInvalidResponse, value, failure)
+}
+
+// DeleteBroadcastDefect selects the defect branch: Local input or connection is invalid.
+func DeleteBroadcastDefect(value resend.DeletedBroadcast, failure *sdkgo.Failure) connectormock.Case[resend.DeletedBroadcast] {
+	return connectormock.Branch(resend.DeleteBroadcastBranchDefect, value, failure)
+}
+
+// DeleteBroadcastRetry asks Dex to retry the deleteBroadcast Step, after the delay when it is positive.
+func DeleteBroadcastRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.DeletedBroadcast] {
+	return connectormock.Retry[resend.DeletedBroadcast](failure, after)
+}
+
+// DeleteBroadcastDeleteBroadcastDefault is the manifest mock deleteBroadcastDefault: Resend deleted the broadcast.
+func DeleteBroadcastDeleteBroadcastDefault() connectormock.Case[resend.DeletedBroadcast] {
+	value := connectormock.MustDecodeOutput[resend.DeletedBroadcast](`{"id":"broadcast-1","deleted":true}`)
+	return connectormock.Branch(resend.DeleteBroadcastBranchDeleted, value, nil)
+}
+
+// DeleteBroadcastDefault is the manifest default, deleteBroadcastDefault, which New installs.
+func DeleteBroadcastDefault() connectormock.Case[resend.DeletedBroadcast] {
+	return DeleteBroadcastDeleteBroadcastDefault()
+}
+
+// SendBroadcastSent selects the sent branch: Resend sent the broadcast.
+func SendBroadcastSent(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.SendBroadcastBranchSent, value, failure)
+}
+
+// SendBroadcastNotFound selects the notFound branch: The broadcast does not exist.
+func SendBroadcastNotFound(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.SendBroadcastBranchNotFound, value, failure)
+}
+
+// SendBroadcastProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func SendBroadcastProviderRejected(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.SendBroadcastBranchProviderRejected, value, failure)
+}
+
+// SendBroadcastInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func SendBroadcastInvalidResponse(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.SendBroadcastBranchInvalidResponse, value, failure)
+}
+
+// SendBroadcastDefect selects the defect branch: Local input or connection is invalid.
+func SendBroadcastDefect(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.SendBroadcastBranchDefect, value, failure)
+}
+
+// SendBroadcastRetry asks Dex to retry the sendBroadcast Step, after the delay when it is positive.
+func SendBroadcastRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Retry[resend.BroadcastReference](failure, after)
+}
+
+// SendBroadcastSendBroadcastDefault is the manifest mock sendBroadcastDefault: Resend sent the broadcast.
+func SendBroadcastSendBroadcastDefault() connectormock.Case[resend.BroadcastReference] {
+	value := connectormock.MustDecodeOutput[resend.BroadcastReference](`{"id":"broadcast-1"}`)
+	return connectormock.Branch(resend.SendBroadcastBranchSent, value, nil)
+}
+
+// SendBroadcastDefault is the manifest default, sendBroadcastDefault, which New installs.
+func SendBroadcastDefault() connectormock.Case[resend.BroadcastReference] {
+	return SendBroadcastSendBroadcastDefault()
+}
+
+// CancelBroadcastCancelled selects the cancelled branch: Resend cancelled the broadcast.
+func CancelBroadcastCancelled(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.CancelBroadcastBranchCancelled, value, failure)
+}
+
+// CancelBroadcastNotFound selects the notFound branch: The broadcast does not exist.
+func CancelBroadcastNotFound(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.CancelBroadcastBranchNotFound, value, failure)
+}
+
+// CancelBroadcastProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func CancelBroadcastProviderRejected(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.CancelBroadcastBranchProviderRejected, value, failure)
+}
+
+// CancelBroadcastInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func CancelBroadcastInvalidResponse(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.CancelBroadcastBranchInvalidResponse, value, failure)
+}
+
+// CancelBroadcastDefect selects the defect branch: Local input or connection is invalid.
+func CancelBroadcastDefect(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.CancelBroadcastBranchDefect, value, failure)
+}
+
+// CancelBroadcastRetry asks Dex to retry the cancelBroadcast Step, after the delay when it is positive.
+func CancelBroadcastRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Retry[resend.BroadcastReference](failure, after)
+}
+
+// CancelBroadcastCancelBroadcastDefault is the manifest mock cancelBroadcastDefault: Resend cancelled the broadcast.
+func CancelBroadcastCancelBroadcastDefault() connectormock.Case[resend.BroadcastReference] {
+	value := connectormock.MustDecodeOutput[resend.BroadcastReference](`{"id":"broadcast-1"}`)
+	return connectormock.Branch(resend.CancelBroadcastBranchCancelled, value, nil)
+}
+
+// CancelBroadcastDefault is the manifest default, cancelBroadcastDefault, which New installs.
+func CancelBroadcastDefault() connectormock.Case[resend.BroadcastReference] {
+	return CancelBroadcastCancelBroadcastDefault()
+}
+
+// DuplicateBroadcastDuplicated selects the duplicated branch: Resend duplicated the broadcast.
+func DuplicateBroadcastDuplicated(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.DuplicateBroadcastBranchDuplicated, value, failure)
+}
+
+// DuplicateBroadcastProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func DuplicateBroadcastProviderRejected(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.DuplicateBroadcastBranchProviderRejected, value, failure)
+}
+
+// DuplicateBroadcastDefect selects the defect branch: Local input or connection is invalid.
+func DuplicateBroadcastDefect(value resend.BroadcastReference, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Branch(resend.DuplicateBroadcastBranchDefect, value, failure)
+}
+
+// DuplicateBroadcastRetry asks Dex to retry the duplicateBroadcast Step, after the delay when it is positive.
+func DuplicateBroadcastRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Retry[resend.BroadcastReference](failure, after)
+}
+
+// DuplicateBroadcastDuplicateBroadcastDefault is the manifest mock duplicateBroadcastDefault: Resend duplicated the broadcast.
+func DuplicateBroadcastDuplicateBroadcastDefault() connectormock.Case[resend.BroadcastReference] {
+	value := connectormock.MustDecodeOutput[resend.BroadcastReference](`{"id":"broadcast-2"}`)
+	return connectormock.Branch(resend.DuplicateBroadcastBranchDuplicated, value, nil)
+}
+
+// DuplicateBroadcastDefault is the manifest default, duplicateBroadcastDefault, which New installs.
+func DuplicateBroadcastDefault() connectormock.Case[resend.BroadcastReference] {
+	return DuplicateBroadcastDuplicateBroadcastDefault()
+}
+
+// ListBroadcastRecipientsListed selects the listed branch: Resend listed the broadcast.
+func ListBroadcastRecipientsListed(value resend.BroadcastRecipientPage, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastRecipientPage] {
+	return connectormock.Branch(resend.ListBroadcastRecipientsBranchListed, value, failure)
+}
+
+// ListBroadcastRecipientsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListBroadcastRecipientsProviderRejected(value resend.BroadcastRecipientPage, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastRecipientPage] {
+	return connectormock.Branch(resend.ListBroadcastRecipientsBranchProviderRejected, value, failure)
+}
+
+// ListBroadcastRecipientsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListBroadcastRecipientsInvalidResponse(value resend.BroadcastRecipientPage, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastRecipientPage] {
+	return connectormock.Branch(resend.ListBroadcastRecipientsBranchInvalidResponse, value, failure)
+}
+
+// ListBroadcastRecipientsDefect selects the defect branch: Local input or connection is invalid.
+func ListBroadcastRecipientsDefect(value resend.BroadcastRecipientPage, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastRecipientPage] {
+	return connectormock.Branch(resend.ListBroadcastRecipientsBranchDefect, value, failure)
+}
+
+// ListBroadcastRecipientsRetry asks Dex to retry the listBroadcastRecipients Step, after the delay when it is positive.
+func ListBroadcastRecipientsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.BroadcastRecipientPage] {
+	return connectormock.Retry[resend.BroadcastRecipientPage](failure, after)
+}
+
+// ListBroadcastRecipientsListBroadcastRecipientsDefault is the manifest mock listBroadcastRecipientsDefault: Resend listed the broadcast.
+func ListBroadcastRecipientsListBroadcastRecipientsDefault() connectormock.Case[resend.BroadcastRecipientPage] {
+	value := connectormock.MustDecodeOutput[resend.BroadcastRecipientPage](`{"data":[{"id":"recipient-1","email":"reader@example.test"}],"has_more":false}`)
+	return connectormock.Branch(resend.ListBroadcastRecipientsBranchListed, value, nil)
+}
+
+// ListBroadcastRecipientsDefault is the manifest default, listBroadcastRecipientsDefault, which New installs.
+func ListBroadcastRecipientsDefault() connectormock.Case[resend.BroadcastRecipientPage] {
+	return ListBroadcastRecipientsListBroadcastRecipientsDefault()
+}
+
+// ListBroadcastClickedLinksListed selects the listed branch: Resend listed the broadcast.
+func ListBroadcastClickedLinksListed(value resend.BroadcastClickedLinkPage, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastClickedLinkPage] {
+	return connectormock.Branch(resend.ListBroadcastClickedLinksBranchListed, value, failure)
+}
+
+// ListBroadcastClickedLinksProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListBroadcastClickedLinksProviderRejected(value resend.BroadcastClickedLinkPage, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastClickedLinkPage] {
+	return connectormock.Branch(resend.ListBroadcastClickedLinksBranchProviderRejected, value, failure)
+}
+
+// ListBroadcastClickedLinksInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListBroadcastClickedLinksInvalidResponse(value resend.BroadcastClickedLinkPage, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastClickedLinkPage] {
+	return connectormock.Branch(resend.ListBroadcastClickedLinksBranchInvalidResponse, value, failure)
+}
+
+// ListBroadcastClickedLinksDefect selects the defect branch: Local input or connection is invalid.
+func ListBroadcastClickedLinksDefect(value resend.BroadcastClickedLinkPage, failure *sdkgo.Failure) connectormock.Case[resend.BroadcastClickedLinkPage] {
+	return connectormock.Branch(resend.ListBroadcastClickedLinksBranchDefect, value, failure)
+}
+
+// ListBroadcastClickedLinksRetry asks Dex to retry the listBroadcastClickedLinks Step, after the delay when it is positive.
+func ListBroadcastClickedLinksRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.BroadcastClickedLinkPage] {
+	return connectormock.Retry[resend.BroadcastClickedLinkPage](failure, after)
+}
+
+// ListBroadcastClickedLinksListBroadcastClickedLinksDefault is the manifest mock listBroadcastClickedLinksDefault: Resend listed the broadcast.
+func ListBroadcastClickedLinksListBroadcastClickedLinksDefault() connectormock.Case[resend.BroadcastClickedLinkPage] {
+	value := connectormock.MustDecodeOutput[resend.BroadcastClickedLinkPage](`{"data":[{"id":"link-1","url":"https://example.test","clicks":2,"unique_clicks":1}],"has_more":false}`)
+	return connectormock.Branch(resend.ListBroadcastClickedLinksBranchListed, value, nil)
+}
+
+// ListBroadcastClickedLinksDefault is the manifest default, listBroadcastClickedLinksDefault, which New installs.
+func ListBroadcastClickedLinksDefault() connectormock.Case[resend.BroadcastClickedLinkPage] {
+	return ListBroadcastClickedLinksListBroadcastClickedLinksDefault()
 }
 
 // GetContactFound selects the found branch: Resend returned the contact.

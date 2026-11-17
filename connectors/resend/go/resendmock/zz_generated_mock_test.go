@@ -188,6 +188,46 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[resend.DeletedContactProperty](`{"id":"property-1","deleted":true}`)
 			return err
 		}},
+		{name: "createBroadcast/createBroadcastDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.BroadcastReference](`{"id":"broadcast-1"}`)
+			return err
+		}},
+		{name: "getBroadcast/getBroadcastDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Broadcast](`{"id":"broadcast-1","name":"Newsletter","segment_id":"segment-1","from":"news@example.test","subject":"Hello","status":"draft"}`)
+			return err
+		}},
+		{name: "listBroadcasts/listBroadcastsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.BroadcastPage](`{"data":[{"id":"broadcast-1","name":"Newsletter","segment_id":"segment-1","status":"draft"}],"has_more":false}`)
+			return err
+		}},
+		{name: "updateBroadcast/updateBroadcastDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.BroadcastReference](`{"id":"broadcast-1"}`)
+			return err
+		}},
+		{name: "deleteBroadcast/deleteBroadcastDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedBroadcast](`{"id":"broadcast-1","deleted":true}`)
+			return err
+		}},
+		{name: "sendBroadcast/sendBroadcastDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.BroadcastReference](`{"id":"broadcast-1"}`)
+			return err
+		}},
+		{name: "cancelBroadcast/cancelBroadcastDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.BroadcastReference](`{"id":"broadcast-1"}`)
+			return err
+		}},
+		{name: "duplicateBroadcast/duplicateBroadcastDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.BroadcastReference](`{"id":"broadcast-2"}`)
+			return err
+		}},
+		{name: "listBroadcastRecipients/listBroadcastRecipientsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.BroadcastRecipientPage](`{"data":[{"id":"recipient-1","email":"reader@example.test"}],"has_more":false}`)
+			return err
+		}},
+		{name: "listBroadcastClickedLinks/listBroadcastClickedLinksDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.BroadcastClickedLinkPage](`{"data":[{"id":"link-1","url":"https://example.test","clicks":2,"unique_clicks":1}],"has_more":false}`)
+			return err
+		}},
 		{name: "getContact/getContactDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[resend.Contact](`{"id":"contact-1","email":"reader@example.test","unsubscribed":false}`)
 			return err
@@ -342,6 +382,36 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteContactProperty().Definition().Operation.OperationID != "deleteContactProperty" {
 		t.Errorf("deleteContactProperty mock has another definition")
+	}
+	if mock.CreateBroadcast().Definition().Operation.OperationID != "createBroadcast" {
+		t.Errorf("createBroadcast mock has another definition")
+	}
+	if mock.GetBroadcast().Definition().Operation.OperationID != "getBroadcast" {
+		t.Errorf("getBroadcast mock has another definition")
+	}
+	if mock.ListBroadcasts().Definition().Operation.OperationID != "listBroadcasts" {
+		t.Errorf("listBroadcasts mock has another definition")
+	}
+	if mock.UpdateBroadcast().Definition().Operation.OperationID != "updateBroadcast" {
+		t.Errorf("updateBroadcast mock has another definition")
+	}
+	if mock.DeleteBroadcast().Definition().Operation.OperationID != "deleteBroadcast" {
+		t.Errorf("deleteBroadcast mock has another definition")
+	}
+	if mock.SendBroadcast().Definition().Operation.OperationID != "sendBroadcast" {
+		t.Errorf("sendBroadcast mock has another definition")
+	}
+	if mock.CancelBroadcast().Definition().Operation.OperationID != "cancelBroadcast" {
+		t.Errorf("cancelBroadcast mock has another definition")
+	}
+	if mock.DuplicateBroadcast().Definition().Operation.OperationID != "duplicateBroadcast" {
+		t.Errorf("duplicateBroadcast mock has another definition")
+	}
+	if mock.ListBroadcastRecipients().Definition().Operation.OperationID != "listBroadcastRecipients" {
+		t.Errorf("listBroadcastRecipients mock has another definition")
+	}
+	if mock.ListBroadcastClickedLinks().Definition().Operation.OperationID != "listBroadcastClickedLinks" {
+		t.Errorf("listBroadcastClickedLinks mock has another definition")
 	}
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")

@@ -73,6 +73,16 @@ unverified.
 | `listContactProperties` | query | ContactPropertyPage |
 | `updateContactProperty` | mutation | ContactPropertyReference |
 | `deleteContactProperty` | mutation | DeletedContactProperty |
+| `createBroadcast` | mutation | BroadcastReference |
+| `getBroadcast` | query | Broadcast |
+| `listBroadcasts` | query | BroadcastPage |
+| `updateBroadcast` | mutation | BroadcastReference |
+| `deleteBroadcast` | mutation | DeletedBroadcast |
+| `sendBroadcast` | mutation | BroadcastReference |
+| `cancelBroadcast` | mutation | BroadcastReference |
+| `duplicateBroadcast` | mutation | BroadcastReference |
+| `listBroadcastRecipients` | query | BroadcastRecipientPage |
+| `listBroadcastClickedLinks` | query | BroadcastClickedLinkPage |
 
 Topic CRUD follows [Resend's Topics API](https://resend.com/docs/api-reference/topics/create-topic).
 `createTopic` is `limited` with three possible sends and read-back by topic
@@ -121,6 +131,22 @@ An update supplies a new fallback value of the property's type. Find property
 IDs under [Resend Contacts](https://resend.com/contacts). The
 [create-contact-property Flow](go/examples/create-contact-property/README.md)
 exercises the generated factory through real Dex with a provider mock.
+
+Broadcast creation always makes a draft; delivery is a separate
+`sendBroadcast` step. `createBroadcast` uses `limited` with three possible
+sends and paginated read-back by draft name, segment, sender, subject, topic,
+and message body. `duplicateBroadcast` also uses `limited`: Resend does not
+expose a correlation field for copies, so an unknown copy cannot be confirmed
+by read-back, and the cap selects optional `uncertain`. Reads, absolute draft
+updates, draft deletion, send by existing ID, and cancellation use `safe`.
+Scheduled send input is RFC 3339; blank sends immediately. A canceled scheduled
+broadcast returns to draft, while a canceled queued broadcast stops remaining
+recipients. Recipient pages require an event `type`; `bounceType` applies
+only to bounced events. Find IDs under
+[Resend Broadcasts](https://resend.com/broadcasts) and see the
+[create-broadcast Flow](go/examples/create-broadcast/README.md) for the
+generated factory. Broadcast read results omit message bodies from durable
+Flow state.
 
 Sent and received attachment queries return metadata but omit Resend's
 short-lived signed `download_url`, because that URL grants access to content.

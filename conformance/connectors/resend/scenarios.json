@@ -17762,6 +17762,4091 @@
       },
       "name": "updateContactProperty-transport",
       "operation": "updateContactProperty"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"broadcast-1\",\"name\":\"Newsletter\",\"segment_id\":\"segment-1\",\"from\":\"news@example.test\",\"subject\":\"Hello\",\"status\":\"draft\",\"topic_id\":\"topic-1\",\"html\":\"\u003cp\u003eHello\u003c/p\u003e\",\"text\":\"Hello\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "created_at": "",
+          "from": "news@example.test",
+          "id": "broadcast-1",
+          "name": "Newsletter",
+          "scheduled_at": "",
+          "segment_id": "segment-1",
+          "sent_at": "",
+          "status": "draft",
+          "subject": "Hello",
+          "topic_id": "topic-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "getBroadcast-success",
+      "operation": "getBroadcast"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "created_at": "",
+          "from": "",
+          "id": "",
+          "name": "",
+          "scheduled_at": "",
+          "segment_id": "",
+          "sent_at": "",
+          "status": "",
+          "subject": "",
+          "topic_id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "getBroadcast-missing",
+      "operation": "getBroadcast"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "created_at": "",
+          "from": "",
+          "id": "",
+          "name": "",
+          "scheduled_at": "",
+          "segment_id": "",
+          "sent_at": "",
+          "status": "",
+          "subject": "",
+          "topic_id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "getBroadcast-rejected",
+      "operation": "getBroadcast"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"broadcast-1\",\"name\":\"Newsletter\",\"segment_id\":\"segment-1\",\"from\":\"news@example.test\",\"subject\":\"Hello\",\"status\":\"draft\",\"topic_id\":\"topic-1\",\"html\":\"\u003cp\u003eHello\u003c/p\u003e\",\"text\":\"Hello\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "created_at": "",
+          "from": "news@example.test",
+          "id": "broadcast-1",
+          "name": "Newsletter",
+          "scheduled_at": "",
+          "segment_id": "segment-1",
+          "sent_at": "",
+          "status": "draft",
+          "subject": "Hello",
+          "topic_id": "topic-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "getBroadcast-invalid",
+      "operation": "getBroadcast"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "created_at": "",
+          "from": "",
+          "id": "",
+          "name": "",
+          "scheduled_at": "",
+          "segment_id": "",
+          "sent_at": "",
+          "status": "",
+          "subject": "",
+          "topic_id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": ""
+      },
+      "name": "getBroadcast-defect",
+      "operation": "getBroadcast"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "getBroadcast-rate",
+      "operation": "getBroadcast"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "getBroadcast-server",
+      "operation": "getBroadcast"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "getBroadcast-transport",
+      "operation": "getBroadcast"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"broadcast-1\",\"name\":\"Newsletter\",\"segment_id\":\"segment-1\",\"from\":\"news@example.test\",\"subject\":\"Hello\",\"status\":\"draft\",\"topic_id\":\"topic-1\",\"html\":\"\u003cp\u003eHello\u003c/p\u003e\",\"text\":\"Hello\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts",
+          "query": {
+            "after": [
+              "broadcast-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "created_at": "",
+              "from": "news@example.test",
+              "id": "broadcast-1",
+              "name": "Newsletter",
+              "scheduled_at": "",
+              "segment_id": "segment-1",
+              "sent_at": "",
+              "status": "draft",
+              "subject": "Hello",
+              "topic_id": "topic-1"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "broadcast-0",
+        "limit": 10
+      },
+      "name": "listBroadcasts-success",
+      "operation": "listBroadcasts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts",
+          "query": {
+            "after": [
+              "broadcast-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "broadcast-0",
+        "limit": 10
+      },
+      "name": "listBroadcasts-rejected",
+      "operation": "listBroadcasts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"broadcast-1\",\"name\":\"Newsletter\",\"segment_id\":\"segment-1\",\"from\":\"news@example.test\",\"subject\":\"Hello\",\"status\":\"draft\",\"topic_id\":\"topic-1\",\"html\":\"\u003cp\u003eHello\u003c/p\u003e\",\"text\":\"Hello\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts",
+          "query": {
+            "after": [
+              "broadcast-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "created_at": "",
+              "from": "news@example.test",
+              "id": "broadcast-1",
+              "name": "Newsletter",
+              "scheduled_at": "",
+              "segment_id": "segment-1",
+              "sent_at": "",
+              "status": "draft",
+              "subject": "Hello",
+              "topic_id": "topic-1"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "broadcast-0",
+        "limit": 10
+      },
+      "name": "listBroadcasts-invalid",
+      "operation": "listBroadcasts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "broadcast-0",
+        "limit": 101
+      },
+      "name": "listBroadcasts-defect",
+      "operation": "listBroadcasts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts",
+          "query": {
+            "after": [
+              "broadcast-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "broadcast-0",
+        "limit": 10
+      },
+      "name": "listBroadcasts-rate",
+      "operation": "listBroadcasts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts",
+          "query": {
+            "after": [
+              "broadcast-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "broadcast-0",
+        "limit": 10
+      },
+      "name": "listBroadcasts-server",
+      "operation": "listBroadcasts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts",
+          "query": {
+            "after": [
+              "broadcast-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "broadcast-0",
+        "limit": 10
+      },
+      "name": "listBroadcasts-transport",
+      "operation": "listBroadcasts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"recipient-1\",\"contact_id\":\"contact-1\",\"email\":\"reader@example.test\",\"count\":1,\"bounce_type\":\"permanent\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1/recipients",
+          "query": {
+            "after": [
+              "recipient-0"
+            ],
+            "bounce_type": [
+              "permanent"
+            ],
+            "email": [
+              "reader"
+            ],
+            "limit": [
+              "10"
+            ],
+            "type": [
+              "bounced"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "bounce_type": "permanent",
+              "contact_id": "contact-1",
+              "count": 1,
+              "email": "reader@example.test",
+              "id": "recipient-1"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "recipient-0",
+        "bounceType": "permanent",
+        "email": "reader",
+        "id": "broadcast-1",
+        "limit": 10,
+        "type": "bounced"
+      },
+      "name": "listBroadcastRecipients-success",
+      "operation": "listBroadcastRecipients"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1/recipients",
+          "query": {
+            "after": [
+              "recipient-0"
+            ],
+            "bounce_type": [
+              "permanent"
+            ],
+            "email": [
+              "reader"
+            ],
+            "limit": [
+              "10"
+            ],
+            "type": [
+              "bounced"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "recipient-0",
+        "bounceType": "permanent",
+        "email": "reader",
+        "id": "broadcast-1",
+        "limit": 10,
+        "type": "bounced"
+      },
+      "name": "listBroadcastRecipients-rejected",
+      "operation": "listBroadcastRecipients"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"recipient-1\",\"contact_id\":\"contact-1\",\"email\":\"reader@example.test\",\"count\":1,\"bounce_type\":\"permanent\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1/recipients",
+          "query": {
+            "after": [
+              "recipient-0"
+            ],
+            "bounce_type": [
+              "permanent"
+            ],
+            "email": [
+              "reader"
+            ],
+            "limit": [
+              "10"
+            ],
+            "type": [
+              "bounced"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "bounce_type": "permanent",
+              "contact_id": "contact-1",
+              "count": 1,
+              "email": "reader@example.test",
+              "id": "recipient-1"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "recipient-0",
+        "bounceType": "permanent",
+        "email": "reader",
+        "id": "broadcast-1",
+        "limit": 10,
+        "type": "bounced"
+      },
+      "name": "listBroadcastRecipients-invalid",
+      "operation": "listBroadcastRecipients"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "recipient-0",
+        "bounceType": "permanent",
+        "email": "reader",
+        "id": "",
+        "limit": 10,
+        "type": "bounced"
+      },
+      "name": "listBroadcastRecipients-defect",
+      "operation": "listBroadcastRecipients"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1/recipients",
+          "query": {
+            "after": [
+              "recipient-0"
+            ],
+            "bounce_type": [
+              "permanent"
+            ],
+            "email": [
+              "reader"
+            ],
+            "limit": [
+              "10"
+            ],
+            "type": [
+              "bounced"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "recipient-0",
+        "bounceType": "permanent",
+        "email": "reader",
+        "id": "broadcast-1",
+        "limit": 10,
+        "type": "bounced"
+      },
+      "name": "listBroadcastRecipients-rate",
+      "operation": "listBroadcastRecipients"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1/recipients",
+          "query": {
+            "after": [
+              "recipient-0"
+            ],
+            "bounce_type": [
+              "permanent"
+            ],
+            "email": [
+              "reader"
+            ],
+            "limit": [
+              "10"
+            ],
+            "type": [
+              "bounced"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "recipient-0",
+        "bounceType": "permanent",
+        "email": "reader",
+        "id": "broadcast-1",
+        "limit": 10,
+        "type": "bounced"
+      },
+      "name": "listBroadcastRecipients-server",
+      "operation": "listBroadcastRecipients"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1/recipients",
+          "query": {
+            "after": [
+              "recipient-0"
+            ],
+            "bounce_type": [
+              "permanent"
+            ],
+            "email": [
+              "reader"
+            ],
+            "limit": [
+              "10"
+            ],
+            "type": [
+              "bounced"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "recipient-0",
+        "bounceType": "permanent",
+        "email": "reader",
+        "id": "broadcast-1",
+        "limit": 10,
+        "type": "bounced"
+      },
+      "name": "listBroadcastRecipients-transport",
+      "operation": "listBroadcastRecipients"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"link-1\",\"url\":\"https://example.test\",\"clicks\":2,\"unique_clicks\":1}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1/clicked-links",
+          "query": {
+            "after": [
+              "link-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "clicks": 2,
+              "id": "link-1",
+              "unique_clicks": 1,
+              "url": "https://example.test"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "link-0",
+        "id": "broadcast-1",
+        "limit": 10
+      },
+      "name": "listBroadcastClickedLinks-success",
+      "operation": "listBroadcastClickedLinks"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1/clicked-links",
+          "query": {
+            "after": [
+              "link-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "link-0",
+        "id": "broadcast-1",
+        "limit": 10
+      },
+      "name": "listBroadcastClickedLinks-rejected",
+      "operation": "listBroadcastClickedLinks"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"link-1\",\"url\":\"https://example.test\",\"clicks\":2,\"unique_clicks\":1}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1/clicked-links",
+          "query": {
+            "after": [
+              "link-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "clicks": 2,
+              "id": "link-1",
+              "unique_clicks": 1,
+              "url": "https://example.test"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "link-0",
+        "id": "broadcast-1",
+        "limit": 10
+      },
+      "name": "listBroadcastClickedLinks-invalid",
+      "operation": "listBroadcastClickedLinks"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "link-0",
+        "id": "",
+        "limit": 10
+      },
+      "name": "listBroadcastClickedLinks-defect",
+      "operation": "listBroadcastClickedLinks"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1/clicked-links",
+          "query": {
+            "after": [
+              "link-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "link-0",
+        "id": "broadcast-1",
+        "limit": 10
+      },
+      "name": "listBroadcastClickedLinks-rate",
+      "operation": "listBroadcastClickedLinks"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1/clicked-links",
+          "query": {
+            "after": [
+              "link-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "link-0",
+        "id": "broadcast-1",
+        "limit": 10
+      },
+      "name": "listBroadcastClickedLinks-server",
+      "operation": "listBroadcastClickedLinks"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1/clicked-links",
+          "query": {
+            "after": [
+              "link-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "link-0",
+        "id": "broadcast-1",
+        "limit": 10
+      },
+      "name": "listBroadcastClickedLinks-transport",
+      "operation": "listBroadcastClickedLinks"
+    },
+    {
+      "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"broadcast-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts",
+          "requestBody": {
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Newsletter",
+            "preview_text": "Preview",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "segment_id": "segment-1",
+            "send": false,
+            "subject": "Hello",
+            "text": "Hello",
+            "topic_id": "topic-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "broadcast-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "669718f4-5c93-5c95-bebe-397580ef142c",
+      "input": {
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "name": "Newsletter",
+        "previewText": "Preview",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "segmentId": "segment-1",
+        "subject": "Hello",
+        "text": "Hello",
+        "topicId": "topic-1"
+      },
+      "name": "createBroadcast-success",
+      "operation": "createBroadcast"
+    },
+    {
+      "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts",
+          "requestBody": {
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Newsletter",
+            "preview_text": "Preview",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "segment_id": "segment-1",
+            "send": false,
+            "subject": "Hello",
+            "text": "Hello",
+            "topic_id": "topic-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "669718f4-5c93-5c95-bebe-397580ef142c",
+      "input": {
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "name": "Newsletter",
+        "previewText": "Preview",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "segmentId": "segment-1",
+        "subject": "Hello",
+        "text": "Hello",
+        "topicId": "topic-1"
+      },
+      "name": "createBroadcast-rejected",
+      "operation": "createBroadcast"
+    },
+    {
+      "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts",
+          "requestBody": {
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Newsletter",
+            "preview_text": "Preview",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "segment_id": "segment-1",
+            "send": false,
+            "subject": "Hello",
+            "text": "Hello",
+            "topic_id": "topic-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "669718f4-5c93-5c95-bebe-397580ef142c",
+      "input": {
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "name": "Newsletter",
+        "previewText": "Preview",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "segmentId": "segment-1",
+        "subject": "Hello",
+        "text": "Hello",
+        "topicId": "topic-1"
+      },
+      "name": "createBroadcast-429",
+      "operation": "createBroadcast"
+    },
+    {
+      "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts",
+          "requestBody": {
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Newsletter",
+            "preview_text": "Preview",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "segment_id": "segment-1",
+            "send": false,
+            "subject": "Hello",
+            "text": "Hello",
+            "topic_id": "topic-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "669718f4-5c93-5c95-bebe-397580ef142c",
+      "input": {
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "name": "Newsletter",
+        "previewText": "Preview",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "segmentId": "segment-1",
+        "subject": "Hello",
+        "text": "Hello",
+        "topicId": "topic-1"
+      },
+      "name": "createBroadcast-5xx",
+      "operation": "createBroadcast"
+    },
+    {
+      "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts",
+          "requestBody": {
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Newsletter",
+            "preview_text": "Preview",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "segment_id": "segment-1",
+            "send": false,
+            "subject": "Hello",
+            "text": "Hello",
+            "topic_id": "topic-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "669718f4-5c93-5c95-bebe-397580ef142c",
+      "input": {
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "name": "Newsletter",
+        "previewText": "Preview",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "segmentId": "segment-1",
+        "subject": "Hello",
+        "text": "Hello",
+        "topicId": "topic-1"
+      },
+      "name": "createBroadcast-transport",
+      "operation": "createBroadcast"
+    },
+    {
+      "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "669718f4-5c93-5c95-bebe-397580ef142c",
+      "input": {
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "name": "",
+        "previewText": "Preview",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "segmentId": "segment-1",
+        "subject": "Hello",
+        "text": "Hello",
+        "topicId": "topic-1"
+      },
+      "name": "createBroadcast-defect",
+      "operation": "createBroadcast"
+    },
+    {
+      "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts",
+          "requestBody": {
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Newsletter",
+            "preview_text": "Preview",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "segment_id": "segment-1",
+            "send": false,
+            "subject": "Hello",
+            "text": "Hello",
+            "topic_id": "topic-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "669718f4-5c93-5c95-bebe-397580ef142c",
+      "input": {
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "name": "Newsletter",
+        "previewText": "Preview",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "segmentId": "segment-1",
+        "subject": "Hello",
+        "text": "Hello",
+        "topicId": "topic-1"
+      },
+      "name": "createBroadcast-conflict",
+      "operation": "createBroadcast"
+    },
+    {
+      "attempts": 2,
+      "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts",
+          "requestBody": {
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Newsletter",
+            "preview_text": "Preview",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "segment_id": "segment-1",
+            "send": false,
+            "subject": "Hello",
+            "text": "Hello",
+            "topic_id": "topic-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[{\"id\":\"broadcast-1\",\"name\":\"Newsletter\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"broadcast-1\",\"name\":\"Newsletter\",\"segment_id\":\"segment-1\",\"from\":\"news@example.test\",\"subject\":\"Hello\",\"status\":\"draft\",\"html\":\"\u003cp\u003eHello\u003c/p\u003e\",\"text\":\"Hello\",\"topic_id\":\"topic-1\",\"reply_to\":[\"reply@example.test\"],\"preview_text\":\"Preview\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "broadcast-1"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "669718f4-5c93-5c95-bebe-397580ef142c",
+      "input": {
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "name": "Newsletter",
+        "previewText": "Preview",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "segmentId": "segment-1",
+        "subject": "Hello",
+        "text": "Hello",
+        "topicId": "topic-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createBroadcast-retry-readback",
+      "operation": "createBroadcast"
+    },
+    {
+      "attempts": 3,
+      "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts",
+          "requestBody": {
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Newsletter",
+            "preview_text": "Preview",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "segment_id": "segment-1",
+            "send": false,
+            "subject": "Hello",
+            "text": "Hello",
+            "topic_id": "topic-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[{\"id\":\"broadcast-1\",\"name\":\"Newsletter\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[{\"id\":\"broadcast-1\",\"name\":\"Newsletter\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 5,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "669718f4-5c93-5c95-bebe-397580ef142c",
+      "input": {
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "name": "Newsletter",
+        "previewText": "Preview",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "segmentId": "segment-1",
+        "subject": "Hello",
+        "text": "Hello",
+        "topicId": "topic-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createBroadcast-send-cap",
+      "operation": "createBroadcast"
+    },
+    {
+      "callId": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"broadcast-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/broadcasts/broadcast-1",
+          "requestBody": {
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Newsletter",
+            "preview_text": "Preview",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "segment_id": "segment-1",
+            "subject": "Hello",
+            "text": "Hello",
+            "topic_id": "topic-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "broadcast-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "input": {
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "id": "broadcast-1",
+        "name": "Newsletter",
+        "previewText": "Preview",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "segmentId": "segment-1",
+        "subject": "Hello",
+        "text": "Hello",
+        "topicId": "topic-1"
+      },
+      "name": "updateBroadcast-success",
+      "operation": "updateBroadcast"
+    },
+    {
+      "callId": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/broadcasts/broadcast-1",
+          "requestBody": {
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Newsletter",
+            "preview_text": "Preview",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "segment_id": "segment-1",
+            "subject": "Hello",
+            "text": "Hello",
+            "topic_id": "topic-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "input": {
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "id": "broadcast-1",
+        "name": "Newsletter",
+        "previewText": "Preview",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "segmentId": "segment-1",
+        "subject": "Hello",
+        "text": "Hello",
+        "topicId": "topic-1"
+      },
+      "name": "updateBroadcast-notFound",
+      "operation": "updateBroadcast"
+    },
+    {
+      "callId": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/broadcasts/broadcast-1",
+          "requestBody": {
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Newsletter",
+            "preview_text": "Preview",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "segment_id": "segment-1",
+            "subject": "Hello",
+            "text": "Hello",
+            "topic_id": "topic-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "input": {
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "id": "broadcast-1",
+        "name": "Newsletter",
+        "previewText": "Preview",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "segmentId": "segment-1",
+        "subject": "Hello",
+        "text": "Hello",
+        "topicId": "topic-1"
+      },
+      "name": "updateBroadcast-providerRejected",
+      "operation": "updateBroadcast"
+    },
+    {
+      "callId": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"broadcast-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/broadcasts/broadcast-1",
+          "requestBody": {
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Newsletter",
+            "preview_text": "Preview",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "segment_id": "segment-1",
+            "subject": "Hello",
+            "text": "Hello",
+            "topic_id": "topic-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "broadcast-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "input": {
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "id": "broadcast-1",
+        "name": "Newsletter",
+        "previewText": "Preview",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "segmentId": "segment-1",
+        "subject": "Hello",
+        "text": "Hello",
+        "topicId": "topic-1"
+      },
+      "name": "updateBroadcast-invalidResponse",
+      "operation": "updateBroadcast"
+    },
+    {
+      "callId": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "input": {
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "id": "",
+        "name": "Newsletter",
+        "previewText": "Preview",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "segmentId": "segment-1",
+        "subject": "Hello",
+        "text": "Hello",
+        "topicId": "topic-1"
+      },
+      "name": "updateBroadcast-defect",
+      "operation": "updateBroadcast"
+    },
+    {
+      "callId": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/broadcasts/broadcast-1",
+          "requestBody": {
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Newsletter",
+            "preview_text": "Preview",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "segment_id": "segment-1",
+            "subject": "Hello",
+            "text": "Hello",
+            "topic_id": "topic-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "input": {
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "id": "broadcast-1",
+        "name": "Newsletter",
+        "previewText": "Preview",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "segmentId": "segment-1",
+        "subject": "Hello",
+        "text": "Hello",
+        "topicId": "topic-1"
+      },
+      "name": "updateBroadcast-429",
+      "operation": "updateBroadcast"
+    },
+    {
+      "callId": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/broadcasts/broadcast-1",
+          "requestBody": {
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Newsletter",
+            "preview_text": "Preview",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "segment_id": "segment-1",
+            "subject": "Hello",
+            "text": "Hello",
+            "topic_id": "topic-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "input": {
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "id": "broadcast-1",
+        "name": "Newsletter",
+        "previewText": "Preview",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "segmentId": "segment-1",
+        "subject": "Hello",
+        "text": "Hello",
+        "topicId": "topic-1"
+      },
+      "name": "updateBroadcast-5xx",
+      "operation": "updateBroadcast"
+    },
+    {
+      "callId": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/broadcasts/broadcast-1",
+          "requestBody": {
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Newsletter",
+            "preview_text": "Preview",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "segment_id": "segment-1",
+            "subject": "Hello",
+            "text": "Hello",
+            "topic_id": "topic-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "input": {
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "id": "broadcast-1",
+        "name": "Newsletter",
+        "previewText": "Preview",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "segmentId": "segment-1",
+        "subject": "Hello",
+        "text": "Hello",
+        "topicId": "topic-1"
+      },
+      "name": "updateBroadcast-transport",
+      "operation": "updateBroadcast"
+    },
+    {
+      "callId": "100984e7-1b12-586c-822f-850c078e9ee6",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"broadcast-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "broadcast-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "100984e7-1b12-586c-822f-850c078e9ee6",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "deleteBroadcast-success",
+      "operation": "deleteBroadcast"
+    },
+    {
+      "callId": "100984e7-1b12-586c-822f-850c078e9ee6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "100984e7-1b12-586c-822f-850c078e9ee6",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "deleteBroadcast-notFound",
+      "operation": "deleteBroadcast"
+    },
+    {
+      "callId": "100984e7-1b12-586c-822f-850c078e9ee6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "100984e7-1b12-586c-822f-850c078e9ee6",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "deleteBroadcast-rejected",
+      "operation": "deleteBroadcast"
+    },
+    {
+      "callId": "100984e7-1b12-586c-822f-850c078e9ee6",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"broadcast-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "broadcast-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "100984e7-1b12-586c-822f-850c078e9ee6",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "deleteBroadcast-invalid",
+      "operation": "deleteBroadcast"
+    },
+    {
+      "callId": "100984e7-1b12-586c-822f-850c078e9ee6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "100984e7-1b12-586c-822f-850c078e9ee6",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "deleteBroadcast-429",
+      "operation": "deleteBroadcast"
+    },
+    {
+      "callId": "100984e7-1b12-586c-822f-850c078e9ee6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "100984e7-1b12-586c-822f-850c078e9ee6",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "deleteBroadcast-5xx",
+      "operation": "deleteBroadcast"
+    },
+    {
+      "callId": "100984e7-1b12-586c-822f-850c078e9ee6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "100984e7-1b12-586c-822f-850c078e9ee6",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "deleteBroadcast-transport",
+      "operation": "deleteBroadcast"
+    },
+    {
+      "callId": "100984e7-1b12-586c-822f-850c078e9ee6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "100984e7-1b12-586c-822f-850c078e9ee6",
+      "input": {
+        "id": ""
+      },
+      "name": "deleteBroadcast-defect",
+      "operation": "deleteBroadcast"
+    },
+    {
+      "callId": "068218df-d54e-5a99-9757-a341df456da3",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"broadcast-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/send",
+          "requestBody": {
+            "scheduled_at": "2026-11-20T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "id": "broadcast-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "068218df-d54e-5a99-9757-a341df456da3",
+      "input": {
+        "id": "broadcast-1",
+        "scheduledAt": "2026-11-20T12:00:00Z"
+      },
+      "name": "sendBroadcast-success",
+      "operation": "sendBroadcast"
+    },
+    {
+      "callId": "068218df-d54e-5a99-9757-a341df456da3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/send",
+          "requestBody": {
+            "scheduled_at": "2026-11-20T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "068218df-d54e-5a99-9757-a341df456da3",
+      "input": {
+        "id": "broadcast-1",
+        "scheduledAt": "2026-11-20T12:00:00Z"
+      },
+      "name": "sendBroadcast-notFound",
+      "operation": "sendBroadcast"
+    },
+    {
+      "callId": "068218df-d54e-5a99-9757-a341df456da3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/send",
+          "requestBody": {
+            "scheduled_at": "2026-11-20T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "068218df-d54e-5a99-9757-a341df456da3",
+      "input": {
+        "id": "broadcast-1",
+        "scheduledAt": "2026-11-20T12:00:00Z"
+      },
+      "name": "sendBroadcast-providerRejected",
+      "operation": "sendBroadcast"
+    },
+    {
+      "callId": "068218df-d54e-5a99-9757-a341df456da3",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"broadcast-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/send",
+          "requestBody": {
+            "scheduled_at": "2026-11-20T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "id": "broadcast-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "068218df-d54e-5a99-9757-a341df456da3",
+      "input": {
+        "id": "broadcast-1",
+        "scheduledAt": "2026-11-20T12:00:00Z"
+      },
+      "name": "sendBroadcast-invalidResponse",
+      "operation": "sendBroadcast"
+    },
+    {
+      "callId": "068218df-d54e-5a99-9757-a341df456da3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "068218df-d54e-5a99-9757-a341df456da3",
+      "input": {
+        "id": "",
+        "scheduledAt": "2026-11-20T12:00:00Z"
+      },
+      "name": "sendBroadcast-defect",
+      "operation": "sendBroadcast"
+    },
+    {
+      "callId": "068218df-d54e-5a99-9757-a341df456da3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/send",
+          "requestBody": {
+            "scheduled_at": "2026-11-20T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "068218df-d54e-5a99-9757-a341df456da3",
+      "input": {
+        "id": "broadcast-1",
+        "scheduledAt": "2026-11-20T12:00:00Z"
+      },
+      "name": "sendBroadcast-429",
+      "operation": "sendBroadcast"
+    },
+    {
+      "callId": "068218df-d54e-5a99-9757-a341df456da3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/send",
+          "requestBody": {
+            "scheduled_at": "2026-11-20T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "068218df-d54e-5a99-9757-a341df456da3",
+      "input": {
+        "id": "broadcast-1",
+        "scheduledAt": "2026-11-20T12:00:00Z"
+      },
+      "name": "sendBroadcast-5xx",
+      "operation": "sendBroadcast"
+    },
+    {
+      "callId": "068218df-d54e-5a99-9757-a341df456da3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/send",
+          "requestBody": {
+            "scheduled_at": "2026-11-20T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "068218df-d54e-5a99-9757-a341df456da3",
+      "input": {
+        "id": "broadcast-1",
+        "scheduledAt": "2026-11-20T12:00:00Z"
+      },
+      "name": "sendBroadcast-transport",
+      "operation": "sendBroadcast"
+    },
+    {
+      "callId": "049c3e23-c3c4-5088-bdbc-80850e81ab63",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"broadcast-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "cancelled",
+        "failureKind": "",
+        "output": {
+          "id": "broadcast-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "049c3e23-c3c4-5088-bdbc-80850e81ab63",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "cancelBroadcast-success",
+      "operation": "cancelBroadcast"
+    },
+    {
+      "callId": "049c3e23-c3c4-5088-bdbc-80850e81ab63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "049c3e23-c3c4-5088-bdbc-80850e81ab63",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "cancelBroadcast-notFound",
+      "operation": "cancelBroadcast"
+    },
+    {
+      "callId": "049c3e23-c3c4-5088-bdbc-80850e81ab63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "049c3e23-c3c4-5088-bdbc-80850e81ab63",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "cancelBroadcast-providerRejected",
+      "operation": "cancelBroadcast"
+    },
+    {
+      "callId": "049c3e23-c3c4-5088-bdbc-80850e81ab63",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"broadcast-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "cancelled",
+        "failureKind": "",
+        "output": {
+          "id": "broadcast-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "049c3e23-c3c4-5088-bdbc-80850e81ab63",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "cancelBroadcast-invalidResponse",
+      "operation": "cancelBroadcast"
+    },
+    {
+      "callId": "049c3e23-c3c4-5088-bdbc-80850e81ab63",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "049c3e23-c3c4-5088-bdbc-80850e81ab63",
+      "input": {
+        "id": ""
+      },
+      "name": "cancelBroadcast-defect",
+      "operation": "cancelBroadcast"
+    },
+    {
+      "callId": "049c3e23-c3c4-5088-bdbc-80850e81ab63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "049c3e23-c3c4-5088-bdbc-80850e81ab63",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "cancelBroadcast-429",
+      "operation": "cancelBroadcast"
+    },
+    {
+      "callId": "049c3e23-c3c4-5088-bdbc-80850e81ab63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "049c3e23-c3c4-5088-bdbc-80850e81ab63",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "cancelBroadcast-5xx",
+      "operation": "cancelBroadcast"
+    },
+    {
+      "callId": "049c3e23-c3c4-5088-bdbc-80850e81ab63",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "049c3e23-c3c4-5088-bdbc-80850e81ab63",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "cancelBroadcast-transport",
+      "operation": "cancelBroadcast"
+    },
+    {
+      "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"broadcast-2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "duplicated",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "broadcast-2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0da46343-b8ac-54ae-89af-84c39c915cce",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "duplicateBroadcast-success",
+      "operation": "duplicateBroadcast"
+    },
+    {
+      "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0da46343-b8ac-54ae-89af-84c39c915cce",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "duplicateBroadcast-rejected",
+      "operation": "duplicateBroadcast"
+    },
+    {
+      "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0da46343-b8ac-54ae-89af-84c39c915cce",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "duplicateBroadcast-429",
+      "operation": "duplicateBroadcast"
+    },
+    {
+      "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0da46343-b8ac-54ae-89af-84c39c915cce",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "duplicateBroadcast-5xx",
+      "operation": "duplicateBroadcast"
+    },
+    {
+      "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0da46343-b8ac-54ae-89af-84c39c915cce",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "duplicateBroadcast-transport",
+      "operation": "duplicateBroadcast"
+    },
+    {
+      "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0da46343-b8ac-54ae-89af-84c39c915cce",
+      "input": {
+        "id": ""
+      },
+      "name": "duplicateBroadcast-defect",
+      "operation": "duplicateBroadcast"
+    },
+    {
+      "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0da46343-b8ac-54ae-89af-84c39c915cce",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "name": "duplicateBroadcast-conflict",
+      "operation": "duplicateBroadcast"
+    },
+    {
+      "attempts": 2,
+      "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"id\":\"broadcast-2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "duplicated",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "broadcast-2"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0da46343-b8ac-54ae-89af-84c39c915cce",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "duplicateBroadcast-retry-readback",
+      "operation": "duplicateBroadcast"
+    },
+    {
+      "attempts": 3,
+      "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "LOCAL_DEFECT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0da46343-b8ac-54ae-89af-84c39c915cce",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "duplicateBroadcast-send-cap",
+      "operation": "duplicateBroadcast"
     }
   ],
   "schemaVersion": 1

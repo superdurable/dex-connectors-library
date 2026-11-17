@@ -822,6 +822,169 @@ spec:
     execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: deleteContactPropertyDefault, branch: deleted, default: true, description: Resend deleted the contact property., output: {"id":"property-1","deleted":true}}
+  - name: createBroadcast
+    goName: CreateBroadcast
+    inputType: CreateBroadcastInput
+    outputType: BroadcastReference
+    kind: mutation
+    description: Create Broadcast through the Resend Broadcasts API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend created the broadcast.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createBroadcastDefault, branch: created, default: true, description: Resend created the broadcast., output: {"id":"broadcast-1"}}
+  - name: getBroadcast
+    goName: GetBroadcast
+    inputType: GetBroadcastInput
+    outputType: Broadcast
+    kind: query
+    description: Get Broadcast through the Resend Broadcasts API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend found the broadcast.}
+    - {id: notFound, goName: NotFound, description: The broadcast does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getBroadcastDefault, branch: found, default: true, description: Resend found the broadcast., output: {"id":"broadcast-1","name":"Newsletter","segment_id":"segment-1","from":"news@example.test","subject":"Hello","status":"draft"}}
+  - name: listBroadcasts
+    goName: ListBroadcasts
+    inputType: ListBroadcastsInput
+    outputType: BroadcastPage
+    kind: query
+    description: List Broadcasts through the Resend Broadcasts API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend listed the broadcast.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listBroadcastsDefault, branch: listed, default: true, description: Resend listed the broadcast., output: {"data":[{"id":"broadcast-1","name":"Newsletter","segment_id":"segment-1","status":"draft"}],"has_more":false}}
+  - name: updateBroadcast
+    goName: UpdateBroadcast
+    inputType: UpdateBroadcastInput
+    outputType: BroadcastReference
+    kind: mutation
+    description: Update Broadcast through the Resend Broadcasts API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated the broadcast.}
+    - {id: notFound, goName: NotFound, description: The broadcast does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateBroadcastDefault, branch: updated, default: true, description: Resend updated the broadcast., output: {"id":"broadcast-1"}}
+  - name: deleteBroadcast
+    goName: DeleteBroadcast
+    inputType: DeleteBroadcastInput
+    outputType: DeletedBroadcast
+    kind: mutation
+    description: Delete Broadcast through the Resend Broadcasts API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend deleted the broadcast.}
+    - {id: notFound, goName: NotFound, description: The broadcast does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteBroadcastDefault, branch: deleted, default: true, description: Resend deleted the broadcast., output: {"id":"broadcast-1","deleted":true}}
+  - name: sendBroadcast
+    goName: SendBroadcast
+    inputType: SendBroadcastInput
+    outputType: BroadcastReference
+    kind: mutation
+    description: Send Broadcast through the Resend Broadcasts API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: sent, goName: Sent, description: Resend sent the broadcast.}
+    - {id: notFound, goName: NotFound, description: The broadcast does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: sendBroadcastDefault, branch: sent, default: true, description: Resend sent the broadcast., output: {"id":"broadcast-1"}}
+  - name: cancelBroadcast
+    goName: CancelBroadcast
+    inputType: CancelBroadcastInput
+    outputType: BroadcastReference
+    kind: mutation
+    description: Cancel Broadcast through the Resend Broadcasts API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: cancelled, goName: Cancelled, description: Resend cancelled the broadcast.}
+    - {id: notFound, goName: NotFound, description: The broadcast does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: cancelBroadcastDefault, branch: cancelled, default: true, description: Resend cancelled the broadcast., output: {"id":"broadcast-1"}}
+  - name: duplicateBroadcast
+    goName: DuplicateBroadcast
+    inputType: DuplicateBroadcastInput
+    outputType: BroadcastReference
+    kind: mutation
+    description: Duplicate Broadcast through the Resend Broadcasts API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: duplicated, goName: Duplicated, description: Resend duplicated the broadcast.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: duplicateBroadcastDefault, branch: duplicated, default: true, description: Resend duplicated the broadcast., output: {"id":"broadcast-2"}}
+  - name: listBroadcastRecipients
+    goName: ListBroadcastRecipients
+    inputType: ListBroadcastRecipientsInput
+    outputType: BroadcastRecipientPage
+    kind: query
+    description: List Broadcast Recipients through the Resend Broadcasts API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend listed the broadcast.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listBroadcastRecipientsDefault, branch: listed, default: true, description: Resend listed the broadcast., output: {"data":[{"id":"recipient-1","email":"reader@example.test"}],"has_more":false}}
+  - name: listBroadcastClickedLinks
+    goName: ListBroadcastClickedLinks
+    inputType: ListBroadcastClickedLinksInput
+    outputType: BroadcastClickedLinkPage
+    kind: query
+    description: List Broadcast Clicked Links through the Resend Broadcasts API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend listed the broadcast.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listBroadcastClickedLinksDefault, branch: listed, default: true, description: Resend listed the broadcast., output: {"data":[{"id":"link-1","url":"https://example.test","clicks":2,"unique_clicks":1}],"has_more":false}}
   - name: getContact
     goName: GetContact
     inputType: GetContactInput

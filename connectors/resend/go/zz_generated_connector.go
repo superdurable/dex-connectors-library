@@ -83,6 +83,16 @@ type Operations interface {
 	ListContactProperties() sdkgo.Query[ListContactPropertiesInput, ContactPropertyPage]
 	UpdateContactProperty() sdkgo.Mutation[UpdateContactPropertyInput, ContactPropertyReference]
 	DeleteContactProperty() sdkgo.Mutation[DeleteContactPropertyInput, DeletedContactProperty]
+	CreateBroadcast() sdkgo.Mutation[CreateBroadcastInput, BroadcastReference]
+	GetBroadcast() sdkgo.Query[GetBroadcastInput, Broadcast]
+	ListBroadcasts() sdkgo.Query[ListBroadcastsInput, BroadcastPage]
+	UpdateBroadcast() sdkgo.Mutation[UpdateBroadcastInput, BroadcastReference]
+	DeleteBroadcast() sdkgo.Mutation[DeleteBroadcastInput, DeletedBroadcast]
+	SendBroadcast() sdkgo.Mutation[SendBroadcastInput, BroadcastReference]
+	CancelBroadcast() sdkgo.Mutation[CancelBroadcastInput, BroadcastReference]
+	DuplicateBroadcast() sdkgo.Mutation[DuplicateBroadcastInput, BroadcastReference]
+	ListBroadcastRecipients() sdkgo.Query[ListBroadcastRecipientsInput, BroadcastRecipientPage]
+	ListBroadcastClickedLinks() sdkgo.Query[ListBroadcastClickedLinksInput, BroadcastClickedLinkPage]
 	GetContact() sdkgo.Query[GetContactInput, Contact]
 	ListContacts() sdkgo.Query[ListContactsInput, ContactPage]
 	GetDomain() sdkgo.Query[GetDomainInput, Domain]
@@ -219,6 +229,36 @@ func (operations clientOperations) UpdateContactProperty() sdkgo.Mutation[Update
 }
 func (operations clientOperations) DeleteContactProperty() sdkgo.Mutation[DeleteContactPropertyInput, DeletedContactProperty] {
 	return operations.client.DeleteContactProperty()
+}
+func (operations clientOperations) CreateBroadcast() sdkgo.Mutation[CreateBroadcastInput, BroadcastReference] {
+	return operations.client.CreateBroadcast()
+}
+func (operations clientOperations) GetBroadcast() sdkgo.Query[GetBroadcastInput, Broadcast] {
+	return operations.client.GetBroadcast()
+}
+func (operations clientOperations) ListBroadcasts() sdkgo.Query[ListBroadcastsInput, BroadcastPage] {
+	return operations.client.ListBroadcasts()
+}
+func (operations clientOperations) UpdateBroadcast() sdkgo.Mutation[UpdateBroadcastInput, BroadcastReference] {
+	return operations.client.UpdateBroadcast()
+}
+func (operations clientOperations) DeleteBroadcast() sdkgo.Mutation[DeleteBroadcastInput, DeletedBroadcast] {
+	return operations.client.DeleteBroadcast()
+}
+func (operations clientOperations) SendBroadcast() sdkgo.Mutation[SendBroadcastInput, BroadcastReference] {
+	return operations.client.SendBroadcast()
+}
+func (operations clientOperations) CancelBroadcast() sdkgo.Mutation[CancelBroadcastInput, BroadcastReference] {
+	return operations.client.CancelBroadcast()
+}
+func (operations clientOperations) DuplicateBroadcast() sdkgo.Mutation[DuplicateBroadcastInput, BroadcastReference] {
+	return operations.client.DuplicateBroadcast()
+}
+func (operations clientOperations) ListBroadcastRecipients() sdkgo.Query[ListBroadcastRecipientsInput, BroadcastRecipientPage] {
+	return operations.client.ListBroadcastRecipients()
+}
+func (operations clientOperations) ListBroadcastClickedLinks() sdkgo.Query[ListBroadcastClickedLinksInput, BroadcastClickedLinkPage] {
+	return operations.client.ListBroadcastClickedLinks()
 }
 func (operations clientOperations) GetContact() sdkgo.Query[GetContactInput, Contact] {
 	return operations.client.GetContact()
@@ -3594,6 +3634,748 @@ func NewDeleteContactPropertyStep[IN any](config DeleteContactPropertyStepConfig
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteContactPropertyBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateBroadcastBranchCreated sdkgo.BranchID = "created"
+const CreateBroadcastBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateBroadcastBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateBroadcastDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createBroadcast"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateBroadcastBranchCreated, Description: "Resend created the broadcast."},
+		{ID: CreateBroadcastBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: CreateBroadcastBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateBroadcastResult = sdkgo.MutationResult[BroadcastReference]
+
+type CreateBroadcastStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=resend"`
+	operationID                       struct{}                                                 `connector:"operationId=createBroadcast"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateBroadcastInput                            `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateBroadcastResult]                      `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateBroadcastResult]                      `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateBroadcastResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[BroadcastReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateBroadcastStep[IN any](config CreateBroadcastStepConfig[IN]) sdkgo.MutationStep[IN, CreateBroadcastInput, BroadcastReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateBroadcastInput, BroadcastReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateBroadcast(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateBroadcastResult] {
+			branches := make([]sdkgo.BranchTarget[CreateBroadcastResult], 0, 3)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateBroadcastBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateBroadcastBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateBroadcastBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const GetBroadcastBranchFound sdkgo.BranchID = "found"
+const GetBroadcastBranchNotFound sdkgo.BranchID = "notFound"
+const GetBroadcastBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetBroadcastBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetBroadcastBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetBroadcastDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getBroadcast"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetBroadcastBranchFound, Description: "Resend found the broadcast."},
+		{ID: GetBroadcastBranchNotFound, Description: "The broadcast does not exist.", Optional: true},
+		{ID: GetBroadcastBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: GetBroadcastBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: GetBroadcastBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetBroadcastResult = sdkgo.QueryResult[Broadcast]
+
+type GetBroadcastStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=resend"`
+	operationID                    struct{}                                     `connector:"operationId=getBroadcast"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetBroadcastInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetBroadcastResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetBroadcastResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetBroadcastResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetBroadcastResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetBroadcastResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Broadcast]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewGetBroadcastStep[IN any](config GetBroadcastStepConfig[IN]) sdkgo.QueryStep[IN, GetBroadcastInput, Broadcast] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetBroadcastInput, Broadcast]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetBroadcast(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetBroadcastResult] {
+			branches := make([]sdkgo.BranchTarget[GetBroadcastResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetBroadcastBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetBroadcastBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetBroadcastBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetBroadcastBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetBroadcastBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListBroadcastsBranchListed sdkgo.BranchID = "listed"
+const ListBroadcastsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListBroadcastsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListBroadcastsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListBroadcastsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listBroadcasts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListBroadcastsBranchListed, Description: "Resend listed the broadcast."},
+		{ID: ListBroadcastsBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: ListBroadcastsBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: ListBroadcastsBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListBroadcastsResult = sdkgo.QueryResult[BroadcastPage]
+
+type ListBroadcastsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=resend"`
+	operationID                    struct{}                                         `connector:"operationId=listBroadcasts"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListBroadcastsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListBroadcastsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListBroadcastsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListBroadcastsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListBroadcastsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[BroadcastPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListBroadcastsStep[IN any](config ListBroadcastsStepConfig[IN]) sdkgo.QueryStep[IN, ListBroadcastsInput, BroadcastPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListBroadcastsInput, BroadcastPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListBroadcasts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListBroadcastsResult] {
+			branches := make([]sdkgo.BranchTarget[ListBroadcastsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListBroadcastsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListBroadcastsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListBroadcastsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListBroadcastsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateBroadcastBranchUpdated sdkgo.BranchID = "updated"
+const UpdateBroadcastBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateBroadcastBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateBroadcastBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateBroadcastBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateBroadcastDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateBroadcast"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateBroadcastBranchUpdated, Description: "Resend updated the broadcast."},
+		{ID: UpdateBroadcastBranchNotFound, Description: "The broadcast does not exist.", Optional: true},
+		{ID: UpdateBroadcastBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: UpdateBroadcastBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: UpdateBroadcastBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateBroadcastResult = sdkgo.MutationResult[BroadcastReference]
+
+type UpdateBroadcastStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=resend"`
+	operationID                       struct{}                                                 `connector:"operationId=updateBroadcast"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateBroadcastInput                            `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateBroadcastResult]                      `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateBroadcastResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateBroadcastResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateBroadcastResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateBroadcastResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[BroadcastReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateBroadcastStep[IN any](config UpdateBroadcastStepConfig[IN]) sdkgo.MutationStep[IN, UpdateBroadcastInput, BroadcastReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateBroadcastInput, BroadcastReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateBroadcast(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateBroadcastResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateBroadcastResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateBroadcastBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateBroadcastBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateBroadcastBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateBroadcastBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateBroadcastBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteBroadcastBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteBroadcastBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteBroadcastBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteBroadcastBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteBroadcastBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteBroadcastDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteBroadcast"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteBroadcastBranchDeleted, Description: "Resend deleted the broadcast."},
+		{ID: DeleteBroadcastBranchNotFound, Description: "The broadcast does not exist.", Optional: true},
+		{ID: DeleteBroadcastBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: DeleteBroadcastBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: DeleteBroadcastBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteBroadcastResult = sdkgo.MutationResult[DeletedBroadcast]
+
+type DeleteBroadcastStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=resend"`
+	operationID                       struct{}                                               `connector:"operationId=deleteBroadcast"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteBroadcastInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteBroadcastResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteBroadcastResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteBroadcastResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteBroadcastResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteBroadcastResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedBroadcast]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteBroadcastStep[IN any](config DeleteBroadcastStepConfig[IN]) sdkgo.MutationStep[IN, DeleteBroadcastInput, DeletedBroadcast] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteBroadcastInput, DeletedBroadcast]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteBroadcast(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteBroadcastResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteBroadcastResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteBroadcastBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteBroadcastBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteBroadcastBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteBroadcastBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteBroadcastBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SendBroadcastBranchSent sdkgo.BranchID = "sent"
+const SendBroadcastBranchNotFound sdkgo.BranchID = "notFound"
+const SendBroadcastBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendBroadcastBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SendBroadcastBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendBroadcastDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendBroadcast"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendBroadcastBranchSent, Description: "Resend sent the broadcast."},
+		{ID: SendBroadcastBranchNotFound, Description: "The broadcast does not exist.", Optional: true},
+		{ID: SendBroadcastBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: SendBroadcastBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: SendBroadcastBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type SendBroadcastResult = sdkgo.MutationResult[BroadcastReference]
+
+type SendBroadcastStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=resend"`
+	operationID                       struct{}                                                 `connector:"operationId=sendBroadcast"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendBroadcastInput                              `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendBroadcastResult]                        `connector:"branch=sent"`
+	NotFound                          sdkgo.Target[SendBroadcastResult]                        `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[SendBroadcastResult]                        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[SendBroadcastResult]                        `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[SendBroadcastResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[BroadcastReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewSendBroadcastStep[IN any](config SendBroadcastStepConfig[IN]) sdkgo.MutationStep[IN, SendBroadcastInput, BroadcastReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendBroadcastInput, BroadcastReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendBroadcast(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendBroadcastResult] {
+			branches := make([]sdkgo.BranchTarget[SendBroadcastResult], 0, 5)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendBroadcastBranchSent))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(SendBroadcastBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendBroadcastBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SendBroadcastBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendBroadcastBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CancelBroadcastBranchCancelled sdkgo.BranchID = "cancelled"
+const CancelBroadcastBranchNotFound sdkgo.BranchID = "notFound"
+const CancelBroadcastBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CancelBroadcastBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CancelBroadcastBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CancelBroadcastDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "cancelBroadcast"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CancelBroadcastBranchCancelled, Description: "Resend cancelled the broadcast."},
+		{ID: CancelBroadcastBranchNotFound, Description: "The broadcast does not exist.", Optional: true},
+		{ID: CancelBroadcastBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: CancelBroadcastBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: CancelBroadcastBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CancelBroadcastResult = sdkgo.MutationResult[BroadcastReference]
+
+type CancelBroadcastStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=resend"`
+	operationID                       struct{}                                                 `connector:"operationId=cancelBroadcast"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) CancelBroadcastInput                            `connector:"mapToOperationInput"`
+	Cancelled                         sdkgo.Target[CancelBroadcastResult]                      `connector:"branch=cancelled"`
+	NotFound                          sdkgo.Target[CancelBroadcastResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CancelBroadcastResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CancelBroadcastResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CancelBroadcastResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[BroadcastReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewCancelBroadcastStep[IN any](config CancelBroadcastStepConfig[IN]) sdkgo.MutationStep[IN, CancelBroadcastInput, BroadcastReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CancelBroadcastInput, BroadcastReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CancelBroadcast(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CancelBroadcastResult] {
+			branches := make([]sdkgo.BranchTarget[CancelBroadcastResult], 0, 5)
+			if config.Cancelled.HasStep() {
+				branches = append(branches, config.Cancelled.BranchTarget(CancelBroadcastBranchCancelled))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CancelBroadcastBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CancelBroadcastBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CancelBroadcastBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CancelBroadcastBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DuplicateBroadcastBranchDuplicated sdkgo.BranchID = "duplicated"
+const DuplicateBroadcastBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DuplicateBroadcastBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DuplicateBroadcastDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "duplicateBroadcast"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DuplicateBroadcastBranchDuplicated, Description: "Resend duplicated the broadcast."},
+		{ID: DuplicateBroadcastBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: DuplicateBroadcastBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type DuplicateBroadcastResult = sdkgo.MutationResult[BroadcastReference]
+
+type DuplicateBroadcastStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=resend"`
+	operationID                       struct{}                                                 `connector:"operationId=duplicateBroadcast"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) DuplicateBroadcastInput                         `connector:"mapToOperationInput"`
+	Duplicated                        sdkgo.Target[DuplicateBroadcastResult]                   `connector:"branch=duplicated"`
+	ProviderRejected                  sdkgo.Target[DuplicateBroadcastResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DuplicateBroadcastResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[BroadcastReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewDuplicateBroadcastStep[IN any](config DuplicateBroadcastStepConfig[IN]) sdkgo.MutationStep[IN, DuplicateBroadcastInput, BroadcastReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DuplicateBroadcastInput, BroadcastReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DuplicateBroadcast(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DuplicateBroadcastResult] {
+			branches := make([]sdkgo.BranchTarget[DuplicateBroadcastResult], 0, 3)
+			if config.Duplicated.HasStep() {
+				branches = append(branches, config.Duplicated.BranchTarget(DuplicateBroadcastBranchDuplicated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DuplicateBroadcastBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DuplicateBroadcastBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const ListBroadcastRecipientsBranchListed sdkgo.BranchID = "listed"
+const ListBroadcastRecipientsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListBroadcastRecipientsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListBroadcastRecipientsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListBroadcastRecipientsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listBroadcastRecipients"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListBroadcastRecipientsBranchListed, Description: "Resend listed the broadcast."},
+		{ID: ListBroadcastRecipientsBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: ListBroadcastRecipientsBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: ListBroadcastRecipientsBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListBroadcastRecipientsResult = sdkgo.QueryResult[BroadcastRecipientPage]
+
+type ListBroadcastRecipientsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                  `connector:"connectorId=resend"`
+	operationID                    struct{}                                                  `connector:"operationId=listBroadcastRecipients"`
+	StepType                       string                                                    `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                     Connection                                                `connector:"connection"`
+	ConnectionName                 string                                                    `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListBroadcastRecipientsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListBroadcastRecipientsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListBroadcastRecipientsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListBroadcastRecipientsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListBroadcastRecipientsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[BroadcastRecipientPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewListBroadcastRecipientsStep[IN any](config ListBroadcastRecipientsStepConfig[IN]) sdkgo.QueryStep[IN, ListBroadcastRecipientsInput, BroadcastRecipientPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListBroadcastRecipientsInput, BroadcastRecipientPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListBroadcastRecipients(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListBroadcastRecipientsResult] {
+			branches := make([]sdkgo.BranchTarget[ListBroadcastRecipientsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListBroadcastRecipientsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListBroadcastRecipientsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListBroadcastRecipientsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListBroadcastRecipientsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListBroadcastClickedLinksBranchListed sdkgo.BranchID = "listed"
+const ListBroadcastClickedLinksBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListBroadcastClickedLinksBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListBroadcastClickedLinksBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListBroadcastClickedLinksDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listBroadcastClickedLinks"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListBroadcastClickedLinksBranchListed, Description: "Resend listed the broadcast."},
+		{ID: ListBroadcastClickedLinksBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: ListBroadcastClickedLinksBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: ListBroadcastClickedLinksBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListBroadcastClickedLinksResult = sdkgo.QueryResult[BroadcastClickedLinkPage]
+
+type ListBroadcastClickedLinksStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                    `connector:"connectorId=resend"`
+	operationID                    struct{}                                                    `connector:"operationId=listBroadcastClickedLinks"`
+	StepType                       string                                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                     Connection                                                  `connector:"connection"`
+	ConnectionName                 string                                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListBroadcastClickedLinksInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListBroadcastClickedLinksResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListBroadcastClickedLinksResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListBroadcastClickedLinksResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListBroadcastClickedLinksResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[BroadcastClickedLinkPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+}
+
+func NewListBroadcastClickedLinksStep[IN any](config ListBroadcastClickedLinksStepConfig[IN]) sdkgo.QueryStep[IN, ListBroadcastClickedLinksInput, BroadcastClickedLinkPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListBroadcastClickedLinksInput, BroadcastClickedLinkPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListBroadcastClickedLinks(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListBroadcastClickedLinksResult] {
+			branches := make([]sdkgo.BranchTarget[ListBroadcastClickedLinksResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListBroadcastClickedLinksBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListBroadcastClickedLinksBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListBroadcastClickedLinksBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListBroadcastClickedLinksBranchDefect))
 			}
 			return branches
 		}(),
