@@ -60,6 +60,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[front.DirectoryPage](`{"records":[{"id":"tea_100","name":"Leela"}]}`)
 			return err
 		}},
+		{name: "getMessage/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[front.Message](`{"id":"msg_100","type":"email","isInbound":true,"body":"Any update on my refund?","createdAt":"2026-01-02T03:04:05Z"}`)
+			return err
+		}},
+		{name: "listConversationMessages/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[front.MessagesPage](`{"messages":[{"id":"msg_100","type":"email","isInbound":true,"body":"Any update on my refund?","createdAt":"2026-01-02T03:04:05Z"}]}`)
+			return err
+		}},
+		{name: "listConversationComments/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[front.CommentsPage](`{"comments":[{"id":"com_100","body":"Checking refund status","postedAt":"2026-01-02T03:04:05Z"}]}`)
+			return err
+		}},
+		{name: "sendNewMessage/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[front.SentMessage](`{"messageUid":"abc123"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -99,5 +115,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListTeammates().Definition().Operation.OperationID != "listTeammates" {
 		t.Errorf("listTeammates mock has another definition")
+	}
+	if mock.GetMessage().Definition().Operation.OperationID != "getMessage" {
+		t.Errorf("getMessage mock has another definition")
+	}
+	if mock.ListConversationMessages().Definition().Operation.OperationID != "listConversationMessages" {
+		t.Errorf("listConversationMessages mock has another definition")
+	}
+	if mock.ListConversationComments().Definition().Operation.OperationID != "listConversationComments" {
+		t.Errorf("listConversationComments mock has another definition")
+	}
+	if mock.SendNewMessage().Definition().Operation.OperationID != "sendNewMessage" {
+		t.Errorf("sendNewMessage mock has another definition")
 	}
 }

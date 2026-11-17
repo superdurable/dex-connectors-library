@@ -17,17 +17,21 @@ import (
 
 // Mock is a scripted front connection. Script each operation through its accessor.
 type Mock struct {
-	connection          front.Connection
-	searchConversations *connectormock.Query[front.SearchConversationsInput, front.SearchConversationsOutput]
-	getConversation     *connectormock.Query[front.GetConversationInput, front.ConversationDetails]
-	replyToConversation *connectormock.Mutation[front.ReplyToConversationInput, front.ConversationReply]
-	updateConversation  *connectormock.Mutation[front.UpdateConversationInput, front.UpdateConversationOutput]
-	findContactByEmail  *connectormock.Query[front.FindContactByEmailInput, front.FindContactByEmailOutput]
-	getContact          *connectormock.Query[front.GetContactInput, front.Contact]
-	listContacts        *connectormock.Query[front.ListContactsInput, front.ContactsPage]
-	listInboxes         *connectormock.Query[front.ListInboxesInput, front.DirectoryPage]
-	listTags            *connectormock.Query[front.ListTagsInput, front.DirectoryPage]
-	listTeammates       *connectormock.Query[front.ListTeammatesInput, front.DirectoryPage]
+	connection               front.Connection
+	searchConversations      *connectormock.Query[front.SearchConversationsInput, front.SearchConversationsOutput]
+	getConversation          *connectormock.Query[front.GetConversationInput, front.ConversationDetails]
+	replyToConversation      *connectormock.Mutation[front.ReplyToConversationInput, front.ConversationReply]
+	updateConversation       *connectormock.Mutation[front.UpdateConversationInput, front.UpdateConversationOutput]
+	findContactByEmail       *connectormock.Query[front.FindContactByEmailInput, front.FindContactByEmailOutput]
+	getContact               *connectormock.Query[front.GetContactInput, front.Contact]
+	listContacts             *connectormock.Query[front.ListContactsInput, front.ContactsPage]
+	listInboxes              *connectormock.Query[front.ListInboxesInput, front.DirectoryPage]
+	listTags                 *connectormock.Query[front.ListTagsInput, front.DirectoryPage]
+	listTeammates            *connectormock.Query[front.ListTeammatesInput, front.DirectoryPage]
+	getMessage               *connectormock.Query[front.GetMessageInput, front.Message]
+	listConversationMessages *connectormock.Query[front.ListConversationMessagesInput, front.MessagesPage]
+	listConversationComments *connectormock.Query[front.ListConversationCommentsInput, front.CommentsPage]
+	sendNewMessage           *connectormock.Mutation[front.SendNewMessageInput, front.SentMessage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -35,16 +39,20 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		searchConversations: connectormock.NewQuery[front.SearchConversationsInput, front.SearchConversationsOutput](t, front.SearchConversationsDefinition),
-		getConversation:     connectormock.NewQuery[front.GetConversationInput, front.ConversationDetails](t, front.GetConversationDefinition),
-		replyToConversation: connectormock.NewMutation[front.ReplyToConversationInput, front.ConversationReply](t, front.ReplyToConversationDefinition),
-		updateConversation:  connectormock.NewMutation[front.UpdateConversationInput, front.UpdateConversationOutput](t, front.UpdateConversationDefinition),
-		findContactByEmail:  connectormock.NewQuery[front.FindContactByEmailInput, front.FindContactByEmailOutput](t, front.FindContactByEmailDefinition),
-		getContact:          connectormock.NewQuery[front.GetContactInput, front.Contact](t, front.GetContactDefinition),
-		listContacts:        connectormock.NewQuery[front.ListContactsInput, front.ContactsPage](t, front.ListContactsDefinition),
-		listInboxes:         connectormock.NewQuery[front.ListInboxesInput, front.DirectoryPage](t, front.ListInboxesDefinition),
-		listTags:            connectormock.NewQuery[front.ListTagsInput, front.DirectoryPage](t, front.ListTagsDefinition),
-		listTeammates:       connectormock.NewQuery[front.ListTeammatesInput, front.DirectoryPage](t, front.ListTeammatesDefinition),
+		searchConversations:      connectormock.NewQuery[front.SearchConversationsInput, front.SearchConversationsOutput](t, front.SearchConversationsDefinition),
+		getConversation:          connectormock.NewQuery[front.GetConversationInput, front.ConversationDetails](t, front.GetConversationDefinition),
+		replyToConversation:      connectormock.NewMutation[front.ReplyToConversationInput, front.ConversationReply](t, front.ReplyToConversationDefinition),
+		updateConversation:       connectormock.NewMutation[front.UpdateConversationInput, front.UpdateConversationOutput](t, front.UpdateConversationDefinition),
+		findContactByEmail:       connectormock.NewQuery[front.FindContactByEmailInput, front.FindContactByEmailOutput](t, front.FindContactByEmailDefinition),
+		getContact:               connectormock.NewQuery[front.GetContactInput, front.Contact](t, front.GetContactDefinition),
+		listContacts:             connectormock.NewQuery[front.ListContactsInput, front.ContactsPage](t, front.ListContactsDefinition),
+		listInboxes:              connectormock.NewQuery[front.ListInboxesInput, front.DirectoryPage](t, front.ListInboxesDefinition),
+		listTags:                 connectormock.NewQuery[front.ListTagsInput, front.DirectoryPage](t, front.ListTagsDefinition),
+		listTeammates:            connectormock.NewQuery[front.ListTeammatesInput, front.DirectoryPage](t, front.ListTeammatesDefinition),
+		getMessage:               connectormock.NewQuery[front.GetMessageInput, front.Message](t, front.GetMessageDefinition),
+		listConversationMessages: connectormock.NewQuery[front.ListConversationMessagesInput, front.MessagesPage](t, front.ListConversationMessagesDefinition),
+		listConversationComments: connectormock.NewQuery[front.ListConversationCommentsInput, front.CommentsPage](t, front.ListConversationCommentsDefinition),
+		sendNewMessage:           connectormock.NewMutation[front.SendNewMessageInput, front.SentMessage](t, front.SendNewMessageDefinition),
 	}
 	mock.searchConversations.Default(SearchConversationsDefault())
 	mock.getConversation.Default(GetConversationDefault())
@@ -56,6 +64,10 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listInboxes.Default(ListInboxesDefault())
 	mock.listTags.Default(ListTagsDefault())
 	mock.listTeammates.Default(ListTeammatesDefault())
+	mock.getMessage.Default(GetMessageDefault())
+	mock.listConversationMessages.Default(ListConversationMessagesDefault())
+	mock.listConversationComments.Default(ListConversationCommentsDefault())
+	mock.sendNewMessage.Default(SendNewMessageDefault())
 	connection, err := front.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "front", Name: connectionName})
 	if err != nil {
 		t.Fatalf("front mock connection: %v", err)
@@ -117,6 +129,26 @@ func (mock *Mock) ListTeammates() *connectormock.Query[front.ListTeammatesInput,
 	return mock.listTeammates
 }
 
+// GetMessage returns the getMessage script.
+func (mock *Mock) GetMessage() *connectormock.Query[front.GetMessageInput, front.Message] {
+	return mock.getMessage
+}
+
+// ListConversationMessages returns the listConversationMessages script.
+func (mock *Mock) ListConversationMessages() *connectormock.Query[front.ListConversationMessagesInput, front.MessagesPage] {
+	return mock.listConversationMessages
+}
+
+// ListConversationComments returns the listConversationComments script.
+func (mock *Mock) ListConversationComments() *connectormock.Query[front.ListConversationCommentsInput, front.CommentsPage] {
+	return mock.listConversationComments
+}
+
+// SendNewMessage returns the sendNewMessage script.
+func (mock *Mock) SendNewMessage() *connectormock.Mutation[front.SendNewMessageInput, front.SentMessage] {
+	return mock.sendNewMessage
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) SearchConversations() sdkgo.Query[front.SearchConversationsInput, front.SearchConversationsOutput] {
@@ -148,6 +180,18 @@ func (operations mockOperations) ListTags() sdkgo.Query[front.ListTagsInput, fro
 }
 func (operations mockOperations) ListTeammates() sdkgo.Query[front.ListTeammatesInput, front.DirectoryPage] {
 	return operations.mock.listTeammates
+}
+func (operations mockOperations) GetMessage() sdkgo.Query[front.GetMessageInput, front.Message] {
+	return operations.mock.getMessage
+}
+func (operations mockOperations) ListConversationMessages() sdkgo.Query[front.ListConversationMessagesInput, front.MessagesPage] {
+	return operations.mock.listConversationMessages
+}
+func (operations mockOperations) ListConversationComments() sdkgo.Query[front.ListConversationCommentsInput, front.CommentsPage] {
+	return operations.mock.listConversationComments
+}
+func (operations mockOperations) SendNewMessage() sdkgo.Mutation[front.SendNewMessageInput, front.SentMessage] {
+	return operations.mock.sendNewMessage
 }
 
 // SearchConversationsSearched selects the searched branch: Front returned one page of matching conversations; it may be empty.
@@ -614,4 +658,161 @@ func ListTeammatesListedDefault() connectormock.Case[front.DirectoryPage] {
 // ListTeammatesDefault is the manifest default, listedDefault, which New installs.
 func ListTeammatesDefault() connectormock.Case[front.DirectoryPage] {
 	return ListTeammatesListedDefault()
+}
+
+// GetMessageFound selects the found branch: Front returned the requested message.
+func GetMessageFound(value front.Message, failure *sdkgo.Failure) connectormock.Case[front.Message] {
+	return connectormock.Branch(front.GetMessageBranchFound, value, failure)
+}
+
+// GetMessageNotFound selects the notFound branch: Front could not find the message.
+func GetMessageNotFound(value front.Message, failure *sdkgo.Failure) connectormock.Case[front.Message] {
+	return connectormock.Branch(front.GetMessageBranchNotFound, value, failure)
+}
+
+// GetMessageProviderRejected selects the providerRejected branch: Front denied message read access.
+func GetMessageProviderRejected(value front.Message, failure *sdkgo.Failure) connectormock.Case[front.Message] {
+	return connectormock.Branch(front.GetMessageBranchProviderRejected, value, failure)
+}
+
+// GetMessageInvalidResponse selects the invalidResponse branch: Front returned an invalid message.
+func GetMessageInvalidResponse(value front.Message, failure *sdkgo.Failure) connectormock.Case[front.Message] {
+	return connectormock.Branch(front.GetMessageBranchInvalidResponse, value, failure)
+}
+
+// GetMessageDefect selects the defect branch: Message ID or connection is invalid.
+func GetMessageDefect(value front.Message, failure *sdkgo.Failure) connectormock.Case[front.Message] {
+	return connectormock.Branch(front.GetMessageBranchDefect, value, failure)
+}
+
+// GetMessageRetry asks Dex to retry the getMessage Step, after the delay when it is positive.
+func GetMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[front.Message] {
+	return connectormock.Retry[front.Message](failure, after)
+}
+
+// GetMessageFoundDefault is the manifest mock foundDefault: Example message by ID.
+func GetMessageFoundDefault() connectormock.Case[front.Message] {
+	value := connectormock.MustDecodeOutput[front.Message](`{"id":"msg_100","type":"email","isInbound":true,"body":"Any update on my refund?","createdAt":"2026-01-02T03:04:05Z"}`)
+	return connectormock.Branch(front.GetMessageBranchFound, value, nil)
+}
+
+// GetMessageDefault is the manifest default, foundDefault, which New installs.
+func GetMessageDefault() connectormock.Case[front.Message] { return GetMessageFoundDefault() }
+
+// ListConversationMessagesListed selects the listed branch: Front returned one message page, possibly empty.
+func ListConversationMessagesListed(value front.MessagesPage, failure *sdkgo.Failure) connectormock.Case[front.MessagesPage] {
+	return connectormock.Branch(front.ListConversationMessagesBranchListed, value, failure)
+}
+
+// ListConversationMessagesNotFound selects the notFound branch: Front could not find the conversation.
+func ListConversationMessagesNotFound(value front.MessagesPage, failure *sdkgo.Failure) connectormock.Case[front.MessagesPage] {
+	return connectormock.Branch(front.ListConversationMessagesBranchNotFound, value, failure)
+}
+
+// ListConversationMessagesProviderRejected selects the providerRejected branch: Front denied message listing.
+func ListConversationMessagesProviderRejected(value front.MessagesPage, failure *sdkgo.Failure) connectormock.Case[front.MessagesPage] {
+	return connectormock.Branch(front.ListConversationMessagesBranchProviderRejected, value, failure)
+}
+
+// ListConversationMessagesInvalidResponse selects the invalidResponse branch: Front returned an invalid message page.
+func ListConversationMessagesInvalidResponse(value front.MessagesPage, failure *sdkgo.Failure) connectormock.Case[front.MessagesPage] {
+	return connectormock.Branch(front.ListConversationMessagesBranchInvalidResponse, value, failure)
+}
+
+// ListConversationMessagesDefect selects the defect branch: Conversation ID, page input, or connection is invalid.
+func ListConversationMessagesDefect(value front.MessagesPage, failure *sdkgo.Failure) connectormock.Case[front.MessagesPage] {
+	return connectormock.Branch(front.ListConversationMessagesBranchDefect, value, failure)
+}
+
+// ListConversationMessagesRetry asks Dex to retry the listConversationMessages Step, after the delay when it is positive.
+func ListConversationMessagesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[front.MessagesPage] {
+	return connectormock.Retry[front.MessagesPage](failure, after)
+}
+
+// ListConversationMessagesListedDefault is the manifest mock listedDefault: Example conversation message page.
+func ListConversationMessagesListedDefault() connectormock.Case[front.MessagesPage] {
+	value := connectormock.MustDecodeOutput[front.MessagesPage](`{"messages":[{"id":"msg_100","type":"email","isInbound":true,"body":"Any update on my refund?","createdAt":"2026-01-02T03:04:05Z"}]}`)
+	return connectormock.Branch(front.ListConversationMessagesBranchListed, value, nil)
+}
+
+// ListConversationMessagesDefault is the manifest default, listedDefault, which New installs.
+func ListConversationMessagesDefault() connectormock.Case[front.MessagesPage] {
+	return ListConversationMessagesListedDefault()
+}
+
+// ListConversationCommentsListed selects the listed branch: Front returned the internal comments, possibly empty.
+func ListConversationCommentsListed(value front.CommentsPage, failure *sdkgo.Failure) connectormock.Case[front.CommentsPage] {
+	return connectormock.Branch(front.ListConversationCommentsBranchListed, value, failure)
+}
+
+// ListConversationCommentsNotFound selects the notFound branch: Front could not find the conversation.
+func ListConversationCommentsNotFound(value front.CommentsPage, failure *sdkgo.Failure) connectormock.Case[front.CommentsPage] {
+	return connectormock.Branch(front.ListConversationCommentsBranchNotFound, value, failure)
+}
+
+// ListConversationCommentsProviderRejected selects the providerRejected branch: Front denied comment listing.
+func ListConversationCommentsProviderRejected(value front.CommentsPage, failure *sdkgo.Failure) connectormock.Case[front.CommentsPage] {
+	return connectormock.Branch(front.ListConversationCommentsBranchProviderRejected, value, failure)
+}
+
+// ListConversationCommentsInvalidResponse selects the invalidResponse branch: Front returned an invalid comment list.
+func ListConversationCommentsInvalidResponse(value front.CommentsPage, failure *sdkgo.Failure) connectormock.Case[front.CommentsPage] {
+	return connectormock.Branch(front.ListConversationCommentsBranchInvalidResponse, value, failure)
+}
+
+// ListConversationCommentsDefect selects the defect branch: Conversation ID or connection is invalid.
+func ListConversationCommentsDefect(value front.CommentsPage, failure *sdkgo.Failure) connectormock.Case[front.CommentsPage] {
+	return connectormock.Branch(front.ListConversationCommentsBranchDefect, value, failure)
+}
+
+// ListConversationCommentsRetry asks Dex to retry the listConversationComments Step, after the delay when it is positive.
+func ListConversationCommentsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[front.CommentsPage] {
+	return connectormock.Retry[front.CommentsPage](failure, after)
+}
+
+// ListConversationCommentsListedDefault is the manifest mock listedDefault: Example conversation comment list.
+func ListConversationCommentsListedDefault() connectormock.Case[front.CommentsPage] {
+	value := connectormock.MustDecodeOutput[front.CommentsPage](`{"comments":[{"id":"com_100","body":"Checking refund status","postedAt":"2026-01-02T03:04:05Z"}]}`)
+	return connectormock.Branch(front.ListConversationCommentsBranchListed, value, nil)
+}
+
+// ListConversationCommentsDefault is the manifest default, listedDefault, which New installs.
+func ListConversationCommentsDefault() connectormock.Case[front.CommentsPage] {
+	return ListConversationCommentsListedDefault()
+}
+
+// SendNewMessageSent selects the sent branch: Front accepted the message and returned its message UID.
+func SendNewMessageSent(value front.SentMessage, failure *sdkgo.Failure) connectormock.Case[front.SentMessage] {
+	return connectormock.Branch(front.SendNewMessageBranchSent, value, failure)
+}
+
+// SendNewMessageProviderRejected selects the providerRejected branch: Front conclusively rejected the first send.
+func SendNewMessageProviderRejected(value front.SentMessage, failure *sdkgo.Failure) connectormock.Case[front.SentMessage] {
+	return connectormock.Branch(front.SendNewMessageBranchProviderRejected, value, failure)
+}
+
+// SendNewMessageUncertain returns an uncertain sendNewMessage outcome.
+func SendNewMessageUncertain(value front.SentMessage, failure sdkgo.Failure) connectormock.Case[front.SentMessage] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendNewMessageDefect selects the defect branch: The channel address, recipient, text, or connection is invalid.
+func SendNewMessageDefect(value front.SentMessage, failure *sdkgo.Failure) connectormock.Case[front.SentMessage] {
+	return connectormock.Branch(front.SendNewMessageBranchDefect, value, failure)
+}
+
+// SendNewMessageRetry asks Dex to retry the sendNewMessage Step, after the delay when it is positive.
+func SendNewMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[front.SentMessage] {
+	return connectormock.Retry[front.SentMessage](failure, after)
+}
+
+// SendNewMessageSentDefault is the manifest mock sentDefault: Front accepted one new message.
+func SendNewMessageSentDefault() connectormock.Case[front.SentMessage] {
+	value := connectormock.MustDecodeOutput[front.SentMessage](`{"messageUid":"abc123"}`)
+	return connectormock.Branch(front.SendNewMessageBranchSent, value, nil)
+}
+
+// SendNewMessageDefault is the manifest default, sentDefault, which New installs.
+func SendNewMessageDefault() connectormock.Case[front.SentMessage] {
+	return SendNewMessageSentDefault()
 }
