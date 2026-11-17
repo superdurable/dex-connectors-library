@@ -1,7 +1,7 @@
 {
   "name": "@superdurable/connector-github",
-  "version": "0.1.0",
-  "description": "GitHub queries for Dex Flows",
+  "version": "0.2.0",
+  "description": "GitHub queries and issue writes for Dex Flows",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/superdurable/dex-connectors-library.git",
@@ -42,10 +42,12 @@
     "test:integration": "npm run build && vitest run test/integration/*.integration.test.ts",
     "check": "npm test && npm run typecheck && npm run lint",
     "example:list": "npm run build && tsx examples/repository-releases/main.ts",
-    "example:list:start": "npm run build && tsx examples/repository-releases/start.ts"
+    "example:list:start": "npm run build && tsx examples/repository-releases/start.ts",
+    "example:issue-filing": "npm run build && tsx examples/issue-filing/main.ts",
+    "example:issue-filing:start": "npm run build && tsx examples/issue-filing/start.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
+    "@superdurable/connectors-sdk": "0.11.0",
     "@superdurable/dex": ">=1.28.0",
     "email-addresses": "5.0.0",
     "zod": "^4.1.0"

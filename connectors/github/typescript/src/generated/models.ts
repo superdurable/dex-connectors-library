@@ -77,6 +77,8 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
+  /** Selected authorization method. */
+  authMethodId?: string;
   /** Secret GitHub OAuth access token produced automatically after authorization and refreshed before expiry when GitHub returns expiration metadata; do not copy or enter a personal access token here. */
   accessToken: SecretString;
   /** Non-secret OAuth App client ID copied from https://github.com/settings/developers after opening OAuth Apps > the selected app; blank means authorization and refresh cannot start. */
@@ -87,44 +89,73 @@ export interface Credentials {
   refreshToken?: SecretString;
 }
 
-/** Decode private credential fields for the connector. */
+/** Decode private credential fields for the selected authorization method. */
 export function decodeCredentials(value: unknown): Credentials {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
-  const allowed = new Set<string>(["access_token", "oauth_client_id", "oauth_client_secret", "refresh_token"]);
+  const allowed = new Set<string>(["auth_method", "access_token", "oauth_client_id", "oauth_client_secret", "refresh_token"]);
   if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
   if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
   if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new TypeError("credential oauth_client_id has an invalid type");
   if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new TypeError("credential oauth_client_secret has an invalid type");
   if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new TypeError("credential refresh_token has an invalid type");
-  const credentials = {} as Credentials;
-  if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
-  credentials.oauthClientId = (fields["oauth_client_id"] ?? '') as string;
-  if (!fields["oauth_client_secret"]) throw new TypeError("credential oauth_client_secret is required");
-  credentials.oauthClientSecret = new SecretString((fields["oauth_client_secret"] ?? '') as string);
-  if (!fields["access_token"]) throw new TypeError("credential access_token is required");
-  credentials.accessToken = new SecretString((fields["access_token"] ?? '') as string);
-  credentials.refreshToken = new SecretString((fields["refresh_token"] ?? '') as string);
+  const selectedMethod = fields['auth_method'] ?? '';
+  if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
+  const method = selectedMethod || "github-oauth";
+  const credentials = { authMethodId: method } as Credentials;
+  if (method === "github-oauth") {
+    if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+    if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
+    if (!fields["oauth_client_secret"]) throw new TypeError("credential oauth_client_secret is required");
+    if (fields["oauth_client_secret"]) credentials.oauthClientSecret = new SecretString(fields["oauth_client_secret"] as string);
+    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+    if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
+    credentials.refreshToken = new SecretString((fields["refresh_token"] ?? '') as string);
+  } else if (method === "github-oauth-repository") {
+    if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+    if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
+    if (!fields["oauth_client_secret"]) throw new TypeError("credential oauth_client_secret is required");
+    if (fields["oauth_client_secret"]) credentials.oauthClientSecret = new SecretString(fields["oauth_client_secret"] as string);
+    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+    if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
+    credentials.refreshToken = new SecretString((fields["refresh_token"] ?? '') as string);
+  } else {
+    throw new TypeError('credential auth_method is invalid');
+  }
   return credentials;
 }
 
-/** Decode shared credential fields for the connector. */
+/** Decode shared credential fields for the selected authorization method. */
 export function decodeSharedCredentials(value: unknown): Credentials {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
-  const allowed = new Set<string>(["access_token", "oauth_client_id", "oauth_client_secret", "refresh_token"]);
+  const allowed = new Set<string>(["auth_method", "access_token", "oauth_client_id", "oauth_client_secret", "refresh_token"]);
   if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
   if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
   if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new TypeError("credential oauth_client_id has an invalid type");
   if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new TypeError("credential oauth_client_secret has an invalid type");
   if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new TypeError("credential refresh_token has an invalid type");
-  const credentials = {} as Credentials;
-  if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
-  credentials.oauthClientId = (fields["oauth_client_id"] ?? '') as string;
-  credentials.oauthClientSecret = new SecretString((fields["oauth_client_secret"] ?? '') as string);
-  if (!fields["access_token"]) throw new TypeError("credential access_token is required");
-  credentials.accessToken = new SecretString((fields["access_token"] ?? '') as string);
-  credentials.refreshToken = new SecretString((fields["refresh_token"] ?? '') as string);
+  const selectedMethod = fields['auth_method'] ?? '';
+  if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
+  const method = selectedMethod || "github-oauth";
+  const credentials = { authMethodId: method } as Credentials;
+  if (method === "github-oauth") {
+    if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+    if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
+    if (fields["oauth_client_secret"]) credentials.oauthClientSecret = new SecretString(fields["oauth_client_secret"] as string);
+    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+    if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
+    credentials.refreshToken = new SecretString((fields["refresh_token"] ?? '') as string);
+  } else if (method === "github-oauth-repository") {
+    if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+    if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
+    if (fields["oauth_client_secret"]) credentials.oauthClientSecret = new SecretString(fields["oauth_client_secret"] as string);
+    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+    if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
+    credentials.refreshToken = new SecretString((fields["refresh_token"] ?? '') as string);
+  } else {
+    throw new TypeError('credential auth_method is invalid');
+  }
   return credentials;
 }
 
@@ -398,6 +429,193 @@ export interface CommitPage {
   /** NextPage is the one-based page that follows, or zero when this is the last page. */
   "nextPage": number;
 }
+/** ListIssuesInput selects one page of a repository's issues, newest created first. */
+export interface ListIssuesInput {
+  /** Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored. */
+  "owner": string;
+  /** Repository is the repository name without its owner, such as hello-world. */
+  "repository": string;
+  /** State is open, closed, or all. Empty selects open. */
+  "state"?: string | undefined;
+  /** Labels keeps only issues that carry every listed label name. A name cannot contain a comma, because
+   * GitHub receives the list comma-separated. */
+  "labels"?: Array<string> | undefined;
+  /** Creator keeps only issues opened by this GitHub login. */
+  "creator"?: string | undefined;
+  /** UpdatedSince keeps only issues updated at or after this time. GitHub receives it in UTC with second
+   * precision. */
+  "updatedSince"?: string | null | undefined;
+  /** PageSize is 1 through 100. Zero selects 30. */
+  "pageSize"?: number | undefined;
+  /** Page is one-based. Zero selects 1. */
+  "page"?: number | undefined;
+  /** MaxBodyCharacters bounds each issue body to 1 through 16384 Unicode characters. Zero selects 4000. */
+  "maxBodyCharacters"?: number | undefined;
+}
+/** Issue is one repository issue with a bounded body. */
+export interface Issue {
+  /** Number is the issue number within its repository. */
+  "number": number;
+  /** NodeID is GitHub's global node ID for the issue, such as I_kwDOAbCdEs4AAAAM. */
+  "nodeId": string;
+  /** Title is the trimmed issue title, bounded to 1024 bytes. */
+  "title": string;
+  /** Body is the beginning of the Markdown body, bounded by ListIssuesInput.MaxBodyCharacters. It keeps the
+   * hidden marker comment of an issue that createIssue wrote. */
+  "body"?: string | undefined;
+  /** BodyTruncated reports that Body omits the end of the issue body. */
+  "bodyTruncated": boolean;
+  /** State is open or closed. */
+  "state": string;
+  /** StateReason is GitHub's reason for the state, such as completed, not_planned, or reopened, when set. */
+  "stateReason"?: string | undefined;
+  /** URL is the issue's GitHub web URL, or empty when GitHub returns an unsafe URL. */
+  "url"?: string | undefined;
+  /** AuthorLogin is the login of the account that opened the issue, or empty when GitHub omits it. */
+  "authorLogin"?: string | undefined;
+  /** Labels holds up to 100 label names, each bounded to 256 bytes. */
+  "labels"?: Array<string> | undefined;
+  /** Assignees holds up to 100 assignee logins. */
+  "assignees"?: Array<string> | undefined;
+  /** Comments is the number of comments on the issue. */
+  "comments": number;
+  /** CreatedAt is the creation time in UTC. */
+  "createdAt": string;
+  /** UpdatedAt is the last update time in UTC. */
+  "updatedAt": string;
+  /** ClosedAt is the close time in UTC, absent for an open issue. */
+  "closedAt"?: string | null | undefined;
+}
+/** IssuePage is one bounded page of issues. NextPage is zero when no page follows. */
+export interface IssuePage {
+  /** Issues holds this page's issues, newest created first. GitHub lists pull requests with issues; they are
+   * left out, so a page can hold fewer than PageSize issues while NextPage is nonzero. */
+  "issues": Array<Issue> | null;
+  /** NextPage is the one-based page that follows, or zero when this is the last page. */
+  "nextPage": number;
+}
+/** CreateIssueInput describes one issue to create. */
+export interface CreateIssueInput {
+  /** Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored. */
+  "owner": string;
+  /** Repository is the repository name without its owner, such as hello-world. */
+  "repository": string;
+  /** Title is the issue title, 1 through 256 Unicode characters after surrounding whitespace is trimmed,
+   * without line breaks or other control characters. */
+  "title": string;
+  /** Body is the Markdown issue body. The connector appends a hidden HTML comment that marks the issue for
+   * read-back, so Body holds at most 65536 characters less that marker; empty sends only the marker. */
+  "body"?: string | undefined;
+  /** Labels names up to 100 labels of 1 through 50 characters. GitHub applies labels only for an account
+   * with push access and drops them silently otherwise; CreatedIssue.Labels lists the labels applied. */
+  "labels"?: Array<string> | undefined;
+  /** Assignees lists up to 10 GitHub logins. GitHub applies assignees only for an account with push access
+   * and drops them silently otherwise; CreatedIssue.Assignees lists the assignees applied. */
+  "assignees"?: Array<string> | undefined;
+}
+/** CreatedIssue identifies the created issue. On every other branch only Owner, Repository, and Title are
+   * set, echoing the request so the application can reconcile. */
+export interface CreatedIssue {
+  /** Owner echoes the requested repository owner. */
+  "owner": string;
+  /** Repository echoes the requested repository name. */
+  "repository": string;
+  /** Title is GitHub's title of the created issue, or the requested title on other branches. */
+  "title": string;
+  /** Number is the issue number within its repository. */
+  "number"?: number | undefined;
+  /** ID is GitHub's numeric REST ID for the issue. */
+  "id"?: number | undefined;
+  /** NodeID is GitHub's global node ID for the issue. */
+  "nodeId"?: string | undefined;
+  /** URL is the issue's GitHub web URL, or empty when GitHub returns an unsafe URL. */
+  "url"?: string | undefined;
+  /** State is the issue state GitHub returned, normally open. */
+  "state"?: string | undefined;
+  /** CreatedAt is the creation time in UTC. */
+  "createdAt"?: string | null | undefined;
+  /** Labels lists the label names GitHub applied. */
+  "labels"?: Array<string> | undefined;
+  /** Assignees lists the logins GitHub assigned. */
+  "assignees"?: Array<string> | undefined;
+}
+/** SetIssueStateInput names one existing issue and the state to set. */
+export interface SetIssueStateInput {
+  /** Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored. */
+  "owner": string;
+  /** Repository is the repository name without its owner, such as hello-world. */
+  "repository": string;
+  /** IssueNumber is the positive issue number within the repository. */
+  "issueNumber": number;
+  /** State is open or closed. */
+  "state": string;
+  /** StateReason is completed or not_planned with State closed, or reopened with State open. Empty lets
+   * GitHub choose: completed for a close and reopened for a reopen. Setting the same state with another
+   * reason changes only the reason. */
+  "stateReason"?: string | undefined;
+}
+/** UpdatedIssueState is the issue's state after the update. On every other branch only Number is set,
+   * echoing the requested issue number. */
+export interface UpdatedIssueState {
+  /** Number is the issue number within its repository. */
+  "number": number;
+  /** URL is the issue's GitHub web URL, or empty when GitHub returns an unsafe URL. */
+  "url"?: string | undefined;
+  /** State is open or closed as GitHub returned it. */
+  "state"?: string | undefined;
+  /** StateReason is GitHub's reason for the state, such as completed, not_planned, or reopened, when set. */
+  "stateReason"?: string | undefined;
+  /** UpdatedAt is the issue's last update time in UTC. */
+  "updatedAt"?: string | null | undefined;
+}
+/** ReplaceIssueLabelsInput names one existing issue and the complete label set it should carry. */
+export interface ReplaceIssueLabelsInput {
+  /** Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored. */
+  "owner": string;
+  /** Repository is the repository name without its owner, such as hello-world. */
+  "repository": string;
+  /** IssueNumber is the positive issue number within the repository. */
+  "issueNumber": number;
+  /** Labels names up to 100 labels of 1 through 50 characters that replace every current label; surrounding
+   * whitespace is trimmed and an empty list removes all labels. GitHub creates a named label the repository
+   * lacks. */
+  "labels": Array<string> | null;
+}
+/** ReplacedIssueLabels is the issue's label set after the replacement. On every other branch only Number is
+   * set, echoing the requested issue number. */
+export interface ReplacedIssueLabels {
+  /** Number is the issue number within its repository. */
+  "number": number;
+  /** Labels lists the label names GitHub reports on the issue, each bounded to 256 bytes. */
+  "labels": Array<string> | null;
+  /** URL is the issue's GitHub web URL, derived from the configured base URL for GitHub.com or a GitHub
+   * Enterprise Server /api/v3 URL, and empty otherwise. */
+  "url"?: string | undefined;
+}
+/** CreateIssueCommentInput describes one comment to add to an existing issue. */
+export interface CreateIssueCommentInput {
+  /** Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored. */
+  "owner": string;
+  /** Repository is the repository name without its owner, such as hello-world. */
+  "repository": string;
+  /** IssueNumber is the positive issue number within the repository. */
+  "issueNumber": number;
+  /** Body is the nonblank Markdown comment. The connector appends a hidden HTML comment that marks the
+   * comment for read-back, so Body holds at most 65536 characters less that marker. */
+  "body": string;
+}
+/** CreatedIssueComment identifies the created comment. On every other branch only IssueNumber is set,
+   * echoing the request so the application can reconcile. */
+export interface CreatedIssueComment {
+  /** IssueNumber echoes the requested issue number. */
+  "issueNumber": number;
+  /** CommentID is GitHub's numeric REST ID for the comment. */
+  "commentId"?: number | undefined;
+  /** URL is the comment's GitHub web URL, or empty when GitHub returns an unsafe URL. */
+  "url"?: string | undefined;
+  /** CreatedAt is the creation time in UTC. */
+  "createdAt"?: string | null | undefined;
+}
 
 /** Runtime validator for GetAuthenticatedProfileInput. */
 export const GetAuthenticatedProfileInputSchema = z.strictObject({
@@ -571,3 +789,115 @@ export const CommitPageSchema = z.strictObject({
   "commits": z.array(CommitSummarySchema).nullable(),
   "nextPage": z.number().int(),
 }) satisfies z.ZodType<CommitPage>;
+
+/** Runtime validator for ListIssuesInput. */
+export const ListIssuesInputSchema = z.strictObject({
+  "owner": z.string(),
+  "repository": z.string(),
+  "state": z.string().optional(),
+  "labels": z.array(z.string()).optional(),
+  "creator": z.string().optional(),
+  "updatedSince": GoTimeJSONSchema.nullable().optional(),
+  "pageSize": z.number().int().optional(),
+  "page": z.number().int().optional(),
+  "maxBodyCharacters": z.number().int().optional(),
+}) satisfies z.ZodType<ListIssuesInput>;
+
+/** Runtime validator for Issue. */
+export const IssueSchema = z.strictObject({
+  "number": z.number().int(),
+  "nodeId": z.string(),
+  "title": z.string(),
+  "body": z.string().optional(),
+  "bodyTruncated": z.boolean(),
+  "state": z.string(),
+  "stateReason": z.string().optional(),
+  "url": z.string().optional(),
+  "authorLogin": z.string().optional(),
+  "labels": z.array(z.string()).optional(),
+  "assignees": z.array(z.string()).optional(),
+  "comments": z.number().int(),
+  "createdAt": GoTimeJSONSchema,
+  "updatedAt": GoTimeJSONSchema,
+  "closedAt": GoTimeJSONSchema.nullable().optional(),
+}) satisfies z.ZodType<Issue>;
+
+/** Runtime validator for IssuePage. */
+export const IssuePageSchema = z.strictObject({
+  "issues": z.array(IssueSchema).nullable(),
+  "nextPage": z.number().int(),
+}) satisfies z.ZodType<IssuePage>;
+
+/** Runtime validator for CreateIssueInput. */
+export const CreateIssueInputSchema = z.strictObject({
+  "owner": z.string(),
+  "repository": z.string(),
+  "title": z.string(),
+  "body": z.string().optional(),
+  "labels": z.array(z.string()).optional(),
+  "assignees": z.array(z.string()).optional(),
+}) satisfies z.ZodType<CreateIssueInput>;
+
+/** Runtime validator for CreatedIssue. */
+export const CreatedIssueSchema = z.strictObject({
+  "owner": z.string(),
+  "repository": z.string(),
+  "title": z.string(),
+  "number": z.number().int().optional(),
+  "id": z.number().int().optional(),
+  "nodeId": z.string().optional(),
+  "url": z.string().optional(),
+  "state": z.string().optional(),
+  "createdAt": GoTimeJSONSchema.nullable().optional(),
+  "labels": z.array(z.string()).optional(),
+  "assignees": z.array(z.string()).optional(),
+}) satisfies z.ZodType<CreatedIssue>;
+
+/** Runtime validator for SetIssueStateInput. */
+export const SetIssueStateInputSchema = z.strictObject({
+  "owner": z.string(),
+  "repository": z.string(),
+  "issueNumber": z.number().int(),
+  "state": z.string(),
+  "stateReason": z.string().optional(),
+}) satisfies z.ZodType<SetIssueStateInput>;
+
+/** Runtime validator for UpdatedIssueState. */
+export const UpdatedIssueStateSchema = z.strictObject({
+  "number": z.number().int(),
+  "url": z.string().optional(),
+  "state": z.string().optional(),
+  "stateReason": z.string().optional(),
+  "updatedAt": GoTimeJSONSchema.nullable().optional(),
+}) satisfies z.ZodType<UpdatedIssueState>;
+
+/** Runtime validator for ReplaceIssueLabelsInput. */
+export const ReplaceIssueLabelsInputSchema = z.strictObject({
+  "owner": z.string(),
+  "repository": z.string(),
+  "issueNumber": z.number().int(),
+  "labels": z.array(z.string()).nullable(),
+}) satisfies z.ZodType<ReplaceIssueLabelsInput>;
+
+/** Runtime validator for ReplacedIssueLabels. */
+export const ReplacedIssueLabelsSchema = z.strictObject({
+  "number": z.number().int(),
+  "labels": z.array(z.string()).nullable(),
+  "url": z.string().optional(),
+}) satisfies z.ZodType<ReplacedIssueLabels>;
+
+/** Runtime validator for CreateIssueCommentInput. */
+export const CreateIssueCommentInputSchema = z.strictObject({
+  "owner": z.string(),
+  "repository": z.string(),
+  "issueNumber": z.number().int(),
+  "body": z.string(),
+}) satisfies z.ZodType<CreateIssueCommentInput>;
+
+/** Runtime validator for CreatedIssueComment. */
+export const CreatedIssueCommentSchema = z.strictObject({
+  "issueNumber": z.number().int(),
+  "commentId": z.number().int().optional(),
+  "url": z.string().optional(),
+  "createdAt": GoTimeJSONSchema.nullable().optional(),
+}) satisfies z.ZodType<CreatedIssueComment>;

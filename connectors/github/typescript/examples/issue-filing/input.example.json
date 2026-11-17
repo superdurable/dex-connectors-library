@@ -1,0 +1,1 @@
+{"owner":"octocat","repository":"hello-world","title":"Crash when saving an empty draft","body":"Saving a new draft without text closes the editor.","labels":["bug"]}

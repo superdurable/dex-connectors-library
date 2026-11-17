@@ -33,7 +33,7 @@ invokes `WaitFor` on the start Step and an execute-only Step rejects it.
 
 ## Release baseline
 
-- GitHub Connector `v0.24.0`
+- GitHub Connector `v0.25.0`
 - dexcli `v0.13.8` or a later stable release
 
 ## 1. Prepare a clean local test project
@@ -48,12 +48,12 @@ cd github-repository-changes-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/github/go/v0.24.0/connectors/github/go/examples/repository-changes/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/github/go/v0.25.0/connectors/github/go/examples/repository-changes/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/github-repository-changes-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/github/go@v0.24.0
+go get github.com/superdurable/dex-connectors-library/connectors/github/go@v0.25.0
 go mod tidy
 ```
 
@@ -94,16 +94,17 @@ choose **New OAuth App**:
   `/api/v2/connector-oauth/callback`, such as
   `http://127.0.0.1:8802/api/v2/connector-oauth/callback`.
 
-Register the app, then generate a client secret. The Connector requests only
-`read:user user:email`, which reads public repositories. It rejects a token
-whose scopes differ, including one that also grants `repo`.
+Register the app, then generate a client secret. The Connector's default
+`github-oauth` method requests only `read:user user:email`, which reads public
+repositories. It rejects a token whose scopes differ, including one that also
+grants `repo`.
 
 ## 4. Configure the connection in Dex Web
 
 Open **Connections** and select `github / github-repository-changes`. It lists
 the `listMergedPullRequests`, `listPullRequestFiles`, and `listCommits` uses.
-Enter the OAuth client ID and secret, leave the configuration defaults, and
-choose **Authorize**. After GitHub returns to Dex Web, the connection status
+Keep the **GitHub OAuth, public read-only** method, enter the OAuth client ID
+and secret, leave the configuration defaults, and choose **Authorize**. After GitHub returns to Dex Web, the connection status
 should be **Ready**.
 
 ## 5. Run the Worker
@@ -117,7 +118,7 @@ connection.
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/github/go/examples/repository-changes@v0.24.0
+  github.com/superdurable/dex-connectors-library/connectors/github/go/examples/repository-changes@v0.25.0
 ```
 
 Set
@@ -165,8 +166,8 @@ application test does: the paged defaults complete a report whose search and
 commit pages are followed by more pages, and a scripted `providerRejected`
 search fails the Flow before the commit read.
 
-Before `v0.24.0` is published, build a local release artifact with
+Before `v0.25.0` is published, build a local release artifact with
 `go run ./cmd/connectorctl release-artifact` from the repository root and pass
 its directory to `dexcli dev --connector-release-override github=DIRECTORY`.
-The test project must still resolve `connectors/github/go@v0.24.0` without a
+The test project must still resolve `connectors/github/go@v0.25.0` without a
 `replace`, as the compatibility gate does with a local module proxy.

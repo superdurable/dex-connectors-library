@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import type { QueryDefinition } from '@superdurable/connectors-sdk';
+import type { MutationDefinition, QueryDefinition } from '@superdurable/connectors-sdk';
 
 /** Stable connector identity. */
 export const ConnectorID = "github";
@@ -258,3 +258,214 @@ export const ListCommitsDefinition: QueryDefinition = {
 };
 /** Manifest metadata for listCommits. */
 export const ListCommitsMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
+
+/** Branch IDs for listIssues. */
+export const ListIssuesBranch = {
+  Listed: "listed",
+  InsufficientScope: "insufficientScope",
+  AuthorizationRevoked: "authorizationRevoked",
+  NotFound: "notFound",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** One bounded page of issues was loaded, possibly empty. */
+export const ListIssuesBranchListed = ListIssuesBranch.Listed;
+/** The OAuth grant does not match the scopes of the connection's authorization method. */
+export const ListIssuesBranchInsufficientScope = ListIssuesBranch.InsufficientScope;
+/** The OAuth grant is invalid or revoked. */
+export const ListIssuesBranchAuthorizationRevoked = ListIssuesBranch.AuthorizationRevoked;
+/** The repository was not found or the connection cannot read it, such as a private repository on a github-oauth connection. */
+export const ListIssuesBranchNotFound = ListIssuesBranch.NotFound;
+/** GitHub conclusively rejected the issue query, such as a repository with issues disabled. */
+export const ListIssuesBranchProviderRejected = ListIssuesBranch.ProviderRejected;
+/** GitHub returned an invalid or oversized issue response. */
+export const ListIssuesBranchInvalidResponse = ListIssuesBranch.InvalidResponse;
+/** Local input, connection configuration, or connector definition is invalid. */
+export const ListIssuesBranchDefect = ListIssuesBranch.Defect;
+/** Manifest definition for listIssues. */
+export const ListIssuesDefinition: QueryDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "listIssues" },
+  branches: [
+    { id: "listed", description: "One bounded page of issues was loaded, possibly empty." },
+    { id: "insufficientScope", description: "The OAuth grant does not match the scopes of the connection's authorization method.", optional: true },
+    { id: "authorizationRevoked", description: "The OAuth grant is invalid or revoked.", optional: true },
+    { id: "notFound", description: "The repository was not found or the connection cannot read it, such as a private repository on a github-oauth connection.", optional: true },
+    { id: "providerRejected", description: "GitHub conclusively rejected the issue query, such as a repository with issues disabled.", optional: true },
+    { id: "invalidResponse", description: "GitHub returned an invalid or oversized issue response.", optional: true },
+    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 0, totalDurationMs: 3900000 } },
+};
+/** Manifest metadata for listIssues. */
+export const ListIssuesMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
+
+/** Branch IDs for createIssue. */
+export const CreateIssueBranch = {
+  Created: "created",
+  InsufficientScope: "insufficientScope",
+  AuthorizationRevoked: "authorizationRevoked",
+  NotFound: "notFound",
+  ProviderRejected: "providerRejected",
+  Uncertain: "uncertain",
+  Defect: "defect",
+} as const;
+/** GitHub created the issue, or an earlier attempt of this Step already had and read-back found it. */
+export const CreateIssueBranchCreated = CreateIssueBranch.Created;
+/** The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, missing issue access, or an organization's OAuth App restriction; nothing was created. */
+export const CreateIssueBranchInsufficientScope = CreateIssueBranch.InsufficientScope;
+/** The OAuth grant is invalid or revoked; nothing was created. */
+export const CreateIssueBranchAuthorizationRevoked = CreateIssueBranch.AuthorizationRevoked;
+/** The repository was not found or the connection cannot reach it; nothing was created. */
+export const CreateIssueBranchNotFound = CreateIssueBranch.NotFound;
+/** GitHub conclusively rejected the issue, such as a repository with issues disabled or an invalid assignee; nothing was created. */
+export const CreateIssueBranchProviderRejected = CreateIssueBranch.ProviderRejected;
+/** The issue may exist but read-back could not confirm it after the send cap was reached; the Value echoes the requested repository and title for reconciliation. */
+export const CreateIssueBranchUncertain = CreateIssueBranch.Uncertain;
+/** Local input, connection configuration, or connector definition is invalid. */
+export const CreateIssueBranchDefect = CreateIssueBranch.Defect;
+/** Manifest definition for createIssue. */
+export const CreateIssueDefinition: MutationDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "createIssue" },
+  branches: [
+    { id: "created", description: "GitHub created the issue, or an earlier attempt of this Step already had and read-back found it." },
+    { id: "insufficientScope", description: "The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, missing issue access, or an organization's OAuth App restriction; nothing was created.", optional: true },
+    { id: "authorizationRevoked", description: "The OAuth grant is invalid or revoked; nothing was created.", optional: true },
+    { id: "notFound", description: "The repository was not found or the connection cannot reach it; nothing was created.", optional: true },
+    { id: "providerRejected", description: "GitHub conclusively rejected the issue, such as a repository with issues disabled or an invalid assignee; nothing was created.", optional: true },
+    { id: "uncertain", description: "The issue may exist but read-back could not confirm it after the send cap was reached; the Value echoes the requested repository and title for reconciliation.", optional: true },
+    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 0, totalDurationMs: 3900000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
+};
+/** Manifest metadata for createIssue. */
+export const CreateIssueMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
+
+/** Branch IDs for setIssueState. */
+export const SetIssueStateBranch = {
+  Updated: "updated",
+  InsufficientScope: "insufficientScope",
+  AuthorizationRevoked: "authorizationRevoked",
+  NotFound: "notFound",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** GitHub set the issue to the requested state, or it already had that state and reason. */
+export const SetIssueStateBranchUpdated = SetIssueStateBranch.Updated;
+/** The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, missing issue access, or an organization's OAuth App restriction; the issue is unchanged. */
+export const SetIssueStateBranchInsufficientScope = SetIssueStateBranch.InsufficientScope;
+/** The OAuth grant is invalid or revoked; the issue is unchanged. */
+export const SetIssueStateBranchAuthorizationRevoked = SetIssueStateBranch.AuthorizationRevoked;
+/** The repository or issue was not found, or the connection cannot reach it; nothing was changed. */
+export const SetIssueStateBranchNotFound = SetIssueStateBranch.NotFound;
+/** GitHub conclusively rejected the update, such as an issue that was deleted, a repository with issues disabled, or a state reason GitHub refuses; the issue is unchanged. */
+export const SetIssueStateBranchProviderRejected = SetIssueStateBranch.ProviderRejected;
+/** GitHub accepted the update but returned an invalid or oversized issue; the issue may have changed. */
+export const SetIssueStateBranchInvalidResponse = SetIssueStateBranch.InvalidResponse;
+/** Local input, connection configuration, or connector definition is invalid. */
+export const SetIssueStateBranchDefect = SetIssueStateBranch.Defect;
+/** Manifest definition for setIssueState. */
+export const SetIssueStateDefinition: MutationDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "setIssueState" },
+  branches: [
+    { id: "updated", description: "GitHub set the issue to the requested state, or it already had that state and reason." },
+    { id: "insufficientScope", description: "The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, missing issue access, or an organization's OAuth App restriction; the issue is unchanged.", optional: true },
+    { id: "authorizationRevoked", description: "The OAuth grant is invalid or revoked; the issue is unchanged.", optional: true },
+    { id: "notFound", description: "The repository or issue was not found, or the connection cannot reach it; nothing was changed.", optional: true },
+    { id: "providerRejected", description: "GitHub conclusively rejected the update, such as an issue that was deleted, a repository with issues disabled, or a state reason GitHub refuses; the issue is unchanged.", optional: true },
+    { id: "invalidResponse", description: "GitHub accepted the update but returned an invalid or oversized issue; the issue may have changed.", optional: true },
+    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 0, totalDurationMs: 3900000 } },
+  repeatOnUnknown: "safe",
+};
+/** Manifest metadata for setIssueState. */
+export const SetIssueStateMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
+
+/** Branch IDs for replaceIssueLabels. */
+export const ReplaceIssueLabelsBranch = {
+  Replaced: "replaced",
+  InsufficientScope: "insufficientScope",
+  AuthorizationRevoked: "authorizationRevoked",
+  NotFound: "notFound",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** The issue now carries exactly the requested labels, as GitHub reported them. */
+export const ReplaceIssueLabelsBranchReplaced = ReplaceIssueLabelsBranch.Replaced;
+/** The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, an account without push access, or an organization's OAuth App restriction; the labels are unchanged. */
+export const ReplaceIssueLabelsBranchInsufficientScope = ReplaceIssueLabelsBranch.InsufficientScope;
+/** The OAuth grant is invalid or revoked; the labels are unchanged. */
+export const ReplaceIssueLabelsBranchAuthorizationRevoked = ReplaceIssueLabelsBranch.AuthorizationRevoked;
+/** The repository or issue was not found, or the connection cannot reach it; nothing was changed. */
+export const ReplaceIssueLabelsBranchNotFound = ReplaceIssueLabelsBranch.NotFound;
+/** GitHub conclusively rejected the labels, such as an issue that was deleted or an invalid label name; the labels are unchanged. */
+export const ReplaceIssueLabelsBranchProviderRejected = ReplaceIssueLabelsBranch.ProviderRejected;
+/** GitHub accepted the labels but returned an invalid or oversized label list; the labels may have changed. */
+export const ReplaceIssueLabelsBranchInvalidResponse = ReplaceIssueLabelsBranch.InvalidResponse;
+/** Local input, connection configuration, or connector definition is invalid. */
+export const ReplaceIssueLabelsBranchDefect = ReplaceIssueLabelsBranch.Defect;
+/** Manifest definition for replaceIssueLabels. */
+export const ReplaceIssueLabelsDefinition: MutationDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "replaceIssueLabels" },
+  branches: [
+    { id: "replaced", description: "The issue now carries exactly the requested labels, as GitHub reported them." },
+    { id: "insufficientScope", description: "The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, an account without push access, or an organization's OAuth App restriction; the labels are unchanged.", optional: true },
+    { id: "authorizationRevoked", description: "The OAuth grant is invalid or revoked; the labels are unchanged.", optional: true },
+    { id: "notFound", description: "The repository or issue was not found, or the connection cannot reach it; nothing was changed.", optional: true },
+    { id: "providerRejected", description: "GitHub conclusively rejected the labels, such as an issue that was deleted or an invalid label name; the labels are unchanged.", optional: true },
+    { id: "invalidResponse", description: "GitHub accepted the labels but returned an invalid or oversized label list; the labels may have changed.", optional: true },
+    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 0, totalDurationMs: 3900000 } },
+  repeatOnUnknown: "safe",
+};
+/** Manifest metadata for replaceIssueLabels. */
+export const ReplaceIssueLabelsMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
+
+/** Branch IDs for createIssueComment. */
+export const CreateIssueCommentBranch = {
+  Created: "created",
+  InsufficientScope: "insufficientScope",
+  AuthorizationRevoked: "authorizationRevoked",
+  NotFound: "notFound",
+  ProviderRejected: "providerRejected",
+  Uncertain: "uncertain",
+  Defect: "defect",
+} as const;
+/** GitHub created the comment, or an earlier attempt of this Step already had and read-back found it. */
+export const CreateIssueCommentBranchCreated = CreateIssueCommentBranch.Created;
+/** The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, a locked issue, or an organization's OAuth App restriction; nothing was created. */
+export const CreateIssueCommentBranchInsufficientScope = CreateIssueCommentBranch.InsufficientScope;
+/** The OAuth grant is invalid or revoked; nothing was created. */
+export const CreateIssueCommentBranchAuthorizationRevoked = CreateIssueCommentBranch.AuthorizationRevoked;
+/** The repository or issue was not found or the connection cannot reach it; nothing was created. */
+export const CreateIssueCommentBranchNotFound = CreateIssueCommentBranch.NotFound;
+/** GitHub conclusively rejected the comment, such as an issue that was deleted or a body GitHub refuses; nothing was created. */
+export const CreateIssueCommentBranchProviderRejected = CreateIssueCommentBranch.ProviderRejected;
+/** The comment may exist but read-back could not confirm it after the send cap was reached; the Value echoes the requested issue number for reconciliation. */
+export const CreateIssueCommentBranchUncertain = CreateIssueCommentBranch.Uncertain;
+/** Local input, connection configuration, or connector definition is invalid. */
+export const CreateIssueCommentBranchDefect = CreateIssueCommentBranch.Defect;
+/** Manifest definition for createIssueComment. */
+export const CreateIssueCommentDefinition: MutationDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "createIssueComment" },
+  branches: [
+    { id: "created", description: "GitHub created the comment, or an earlier attempt of this Step already had and read-back found it." },
+    { id: "insufficientScope", description: "The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, a locked issue, or an organization's OAuth App restriction; nothing was created.", optional: true },
+    { id: "authorizationRevoked", description: "The OAuth grant is invalid or revoked; nothing was created.", optional: true },
+    { id: "notFound", description: "The repository or issue was not found or the connection cannot reach it; nothing was created.", optional: true },
+    { id: "providerRejected", description: "GitHub conclusively rejected the comment, such as an issue that was deleted or a body GitHub refuses; nothing was created.", optional: true },
+    { id: "uncertain", description: "The comment may exist but read-back could not confirm it after the send cap was reached; the Value echoes the requested issue number for reconciliation.", optional: true },
+    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 0, totalDurationMs: 3900000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
+};
+/** Manifest metadata for createIssueComment. */
+export const CreateIssueCommentMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

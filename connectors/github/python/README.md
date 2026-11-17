@@ -4,7 +4,9 @@
 [`connector.yaml`](../connector.yaml): `getAuthenticatedProfile`,
 `listPublicRepositories`, `listMergedPullRequests`, `listPullRequestFiles`,
 `listReleases`, and `listCommits`. Its Python release is `v0.1.0`; the Go release
-version remains independent.
+version remains independent. The Go-only `listIssues` and `createIssue`
+operations and their `github-oauth-repository` authorization method are not
+implemented here, and the conformance test replays only the six Queries.
 
 The generated project connection resolves credentials at call time and uses the
 manifest-driven OAuth refresh driver. It requests `read:user`, `user:email`, and
@@ -12,6 +14,13 @@ manifest-driven OAuth refresh driver. It requests `read:user`, `user:email`, and
 exactly `read:user` and `user:email` in `X-OAuth-Scopes`; broader scopes select
 `insufficientScope`. The package never stores tokens in Flow input, Attributes,
 Results, receipts, or logs.
+
+The manifest declares two authorization methods, so the generated `Credentials`
+dataclass begins with `auth_method_id`, which defaults to `github-oauth`, and
+its other fields are optional. Construct it with keyword arguments, such as
+`Credentials(oauth_client_id=..., oauth_client_secret=..., access_token=...,
+refresh_token=...)`. A credential stored without a method decodes as
+`github-oauth`.
 
 The [profile example](examples/profile/README.md) is the runnable consuming
 application. Its Worker entrypoint is `examples/profile/main.py`; the Flow

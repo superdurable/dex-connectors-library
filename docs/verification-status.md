@@ -46,7 +46,7 @@ Last reviewed against `main` at `f5c9edf` (2026-10-01).
 | bamboohr | Dex-integrated | 3 Dex Web Start Flow runs and 18 real-Dex tests against a fake | change-history bounds, rate-limited adds, future-start hires | #165 |
 | calendly | Partial live | picker commands reached Calendly and failed cleanly with a placeholder token; Trigger run with locally signed deliveries | OAuth code exchange, webhook retries, pickers on a real account | #149 |
 | freshworks/freshdesk | Dex-integrated | Dex Web Start Flow run and 14 real-Dex scenarios against a fake | contact lookup, tag replacement, pagination, 429 | #145 |
-| github | Live (reads) | OAuth App authorized through Dex Web; the three read operations ran against github.com | OAuth refresh (#117, #129), rate-limit retries, GitHub Enterprise | #64 |
+| github | Live (reads) | OAuth App authorized through Dex Web; the three read operations ran against github.com | OAuth refresh (#117, #129), rate-limit retries, GitHub Enterprise; `listIssues`, `createIssue`, and the `github-oauth-repository` method ran only on real Dex against a local stand-in | #64 |
 | google/calendar | Dex-integrated | 6 real-Dex scenarios against a fake Google | OAuth consent and refresh, delegation, Meet creation, calendar picker | #151 |
 | google/docs | Dex-integrated | 10 real-Dex scenarios against a fake Google | OAuth scopes, Markdown import, stale-revision error, pickers | #166 |
 | google/drive | Dex-integrated | Dex run ended `copied` against a fake Drive | OAuth refresh, delegation, shared drives, uploads into folders the app did not create | #150 |

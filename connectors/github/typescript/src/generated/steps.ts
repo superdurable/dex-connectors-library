@@ -2,10 +2,10 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { goToBranch, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
+import { goToBranch, newMutationStep, type Mutation, type MutationResult, type MutationStep, type MutationStepConfig, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import type { GetAuthenticatedProfileInput, AuthenticatedProfile, ListPublicRepositoriesInput, PublicRepositories, ListMergedPullRequestsInput, MergedPullRequestPage, ListPullRequestFilesInput, PullRequestFilePage, ListReleasesInput, ReleasePage, ListCommitsInput, CommitPage } from './models.js';
+import type { GetAuthenticatedProfileInput, AuthenticatedProfile, ListPublicRepositoriesInput, PublicRepositories, ListMergedPullRequestsInput, MergedPullRequestPage, ListPullRequestFilesInput, PullRequestFilePage, ListReleasesInput, ReleasePage, ListCommitsInput, CommitPage, ListIssuesInput, IssuePage, CreateIssueInput, CreatedIssue, SetIssueStateInput, UpdatedIssueState, ReplaceIssueLabelsInput, ReplacedIssueLabels, CreateIssueCommentInput, CreatedIssueComment } from './models.js';
 
 /** Configuration for the getAuthenticatedProfile connector Step. */
 export interface GetAuthenticatedProfileStepConfig<StepInput, OperationInput = GetAuthenticatedProfileInput, OperationOutput = AuthenticatedProfile> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
@@ -228,6 +228,191 @@ export function newListCommitsStep<StepInput, OperationInput = ListCommitsInput,
     ...(notFound ? [goToBranch("notFound", notFound)] : []),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
     ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
+
+/** Configuration for the listIssues connector Step. */
+export interface ListIssuesStepConfig<StepInput, OperationInput = ListIssuesInput, OperationOutput = IssuePage> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ listIssues(): Query<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** One bounded page of issues was loaded, possibly empty. */
+  listed: StepTarget<QueryResult<OperationOutput>>;
+  /** The OAuth grant does not match the scopes of the connection's authorization method. */
+  insufficientScope?: StepTarget<QueryResult<OperationOutput>>;
+  /** The OAuth grant is invalid or revoked. */
+  authorizationRevoked?: StepTarget<QueryResult<OperationOutput>>;
+  /** The repository was not found or the connection cannot read it, such as a private repository on a github-oauth connection. */
+  notFound?: StepTarget<QueryResult<OperationOutput>>;
+  /** GitHub conclusively rejected the issue query, such as a repository with issues disabled. */
+  providerRejected?: StepTarget<QueryResult<OperationOutput>>;
+  /** GitHub returned an invalid or oversized issue response. */
+  invalidResponse?: StepTarget<QueryResult<OperationOutput>>;
+  /** Local input, connection configuration, or connector definition is invalid. */
+  defect?: StepTarget<QueryResult<OperationOutput>>;
+}
+
+/** Build the listIssues Step from a named connection. */
+export function newListIssuesStep<StepInput, OperationInput = ListIssuesInput, OperationOutput = IssuePage>(configuration: ListIssuesStepConfig<StepInput, OperationInput, OperationOutput>): QueryStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, listed, insufficientScope, authorizationRevoked, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newQueryStep({ ...stepConfiguration, operation: connection.operations.listIssues(), connection: connection.reference, branches: [
+    goToBranch("listed", listed),
+    ...(insufficientScope ? [goToBranch("insufficientScope", insufficientScope)] : []),
+    ...(authorizationRevoked ? [goToBranch("authorizationRevoked", authorizationRevoked)] : []),
+    ...(notFound ? [goToBranch("notFound", notFound)] : []),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
+
+/** Configuration for the createIssue connector Step. */
+export interface CreateIssueStepConfig<StepInput, OperationInput = CreateIssueInput, OperationOutput = CreatedIssue> extends Omit<MutationStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ createIssue(): Mutation<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** GitHub created the issue, or an earlier attempt of this Step already had and read-back found it. */
+  created: StepTarget<MutationResult<OperationOutput>>;
+  /** The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, missing issue access, or an organization's OAuth App restriction; nothing was created. */
+  insufficientScope?: StepTarget<MutationResult<OperationOutput>>;
+  /** The OAuth grant is invalid or revoked; nothing was created. */
+  authorizationRevoked?: StepTarget<MutationResult<OperationOutput>>;
+  /** The repository was not found or the connection cannot reach it; nothing was created. */
+  notFound?: StepTarget<MutationResult<OperationOutput>>;
+  /** GitHub conclusively rejected the issue, such as a repository with issues disabled or an invalid assignee; nothing was created. */
+  providerRejected?: StepTarget<MutationResult<OperationOutput>>;
+  /** The issue may exist but read-back could not confirm it after the send cap was reached; the Value echoes the requested repository and title for reconciliation. */
+  uncertain?: StepTarget<MutationResult<OperationOutput>>;
+  /** Local input, connection configuration, or connector definition is invalid. */
+  defect?: StepTarget<MutationResult<OperationOutput>>;
+}
+
+/** Build the createIssue Step from a named connection. */
+export function newCreateIssueStep<StepInput, OperationInput = CreateIssueInput, OperationOutput = CreatedIssue>(configuration: CreateIssueStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, created, insufficientScope, authorizationRevoked, notFound, providerRejected, uncertain, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newMutationStep({ ...stepConfiguration, operation: connection.operations.createIssue(), connection: connection.reference, branches: [
+    goToBranch("created", created),
+    ...(insufficientScope ? [goToBranch("insufficientScope", insufficientScope)] : []),
+    ...(authorizationRevoked ? [goToBranch("authorizationRevoked", authorizationRevoked)] : []),
+    ...(notFound ? [goToBranch("notFound", notFound)] : []),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(uncertain ? [goToBranch("uncertain", uncertain)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
+
+/** Configuration for the setIssueState connector Step. */
+export interface SetIssueStateStepConfig<StepInput, OperationInput = SetIssueStateInput, OperationOutput = UpdatedIssueState> extends Omit<MutationStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ setIssueState(): Mutation<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** GitHub set the issue to the requested state, or it already had that state and reason. */
+  updated: StepTarget<MutationResult<OperationOutput>>;
+  /** The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, missing issue access, or an organization's OAuth App restriction; the issue is unchanged. */
+  insufficientScope?: StepTarget<MutationResult<OperationOutput>>;
+  /** The OAuth grant is invalid or revoked; the issue is unchanged. */
+  authorizationRevoked?: StepTarget<MutationResult<OperationOutput>>;
+  /** The repository or issue was not found, or the connection cannot reach it; nothing was changed. */
+  notFound?: StepTarget<MutationResult<OperationOutput>>;
+  /** GitHub conclusively rejected the update, such as an issue that was deleted, a repository with issues disabled, or a state reason GitHub refuses; the issue is unchanged. */
+  providerRejected?: StepTarget<MutationResult<OperationOutput>>;
+  /** GitHub accepted the update but returned an invalid or oversized issue; the issue may have changed. */
+  invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
+  /** Local input, connection configuration, or connector definition is invalid. */
+  defect?: StepTarget<MutationResult<OperationOutput>>;
+}
+
+/** Build the setIssueState Step from a named connection. */
+export function newSetIssueStateStep<StepInput, OperationInput = SetIssueStateInput, OperationOutput = UpdatedIssueState>(configuration: SetIssueStateStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, updated, insufficientScope, authorizationRevoked, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newMutationStep({ ...stepConfiguration, operation: connection.operations.setIssueState(), connection: connection.reference, branches: [
+    goToBranch("updated", updated),
+    ...(insufficientScope ? [goToBranch("insufficientScope", insufficientScope)] : []),
+    ...(authorizationRevoked ? [goToBranch("authorizationRevoked", authorizationRevoked)] : []),
+    ...(notFound ? [goToBranch("notFound", notFound)] : []),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
+
+/** Configuration for the replaceIssueLabels connector Step. */
+export interface ReplaceIssueLabelsStepConfig<StepInput, OperationInput = ReplaceIssueLabelsInput, OperationOutput = ReplacedIssueLabels> extends Omit<MutationStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ replaceIssueLabels(): Mutation<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** The issue now carries exactly the requested labels, as GitHub reported them. */
+  replaced: StepTarget<MutationResult<OperationOutput>>;
+  /** The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, an account without push access, or an organization's OAuth App restriction; the labels are unchanged. */
+  insufficientScope?: StepTarget<MutationResult<OperationOutput>>;
+  /** The OAuth grant is invalid or revoked; the labels are unchanged. */
+  authorizationRevoked?: StepTarget<MutationResult<OperationOutput>>;
+  /** The repository or issue was not found, or the connection cannot reach it; nothing was changed. */
+  notFound?: StepTarget<MutationResult<OperationOutput>>;
+  /** GitHub conclusively rejected the labels, such as an issue that was deleted or an invalid label name; the labels are unchanged. */
+  providerRejected?: StepTarget<MutationResult<OperationOutput>>;
+  /** GitHub accepted the labels but returned an invalid or oversized label list; the labels may have changed. */
+  invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
+  /** Local input, connection configuration, or connector definition is invalid. */
+  defect?: StepTarget<MutationResult<OperationOutput>>;
+}
+
+/** Build the replaceIssueLabels Step from a named connection. */
+export function newReplaceIssueLabelsStep<StepInput, OperationInput = ReplaceIssueLabelsInput, OperationOutput = ReplacedIssueLabels>(configuration: ReplaceIssueLabelsStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, replaced, insufficientScope, authorizationRevoked, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newMutationStep({ ...stepConfiguration, operation: connection.operations.replaceIssueLabels(), connection: connection.reference, branches: [
+    goToBranch("replaced", replaced),
+    ...(insufficientScope ? [goToBranch("insufficientScope", insufficientScope)] : []),
+    ...(authorizationRevoked ? [goToBranch("authorizationRevoked", authorizationRevoked)] : []),
+    ...(notFound ? [goToBranch("notFound", notFound)] : []),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
+
+/** Configuration for the createIssueComment connector Step. */
+export interface CreateIssueCommentStepConfig<StepInput, OperationInput = CreateIssueCommentInput, OperationOutput = CreatedIssueComment> extends Omit<MutationStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ createIssueComment(): Mutation<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** GitHub created the comment, or an earlier attempt of this Step already had and read-back found it. */
+  created: StepTarget<MutationResult<OperationOutput>>;
+  /** The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, a locked issue, or an organization's OAuth App restriction; nothing was created. */
+  insufficientScope?: StepTarget<MutationResult<OperationOutput>>;
+  /** The OAuth grant is invalid or revoked; nothing was created. */
+  authorizationRevoked?: StepTarget<MutationResult<OperationOutput>>;
+  /** The repository or issue was not found or the connection cannot reach it; nothing was created. */
+  notFound?: StepTarget<MutationResult<OperationOutput>>;
+  /** GitHub conclusively rejected the comment, such as an issue that was deleted or a body GitHub refuses; nothing was created. */
+  providerRejected?: StepTarget<MutationResult<OperationOutput>>;
+  /** The comment may exist but read-back could not confirm it after the send cap was reached; the Value echoes the requested issue number for reconciliation. */
+  uncertain?: StepTarget<MutationResult<OperationOutput>>;
+  /** Local input, connection configuration, or connector definition is invalid. */
+  defect?: StepTarget<MutationResult<OperationOutput>>;
+}
+
+/** Build the createIssueComment Step from a named connection. */
+export function newCreateIssueCommentStep<StepInput, OperationInput = CreateIssueCommentInput, OperationOutput = CreatedIssueComment>(configuration: CreateIssueCommentStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, created, insufficientScope, authorizationRevoked, notFound, providerRejected, uncertain, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newMutationStep({ ...stepConfiguration, operation: connection.operations.createIssueComment(), connection: connection.reference, branches: [
+    goToBranch("created", created),
+    ...(insufficientScope ? [goToBranch("insufficientScope", insufficientScope)] : []),
+    ...(authorizationRevoked ? [goToBranch("authorizationRevoked", authorizationRevoked)] : []),
+    ...(notFound ? [goToBranch("notFound", notFound)] : []),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(uncertain ? [goToBranch("uncertain", uncertain)] : []),
     ...(defect ? [goToBranch("defect", defect)] : []),
   ] });
 }

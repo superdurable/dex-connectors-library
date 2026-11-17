@@ -109,7 +109,7 @@ setattr(new_connection_with_operations, '__module__', 'dex_connectors.github.con
 def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Credentials:
     if not isinstance(material, dict):
         raise ValueError("GitHub stored credential does not match the connector credential fields")
-    if set(material) - set(('oauth_client_id', 'oauth_client_secret', 'access_token', 'refresh_token')):
+    if set(material) - set(('oauth_client_id', 'oauth_client_secret', 'access_token', 'refresh_token', 'auth_method')):
         raise ValueError("GitHub stored credential does not match the connector credential fields")
     is_shared = shared
     oauth_client_id = material.get("oauth_client_id")
@@ -124,13 +124,44 @@ def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Cre
     refresh_token = material.get("refresh_token")
     if refresh_token is not None and not (isinstance(refresh_token, str)):
         raise ValueError("GitHub credential refresh_token has an invalid type")
-    if not oauth_client_id:
-        raise ValueError("GitHub credential oauth_client_id is required")
-    if not oauth_client_secret and not is_shared:
-        raise ValueError("GitHub credential oauth_client_secret is required")
-    if not access_token:
-        raise ValueError("GitHub credential access_token is required")
-    return Credentials(oauth_client_id, SecretString(oauth_client_secret or ''), SecretString(access_token), SecretString(refresh_token or ''))
+    selected_method = material.get('auth_method')
+    if selected_method is None:
+        selected_method = ''
+    if not isinstance(selected_method, str):
+        raise ValueError("GitHub credential auth_method is invalid")
+    method = selected_method or "github-oauth"
+    values: dict[str, Any] = {'auth_method_id': method}
+    if method == "github-oauth":
+        if not oauth_client_id:
+            raise ValueError("GitHub credential oauth_client_id is required")
+        if oauth_client_id:
+            values["oauth_client_id"] = oauth_client_id
+        if not oauth_client_secret and not is_shared:
+            raise ValueError("GitHub credential oauth_client_secret is required")
+        if oauth_client_secret:
+            values["oauth_client_secret"] = SecretString(oauth_client_secret)
+        if not access_token:
+            raise ValueError("GitHub credential access_token is required")
+        if access_token:
+            values["access_token"] = SecretString(access_token)
+        values["refresh_token"] = SecretString(refresh_token or '')
+    elif method == "github-oauth-repository":
+        if not oauth_client_id:
+            raise ValueError("GitHub credential oauth_client_id is required")
+        if oauth_client_id:
+            values["oauth_client_id"] = oauth_client_id
+        if not oauth_client_secret and not is_shared:
+            raise ValueError("GitHub credential oauth_client_secret is required")
+        if oauth_client_secret:
+            values["oauth_client_secret"] = SecretString(oauth_client_secret)
+        if not access_token:
+            raise ValueError("GitHub credential access_token is required")
+        if access_token:
+            values["access_token"] = SecretString(access_token)
+        values["refresh_token"] = SecretString(refresh_token or '')
+    else:
+        raise ValueError("GitHub credential auth_method is invalid")
+    return Credentials(**values)
 
 
 def decode_shared_credentials(material: dict[str, Any]) -> Credentials:
@@ -139,14 +170,28 @@ def decode_shared_credentials(material: dict[str, Any]) -> Credentials:
 
 def encode_credentials(credentials: Credentials) -> dict[str, Any]:
     material: dict[str, Any] = {}
-    if credentials.oauth_client_id:
-        material["oauth_client_id"] = credentials.oauth_client_id
-    if credentials.oauth_client_secret.reveal():
-        material["oauth_client_secret"] = credentials.oauth_client_secret.reveal()
-    if credentials.access_token.reveal():
-        material["access_token"] = credentials.access_token.reveal()
-    if credentials.refresh_token.reveal():
-        material["refresh_token"] = credentials.refresh_token.reveal()
+    method = credentials.auth_method_id or "github-oauth"
+    material['auth_method'] = method
+    if method == "github-oauth":
+        if credentials.oauth_client_id:
+            material["oauth_client_id"] = credentials.oauth_client_id
+        if (credentials.oauth_client_secret.reveal() if credentials.oauth_client_secret is not None else ''):
+            material["oauth_client_secret"] = (credentials.oauth_client_secret.reveal() if credentials.oauth_client_secret is not None else '')
+        if (credentials.access_token.reveal() if credentials.access_token is not None else ''):
+            material["access_token"] = (credentials.access_token.reveal() if credentials.access_token is not None else '')
+        if (credentials.refresh_token.reveal() if credentials.refresh_token is not None else ''):
+            material["refresh_token"] = (credentials.refresh_token.reveal() if credentials.refresh_token is not None else '')
+    elif method == "github-oauth-repository":
+        if credentials.oauth_client_id:
+            material["oauth_client_id"] = credentials.oauth_client_id
+        if (credentials.oauth_client_secret.reveal() if credentials.oauth_client_secret is not None else ''):
+            material["oauth_client_secret"] = (credentials.oauth_client_secret.reveal() if credentials.oauth_client_secret is not None else '')
+        if (credentials.access_token.reveal() if credentials.access_token is not None else ''):
+            material["access_token"] = (credentials.access_token.reveal() if credentials.access_token is not None else '')
+        if (credentials.refresh_token.reveal() if credentials.refresh_token is not None else ''):
+            material["refresh_token"] = (credentials.refresh_token.reveal() if credentials.refresh_token is not None else '')
+    else:
+        raise ValueError("GitHub credential auth_method is invalid")
     decode_credentials(material)
     return material
 
@@ -197,47 +242,47 @@ def _decode_config(value: dict[str, Any]) -> Config:
     if set(value) - {"baseUrl", "apiVersion", "timeout", "maxResponseBytes", "defaultRepositoryLimit", "maxRepositories", "maxPullRequestBodyCharacters", "maxPatchCharacters", "maxCommitMessageCharacters"}:
         raise ValueError("GitHub configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
-    if "baseUrl" in value and value["baseUrl"] != '':
+    if "baseUrl" in value:
         base_url = value["baseUrl"]
         if not (isinstance(base_url, str)):
             raise ValueError("GitHub configuration baseUrl has an invalid type")
         config_arguments['base_url'] = base_url
-    if "apiVersion" in value and value["apiVersion"] != '':
+    if "apiVersion" in value:
         api_version = value["apiVersion"]
         if not (isinstance(api_version, str)):
             raise ValueError("GitHub configuration apiVersion has an invalid type")
         config_arguments['api_version'] = api_version
-    if "timeout" in value and value["timeout"] != '':
+    if "timeout" in value:
         timeout = value["timeout"]
         if not (type(timeout) is int):
             raise ValueError("GitHub configuration timeout has an invalid type")
         config_arguments['timeout_seconds'] = timeout / 1_000_000_000
-    if "maxResponseBytes" in value and value["maxResponseBytes"] != '':
+    if "maxResponseBytes" in value:
         max_response_bytes = value["maxResponseBytes"]
         if not (type(max_response_bytes) is int):
             raise ValueError("GitHub configuration maxResponseBytes has an invalid type")
         config_arguments['max_response_bytes'] = max_response_bytes
-    if "defaultRepositoryLimit" in value and value["defaultRepositoryLimit"] != '':
+    if "defaultRepositoryLimit" in value:
         default_repository_limit = value["defaultRepositoryLimit"]
         if not (type(default_repository_limit) is int):
             raise ValueError("GitHub configuration defaultRepositoryLimit has an invalid type")
         config_arguments['default_repository_limit'] = default_repository_limit
-    if "maxRepositories" in value and value["maxRepositories"] != '':
+    if "maxRepositories" in value:
         max_repositories = value["maxRepositories"]
         if not (type(max_repositories) is int):
             raise ValueError("GitHub configuration maxRepositories has an invalid type")
         config_arguments['max_repositories'] = max_repositories
-    if "maxPullRequestBodyCharacters" in value and value["maxPullRequestBodyCharacters"] != '':
+    if "maxPullRequestBodyCharacters" in value:
         max_pull_request_body_characters = value["maxPullRequestBodyCharacters"]
         if not (type(max_pull_request_body_characters) is int):
             raise ValueError("GitHub configuration maxPullRequestBodyCharacters has an invalid type")
         config_arguments['max_pull_request_body_characters'] = max_pull_request_body_characters
-    if "maxPatchCharacters" in value and value["maxPatchCharacters"] != '':
+    if "maxPatchCharacters" in value:
         max_patch_characters = value["maxPatchCharacters"]
         if not (type(max_patch_characters) is int):
             raise ValueError("GitHub configuration maxPatchCharacters has an invalid type")
         config_arguments['max_patch_characters'] = max_patch_characters
-    if "maxCommitMessageCharacters" in value and value["maxCommitMessageCharacters"] != '':
+    if "maxCommitMessageCharacters" in value:
         max_commit_message_characters = value["maxCommitMessageCharacters"]
         if not (type(max_commit_message_characters) is int):
             raise ValueError("GitHub configuration maxCommitMessageCharacters has an invalid type")

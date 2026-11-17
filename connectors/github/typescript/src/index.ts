@@ -6,5 +6,6 @@ export * from './generated/definitions.js';
 export * from './generated/steps.js';
 export { Connection, newConnection, newConnectionWithOperations } from './generated/connection.js';
 export { newProjectConnection } from './project.js';
-export { GitHubClient, type GitHubClientOptions } from './client.js';
+export { GitHubClient, PublicAuthMethodID, RepositoryAuthMethodID, type GitHubClientOptions } from './client.js';
 export { GetAuthenticatedProfileOperation, ListPublicRepositoriesOperation, ListMergedPullRequestsOperation, ListPullRequestFilesOperation, ListReleasesOperation, ListCommitsOperation } from './operations.js';
+export { CreateIssueOperation, CreateIssueCommentOperation, ListIssuesOperation, ReplaceIssueLabelsOperation, SetIssueStateOperation, IssueStateOpen, IssueStateClosed, IssueStateReasonCompleted, IssueStateReasonNotPlanned, IssueStateReasonReopened } from './issues.js';

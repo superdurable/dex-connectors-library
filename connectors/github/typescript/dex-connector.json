@@ -1,10 +1,10 @@
 {
   "connectorId": "github",
-  "releaseTag": "connectors/github/go/v0.24.0",
+  "releaseTag": "connectors/github/go/v0.25.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-github",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -481,6 +481,449 @@
           "repository",
           "since",
           "until"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newListIssuesStep",
+      "kind": "query",
+      "operationId": "listIssues",
+      "inputType": "ListIssuesInput",
+      "description": "List one bounded page of a repository's issues, newest created first, filtered by state, labels, creator, and last update. GitHub's issue list reads without the search index's delay, so an issue created a moment ago is listed; pull requests are left out.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "insufficientScope",
+          "field": "insufficientScope",
+          "optional": true
+        },
+        {
+          "id": "authorizationRevoked",
+          "field": "authorizationRevoked",
+          "optional": true
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListIssuesInput selects one page of a repository's issues, newest created first.",
+        "properties": {
+          "creator": {
+            "description": "Creator keeps only issues opened by this GitHub login.",
+            "type": "string"
+          },
+          "labels": {
+            "description": "Labels keeps only issues that carry every listed label name. A name cannot contain a comma, because GitHub receives the list comma-separated.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "maxBodyCharacters": {
+            "description": "MaxBodyCharacters bounds each issue body to 1 through 16384 Unicode characters. Zero selects 4000.",
+            "type": "integer"
+          },
+          "owner": {
+            "description": "Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored.",
+            "type": "string"
+          },
+          "page": {
+            "description": "Page is one-based. Zero selects 1.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 through 100. Zero selects 30.",
+            "type": "integer"
+          },
+          "repository": {
+            "description": "Repository is the repository name without its owner, such as hello-world.",
+            "type": "string"
+          },
+          "state": {
+            "description": "State is open, closed, or all. Empty selects open.",
+            "type": "string"
+          },
+          "updatedSince": {
+            "description": "UpdatedSince keeps only issues updated at or after this time. GitHub receives it in UTC with second precision.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "owner",
+          "repository"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newCreateIssueStep",
+      "kind": "mutation",
+      "operationId": "createIssue",
+      "inputType": "CreateIssueInput",
+      "description": "Create one issue in a public or private repository with a title, Markdown body, labels, and assignees, on a github-oauth-repository connection. GitHub has no idempotency key, so the body carries a hidden marker derived from the Call ID; after an unknown outcome a retry lists the repository's newest issues by the connection's account and returns the marked issue instead of creating another, and resends only while the send cap allows.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "created",
+          "field": "created",
+          "optional": false
+        },
+        {
+          "id": "insufficientScope",
+          "field": "insufficientScope",
+          "optional": true
+        },
+        {
+          "id": "authorizationRevoked",
+          "field": "authorizationRevoked",
+          "optional": true
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateIssueInput describes one issue to create.",
+        "properties": {
+          "assignees": {
+            "description": "Assignees lists up to 10 GitHub logins. GitHub applies assignees only for an account with push access and drops them silently otherwise; CreatedIssue.Assignees lists the assignees applied.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "body": {
+            "description": "Body is the Markdown issue body. The connector appends a hidden HTML comment that marks the issue for read-back, so Body holds at most 65536 characters less that marker; empty sends only the marker.",
+            "type": "string"
+          },
+          "labels": {
+            "description": "Labels names up to 100 labels of 1 through 50 characters. GitHub applies labels only for an account with push access and drops them silently otherwise; CreatedIssue.Labels lists the labels applied.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "owner": {
+            "description": "Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored.",
+            "type": "string"
+          },
+          "repository": {
+            "description": "Repository is the repository name without its owner, such as hello-world.",
+            "type": "string"
+          },
+          "title": {
+            "description": "Title is the issue title, 1 through 256 Unicode characters after surrounding whitespace is trimmed, without line breaks or other control characters.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner",
+          "repository",
+          "title"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newSetIssueStateStep",
+      "kind": "mutation",
+      "operationId": "setIssueState",
+      "inputType": "SetIssueStateInput",
+      "description": "Close or reopen one existing issue in a public or private repository, with an optional state reason, on a github-oauth-repository connection. Setting an absolute state is safe to repeat, so an unknown outcome sends the same update again.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "updated",
+          "field": "updated",
+          "optional": false
+        },
+        {
+          "id": "insufficientScope",
+          "field": "insufficientScope",
+          "optional": true
+        },
+        {
+          "id": "authorizationRevoked",
+          "field": "authorizationRevoked",
+          "optional": true
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SetIssueStateInput names one existing issue and the state to set.",
+        "properties": {
+          "issueNumber": {
+            "description": "IssueNumber is the positive issue number within the repository.",
+            "type": "integer"
+          },
+          "owner": {
+            "description": "Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored.",
+            "type": "string"
+          },
+          "repository": {
+            "description": "Repository is the repository name without its owner, such as hello-world.",
+            "type": "string"
+          },
+          "state": {
+            "description": "State is open or closed.",
+            "type": "string"
+          },
+          "stateReason": {
+            "description": "StateReason is completed or not_planned with State closed, or reopened with State open. Empty lets GitHub choose: completed for a close and reopened for a reopen. Setting the same state with another reason changes only the reason.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "issueNumber",
+          "owner",
+          "repository",
+          "state"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newReplaceIssueLabelsStep",
+      "kind": "mutation",
+      "operationId": "replaceIssueLabels",
+      "inputType": "ReplaceIssueLabelsInput",
+      "description": "Replace every label on one existing issue with the given label names, on a github-oauth-repository connection; an empty list removes all labels. Replacing the full set is safe to repeat, so an unknown outcome sends the same set again.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "replaced",
+          "field": "replaced",
+          "optional": false
+        },
+        {
+          "id": "insufficientScope",
+          "field": "insufficientScope",
+          "optional": true
+        },
+        {
+          "id": "authorizationRevoked",
+          "field": "authorizationRevoked",
+          "optional": true
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ReplaceIssueLabelsInput names one existing issue and the complete label set it should carry.",
+        "properties": {
+          "issueNumber": {
+            "description": "IssueNumber is the positive issue number within the repository.",
+            "type": "integer"
+          },
+          "labels": {
+            "description": "Labels names up to 100 labels of 1 through 50 characters that replace every current label; surrounding whitespace is trimmed and an empty list removes all labels. GitHub creates a named label the repository lacks.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "owner": {
+            "description": "Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored.",
+            "type": "string"
+          },
+          "repository": {
+            "description": "Repository is the repository name without its owner, such as hello-world.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "issueNumber",
+          "labels",
+          "owner",
+          "repository"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newCreateIssueCommentStep",
+      "kind": "mutation",
+      "operationId": "createIssueComment",
+      "inputType": "CreateIssueCommentInput",
+      "description": "Add one Markdown comment to an existing issue in a public or private repository, on a github-oauth-repository connection. GitHub has no idempotency key, so the body carries a hidden marker derived from the Call ID; after an unknown outcome a retry reads the issue's newest comments by the connection's account and returns the marked comment instead of posting another, and resends only while the send cap allows.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "created",
+          "field": "created",
+          "optional": false
+        },
+        {
+          "id": "insufficientScope",
+          "field": "insufficientScope",
+          "optional": true
+        },
+        {
+          "id": "authorizationRevoked",
+          "field": "authorizationRevoked",
+          "optional": true
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateIssueCommentInput describes one comment to add to an existing issue.",
+        "properties": {
+          "body": {
+            "description": "Body is the nonblank Markdown comment. The connector appends a hidden HTML comment that marks the comment for read-back, so Body holds at most 65536 characters less that marker.",
+            "type": "string"
+          },
+          "issueNumber": {
+            "description": "IssueNumber is the positive issue number within the repository.",
+            "type": "integer"
+          },
+          "owner": {
+            "description": "Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored.",
+            "type": "string"
+          },
+          "repository": {
+            "description": "Repository is the repository name without its owner, such as hello-world.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body",
+          "issueNumber",
+          "owner",
+          "repository"
         ],
         "type": "object"
       }

@@ -26,9 +26,10 @@ setattr(Config, '__module__', 'dex_connectors.github.client')
 @dataclass(frozen=True, slots=True)
 class Credentials:
 
-    oauth_client_id: str
-    oauth_client_secret: SecretString
-    access_token: SecretString
-    refresh_token: SecretString
+    auth_method_id: str = "github-oauth"
+    oauth_client_id: str | None = None
+    oauth_client_secret: SecretString | None = None
+    access_token: SecretString | None = None
+    refresh_token: SecretString = SecretString('')
 
 setattr(Credentials, '__module__', 'dex_connectors.github.client')
