@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "upsertEcommerceOrder/upsertedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceOrderUpsertMetadata](`{"connectionId":"3","storeOrderId":"store-order-1","email":"person@example.com"}`)
+			return err
+		}},
 		{name: "listEcommerceOrders/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[activecampaign.EcommerceOrdersPage](`{"orders":[{"id":"1","connectionId":"3","externalId":"store-order-1","customerId":"15","email":"person@example.com","currency":"USD","totalMinor":9111,"state":1}],"total":1}`)
 			return err
@@ -230,6 +234,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.UpsertEcommerceOrder().Definition().Operation.OperationID != "upsertEcommerceOrder" {
+		t.Errorf("upsertEcommerceOrder mock has another definition")
+	}
 	if mock.ListEcommerceOrders().Definition().Operation.OperationID != "listEcommerceOrders" {
 		t.Errorf("listEcommerceOrders mock has another definition")
 	}

@@ -18,6 +18,7 @@ import (
 // Mock is a scripted activecampaign connection. Script each operation through its accessor.
 type Mock struct {
 	connection                    activecampaign.Connection
+	upsertEcommerceOrder          *connectormock.Mutation[activecampaign.UpsertEcommerceOrderInput, activecampaign.EcommerceOrderUpsertMetadata]
 	listEcommerceOrders           *connectormock.Query[activecampaign.ListEcommerceOrdersInput, activecampaign.EcommerceOrdersPage]
 	getEcommerceOrder             *connectormock.Query[activecampaign.GetEcommerceOrderInput, activecampaign.EcommerceOrderMetadata]
 	listEcommerceOrderProducts    *connectormock.Query[activecampaign.ListEcommerceOrderProductsInput, activecampaign.EcommerceOrderProductsPage]
@@ -76,6 +77,7 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		upsertEcommerceOrder:          connectormock.NewMutation[activecampaign.UpsertEcommerceOrderInput, activecampaign.EcommerceOrderUpsertMetadata](t, activecampaign.UpsertEcommerceOrderDefinition),
 		listEcommerceOrders:           connectormock.NewQuery[activecampaign.ListEcommerceOrdersInput, activecampaign.EcommerceOrdersPage](t, activecampaign.ListEcommerceOrdersDefinition),
 		getEcommerceOrder:             connectormock.NewQuery[activecampaign.GetEcommerceOrderInput, activecampaign.EcommerceOrderMetadata](t, activecampaign.GetEcommerceOrderDefinition),
 		listEcommerceOrderProducts:    connectormock.NewQuery[activecampaign.ListEcommerceOrderProductsInput, activecampaign.EcommerceOrderProductsPage](t, activecampaign.ListEcommerceOrderProductsDefinition),
@@ -128,6 +130,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		syncContact:                   connectormock.NewMutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata](t, activecampaign.SyncContactDefinition),
 		updateContact:                 connectormock.NewMutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata](t, activecampaign.UpdateContactDefinition),
 	}
+	mock.upsertEcommerceOrder.Default(UpsertEcommerceOrderDefault())
 	mock.listEcommerceOrders.Default(ListEcommerceOrdersDefault())
 	mock.getEcommerceOrder.Default(GetEcommerceOrderDefault())
 	mock.listEcommerceOrderProducts.Default(ListEcommerceOrderProductsDefault())
@@ -189,6 +192,11 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() activecampaign.Connection { return mock.connection }
+
+// UpsertEcommerceOrder returns the upsertEcommerceOrder script.
+func (mock *Mock) UpsertEcommerceOrder() *connectormock.Mutation[activecampaign.UpsertEcommerceOrderInput, activecampaign.EcommerceOrderUpsertMetadata] {
+	return mock.upsertEcommerceOrder
+}
 
 // ListEcommerceOrders returns the listEcommerceOrders script.
 func (mock *Mock) ListEcommerceOrders() *connectormock.Query[activecampaign.ListEcommerceOrdersInput, activecampaign.EcommerceOrdersPage] {
@@ -447,6 +455,9 @@ func (mock *Mock) UpdateContact() *connectormock.Mutation[activecampaign.UpdateC
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) UpsertEcommerceOrder() sdkgo.Mutation[activecampaign.UpsertEcommerceOrderInput, activecampaign.EcommerceOrderUpsertMetadata] {
+	return operations.mock.upsertEcommerceOrder
+}
 func (operations mockOperations) ListEcommerceOrders() sdkgo.Query[activecampaign.ListEcommerceOrdersInput, activecampaign.EcommerceOrdersPage] {
 	return operations.mock.listEcommerceOrders
 }
@@ -599,6 +610,37 @@ func (operations mockOperations) SyncContact() sdkgo.Mutation[activecampaign.Syn
 }
 func (operations mockOperations) UpdateContact() sdkgo.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata] {
 	return operations.mock.updateContact
+}
+
+// UpsertEcommerceOrderUpserted selects the upserted branch: ActiveCampaign accepted the keyed order upsert.
+func UpsertEcommerceOrderUpserted(value activecampaign.EcommerceOrderUpsertMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderUpsertMetadata] {
+	return connectormock.Branch(activecampaign.UpsertEcommerceOrderBranchUpserted, value, failure)
+}
+
+// UpsertEcommerceOrderProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the order.
+func UpsertEcommerceOrderProviderRejected(value activecampaign.EcommerceOrderUpsertMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderUpsertMetadata] {
+	return connectormock.Branch(activecampaign.UpsertEcommerceOrderBranchProviderRejected, value, failure)
+}
+
+// UpsertEcommerceOrderDefect selects the defect branch: Local order input or credentials are invalid.
+func UpsertEcommerceOrderDefect(value activecampaign.EcommerceOrderUpsertMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceOrderUpsertMetadata] {
+	return connectormock.Branch(activecampaign.UpsertEcommerceOrderBranchDefect, value, failure)
+}
+
+// UpsertEcommerceOrderRetry asks Dex to retry the upsertEcommerceOrder Step, after the delay when it is positive.
+func UpsertEcommerceOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.EcommerceOrderUpsertMetadata] {
+	return connectormock.Retry[activecampaign.EcommerceOrderUpsertMetadata](failure, after)
+}
+
+// UpsertEcommerceOrderUpsertedDefault is the manifest mock upsertedDefault: Sample keyed order upsert result.
+func UpsertEcommerceOrderUpsertedDefault() connectormock.Case[activecampaign.EcommerceOrderUpsertMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.EcommerceOrderUpsertMetadata](`{"connectionId":"3","storeOrderId":"store-order-1","email":"person@example.com"}`)
+	return connectormock.Branch(activecampaign.UpsertEcommerceOrderBranchUpserted, value, nil)
+}
+
+// UpsertEcommerceOrderDefault is the manifest default, upsertedDefault, which New installs.
+func UpsertEcommerceOrderDefault() connectormock.Case[activecampaign.EcommerceOrderUpsertMetadata] {
+	return UpsertEcommerceOrderUpsertedDefault()
 }
 
 // ListEcommerceOrdersListed selects the listed branch: ActiveCampaign returned the selected ecommerce data.

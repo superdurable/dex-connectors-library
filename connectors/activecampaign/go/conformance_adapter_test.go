@@ -40,6 +40,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"listConnections":               newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListConnections(), reference),
 		"listEcommerceCustomers":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListEcommerceCustomers(), reference),
 		"listEcommerceOrders":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListEcommerceOrders(), reference),
+		"upsertEcommerceOrder":          newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpsertEcommerceOrder(), reference, scenario.CallID),
 		"getEcommerceOrder":             newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetEcommerceOrder(), reference),
 		"listEcommerceOrderProducts":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListEcommerceOrderProducts(), reference),
 		"getEcommerceOrderProduct":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetEcommerceOrderProduct(), reference),

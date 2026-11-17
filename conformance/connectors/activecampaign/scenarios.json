@@ -17270,6 +17270,282 @@
       },
       "name": "listProductsForEcommerceOrder-transportFailure",
       "operation": "listProductsForEcommerceOrder"
+    },
+    {
+      "callId": "d5b29f0f-f69d-5d1a-82b5-9d7e833741be",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"upsertOrder\":{\"connectionId\":3,\"storeOrderId\":\"store-order-1\",\"email\":\"person@example.com\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecom/graphql",
+          "requestBody": {
+            "query": "mutation { upsertOrder(order: { legacyConnectionId: 3, storeOrderId: \"store-order-1\", storeCustomerId: \"store-customer-1\", email: \"person@example.com\", storeCreatedDate: \"2026-11-16T10:00:00Z\", currency: \"USD\", finalAmount: 91.11, creationSource: HISTORICAL, normalizedStatus: COMPLETED }) { connectionId storeOrderId email } }"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "connectionId": "3",
+          "email": "person@example.com",
+          "storeOrderId": "store-order-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5b29f0f-f69d-5d1a-82b5-9d7e833741be",
+      "input": {
+        "connectionId": "3",
+        "createdAt": "2026-11-16T10:00:00Z",
+        "creationSource": "HISTORICAL",
+        "currency": "USD",
+        "email": "person@example.com",
+        "finalAmount": "91.11",
+        "status": "COMPLETED",
+        "storeCustomerId": "store-customer-1",
+        "storeOrderId": "store-order-1"
+      },
+      "name": "upsertEcommerceOrder-success",
+      "operation": "upsertEcommerceOrder"
+    },
+    {
+      "callId": "d5b29f0f-f69d-5d1a-82b5-9d7e833741be",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"invalid order\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecom/graphql",
+          "requestBody": {
+            "query": "mutation { upsertOrder(order: { legacyConnectionId: 3, storeOrderId: \"store-order-1\", storeCustomerId: \"store-customer-1\", email: \"person@example.com\", storeCreatedDate: \"2026-11-16T10:00:00Z\", currency: \"USD\", finalAmount: 91.11, creationSource: HISTORICAL, normalizedStatus: COMPLETED }) { connectionId storeOrderId email } }"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "connectionId": "",
+          "email": "",
+          "storeOrderId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5b29f0f-f69d-5d1a-82b5-9d7e833741be",
+      "input": {
+        "connectionId": "3",
+        "createdAt": "2026-11-16T10:00:00Z",
+        "creationSource": "HISTORICAL",
+        "currency": "USD",
+        "email": "person@example.com",
+        "finalAmount": "91.11",
+        "status": "COMPLETED",
+        "storeCustomerId": "store-customer-1",
+        "storeOrderId": "store-order-1"
+      },
+      "name": "upsertEcommerceOrder-providerRejected",
+      "operation": "upsertEcommerceOrder"
+    },
+    {
+      "callId": "d5b29f0f-f69d-5d1a-82b5-9d7e833741be",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "connectionId": "",
+          "email": "",
+          "storeOrderId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5b29f0f-f69d-5d1a-82b5-9d7e833741be",
+      "input": {
+        "connectionId": "bad"
+      },
+      "name": "upsertEcommerceOrder-defect",
+      "operation": "upsertEcommerceOrder"
+    },
+    {
+      "callId": "d5b29f0f-f69d-5d1a-82b5-9d7e833741be",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecom/graphql",
+          "requestBody": {
+            "query": "mutation { upsertOrder(order: { legacyConnectionId: 3, storeOrderId: \"store-order-1\", storeCustomerId: \"store-customer-1\", email: \"person@example.com\", storeCreatedDate: \"2026-11-16T10:00:00Z\", currency: \"USD\", finalAmount: 91.11, creationSource: HISTORICAL, normalizedStatus: COMPLETED }) { connectionId storeOrderId email } }"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5b29f0f-f69d-5d1a-82b5-9d7e833741be",
+      "input": {
+        "connectionId": "3",
+        "createdAt": "2026-11-16T10:00:00Z",
+        "creationSource": "HISTORICAL",
+        "currency": "USD",
+        "email": "person@example.com",
+        "finalAmount": "91.11",
+        "status": "COMPLETED",
+        "storeCustomerId": "store-customer-1",
+        "storeOrderId": "store-order-1"
+      },
+      "name": "upsertEcommerceOrder-rateLimit",
+      "operation": "upsertEcommerceOrder"
+    },
+    {
+      "callId": "d5b29f0f-f69d-5d1a-82b5-9d7e833741be",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecom/graphql",
+          "requestBody": {
+            "query": "mutation { upsertOrder(order: { legacyConnectionId: 3, storeOrderId: \"store-order-1\", storeCustomerId: \"store-customer-1\", email: \"person@example.com\", storeCreatedDate: \"2026-11-16T10:00:00Z\", currency: \"USD\", finalAmount: 91.11, creationSource: HISTORICAL, normalizedStatus: COMPLETED }) { connectionId storeOrderId email } }"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5b29f0f-f69d-5d1a-82b5-9d7e833741be",
+      "input": {
+        "connectionId": "3",
+        "createdAt": "2026-11-16T10:00:00Z",
+        "creationSource": "HISTORICAL",
+        "currency": "USD",
+        "email": "person@example.com",
+        "finalAmount": "91.11",
+        "status": "COMPLETED",
+        "storeCustomerId": "store-customer-1",
+        "storeOrderId": "store-order-1"
+      },
+      "name": "upsertEcommerceOrder-serverUnavailable",
+      "operation": "upsertEcommerceOrder"
+    },
+    {
+      "callId": "d5b29f0f-f69d-5d1a-82b5-9d7e833741be",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecom/graphql",
+          "requestBody": {
+            "query": "mutation { upsertOrder(order: { legacyConnectionId: 3, storeOrderId: \"store-order-1\", storeCustomerId: \"store-customer-1\", email: \"person@example.com\", storeCreatedDate: \"2026-11-16T10:00:00Z\", currency: \"USD\", finalAmount: 91.11, creationSource: HISTORICAL, normalizedStatus: COMPLETED }) { connectionId storeOrderId email } }"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5b29f0f-f69d-5d1a-82b5-9d7e833741be",
+      "input": {
+        "connectionId": "3",
+        "createdAt": "2026-11-16T10:00:00Z",
+        "creationSource": "HISTORICAL",
+        "currency": "USD",
+        "email": "person@example.com",
+        "finalAmount": "91.11",
+        "status": "COMPLETED",
+        "storeCustomerId": "store-customer-1",
+        "storeOrderId": "store-order-1"
+      },
+      "name": "upsertEcommerceOrder-transportFailure",
+      "operation": "upsertEcommerceOrder"
     }
   ],
   "schemaVersion": 1

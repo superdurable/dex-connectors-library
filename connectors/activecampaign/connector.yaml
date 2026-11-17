@@ -55,6 +55,25 @@ spec:
         - Copy the account's full API URL into non-secret baseUrl; it ends in /api/3 and is unique to the account. Copy the current user's API Key into secret api_key and save the connection.
         - Ensure this API user can view and edit the intended contacts and lists; list subscriptions need contact edit permission and resubscribing an unsubscribed contact needs resubscribe permission. Existing contact-tag assignment needs contact edit permission, tag-definition writes need tag management permission, deal operations need Deals and pipeline management permission, CRM account writes need account management permission, and ecommerce connection writes need integration management permission. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: upsertEcommerceOrder
+      goName: UpsertEcommerceOrder
+      inputType: UpsertEcommerceOrderInput
+      outputType: EcommerceOrderUpsertMetadata
+      kind: mutation
+      description: Create or replace a store order through the ecommerce GraphQL API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: upserted, goName: Upserted, description: ActiveCampaign accepted the keyed order upsert.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the order., optional: true}
+        - {id: defect, goName: Defect, description: Local order input or credentials are invalid., optional: true}
+      mocks:
+        - name: upsertedDefault
+          branch: upserted
+          default: true
+          description: Sample keyed order upsert result.
+          output: {connectionId: '3', storeOrderId: store-order-1, email: 'person@example.com'}
     - name: listEcommerceOrders
       goName: ListEcommerceOrders
       inputType: ListEcommerceOrdersInput

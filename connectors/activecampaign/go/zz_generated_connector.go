@@ -40,6 +40,7 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	UpsertEcommerceOrder() sdkgo.Mutation[UpsertEcommerceOrderInput, EcommerceOrderUpsertMetadata]
 	ListEcommerceOrders() sdkgo.Query[ListEcommerceOrdersInput, EcommerceOrdersPage]
 	GetEcommerceOrder() sdkgo.Query[GetEcommerceOrderInput, EcommerceOrderMetadata]
 	ListEcommerceOrderProducts() sdkgo.Query[ListEcommerceOrderProductsInput, EcommerceOrderProductsPage]
@@ -95,6 +96,9 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) UpsertEcommerceOrder() sdkgo.Mutation[UpsertEcommerceOrderInput, EcommerceOrderUpsertMetadata] {
+	return operations.client.UpsertEcommerceOrder()
+}
 func (operations clientOperations) ListEcommerceOrders() sdkgo.Query[ListEcommerceOrdersInput, EcommerceOrdersPage] {
 	return operations.client.ListEcommerceOrders()
 }
@@ -383,6 +387,72 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const UpsertEcommerceOrderBranchUpserted sdkgo.BranchID = "upserted"
+const UpsertEcommerceOrderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpsertEcommerceOrderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpsertEcommerceOrderDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "upsertEcommerceOrder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpsertEcommerceOrderBranchUpserted, Description: "ActiveCampaign accepted the keyed order upsert."},
+		{ID: UpsertEcommerceOrderBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the order.", Optional: true},
+		{ID: UpsertEcommerceOrderBranchDefect, Description: "Local order input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpsertEcommerceOrderResult = sdkgo.MutationResult[EcommerceOrderUpsertMetadata]
+
+type UpsertEcommerceOrderStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                           `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                                           `connector:"operationId=upsertEcommerceOrder"`
+	StepType                          string                                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                              `connector:"annotations"`
+	Connection                        Connection                                                         `connector:"connection"`
+	ConnectionName                    string                                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpsertEcommerceOrderInput                                 `connector:"mapToOperationInput"`
+	Upserted                          sdkgo.Target[UpsertEcommerceOrderResult]                           `connector:"branch=upserted"`
+	ProviderRejected                  sdkgo.Target[UpsertEcommerceOrderResult]                           `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpsertEcommerceOrderResult]                           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EcommerceOrderUpsertMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                   `connector:"stepOptionsOverride"`
+}
+
+func NewUpsertEcommerceOrderStep[IN any](config UpsertEcommerceOrderStepConfig[IN]) sdkgo.MutationStep[IN, UpsertEcommerceOrderInput, EcommerceOrderUpsertMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpsertEcommerceOrderInput, EcommerceOrderUpsertMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpsertEcommerceOrder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpsertEcommerceOrderResult] {
+			branches := make([]sdkgo.BranchTarget[UpsertEcommerceOrderResult], 0, 3)
+			if config.Upserted.HasStep() {
+				branches = append(branches, config.Upserted.BranchTarget(UpsertEcommerceOrderBranchUpserted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpsertEcommerceOrderBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpsertEcommerceOrderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListEcommerceOrdersBranchListed sdkgo.BranchID = "listed"
