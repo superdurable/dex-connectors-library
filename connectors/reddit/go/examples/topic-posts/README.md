@@ -8,6 +8,13 @@ This runnable Flow collects recent posts about one topic in one subreddit throug
 4. `reddit.NewSearchPostsStep` searches only that subreddit for the topic over the past week, newest first; and
 5. the result Step combines both lists without pinned posts, keeps each post ID once, orders them newest first, stores the `TopicPostsOutput` in the `reddit-topic-posts` Attribute, and completes with it. `searchAfter` continues the search to older matches.
 
+Set `readCommunity` to `true` in the start request to run `reddit.NewGetSubredditStep`
+after the post search. The Flow then adds the community description and subscriber
+count to `TopicPostsOutput.community` before completing. The mock-backed Dex test
+exercises this path.
+Set `readRules` to `true` with `readCommunity` to add the community's public
+posting and commenting rules to `TopicPostsOutput.rules`.
+
 The summary and display RPCs show the three Attributes in Dex Web. Optional branches are unwired, so `subredditUnavailable`, for example after a misspelled subreddit, fails the Flow with the connector's safe failure reason instead of reading as no posts.
 
 ## Generate the strict Flow Definition
@@ -39,7 +46,7 @@ mkdir -p /tmp/reddit-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/reddit/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/reddit/go \
-  --version v0.2.0 --tag connectors/reddit/go/v0.2.0 \
+  --version v0.3.0 --tag connectors/reddit/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/reddit-release/connector-release.json \
   --digest-output /tmp/reddit-release/connector-release.json.sha256

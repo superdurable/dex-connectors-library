@@ -1,14 +1,28 @@
 # Reddit connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/reddit/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/reddit/go@v0.3.0`.
 
-The Go and [TypeScript](typescript/README.md) packages read posts through Reddit's OAuth Data API with three Queries. The [Python](python/README.md) package implements `getPost` only.
+The Go package reads posts, comments, public users, and communities through Reddit's OAuth Data API with nine Queries. The [TypeScript](typescript/README.md) package implements the original three post Queries, and the [Python](python/README.md) package implements `getPost` only.
 
 | Factory | Input | Output | Required branch | Optional branches |
 | --- | --- | --- | --- | --- |
 | `NewGetPostStep` | `GetPostInput` | `Post` | `found` | `missing`, `providerRejected`, `invalidResponse`, `defect` |
 | `NewListSubredditPostsStep` | `ListSubredditPostsInput` | `PostPage` | `listed` | `subredditUnavailable`, `providerRejected`, `invalidResponse`, `defect` |
 | `NewSearchPostsStep` | `SearchPostsInput` | `PostPage` | `searched` | `subredditUnavailable`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewGetUserStep` | `GetUserInput` | `UserProfile` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewGetSubredditStep` | `GetSubredditInput` | `Subreddit` | `found` | `unavailable`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewGetSubredditRulesStep` | `GetSubredditRulesInput` | `SubredditRules` | `found` | `unavailable`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewSearchSubredditsStep` | `SearchSubredditsInput` | `SubredditPage` | `searched` | `providerRejected`, `invalidResponse`, `defect` |
+| `NewListSubredditsStep` | `ListSubredditsInput` | `SubredditPage` | `listed` | `providerRejected`, `invalidResponse`, `defect` |
+| `NewListPostCommentsStep` | `ListPostCommentsInput` | `CommentPage` | `listed` | `postUnavailable`, `providerRejected`, `invalidResponse`, `defect` |
+
+The six new Go Queries use the existing `read` OAuth scope. `getUser` reads
+public account karma, `getSubreddit` reads public community details,
+`getSubredditRules` reads public posting and commenting rules,
+`searchSubreddits` and `listSubreddits` return cursor-paginated pages, and `listPostComments`
+returns a bounded page of top-level comments. Each is safe to repeat after a
+temporary failure. The [topic posts example](go/examples/topic-posts/README.md)
+can read community details when `readCommunity` is true.
 
 `getPost` accepts a full `t3_` post ID and returns ID, title, subreddit, relative permalink, and score through `GET /api/info`. An empty listing selects `missing`.
 
@@ -27,12 +41,12 @@ Both page operations accept `limit` from 1 through 100, where blank or 0 reads 2
 
 `subredditUnavailable` follows Reddit's answers for a community the account cannot read: a redirect to subreddit search for an unknown name, 404 for a banned one, and 403 with a `private`, `quarantined`, `gated`, `gold_only`, or `banned` reason. A site-wide search never selects it. Any other answer except 200 selects `providerRejected`. Malformed or oversized JSON, a non-post item, and a bad cursor select `invalidResponse`. Invalid input selects `defect` before a request is sent.
 
-HTTP 408, 429, and 5xx responses and transport failures return Retry. A 429 waits for `Retry-After`. When Reddit sends no `Retry-After`, it waits for `X-Ratelimit-Reset`, Reddit's seconds until its rate-limit window resets, rounded up and capped at one hour. This applies to all three Go and TypeScript operations. The Python `getPost` still reads only `Retry-After`.
+HTTP 408, 429, and 5xx responses and transport failures return Retry. A 429 waits for `Retry-After`. When Reddit sends no `Retry-After`, it waits for `X-Ratelimit-Reset`, Reddit's seconds until its rate-limit window resets, rounded up and capped at one hour. This applies to all nine Go Queries and the three TypeScript Queries. The Python `getPost` still reads only `Retry-After`.
 
-Reddit requires [Data API approval](https://support.reddithelp.com/hc/en-us/articles/16160319875092-Reddit-Data-API-Wiki). After approval, create a web app at [Reddit app preferences](https://www.reddit.com/prefs/apps), register the exact Dex Web redirect URI, and configure its client ID and secret in the `reddit` connection. Enter your Reddit username without `/u/`. Dex requests permanent consent for `read`, which covers post reads, subreddit listings, and post search, so the listing and search operations need no new scope and existing connections keep working. Dex refreshes OAuth tokens and sends Reddit's required app and username User-Agent. The remaining URL and request limit fields have safe defaults in Dex Web; the response limit fits a full page of 100 posts.
+Reddit requires [Data API approval](https://support.reddithelp.com/hc/en-us/articles/16160319875092-Reddit-Data-API-Wiki). After approval, create a web app at [Reddit app preferences](https://www.reddit.com/prefs/apps), register the exact Dex Web redirect URI, and configure its client ID and secret in the `reddit` connection. Enter your Reddit username without `/u/`. Dex requests permanent consent for `read`, which covers public posts, comments, users, and subreddits, so these Queries need no new scope and existing connections keep working. Dex refreshes OAuth tokens and sends Reddit's required app and username User-Agent. The remaining URL and request limit fields have safe defaults in Dex Web; the response limit fits a full page of 100 posts.
 
-The results are public post metadata, but applications storing titles, self text, or other user content must honor Reddit's deletion and retention requirements. The [post example](go/examples/post/README.md), [topic posts example](go/examples/topic-posts/README.md), [TypeScript topic posts example](typescript/examples/topic-posts/README.md), [Python example](python/examples/post/README.md), and [TypeScript example](typescript/examples/post/README.md) use a static `reddit` connection. The generated `redditmock` package answers `listSubredditPosts` and `searchPosts` with three chained pages each, including a pinned post to filter out and a post repeated across a page boundary. The Go-recorded [conformance scenarios](../../conformance/connectors/reddit/scenarios.json) cover every branch and Retry of all three operations; the TypeScript package replays all of them and the Python package replays the `getPost` scenarios.
+The results are public metadata and user content, so applications storing titles, text, or other user content must honor Reddit's deletion and retention requirements. The [post example](go/examples/post/README.md), [topic posts example](go/examples/topic-posts/README.md), [TypeScript topic posts example](typescript/examples/topic-posts/README.md), [Python example](python/examples/post/README.md), and [TypeScript example](typescript/examples/post/README.md) use a static `reddit` connection. The generated `redditmock` package answers `listSubredditPosts`, `searchPosts`, `searchSubreddits`, and `listSubreddits` with three chained pages each. The Go-recorded [conformance scenarios](../../conformance/connectors/reddit/scenarios.json) cover every branch and Retry of all nine Go Queries; TypeScript replays its three post Queries and Python replays `getPost`.
 
-The manifest reviews all three operations for agent use. The TypeScript package offers all three, and the Python package `getPost`, to Dex agent hosts as read-only tools. The Go module generates no agent tools until it requires `sdkgo` v0.35.0 or later.
+The manifest reviews all nine Queries for agent use. TypeScript offers its three post Queries and Python offers `getPost` as read-only tools. The Go module generates no agent tools until it requires `sdkgo` v0.35.0 or later.
 
 From `connectors/reddit/go`, run `GOWORK=off go test -race ./...` and `GOWORK=off go vet ./...`. With `dexcli dev` running, run `GOWORK=off go test -p 1 -tags=integration ./... -count=1`. The topic posts example ran on a real Dex stack against a local stand-in for Reddit, loaded through `dexcli dev --connector-release-override`. Live Reddit authorization and provider behavior have not been verified in this checkout, including the redirect, 404, and 403 answers behind `subredditUnavailable`, `+`-joined listings, the `restrict_sr` search, and the `X-Ratelimit-Reset` value on a 429.

@@ -17,10 +17,13 @@ import (
 
 // Mock is a scripted hacker-news-daily connection. Script each operation through its accessor.
 type Mock struct {
-	connection    hackernews.Connection
-	listStoryIDs  *connectormock.Query[hackernews.ListStoryIDsInput, hackernews.StoryIDs]
-	getItem       *connectormock.Query[hackernews.GetItemInput, hackernews.Item]
-	searchStories *connectormock.Query[hackernews.SearchStoriesInput, hackernews.StorySearchPage]
+	connection       hackernews.Connection
+	getArticleThread *connectormock.Query[hackernews.GetArticleThreadInput, hackernews.ArticleThread]
+	searchItems      *connectormock.Query[hackernews.SearchItemsInput, hackernews.ItemSearchPage]
+	getUser          *connectormock.Query[hackernews.GetUserInput, hackernews.User]
+	listStoryIDs     *connectormock.Query[hackernews.ListStoryIDsInput, hackernews.StoryIDs]
+	getItem          *connectormock.Query[hackernews.GetItemInput, hackernews.Item]
+	searchStories    *connectormock.Query[hackernews.SearchStoriesInput, hackernews.StorySearchPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -28,10 +31,16 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listStoryIDs:  connectormock.NewQuery[hackernews.ListStoryIDsInput, hackernews.StoryIDs](t, hackernews.ListStoryIDsDefinition),
-		getItem:       connectormock.NewQuery[hackernews.GetItemInput, hackernews.Item](t, hackernews.GetItemDefinition),
-		searchStories: connectormock.NewQuery[hackernews.SearchStoriesInput, hackernews.StorySearchPage](t, hackernews.SearchStoriesDefinition),
+		getArticleThread: connectormock.NewQuery[hackernews.GetArticleThreadInput, hackernews.ArticleThread](t, hackernews.GetArticleThreadDefinition),
+		searchItems:      connectormock.NewQuery[hackernews.SearchItemsInput, hackernews.ItemSearchPage](t, hackernews.SearchItemsDefinition),
+		getUser:          connectormock.NewQuery[hackernews.GetUserInput, hackernews.User](t, hackernews.GetUserDefinition),
+		listStoryIDs:     connectormock.NewQuery[hackernews.ListStoryIDsInput, hackernews.StoryIDs](t, hackernews.ListStoryIDsDefinition),
+		getItem:          connectormock.NewQuery[hackernews.GetItemInput, hackernews.Item](t, hackernews.GetItemDefinition),
+		searchStories:    connectormock.NewQuery[hackernews.SearchStoriesInput, hackernews.StorySearchPage](t, hackernews.SearchStoriesDefinition),
 	}
+	mock.getArticleThread.Default(GetArticleThreadDefault())
+	mock.searchItems.Default(SearchItemsDefault())
+	mock.getUser.Default(GetUserDefault())
 	mock.listStoryIDs.Default(ListStoryIDsDefault())
 	mock.getItem.Default(GetItemDefault())
 	mock.searchStories.Default(SearchStoriesDefault())
@@ -45,6 +54,21 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() hackernews.Connection { return mock.connection }
+
+// GetArticleThread returns the getArticleThread script.
+func (mock *Mock) GetArticleThread() *connectormock.Query[hackernews.GetArticleThreadInput, hackernews.ArticleThread] {
+	return mock.getArticleThread
+}
+
+// SearchItems returns the searchItems script.
+func (mock *Mock) SearchItems() *connectormock.Query[hackernews.SearchItemsInput, hackernews.ItemSearchPage] {
+	return mock.searchItems
+}
+
+// GetUser returns the getUser script.
+func (mock *Mock) GetUser() *connectormock.Query[hackernews.GetUserInput, hackernews.User] {
+	return mock.getUser
+}
 
 // ListStoryIDs returns the listStoryIDs script.
 func (mock *Mock) ListStoryIDs() *connectormock.Query[hackernews.ListStoryIDsInput, hackernews.StoryIDs] {
@@ -63,6 +87,15 @@ func (mock *Mock) SearchStories() *connectormock.Query[hackernews.SearchStoriesI
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetArticleThread() sdkgo.Query[hackernews.GetArticleThreadInput, hackernews.ArticleThread] {
+	return operations.mock.getArticleThread
+}
+func (operations mockOperations) SearchItems() sdkgo.Query[hackernews.SearchItemsInput, hackernews.ItemSearchPage] {
+	return operations.mock.searchItems
+}
+func (operations mockOperations) GetUser() sdkgo.Query[hackernews.GetUserInput, hackernews.User] {
+	return operations.mock.getUser
+}
 func (operations mockOperations) ListStoryIDs() sdkgo.Query[hackernews.ListStoryIDsInput, hackernews.StoryIDs] {
 	return operations.mock.listStoryIDs
 }
@@ -72,6 +105,127 @@ func (operations mockOperations) GetItem() sdkgo.Query[hackernews.GetItemInput, 
 func (operations mockOperations) SearchStories() sdkgo.Query[hackernews.SearchStoriesInput, hackernews.StorySearchPage] {
 	return operations.mock.searchStories
 }
+
+// GetArticleThreadFound selects the found branch: The article and its indexed comments were read.
+func GetArticleThreadFound(value hackernews.ArticleThread, failure *sdkgo.Failure) connectormock.Case[hackernews.ArticleThread] {
+	return connectormock.Branch(hackernews.GetArticleThreadBranchFound, value, failure)
+}
+
+// GetArticleThreadNotFound selects the notFound branch: The article was not found.
+func GetArticleThreadNotFound(value hackernews.ArticleThread, failure *sdkgo.Failure) connectormock.Case[hackernews.ArticleThread] {
+	return connectormock.Branch(hackernews.GetArticleThreadBranchNotFound, value, failure)
+}
+
+// GetArticleThreadProviderRejected selects the providerRejected branch: Hacker News Search rejected the article read.
+func GetArticleThreadProviderRejected(value hackernews.ArticleThread, failure *sdkgo.Failure) connectormock.Case[hackernews.ArticleThread] {
+	return connectormock.Branch(hackernews.GetArticleThreadBranchProviderRejected, value, failure)
+}
+
+// GetArticleThreadInvalidResponse selects the invalidResponse branch: Hacker News Search returned malformed or oversized thread data.
+func GetArticleThreadInvalidResponse(value hackernews.ArticleThread, failure *sdkgo.Failure) connectormock.Case[hackernews.ArticleThread] {
+	return connectormock.Branch(hackernews.GetArticleThreadBranchInvalidResponse, value, failure)
+}
+
+// GetArticleThreadDefect selects the defect branch: The article ID or connection configuration is invalid.
+func GetArticleThreadDefect(value hackernews.ArticleThread, failure *sdkgo.Failure) connectormock.Case[hackernews.ArticleThread] {
+	return connectormock.Branch(hackernews.GetArticleThreadBranchDefect, value, failure)
+}
+
+// GetArticleThreadRetry asks Dex to retry the getArticleThread Step, after the delay when it is positive.
+func GetArticleThreadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[hackernews.ArticleThread] {
+	return connectormock.Retry[hackernews.ArticleThread](failure, after)
+}
+
+// GetArticleThreadCompilerThread is the manifest mock compilerThread: A public compiler story with one comment.
+func GetArticleThreadCompilerThread() connectormock.Case[hackernews.ArticleThread] {
+	value := connectormock.MustDecodeOutput[hackernews.ArticleThread](`{"id":42003,"title":"Show HN: A compiler explorer for small languages","author":"langtools","discussionUrl":"https://news.ycombinator.com/item?id=42003","comments":[{"id":42004,"author":"reviewer","textHtml":"Useful explorer.","discussionUrl":"https://news.ycombinator.com/item?id=42004"}]}`)
+	return connectormock.Branch(hackernews.GetArticleThreadBranchFound, value, nil)
+}
+
+// GetArticleThreadDefault is the manifest default, compilerThread, which New installs.
+func GetArticleThreadDefault() connectormock.Case[hackernews.ArticleThread] {
+	return GetArticleThreadCompilerThread()
+}
+
+// SearchItemsSearched selects the searched branch: One page of public items was read; it can be empty.
+func SearchItemsSearched(value hackernews.ItemSearchPage, failure *sdkgo.Failure) connectormock.Case[hackernews.ItemSearchPage] {
+	return connectormock.Branch(hackernews.SearchItemsBranchSearched, value, failure)
+}
+
+// SearchItemsProviderRejected selects the providerRejected branch: Hacker News Search rejected the request.
+func SearchItemsProviderRejected(value hackernews.ItemSearchPage, failure *sdkgo.Failure) connectormock.Case[hackernews.ItemSearchPage] {
+	return connectormock.Branch(hackernews.SearchItemsBranchProviderRejected, value, failure)
+}
+
+// SearchItemsInvalidResponse selects the invalidResponse branch: Hacker News Search returned malformed or oversized items.
+func SearchItemsInvalidResponse(value hackernews.ItemSearchPage, failure *sdkgo.Failure) connectormock.Case[hackernews.ItemSearchPage] {
+	return connectormock.Branch(hackernews.SearchItemsBranchInvalidResponse, value, failure)
+}
+
+// SearchItemsDefect selects the defect branch: Search filters or connection configuration are invalid.
+func SearchItemsDefect(value hackernews.ItemSearchPage, failure *sdkgo.Failure) connectormock.Case[hackernews.ItemSearchPage] {
+	return connectormock.Branch(hackernews.SearchItemsBranchDefect, value, failure)
+}
+
+// SearchItemsRetry asks Dex to retry the searchItems Step, after the delay when it is positive.
+func SearchItemsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[hackernews.ItemSearchPage] {
+	return connectormock.Retry[hackernews.ItemSearchPage](failure, after)
+}
+
+// SearchItemsPublicItems is the manifest mock publicItems: Three pages of mixed public items, including a comment and poll.
+func SearchItemsPublicItems() connectormock.Case[hackernews.ItemSearchPage] {
+	pages := []hackernews.ItemSearchPage{
+		connectormock.MustDecodeOutput[hackernews.ItemSearchPage](`{"items":[{"id":42001,"type":"story","title":"A compiler release","author":"compilerdev","createdAt":"2026-10-26T11:00:00Z","discussionUrl":"https://news.ycombinator.com/item?id=42001"}],"page":0,"pages":3,"totalHits":3,"hitsPerPage":1,"nextPage":1}`),
+		connectormock.MustDecodeOutput[hackernews.ItemSearchPage](`{"items":[{"id":42002,"type":"comment","text":"A useful compiler note","author":"reviewer","createdAt":"2026-10-26T11:01:00Z","discussionUrl":"https://news.ycombinator.com/item?id=42002"}],"page":1,"pages":3,"totalHits":3,"hitsPerPage":1,"nextPage":2}`),
+		connectormock.MustDecodeOutput[hackernews.ItemSearchPage](`{"items":[{"id":42003,"type":"poll","title":"Compiler poll","author":"compilerdev","createdAt":"2026-10-26T11:02:00Z","discussionUrl":"https://news.ycombinator.com/item?id=42003"}],"page":2,"pages":3,"totalHits":3,"hitsPerPage":1,"nextPage":0}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[hackernews.SearchItemsInput]("page", "nextPage", pages)
+	return connectormock.Paged(hackernews.SearchItemsBranchSearched, pageNumber, pages...)
+}
+
+// SearchItemsDefault is the manifest default, publicItems, which New installs.
+func SearchItemsDefault() connectormock.Case[hackernews.ItemSearchPage] {
+	return SearchItemsPublicItems()
+}
+
+// GetUserFound selects the found branch: The public user was read.
+func GetUserFound(value hackernews.User, failure *sdkgo.Failure) connectormock.Case[hackernews.User] {
+	return connectormock.Branch(hackernews.GetUserBranchFound, value, failure)
+}
+
+// GetUserNotFound selects the notFound branch: The user has no public profile.
+func GetUserNotFound(value hackernews.User, failure *sdkgo.Failure) connectormock.Case[hackernews.User] {
+	return connectormock.Branch(hackernews.GetUserBranchNotFound, value, failure)
+}
+
+// GetUserProviderRejected selects the providerRejected branch: Hacker News rejected the request.
+func GetUserProviderRejected(value hackernews.User, failure *sdkgo.Failure) connectormock.Case[hackernews.User] {
+	return connectormock.Branch(hackernews.GetUserBranchProviderRejected, value, failure)
+}
+
+// GetUserInvalidResponse selects the invalidResponse branch: Hacker News returned malformed or oversized user data.
+func GetUserInvalidResponse(value hackernews.User, failure *sdkgo.Failure) connectormock.Case[hackernews.User] {
+	return connectormock.Branch(hackernews.GetUserBranchInvalidResponse, value, failure)
+}
+
+// GetUserDefect selects the defect branch: The username or connection configuration is invalid.
+func GetUserDefect(value hackernews.User, failure *sdkgo.Failure) connectormock.Case[hackernews.User] {
+	return connectormock.Branch(hackernews.GetUserBranchDefect, value, failure)
+}
+
+// GetUserRetry asks Dex to retry the getUser Step, after the delay when it is positive.
+func GetUserRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[hackernews.User] {
+	return connectormock.Retry[hackernews.User](failure, after)
+}
+
+// GetUserPublicUser is the manifest mock publicUser: A public user profile with one submitted story.
+func GetUserPublicUser() connectormock.Case[hackernews.User] {
+	value := connectormock.MustDecodeOutput[hackernews.User](`{"id":"langtools","created":1700000000,"karma":100,"submitted":[42003],"profileUrl":"https://news.ycombinator.com/user?id=langtools"}`)
+	return connectormock.Branch(hackernews.GetUserBranchFound, value, nil)
+}
+
+// GetUserDefault is the manifest default, publicUser, which New installs.
+func GetUserDefault() connectormock.Case[hackernews.User] { return GetUserPublicUser() }
 
 // ListStoryIDsListed selects the listed branch: The feed snapshot was read.
 func ListStoryIDsListed(value hackernews.StoryIDs, failure *sdkgo.Failure) connectormock.Case[hackernews.StoryIDs] {
