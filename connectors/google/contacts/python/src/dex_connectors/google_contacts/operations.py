@@ -35,6 +35,8 @@ from .models import Contact, ContactsPage, CreateContactInput, GetContactInput, 
 
 Output = TypeVar("Output")
 _RESOURCE_NAME = re.compile(r"people/[A-Za-z0-9_-]{1,128}\Z")
+# Only these statuses prove Google refused a write; every other status is an unknown outcome.
+_DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
 
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -248,19 +250,11 @@ class CreateContactOperation:
         return IdempotencyKey(call_id)
 
     async def invoke(self, call: Call, input: CreateContactInput) -> MutationAttempt[Contact]:
-        """Send at most once unless Google definitively confirms a safe retry."""
-        try:
-            fence = Fence(call, timedelta(seconds=30))
-            decision = await fence.decide()
-        except ValueError:
-            return self._failure(
-                "defect", FailureKind.LOCAL_DEFECT, "Google Contacts dispatch fence is unavailable"
-            )
-        if decision.kind != DecisionKind.SEND_ALLOWED:
-            return self._uncertain(
-                FailureKind.TRANSPORT,
-                "contact creation outcome cannot be confirmed; inspect Contacts before creating another",
-            )
+        """Create one contact, reading back a saved contact and resending unknown outcomes below the cap.
+
+        A definite refusal is never resent, and uncertain is selected only at
+        the send cap or when an earlier send may have created the contact.
+        """
         if not self._valid_input(input):
             return self._failure("defect", FailureKind.VALIDATION, "contact name or email is invalid")
         body: dict[str, Any] = {"names": [{"givenName": input.given_name}]}
@@ -269,16 +263,46 @@ class CreateContactOperation:
         if input.email_address:
             body["emailAddresses"] = [{"value": input.email_address}]
         payload = json.dumps(body, separators=(",", ":"), ensure_ascii=False).encode()
+        try:
+            fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
+            decision = await fence.decide()
+        except ValueError:
+            return self._failure(
+                "defect", FailureKind.LOCAL_DEFECT, "Google Contacts dispatch fence is unavailable"
+            )
+        saved_resource_name = decision.marker.provider_id if decision.marker is not None else ""
+        if decision.kind == DecisionKind.FAIL_CLOSED:
+            return self._retry(
+                FailureKind.AVAILABILITY,
+                "contact dispatch checkpoint is unreadable; no contact was sent in this attempt",
+            )
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+            if saved_resource_name:
+                return await self._read_back_created_contact(call, saved_resource_name)
+            return self._uncertain(
+                FailureKind.TRANSPORT,
+                "contact creation reached the send cap without confirmation; "
+                "inspect Contacts before creating another",
+            )
+        # Google returns a resource name only for a contact it created, so a saved one is never resent.
+        if decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED and saved_resource_name:
+            return await self._read_back_created_contact(call, saved_resource_name)
+        # This attempt's send is the last one the cap allows when no further send remains.
+        can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
+        has_possible_earlier_send = decision.prior_send_upper_bound > 0
         token, error = await self.client.resolve_token(call)
         if error == "credential":
-            return self._failure(
-                "defect", FailureKind.AUTHENTICATION, "connection credentials are unavailable or invalid"
+            return self._local_failure(
+                has_possible_earlier_send,
+                FailureKind.AUTHENTICATION,
+                "connection credentials are unavailable or invalid",
             )
         if error:
-            try:
-                await fence.record_not_sent()
-            except Exception:
-                return self._retry(FailureKind.TRANSPORT, "credential refresh checkpoint is unavailable")
+            if decision.kind == DecisionKind.SEND_ALLOWED:
+                try:
+                    await fence.record_not_sent()
+                except Exception:
+                    return self._retry(FailureKind.TRANSPORT, "credential refresh checkpoint is unavailable")
             return self._retry(FailureKind.TRANSPORT, "connection credentials could not be refreshed")
         path = "/v1/people:createContact?" + urlencode({"personFields": "names,emailAddresses"})
         try:
@@ -288,7 +312,21 @@ class CreateContactOperation:
         except (CheckpointError, InsufficientAttemptTimeError):
             return self._retry(FailureKind.TRANSPORT, "contact dispatch was not started")
         except Exception:
-            return self._uncertain(FailureKind.TRANSPORT, "contact creation outcome is unknown")
+            return self._resend_or_select_uncertain(
+                can_resend_unknown_outcome, FailureKind.TRANSPORT, "contact creation outcome is unknown"
+            )
+        if exchange.error == "not_built" or (exchange.error == "request" and not exchange.request_sent):
+            try:
+                await fence.record_can_resend()
+            except Exception:
+                return self._resend_or_select_uncertain(
+                    can_resend_unknown_outcome, FailureKind.TRANSPORT, "contact creation outcome is unknown"
+                )
+            return self._retry(FailureKind.TRANSPORT, "Google could not be reached before sending")
+        if exchange.error == "request":
+            return self._resend_or_select_uncertain(
+                can_resend_unknown_outcome, FailureKind.TRANSPORT, "contact creation outcome is unknown"
+            )
         if exchange.status in (429, 503):
             try:
                 await fence.record_can_resend()
@@ -296,40 +334,110 @@ class CreateContactOperation:
                 return self._retry(FailureKind.AVAILABILITY, "Google retry checkpoint is unavailable")
             kind = FailureKind.RATE_LIMIT if exchange.status == 429 else FailureKind.AVAILABILITY
             return self._retry(kind, "Google did not create the contact", exchange.retry_after)
-        if exchange.status >= 500 or exchange.status in (408, 409):
-            return self._uncertain(FailureKind.AVAILABILITY, "contact creation outcome is unknown")
-        if exchange.error:
-            if exchange.error == "not_built" or (exchange.error == "request" and not exchange.request_sent):
-                try:
-                    await fence.record_can_resend()
-                except Exception:
-                    return self._uncertain(FailureKind.TRANSPORT, "contact creation outcome is unknown")
-                return self._retry(FailureKind.TRANSPORT, "Google could not be reached before sending")
-            return self._uncertain(FailureKind.TRANSPORT, "contact creation outcome is unknown")
-        if exchange.status == 401:
-            return self._failure(
-                "providerRejected", FailureKind.AUTHENTICATION, "Google rejected contact authorization"
-            )
-        if exchange.status == 403:
-            return self._failure(
-                "providerRejected", FailureKind.AUTHORIZATION, "Google denied contact creation"
-            )
-        if 400 <= exchange.status < 500:
-            return self._failure(
-                "providerRejected", FailureKind.PROVIDER_REJECTION, f"Google rejected HTTP {exchange.status}"
+        contact = None if exchange.error else _contact(_document(exchange.body))
+        if contact is not None:
+            try:
+                await fence.record_provider_id(contact.resource_name)
+            except Exception:
+                pass  # A lost provider-ID heartbeat counts this send, so the cap still holds.
+        if exchange.status in _DEFINITE_REFUSAL_STATUSES and contact is None:
+            return await self._reject_or_select_uncertain(
+                fence, has_possible_earlier_send, exchange.status
             )
         if exchange.status not in (200, 201):
-            return self._uncertain(FailureKind.PROTOCOL, "Google returned an unexpected contact response")
-        contact = _contact(_document(exchange.body))
+            return self._resend_or_select_uncertain(
+                can_resend_unknown_outcome,
+                FailureKind.AVAILABILITY,
+                f"contact creation outcome is unknown after HTTP {exchange.status}",
+                exchange.retry_after,
+            )
+        if exchange.error:
+            return self._resend_or_select_uncertain(
+                can_resend_unknown_outcome,
+                FailureKind.TRANSPORT,
+                "Google contact response could not be read safely",
+            )
         if contact is None:
+            return self._resend_or_select_uncertain(
+                can_resend_unknown_outcome,
+                FailureKind.PROTOCOL,
+                "Google returned no usable contact resource name",
+            )
+        return MutationAttempt.branch_result("created", contact, Receipt())
+
+    async def _read_back_created_contact(self, call: Call, resource_name: str) -> MutationAttempt[Contact]:
+        """Confirm a contact whose resource name an earlier attempt saved."""
+        if not _RESOURCE_NAME.fullmatch(resource_name):
             return self._uncertain(
-                FailureKind.PROTOCOL, "Google created a contact but returned no usable resource name"
+                FailureKind.PROTOCOL,
+                "the saved contact resource name is invalid; inspect Contacts before creating another",
+            )
+        path = "/v1/" + resource_name + "?" + urlencode({"personFields": "names,emailAddresses"})
+        exchange = await self.client.request(call, path)
+        if exchange.error == "credential":
+            return self._uncertain(
+                FailureKind.AUTHENTICATION,
+                "contact read-back credentials are unavailable; "
+                "reconnect the connection to confirm the contact",
+            )
+        if exchange.error in ("refresh", "request", "not_built"):
+            return self._retry(FailureKind.TRANSPORT, "contact read-back request failed")
+        if exchange.status == 429:
+            return self._retry(
+                FailureKind.RATE_LIMIT, "Google rate limited the contact read-back", exchange.retry_after
+            )
+        if exchange.status == 408 or exchange.status >= 500:
+            return self._retry(
+                FailureKind.AVAILABILITY,
+                "Google Contacts is temporarily unavailable for read-back",
+                exchange.retry_after,
+            )
+        contact = None if exchange.status != 200 or exchange.error else _contact(_document(exchange.body))
+        if contact is None or contact.resource_name != resource_name:
+            return self._uncertain(
+                FailureKind.PROTOCOL,
+                "contact read-back could not confirm the contact; inspect Contacts before creating another",
+            )
+        return MutationAttempt.branch_result("created", contact, Receipt())
+
+    def _resend_or_select_uncertain(
+        self, can_resend_unknown_outcome: bool, kind: FailureKind, message: str, delay: float = 0
+    ) -> MutationAttempt[Contact]:
+        """Retry a possibly created contact while the send cap allows another send."""
+        if can_resend_unknown_outcome:
+            # The claim stays the last marker, so the next attempt counts this send.
+            return self._retry(kind, message, delay)
+        return self._uncertain(
+            kind, message + "; the send cap is reached, so inspect Contacts before creating another"
+        )
+
+    async def _reject_or_select_uncertain(
+        self, fence: Fence, has_possible_earlier_send: bool, status: int
+    ) -> MutationAttempt[Contact]:
+        """Select providerRejected only when no earlier send may have created the contact."""
+        kind = {401: FailureKind.AUTHENTICATION, 403: FailureKind.AUTHORIZATION}.get(
+            status, FailureKind.PROVIDER_REJECTION
+        )
+        message = f"Google rejected HTTP {status}"
+        if has_possible_earlier_send:
+            return self._uncertain(
+                kind, message + " after an earlier unconfirmed send; inspect Contacts before creating another"
             )
         try:
-            await fence.record_provider_id(contact.resource_name)
+            await fence.record_can_resend()
         except Exception:
-            pass  # A lost provider-ID heartbeat still forbids another send.
-        return MutationAttempt.branch_result("created", contact, Receipt())
+            pass  # The refusal ends the Step, so a lost checkpoint cannot cause a resend.
+        return self._failure("providerRejected", kind, message)
+
+    def _local_failure(
+        self, has_possible_earlier_send: bool, kind: FailureKind, message: str
+    ) -> MutationAttempt[Contact]:
+        """Select defect only when no earlier send of this call may have created the contact."""
+        if has_possible_earlier_send:
+            return self._uncertain(
+                kind, message + " after an earlier unconfirmed send; inspect Contacts before creating another"
+            )
+        return self._failure("defect", kind, message)
 
     @staticmethod
     def _valid_input(input: CreateContactInput) -> bool:

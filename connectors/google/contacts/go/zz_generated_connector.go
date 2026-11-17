@@ -418,7 +418,7 @@ var CreateContactDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateContactBranchCreated, Description: "Google created the contact and returned its resource name."},
 		{ID: CreateContactBranchProviderRejected, Description: "Google conclusively rejected the contact.", Optional: true},
-		{ID: CreateContactBranchUncertain, Description: "Google may have created the contact but its resource name was not confirmed; do not resend automatically.", Optional: true},
+		{ID: CreateContactBranchUncertain, Description: "Google may have created the contact, and its resource name was still not confirmed when the send cap was reached.", Optional: true},
 		{ID: CreateContactBranchDefect, Description: "Local contact input, connection credentials, or dispatch checkpoint is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -426,6 +426,8 @@ var CreateContactDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateContactResult = sdkgo.MutationResult[Contact]
@@ -445,6 +447,8 @@ type CreateContactStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateContactResult]             `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Contact]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateContactStep[IN any](config CreateContactStepConfig[IN]) sdkgo.MutationStep[IN, CreateContactInput, Contact] {
@@ -476,5 +480,6 @@ func NewCreateContactStep[IN any](config CreateContactStepConfig[IN]) sdkgo.Muta
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

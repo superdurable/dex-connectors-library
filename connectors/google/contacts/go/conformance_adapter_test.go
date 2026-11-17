@@ -4,6 +4,7 @@
 package contacts
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -25,6 +26,12 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	context := singledispatchtest.NewContext("contacts-conformance", "provider-step")
+	previousAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(value []byte) {
+		require.NoError(t, context.SetPersistedCheckpoint(json.RawMessage(value)))
+	})
+	for range previousAttempt {
+		context.AdvanceAttempt()
+	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario,
 		before: func(attempt int) {
 			if attempt > 1 {

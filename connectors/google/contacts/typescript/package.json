@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-google-contacts",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "MIT",
   "description": "Google Contacts connector for Dex TypeScript applications",
   "repository": {
@@ -45,7 +45,7 @@
     "check": "npm run typecheck && npm run lint && npm test && npm run build"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
+    "@superdurable/connectors-sdk": "0.12.0",
     "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },

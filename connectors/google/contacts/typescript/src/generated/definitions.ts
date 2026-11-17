@@ -82,7 +82,7 @@ export const CreateContactBranch = {
 export const CreateContactBranchCreated = CreateContactBranch.Created;
 /** Google conclusively rejected the contact. */
 export const CreateContactBranchProviderRejected = CreateContactBranch.ProviderRejected;
-/** Google may have created the contact but its resource name was not confirmed; do not resend automatically. */
+/** Google may have created the contact, and its resource name was still not confirmed when the send cap was reached. */
 export const CreateContactBranchUncertain = CreateContactBranch.Uncertain;
 /** Local contact input, connection credentials, or dispatch checkpoint is invalid. */
 export const CreateContactBranchDefect = CreateContactBranch.Defect;
@@ -92,10 +92,12 @@ export const CreateContactDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "Google created the contact and returned its resource name." },
     { id: "providerRejected", description: "Google conclusively rejected the contact.", optional: true },
-    { id: "uncertain", description: "Google may have created the contact but its resource name was not confirmed; do not resend automatically.", optional: true },
+    { id: "uncertain", description: "Google may have created the contact, and its resource name was still not confirmed when the send cap was reached.", optional: true },
     { id: "defect", description: "Local contact input, connection credentials, or dispatch checkpoint is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync" },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for createContact. */
 export const CreateContactMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

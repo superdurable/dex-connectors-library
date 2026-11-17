@@ -46,15 +46,9 @@ func (CreateContactOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateContac
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends at most once unless a definitive 429, 503, or pre-send failure permits repetition.
+// Invoke creates one contact. A saved resource name is read back instead of resent, and an
+// unknown outcome is resent while the send cap allows; uncertain is selected only at the cap.
 func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateContactInput) sdkgo.MutationAttempt[Contact] {
-	fence, err := singledispatch.NewFence(call, CreateContactDefinition.StepDefaults.ExecuteMethodTimeout)
-	if err != nil {
-		return createFailure(CreateContactBranchDefect, sdkgo.FailureLocalDefect, "Google Contacts dispatch fence is unavailable")
-	}
-	if fence.Decide().Kind != singledispatch.SendAllowed {
-		return createUncertain(sdkgo.FailureTransport, "contact creation outcome cannot be confirmed; inspect Contacts before creating another")
-	}
 	if !validCreateContactInput(input) {
 		return createFailure(CreateContactBranchDefect, sdkgo.FailureValidation, "contact name or email is invalid")
 	}
@@ -80,30 +74,54 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 	if err != nil {
 		return createFailure(CreateContactBranchDefect, sdkgo.FailureValidation, "contact could not be encoded")
 	}
+	fence, err := singledispatch.NewFence(call, CreateContactDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
+	if err != nil {
+		return createFailure(CreateContactBranchDefect, sdkgo.FailureLocalDefect, "Google Contacts dispatch fence is unavailable")
+	}
+	decision := fence.Decide()
+	switch decision.Kind {
+	case singledispatch.FailClosed:
+		return createRetry(sdkgo.FailureAvailability, "contact dispatch checkpoint is unreadable; no contact was sent in this attempt", 0)
+	case singledispatch.ReadBackRequired:
+		if decision.Marker.ProviderID != "" {
+			return operation.readBackCreatedContact(call, decision.Marker.ProviderID)
+		}
+		return createUncertain(sdkgo.FailureTransport, "contact creation reached the send cap without confirmation; inspect Contacts before creating another")
+	case singledispatch.ReadBackThenResendAllowed:
+		// Google returns a resource name only for a contact it created, so a saved one is never resent.
+		if decision.Marker.ProviderID != "" {
+			return operation.readBackCreatedContact(call, decision.Marker.ProviderID)
+		}
+	}
+	// This attempt's send is the last one the cap allows when no further send remains.
+	canResendUnknownOutcome := decision.MaximumPriorSends+1 < call.MaxSends()
+	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
 	credentials, err := sdkgo.ResolveCredential(call.Context, operation.client.credentials, call, operation.client.refreshDriver)
 	if err != nil {
 		if sdkgo.IsReauthorizationRequired(err) {
-			return createFailure(CreateContactBranchDefect, sdkgo.FailureAuthentication, "connection requires reauthorization")
+			return createLocalFailure(hasPossibleEarlierSend, sdkgo.FailureAuthentication, "connection requires reauthorization")
 		}
-		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
-			return createRetry(sdkgo.FailureTransport, "credential refresh checkpoint is unavailable", 0)
+		if decision.Kind == singledispatch.SendAllowed {
+			if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
+				return createRetry(sdkgo.FailureTransport, "credential refresh checkpoint is unavailable", 0)
+			}
 		}
 		return createRetry(sdkgo.FailureTransport, "connection credentials could not be refreshed", 0)
 	}
 	if credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.AccessToken.Reveal()) {
-		return createFailure(CreateContactBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
+		return createLocalFailure(hasPossibleEarlierSend, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
 	query := url.Values{"personFields": {"names,emailAddresses"}}
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, operation.client.baseURL+"/v1/people:createContact?"+query.Encode(), bytes.NewReader(body))
 	if err != nil {
-		return createFailure(CreateContactBranchDefect, sdkgo.FailureLocalDefect, "contact request could not be built")
+		return createLocalFailure(hasPossibleEarlierSend, sdkgo.FailureLocalDefect, "contact request could not be built")
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "Bearer "+credentials.AccessToken.Reveal())
 	request.Header.Set("User-Agent", "Dex Connector (https://superdurable.io)")
 	if err := singledispatch.PrepareHTTPWrite(request); err != nil {
-		return createFailure(CreateContactBranchDefect, sdkgo.FailureLocalDefect, "contact request is invalid")
+		return createLocalFailure(hasPossibleEarlierSend, sdkgo.FailureLocalDefect, "contact request is invalid")
 	}
 	var didGetConnection atomic.Bool
 	var response *http.Response
@@ -120,9 +138,10 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 		if !didGetConnection.Load() && fence.RecordCanResend() == nil {
 			return createRetry(sdkgo.FailureTransport, "Google could not be reached before sending", 0)
 		}
-		return createUncertain(sdkgo.FailureTransport, "contact creation outcome is unknown")
+		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureTransport, "contact creation outcome is unknown", 0)
 	}
 	defer func() { _ = response.Body.Close() }()
+	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
 	if response.StatusCode == http.StatusTooManyRequests || response.StatusCode == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
 			return createRetry(sdkgo.FailureAvailability, "Google retry checkpoint is unavailable", 0)
@@ -131,37 +150,110 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 		if response.StatusCode == http.StatusTooManyRequests {
 			kind = sdkgo.FailureRateLimit
 		}
-		return createRetry(kind, "Google did not create the contact", providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
+		return createRetry(kind, "Google did not create the contact", retryAfter)
 	}
-	if response.StatusCode >= 500 || response.StatusCode == http.StatusRequestTimeout || response.StatusCode == http.StatusConflict {
-		return createUncertain(sdkgo.FailureAvailability, "contact creation outcome is unknown")
+	responseBody, readErr := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+	isResponseUnsafe := bytes.Contains(responseBody, []byte(credentials.AccessToken.Reveal()))
+	var person personWire
+	contact, hasContact := Contact{}, false
+	if readErr == nil && !isResponseUnsafe && json.Unmarshal(responseBody, &person) == nil {
+		contact, hasContact = person.project()
 	}
-	if response.StatusCode == http.StatusUnauthorized {
-		return createFailure(CreateContactBranchProviderRejected, sdkgo.FailureAuthentication, "Google rejected contact authorization")
+	if hasContact {
+		// A later attempt reads this contact back instead of creating another one.
+		_ = fence.RecordProviderID(contact.ResourceName)
 	}
-	if response.StatusCode == http.StatusForbidden {
-		return createFailure(CreateContactBranchProviderRejected, sdkgo.FailureAuthorization, "Google denied contact creation")
-	}
-	if response.StatusCode >= 400 && response.StatusCode < 500 {
-		return createFailure(CreateContactBranchProviderRejected, sdkgo.FailureProviderRejection, "Google rejected HTTP "+strconv.Itoa(response.StatusCode))
+	if isDefiniteContactRefusal(response.StatusCode) && !hasContact {
+		return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, contactRefusalFailureKind(response.StatusCode), "Google rejected HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated {
-		return createUncertain(sdkgo.FailureProtocol, "Google returned an unexpected contact response")
+		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureAvailability, "contact creation outcome is unknown after HTTP "+strconv.Itoa(response.StatusCode), retryAfter)
 	}
-	responseBody, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
-	if err != nil || bytes.Contains(responseBody, []byte(credentials.AccessToken.Reveal())) {
-		return createUncertain(sdkgo.FailureTransport, "Google created a contact but its response could not be read safely")
+	if readErr != nil || isResponseUnsafe {
+		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureTransport, "Google contact response could not be read safely", 0)
+	}
+	if !hasContact {
+		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureProtocol, "Google returned no usable contact resource name", 0)
+	}
+	return sdkgo.NewMutationBranch(CreateContactBranchCreated, contact, nil, sdkgo.Receipt{})
+}
+
+// readBackCreatedContact confirms a contact whose resource name an earlier attempt saved.
+func (operation CreateContactOperation) readBackCreatedContact(call sdkgo.Call, resourceName string) sdkgo.MutationAttempt[Contact] {
+	if !contactResourceName.MatchString(resourceName) {
+		return createUncertain(sdkgo.FailureProtocol, "the saved contact resource name is invalid; inspect Contacts before creating another")
+	}
+	query := url.Values{"personFields": {"names,emailAddresses"}}
+	response := operation.client.request(call, "/v1/"+resourceName+"?"+query.Encode())
+	if errors.Is(response.err, errCredential) {
+		return createUncertain(sdkgo.FailureAuthentication, "contact read-back credentials are unavailable; reconnect the connection to confirm the contact")
+	}
+	if errors.Is(response.err, errRequest) {
+		return createRetry(sdkgo.FailureTransport, "contact read-back request failed", 0)
+	}
+	if response.status == http.StatusTooManyRequests {
+		return createRetry(sdkgo.FailureRateLimit, "Google rate limited the contact read-back", response.retryAfter)
+	}
+	if response.status == http.StatusRequestTimeout || response.status >= 500 {
+		return createRetry(sdkgo.FailureAvailability, "Google Contacts is temporarily unavailable for read-back", response.retryAfter)
 	}
 	var person personWire
-	if err := json.Unmarshal(responseBody, &person); err != nil {
-		return createUncertain(sdkgo.FailureProtocol, "Google created a contact but returned invalid JSON")
+	if response.status != http.StatusOK || response.err != nil || json.Unmarshal(response.body, &person) != nil {
+		return createUncertain(sdkgo.FailureProtocol, "contact read-back could not confirm the contact; inspect Contacts before creating another")
 	}
 	contact, ok := person.project()
-	if !ok {
-		return createUncertain(sdkgo.FailureProtocol, "Google created a contact but returned no usable resource name")
+	if !ok || contact.ResourceName != resourceName {
+		return createUncertain(sdkgo.FailureProtocol, "contact read-back returned another resource; inspect Contacts before creating another")
 	}
-	_ = fence.RecordProviderID(contact.ResourceName)
 	return sdkgo.NewMutationBranch(CreateContactBranchCreated, contact, nil, sdkgo.Receipt{})
+}
+
+// isDefiniteContactRefusal reports a status that proves Google refused the request.
+func isDefiniteContactRefusal(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
+
+func contactRefusalFailureKind(status int) sdkgo.FailureKind {
+	switch status {
+	case http.StatusUnauthorized:
+		return sdkgo.FailureAuthentication
+	case http.StatusForbidden:
+		return sdkgo.FailureAuthorization
+	}
+	return sdkgo.FailureProviderRejection
+}
+
+// resendOrSelectUncertain retries a possibly created contact while the send cap allows another send.
+func resendOrSelectUncertain(canResendUnknownOutcome bool, kind sdkgo.FailureKind, message string, delay time.Duration) sdkgo.MutationAttempt[Contact] {
+	if canResendUnknownOutcome {
+		// The claim stays the last marker, so the next attempt counts this send.
+		return createRetry(kind, message, delay)
+	}
+	return createUncertain(kind, message+"; the send cap is reached, so inspect Contacts before creating another")
+}
+
+// rejectOrSelectUncertain selects providerRejected only when no earlier send may have created the contact.
+func rejectOrSelectUncertain(fence *singledispatch.Fence, hasPossibleEarlierSend bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[Contact] {
+	if hasPossibleEarlierSend {
+		return createUncertain(kind, message+" after an earlier unconfirmed send; inspect Contacts before creating another")
+	}
+	// The refusal ends the Step, so a lost checkpoint cannot cause a resend.
+	_ = fence.RecordCanResend()
+	return createFailure(CreateContactBranchProviderRejected, kind, message)
+}
+
+// createLocalFailure selects defect only when no earlier send of this call may have created the contact.
+func createLocalFailure(hasPossibleEarlierSend bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[Contact] {
+	if hasPossibleEarlierSend {
+		return createUncertain(kind, message+" after an earlier unconfirmed send; inspect Contacts before creating another")
+	}
+	return createFailure(CreateContactBranchDefect, kind, message)
 }
 
 func validCreateContactInput(input CreateContactInput) bool {

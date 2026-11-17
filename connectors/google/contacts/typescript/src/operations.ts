@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
-import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
+import { CheckpointError, InsufficientTimeError, newFence, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { CreateContactDefinition, GetContactDefinition, ListContactsDefinition } from './generated/definitions.js';
 import type { Contact, ContactsPage, CreateContactInput, GetContactInput, ListContactsInput } from './generated/models.js';
 import type { ContactsClient, ContactsExchange } from './client.js';
@@ -70,26 +70,44 @@ export class CreateContactOperation implements Mutation<CreateContactInput, Cont
   /** Bind the People API client. */ constructor(private readonly client: ContactsClient) {}
   /** Return the generated Mutation contract. */ definition(): MutationDefinition { return CreateContactDefinition; }
   /** Record Call identity without sending it as a provider deduplication key. */ idempotencyKey(callId: string): string { return callId; }
-  /** Retry only a proven unsent request or Google's definite 429 and 503 responses. */
+  /**
+   * Create one contact. A saved resource name is read back instead of resent, an unknown outcome is
+   * resent while the send cap allows, and uncertain is selected only at the cap.
+   */
   async invoke(call: Call, input: CreateContactInput): Promise<MutationAttempt<Contact>> {
     const empty = emptyContact();
-    let fence: ReturnType<typeof newFence>;
-    try { fence = newFence(call, 30_000); }
-    catch { return mutationBranch('defect', empty, 'LOCAL_DEFECT', 'Google Contacts dispatch fence is unavailable'); }
-    if (fence.decide().kind !== 'sendAllowed')
-      return mutationUncertain('TRANSPORT', 'contact creation outcome cannot be confirmed; inspect Contacts before creating another');
     if (!validCreateInput(input)) return mutationBranch('defect', empty, 'VALIDATION', 'contact name or email is invalid');
     const person: { names: Array<{ givenName: string; familyName?: string }>; emailAddresses?: Array<{ value: string }> } = {
       names: [{ givenName: input.givenName, ...(input.familyName ? { familyName: input.familyName } : {}) }],
     };
     if (input.emailAddress) person.emailAddresses = [{ value: input.emailAddress }];
     const body = Buffer.from(JSON.stringify(person));
+    const operationMaxSends = definitionMaxSends(CreateContactDefinition);
+    let fence: Fence;
+    try { fence = newFence(call, 30_000, { maxSends: operationMaxSends }); }
+    catch { return mutationBranch('defect', empty, 'LOCAL_DEFECT', 'Google Contacts dispatch fence is unavailable'); }
+    const decision = fence.decide();
+    const savedResourceName = decision.marker?.providerId ?? '';
+    if (decision.kind === 'failClosed')
+      return mutationRetry('AVAILABILITY', 'contact dispatch checkpoint is unreadable; no contact was sent in this attempt');
+    if (decision.kind === 'readBackRequired') {
+      if (savedResourceName) return this.readBackCreatedContact(call, savedResourceName);
+      return mutationUncertain('TRANSPORT', 'contact creation reached the send cap without confirmation; inspect Contacts before creating another');
+    }
+    // Google returns a resource name only for a contact it created, so a saved one is never resent.
+    if (decision.kind === 'readBackThenResendAllowed' && savedResourceName) return this.readBackCreatedContact(call, savedResourceName);
+    const priorSendUpperBound = decision.priorSendUpperBound ?? 0;
+    // This attempt's send is the last one the cap allows when no further send remains.
+    const canResendUnknownOutcome = priorSendUpperBound + 1 < effectiveMaxSends(call, operationMaxSends);
+    const hasPossibleEarlierSend = priorSendUpperBound > 0;
     const credential = await this.client.resolveToken(call);
     if (credential.error === 'credential')
-      return mutationBranch('defect', empty, 'AUTHENTICATION', 'connection credentials are unavailable or invalid');
+      return localFailure(hasPossibleEarlierSend, 'AUTHENTICATION', 'connection credentials are unavailable or invalid');
     if (credential.error) {
-      try { await fence.recordNotSent(); }
-      catch { return mutationRetry('TRANSPORT', 'credential refresh checkpoint is unavailable'); }
+      if (decision.kind === 'sendAllowed') {
+        try { await fence.recordNotSent(); }
+        catch { return mutationRetry('TRANSPORT', 'credential refresh checkpoint is unavailable'); }
+      }
       return mutationRetry('TRANSPORT', 'connection credentials could not be refreshed');
     }
     const path = `/v1/people:createContact?${encodeQueryValues({ personFields: ['names,emailAddresses'] })}`;
@@ -98,35 +116,77 @@ export class CreateContactOperation implements Mutation<CreateContactInput, Cont
     catch (error) {
       if (error instanceof CheckpointError || error instanceof InsufficientTimeError)
         return mutationRetry('TRANSPORT', 'contact dispatch was not started');
-      return mutationUncertain('TRANSPORT', 'contact creation outcome is unknown');
+      return resendOrSelectUncertain(canResendUnknownOutcome, 'TRANSPORT', 'contact creation outcome is unknown');
+    }
+    if (exchange.error === 'request') {
+      if (exchange.isProvablyNotSent) {
+        try { await fence.recordCanResend(); }
+        catch { return resendOrSelectUncertain(canResendUnknownOutcome, 'TRANSPORT', 'contact creation outcome is unknown'); }
+        return mutationRetry('TRANSPORT', 'Google could not be reached before sending');
+      }
+      return resendOrSelectUncertain(canResendUnknownOutcome, 'TRANSPORT', 'contact creation outcome is unknown');
     }
     if (exchange.status === 429 || exchange.status === 503) {
       try { await fence.recordCanResend(); }
       catch { return mutationRetry('AVAILABILITY', 'Google retry checkpoint is unavailable'); }
       return mutationRetry(exchange.status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY', 'Google did not create the contact', exchange.retryAfterMs);
     }
-    if (exchange.status >= 500 || [408, 409].includes(exchange.status))
-      return mutationUncertain('AVAILABILITY', 'contact creation outcome is unknown');
-    if (exchange.error) {
-      if (exchange.error === 'request' && exchange.isProvablyNotSent) {
-        try { await fence.recordCanResend(); }
-        catch { return mutationUncertain('TRANSPORT', 'contact creation outcome is unknown'); }
-        return mutationRetry('TRANSPORT', 'Google could not be reached before sending');
-      }
-      return mutationUncertain('TRANSPORT', 'contact creation outcome is unknown');
+    const contact = exchange.error ? undefined : projectContact(parseJSON(exchange.body));
+    if (contact) {
+      try { await fence.recordProviderId(contact.resourceName); }
+      catch { /* A lost provider ID heartbeat counts this send, so the cap still holds. */ }
     }
-    if (exchange.status === 401) return mutationBranch('providerRejected', empty, 'AUTHENTICATION', 'Google rejected contact authorization');
-    if (exchange.status === 403) return mutationBranch('providerRejected', empty, 'AUTHORIZATION', 'Google denied contact creation');
-    if (exchange.status >= 400 && exchange.status < 500)
-      return mutationBranch('providerRejected', empty, 'PROVIDER_REJECTION', `Google rejected HTTP ${exchange.status}`);
+    if (definiteRefusalStatuses.has(exchange.status) && !contact) return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, exchange.status);
     if (exchange.status !== 200 && exchange.status !== 201)
-      return mutationUncertain('PROTOCOL', 'Google returned an unexpected contact response');
-    const contact = projectContact(parseJSON(exchange.body));
-    if (!contact) return mutationUncertain('PROTOCOL', 'Google created a contact but returned no usable resource name');
-    try { await fence.recordProviderId(contact.resourceName); }
-    catch { /* A lost provider ID heartbeat still forbids another send. */ }
+      return resendOrSelectUncertain(canResendUnknownOutcome, 'AVAILABILITY', `contact creation outcome is unknown after HTTP ${exchange.status}`, exchange.retryAfterMs);
+    if (exchange.error) return resendOrSelectUncertain(canResendUnknownOutcome, 'TRANSPORT', 'Google contact response could not be read safely');
+    if (!contact) return resendOrSelectUncertain(canResendUnknownOutcome, 'PROTOCOL', 'Google returned no usable contact resource name');
     return newMutationBranch('created', contact);
   }
+
+  /** Confirm a contact whose resource name an earlier attempt saved. */
+  private async readBackCreatedContact(call: Call, resourceName: string): Promise<MutationAttempt<Contact>> {
+    if (!validResourceName(resourceName))
+      return mutationUncertain('PROTOCOL', 'the saved contact resource name is invalid; inspect Contacts before creating another');
+    const exchange = await this.client.request(call, `/v1/${resourceName}?${encodeQueryValues({ personFields: ['names,emailAddresses'] })}`);
+    if (exchange.error === 'credential')
+      return mutationUncertain('AUTHENTICATION', 'contact read-back credentials are unavailable; reconnect the connection to confirm the contact');
+    if (exchange.error === 'refresh' || exchange.error === 'request') return mutationRetry('TRANSPORT', 'contact read-back request failed');
+    if (exchange.status === 429) return mutationRetry('RATE_LIMIT', 'Google rate limited the contact read-back', exchange.retryAfterMs);
+    if (exchange.status === 408 || exchange.status >= 500)
+      return mutationRetry('AVAILABILITY', 'Google Contacts is temporarily unavailable for read-back', exchange.retryAfterMs);
+    const contact = exchange.status !== 200 || exchange.error ? undefined : projectContact(parseJSON(exchange.body));
+    if (!contact || contact.resourceName !== resourceName)
+      return mutationUncertain('PROTOCOL', 'contact read-back could not confirm the contact; inspect Contacts before creating another');
+    return newMutationBranch('created', contact);
+  }
+}
+
+// Only these statuses prove Google refused a write; every other status is an unknown outcome.
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** Retry a possibly created contact while the send cap allows another send. */
+function resendOrSelectUncertain(canResendUnknownOutcome: boolean, kind: Failure['kind'], message: string, delay = 0): MutationAttempt<Contact> {
+  // The claim stays the last marker, so the next attempt counts this send.
+  if (canResendUnknownOutcome) return mutationRetry(kind, message, delay);
+  return mutationUncertain(kind, `${message}; the send cap is reached, so inspect Contacts before creating another`);
+}
+/** Select providerRejected only when no earlier send may have created the contact. */
+async function rejectOrSelectUncertain(fence: Fence, hasPossibleEarlierSend: boolean, status: number): Promise<MutationAttempt<Contact>> {
+  const kind: Failure['kind'] = status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION';
+  const message = `Google rejected HTTP ${status}`;
+  if (hasPossibleEarlierSend) return mutationUncertain(kind, `${message} after an earlier unconfirmed send; inspect Contacts before creating another`);
+  try { await fence.recordCanResend(); }
+  catch { /* The refusal ends the Step, so a lost checkpoint cannot cause a resend. */ }
+  return mutationBranch('providerRejected', emptyContact(), kind, message);
+}
+/** Select defect only when no earlier send of this call may have created the contact. */
+function localFailure(hasPossibleEarlierSend: boolean, kind: Failure['kind'], message: string): MutationAttempt<Contact> {
+  if (hasPossibleEarlierSend) return mutationUncertain(kind, `${message} after an earlier unconfirmed send; inspect Contacts before creating another`);
+  return mutationBranch('defect', emptyContact(), kind, message);
+}
+function effectiveMaxSends(call: Call, operationMaxSends: number): number {
+  return operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
 }
 
 function classifyRead<Output>(operation: string, exchange: ContactsExchange, empty: Output): QueryAttempt<Output> | undefined {
