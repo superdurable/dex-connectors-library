@@ -411,6 +411,9 @@ commit.
 
 ## Tests
 
+- Start local Dex tests with `dexcli dev -open=false`; pass `--open=false`
+  to other Dex CLI commands that can open a browser, such as `dexcli visualize`.
+  Open Dex Web only when the requested verification requires its UI.
 - Run Go suites and vet through the repository Makefile. Test every standalone
   module with `GOWORK=off`.
 - Use a real Dex integration test for behavior crossing a Worker, Client,
