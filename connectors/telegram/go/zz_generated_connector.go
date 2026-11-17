@@ -200,14 +200,16 @@ var SendMessageDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendMessageBranchSent, Description: "Telegram created the message and returned its ID."},
 		{ID: SendMessageBranchProviderRejected, Description: "Telegram conclusively rejected the send before creating a message.", Optional: true},
-		{ID: SendMessageBranchUncertain, Description: "The request may have reached Telegram but no message ID was confirmed; do not resend automatically.", Optional: true},
-		{ID: SendMessageBranchDefect, Description: "Local input, bot token, or dispatch checkpoint is invalid.", Optional: true},
+		{ID: SendMessageBranchUncertain, Description: "Telegram may have created the message, but the send cap was reached or Telegram accepted it without a complete confirmation; check the chat before sending again.", Optional: true},
+		{ID: SendMessageBranchDefect, Description: "Local input, bot token, or dispatch fence is invalid before any send.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type SendMessageResult = sdkgo.MutationResult[SentMessage]
@@ -227,6 +229,8 @@ type SendMessageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[SendMessageResult]                   `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.MutationStep[IN, SendMessageInput, SentMessage] {
@@ -258,6 +262,7 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.Mutation
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 

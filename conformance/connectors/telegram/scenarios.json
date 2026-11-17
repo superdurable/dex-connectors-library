@@ -36,6 +36,7 @@
           "attempt": 1,
           "callId": "bbe66292-151f-5c40-bdfe-0553b4fb902f",
           "providerId": "52",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -90,7 +91,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "bf149675-a921-5edd-be1e-1a95520c994a",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "chatId": 0,
@@ -111,8 +112,57 @@
       "operation": "sendMessage"
     },
     {
+      "attempts": 3,
       "callId": "5b694edc-1ae3-5091-98bc-69d3ba8b3808",
       "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "text": [
+              "Hello from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/sendMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"ok\":false,\"error_code\":502}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "text": [
+              "Hello from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/sendMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 502
+        },
         {
           "body": "{}",
           "form": {
@@ -142,8 +192,373 @@
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "5b694edc-1ae3-5091-98bc-69d3ba8b3808",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "chatId": 0,
+          "date": 0,
+          "messageId": 0
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "5b694edc-1ae3-5091-98bc-69d3ba8b3808",
+      "input": {
+        "chatId": "@meridian_team",
+        "text": "Hello from Dex"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "5b694edc-1ae3-5091-98bc-69d3ba8b3808",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "5b694edc-1ae3-5091-98bc-69d3ba8b3808",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendMessage-uncertain",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "72c8b2d8-fe90-5f3d-a592-63240ca3768e",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error_code\":500,\"description\":\"Internal Server Error\"}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "text": [
+              "Hello from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/sendMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "72c8b2d8-fe90-5f3d-a592-63240ca3768e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "72c8b2d8-fe90-5f3d-a592-63240ca3768e",
+      "input": {
+        "chatId": "@meridian_team",
+        "text": "Hello from Dex"
+      },
+      "name": "sendMessage-unknown-outcome-retry",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "ecf4c601-6019-5d0f-b778-5456fd2ced49",
+      "exchanges": [
+        {
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "text": [
+              "Hello from Dex"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/sendMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ecf4c601-6019-5d0f-b778-5456fd2ced49",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ecf4c601-6019-5d0f-b778-5456fd2ced49",
+      "input": {
+        "chatId": "@meridian_team",
+        "text": "Hello from Dex"
+      },
+      "name": "sendMessage-transport-after-send",
+      "operation": "sendMessage"
+    },
+    {
+      "attempts": 2,
+      "callId": "752c8ab2-7ff5-57f7-8659-f422d334446d",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error_code\":409,\"description\":\"Conflict\"}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "text": [
+              "Hello from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/sendMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"ok\":true,\"result\":{\"message_id\":54,\"date\":1794110002,\"chat\":{\"id\":-1001234567890}}}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "text": [
+              "Hello from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/sendMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "752c8ab2-7ff5-57f7-8659-f422d334446d",
+          "providerId": "54",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "chatId": -1001234567890,
+          "date": 1794110002,
+          "messageId": 54
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "752c8ab2-7ff5-57f7-8659-f422d334446d",
+      "input": {
+        "chatId": "@meridian_team",
+        "text": "Hello from Dex"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "752c8ab2-7ff5-57f7-8659-f422d334446d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendMessage-unknown-outcome-resend-then-sent",
+      "operation": "sendMessage"
+    },
+    {
+      "attempts": 2,
+      "callId": "dc8d41f5-1566-513c-b21c-665e1e9423f1",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error_code\":500}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "text": [
+              "Hello from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/sendMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"ok\":false,\"error_code\":400,\"description\":\"Bad Request: chat not found\"}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "text": [
+              "Hello from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/sendMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "dc8d41f5-1566-513c-b21c-665e1e9423f1",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "chatId": 0,
+          "date": 0,
+          "messageId": 0
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dc8d41f5-1566-513c-b21c-665e1e9423f1",
+      "input": {
+        "chatId": "@meridian_team",
+        "text": "Hello from Dex"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "dc8d41f5-1566-513c-b21c-665e1e9423f1",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendMessage-refused-resend-uncertain",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "ad54f0e3-14e0-5575-b7de-2bdbbc9350d7",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"result\":{\"message_id\":55}}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "text": [
+              "Hello from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/sendMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ad54f0e3-14e0-5575-b7de-2bdbbc9350d7",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -156,12 +571,12 @@
         "retryAfterMs": 0,
         "uncertain": true
       },
-      "idempotencyKey": "5b694edc-1ae3-5091-98bc-69d3ba8b3808",
+      "idempotencyKey": "ad54f0e3-14e0-5575-b7de-2bdbbc9350d7",
       "input": {
         "chatId": "@meridian_team",
         "text": "Hello from Dex"
       },
-      "name": "sendMessage-uncertain",
+      "name": "sendMessage-accepted-incomplete-uncertain",
       "operation": "sendMessage"
     },
     {
@@ -393,6 +808,7 @@
           "attempt": 2,
           "callId": "f7409735-1fff-53ab-9cd0-aa2c357592c8",
           "providerId": "53",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -454,22 +870,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
           "callId": "90197eab-afd7-512f-909c-3b20379e32b1",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "chatId": 0,
-          "date": 0,
-          "messageId": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "90197eab-afd7-512f-909c-3b20379e32b1",
       "input": {

@@ -17,9 +17,9 @@ export interface SendMessageStepConfig<StepInput, OperationInput = SendMessageIn
   sent: StepTarget<MutationResult<OperationOutput>>;
   /** Telegram conclusively rejected the send before creating a message. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request may have reached Telegram but no message ID was confirmed; do not resend automatically. */
+  /** Telegram may have created the message, but the send cap was reached or Telegram accepted it without a complete confirmation; check the chat before sending again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
-  /** Local input, bot token, or dispatch checkpoint is invalid. */
+  /** Local input, bot token, or dispatch fence is invalid before any send. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
 }
 

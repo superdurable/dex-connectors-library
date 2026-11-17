@@ -1,10 +1,10 @@
 {
   "connectorId": "telegram",
-  "releaseTag": "connectors/telegram/go/v0.1.0",
+  "releaseTag": "connectors/telegram/go/v0.1.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-telegram",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {
@@ -12,7 +12,7 @@
       "kind": "mutation",
       "operationId": "sendMessage",
       "inputType": "SendMessageInput",
-      "description": "Send one text message to a chat. If Telegram does not confirm the outcome, check the chat before sending again.",
+      "description": "Send one text message to a chat. An unknown outcome resends up to the send cap, so the chat may show a duplicate.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
