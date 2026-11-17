@@ -9,8 +9,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -89,4 +92,11 @@ UPSERT_WEBHOOK_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
+)
+
+RESPONSE_SUBMITTED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="responseSubmitted"),
+    description="Receive a signed Typeform form_response webhook for one submitted response, with its answers keyed by field ref and its hidden fields; the event ID is the form ID and response token.",
 )

@@ -28,7 +28,7 @@ UTC.
 The `dex-connector-typeform` Python package implements the four operations in
 the table above. Its generated connection bindings, models, Step factories, and
 mocks follow this manifest; the hand-written client performs the Typeform API
-calls. The Python package does not yet implement `responseSubmitted`.
+calls. The Python package implements `responseSubmitted` v0.2.0; its [response intake example](python/examples/response_intake/README.md) verifies signed delivery and durable replay against a real Dex Worker.
 
 The runnable [form catalog example](python/examples/form_catalog/README.md)
 starts a Flow with the static `typeform-forms` connection. Its integration test
@@ -235,7 +235,7 @@ retry after the first accepted PUT.
 
 The independently released [`@superdurable/connector-typeform`](typescript/README.md)
 package implements `listForms`, `getForm`, `listResponses`, and `upsertWebhook`.
-The `responseSubmitted` Trigger remains Go only. The runnable TypeScript
+The `responseSubmitted` Trigger is available in Go and Python. The runnable TypeScript
 [`listForms` Flow](typescript/examples/list-forms/README.md) uses the static
 `typeform-forms` connection. A Typeform personal access token is required for
 all operations; `webhook_secret` is optional for the three read operations and

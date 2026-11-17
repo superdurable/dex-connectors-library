@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-typeform",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -261,6 +261,16 @@
           "url"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "define_response_submitted_trigger_binding",
+      "kind": "trigger",
+      "triggerName": "responseSubmitted",
+      "fields": {
+        "connectionName": "connection_name",
+        "bindingName": "binding_name",
+        "configurationUI": "configuration_ui"
       }
     }
   ]
