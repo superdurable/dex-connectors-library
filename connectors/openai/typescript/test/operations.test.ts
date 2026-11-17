@@ -43,7 +43,7 @@ describe('createResponse checkpoint recovery', () => {
     expect(result.kind).toBe('branch');
     if (result.kind === 'branch') expect(result.value.id).toBe('resp_123');
     expect(methods).toEqual(['GET']);
-    expect(heartbeats).toContainEqual({ callId: invocation.id, attempt: 2, responseId: 'resp_123' });
+    expect(heartbeats).toContainEqual({ callId: invocation.id, attempt: 2, responseId: 'resp_123', sendCount: 1 });
   });
 
   it('keeps heartbeating during read-back when the first record fails', async () => {
@@ -65,10 +65,40 @@ describe('createResponse checkpoint recovery', () => {
     } finally { vi.useRealTimers(); }
   });
 
-  it('fails closed without a checkpoint after the first attempt', async () => {
+  it('counts every earlier attempt without a checkpoint and sends nothing at the cap', async () => {
     const provider = client(async () => { throw new Error('unexpected send'); });
-    const result = await provider.createResponse().invoke(call(2).invocation, input);
+    const result = await provider.createResponse().invoke(call(4).invocation, input);
     expect(result.kind).toBe('uncertain');
+  });
+
+  it.each([
+    [1, undefined, 'retry'],
+    [2, { callId: '8a771c3d-aac1-5b5a-97fd-182c7091fa9e', attempt: 1, sendCount: 1 }, 'retry'],
+    [3, { callId: '8a771c3d-aac1-5b5a-97fd-182c7091fa9e', attempt: 2, sendCount: 2 }, 'uncertain'],
+    [5, { callId: '8a771c3d-aac1-5b5a-97fd-182c7091fa9e', attempt: 4, canResend: true, sendCount: 0 }, 'retry'],
+  ] as const)('on attempt %i, an unknown 500 resends below the cap of 3', async (attempt, previous, expected) => {
+    const methods: string[] = [];
+    const provider = client(async request => { methods.push(request.method); return { status: 500, headers: {}, body: Buffer.from('{}') }; });
+    const result = await provider.createResponse().invoke(call(attempt, previous).invocation, input);
+    expect(result.kind).toBe(expected);
+    expect(methods).toEqual(['POST']);
+  });
+
+  it('selects uncertain when a resend after a possible create is refused', async () => {
+    const provider = client(async () => ({ status: 400, headers: {}, body: Buffer.from('{}') }));
+    const { invocation, heartbeats } = call(2, { callId: '8a771c3d-aac1-5b5a-97fd-182c7091fa9e', attempt: 1, sendCount: 1 });
+    const result = await provider.createResponse().invoke(invocation, input);
+    expect(result.kind).toBe('uncertain');
+    expect(heartbeats.at(-1)).toEqual({ callId: invocation.id, attempt: 2, canResend: true, sendCount: 1 });
+  });
+
+  it('treats a foreign checkpoint on a later attempt as a possible earlier send', async () => {
+    const methods: string[] = [];
+    const provider = client(async request => { methods.push(request.method); return { status: 200, headers: {}, body: Buffer.from(JSON.stringify(wire)) }; });
+    const result = await provider.createResponse().invoke(call(2, { callId: 'another-call', attempt: 1 }).invocation, input);
+    expect(result.kind).toBe('branch');
+    if (result.kind === 'branch') expect(result.branch).toBe('completed');
+    expect(methods).toEqual(['POST']);
   });
 
   it('treats a cleared checkpoint as absent and rejects scalar checkpoints', async () => {
@@ -90,7 +120,7 @@ describe('createResponse checkpoint recovery', () => {
     const { invocation, heartbeats } = call();
     const result = await provider.createResponse().invoke(invocation, input);
     expect(result.kind).toBe('retry');
-    expect(heartbeats.at(-1)).toEqual({ callId: invocation.id, attempt: 1, canResend: true });
+    expect(heartbeats.at(-1)).toEqual({ callId: invocation.id, attempt: 1, canResend: true, sendCount: 0 });
   });
 
   it('decodes streamed text and checkpoints its response ID', async () => {
@@ -109,7 +139,7 @@ describe('createResponse checkpoint recovery', () => {
     if (result.kind === 'branch') expect(result.branch).toBe('completed');
     expect(texts).toEqual(['Done.']);
     expect(progresses).toContainEqual({ phase: 'response.created', message: 'in_progress', providerSequence: 12 });
-    expect(heartbeats).toContainEqual({ callId: invocation.id, attempt: 1, responseId: 'resp_123' });
+    expect(heartbeats).toContainEqual({ callId: invocation.id, attempt: 1, responseId: 'resp_123', sendCount: 1 });
   });
 
   it('keeps create headers when a known stream is read back after transport failure', async () => {
@@ -169,7 +199,7 @@ describe('createResponse checkpoint recovery', () => {
 
   it('keeps create headers on an oversized body with no response ID', async () => {
     const provider = client(async () => { throw new BodyTooLargeError(200, { 'x-request-id': 'req_large', 'x-ratelimit-remaining-tokens': '80' }); });
-    const result = await provider.createResponse().invoke(call().invocation, input);
+    const result = await provider.createResponse().invoke(call(3).invocation, input);
     expect(result.kind).toBe('uncertain');
     if (result.kind === 'uncertain') {
       expect(result.receipt.providerRequestId).toBe('req_large');

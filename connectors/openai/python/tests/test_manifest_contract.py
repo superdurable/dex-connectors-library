@@ -57,7 +57,7 @@ def test_manifest_operations_branches_and_defaults() -> None:
     assert create_defaults.execute_method_timeout == timedelta(seconds=150)
     assert create_defaults.execute_durability == 1
     assert create_defaults.execute_retry == RetryPolicy(
-        timedelta(seconds=2), 2, timedelta(seconds=30), 3, timedelta(minutes=5)
+        timedelta(seconds=2), 2, timedelta(seconds=30), 8, timedelta(minutes=15)
     )
     retrieve_defaults = RETRIEVE_RESPONSE_DEFINITION.step_defaults
     assert retrieve_defaults.execute_method_timeout == timedelta(seconds=30)

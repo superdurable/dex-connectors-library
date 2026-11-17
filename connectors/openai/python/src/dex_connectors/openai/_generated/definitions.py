@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
     default_connector_step_execute_retry_policy,
@@ -33,14 +34,16 @@ CREATE_RESPONSE_DEFINITION = MutationDefinition(
         BranchDefinition(COMPLETED, "OpenAI completed the response.", False),
         BranchDefinition(FAILED, "OpenAI returned a terminal failed or incomplete response. A cancelled response is not failed: the next attempt creates a new one.", True),
         BranchDefinition(PROVIDER_REJECTED, "OpenAI conclusively rejected the response request.", True),
-        BranchDefinition(UNCERTAIN, "A request may have created a response that cannot be confirmed: no response ID was observed or checkpointed, for example after HTTP 408 or 409, a 5xx other than 503, or a streamed error event, or the stored response cannot be read back. The Responses API documents no deduplication of create requests.", True),
+        BranchDefinition(UNCERTAIN, "A request may have created a response that cannot be confirmed: the send cap was reached without a response ID observed or checkpointed, for example after HTTP 408 or 409, a 5xx other than 503, or a streamed error event; a resend was refused after an earlier possible create; or the stored response cannot be read back. The Responses API documents no deduplication of create requests.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
         timedelta(seconds=150),
         1,
-        execute_retry=RetryPolicy(timedelta(seconds=2), 2, timedelta(seconds=30), 3, timedelta(seconds=300)),
+        execute_retry=RetryPolicy(timedelta(seconds=2), 2, timedelta(seconds=30), 8, timedelta(seconds=900)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 RETRIEVE_RESPONSE_DEFINITION = QueryDefinition(

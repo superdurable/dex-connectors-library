@@ -212,14 +212,16 @@ var CreateResponseDefinition = sdkgo.MutationDefinition{
 		{ID: CreateResponseBranchCompleted, Description: "OpenAI completed the response."},
 		{ID: CreateResponseBranchFailed, Description: "OpenAI returned a terminal failed or incomplete response. A cancelled response is not failed: the next attempt creates a new one.", Optional: true},
 		{ID: CreateResponseBranchProviderRejected, Description: "OpenAI conclusively rejected the response request.", Optional: true},
-		{ID: CreateResponseBranchUncertain, Description: "A request may have created a response that cannot be confirmed: no response ID was observed or checkpointed, for example after HTTP 408 or 409, a 5xx other than 503, or a streamed error event, or the stored response cannot be read back. The Responses API documents no deduplication of create requests.", Optional: true},
+		{ID: CreateResponseBranchUncertain, Description: "A request may have created a response that cannot be confirmed: the send cap was reached without a response ID observed or checkpointed, for example after HTTP 408 or 409, a 5xx other than 503, or a streamed error event; a resend was refused after an earlier possible create; or the stored response cannot be read back. The Responses API documents no deduplication of create requests.", Optional: true},
 		{ID: CreateResponseBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(150000000000), HeartbeatTimeout: time.Duration(0),
-		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 3, TotalDuration: time.Duration(300000000000)},
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 8, TotalDuration: time.Duration(900000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateResponseResult = sdkgo.MutationResult[Response]
@@ -244,6 +246,8 @@ type CreateResponseStepConfig[IN any] struct {
 	TextStream                        *dex.Stream[string]                            `connector:"textStream"`
 	TextOptions                       []dex.BufferedTextStreamOption                 `connector:"textOptions"`
 	StepOptionsOverride               *dex.StepOptions                               `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateResponseStep[IN any](config CreateResponseStepConfig[IN]) sdkgo.MutationStep[IN, CreateRequest, Response] {
@@ -281,6 +285,7 @@ func NewCreateResponseStep[IN any](config CreateResponseStepConfig[IN]) sdkgo.Mu
 		ProgressStream:  config.ProgressStream,
 		TextStream:      config.TextStream, TextOptions: config.TextOptions,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 

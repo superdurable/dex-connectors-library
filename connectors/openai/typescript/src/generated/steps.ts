@@ -19,7 +19,7 @@ export interface CreateResponseStepConfig<StepInput, OperationInput = CreateRequ
   failed?: StepTarget<MutationResult<OperationOutput>>;
   /** OpenAI conclusively rejected the response request. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** A request may have created a response that cannot be confirmed: no response ID was observed or checkpointed, for example after HTTP 408 or 409, a 5xx other than 503, or a streamed error event, or the stored response cannot be read back. The Responses API documents no deduplication of create requests. */
+  /** A request may have created a response that cannot be confirmed: the send cap was reached without a response ID observed or checkpointed, for example after HTTP 408 or 409, a 5xx other than 503, or a streamed error event; a resend was refused after an earlier possible create; or the stored response cannot be read back. The Responses API documents no deduplication of create requests. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

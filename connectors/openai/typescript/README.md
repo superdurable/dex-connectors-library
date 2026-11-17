@@ -1,8 +1,8 @@
 # OpenAI Connector for TypeScript
 
-`@superdurable/connector-openai` exposes the stored Responses API as two Dex operations: `createResponse` and `retrieveResponse`. Create is a Mutation with a heartbeat checkpoint. It reads back a known response ID after a retry, and returns uncertainty when an unconfirmed write cannot safely be repeated. Retrieve is a Query. Both operations resolve the connection's API key before each request.
+`@superdurable/connector-openai` exposes the stored Responses API as two Dex operations: `createResponse` and `retrieveResponse`. Create is a Mutation with a heartbeat checkpoint. It reads back a known response ID after a retry. Without a known ID, an unconfirmed create retries and resends while possible creates, counted by the checkpoint's `sendCount`, stay below the send cap of 3, and returns uncertainty at the cap. Retrieve is a Query. Both operations resolve the connection's API key before each request.
 
-Install the package with `npm install @superdurable/connector-openai`. Dex TypeScript `@superdurable/dex` and `@superdurable/connectors-sdk` are peer application dependencies; the connector pins the Connector SDK to `0.3.0`.
+Install the package with `npm install @superdurable/connector-openai`. Dex TypeScript `@superdurable/dex` and `@superdurable/connectors-sdk` are peer application dependencies; the connector pins the Connector SDK to `0.12.0`.
 
 When a streamed `createResponse` exceeds its configured body limit, the connector drains the provider stream before reading back a known response ID. This lets the provider finish creating the response before the read-back request.
 
