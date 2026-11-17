@@ -30,6 +30,7 @@ from .steps import (
     QueryStep,
     QueryStepConfig,
     StepAnnotations,
+    derive_step_call_id,
     raise_dex_retry,
 )
 from .timestamps import RFC3339NanoTimestamp, format_rfc3339_nano
@@ -173,6 +174,7 @@ __all__ = [
     "default_connector_step_execute_retry_policy",
     "deliver_trigger",
     "derive_call_id",
+    "derive_step_call_id",
     "format_rfc3339_nano",
     "has_durable_trigger_inbox",
     "is_trigger_undeliverable",

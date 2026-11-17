@@ -3,19 +3,18 @@
 """Private per-Step heartbeat checkpoint shared by every Fence of one Step attempt."""
 
 import asyncio
-import weakref
 from typing import Any
 
 import dex
 
+from .._step_attempt import _StepAttemptRegistry
 from .markers import Marker, _checkpoint_heartbeat, _markers_from_heartbeat
 
 
 class _StepCheckpoint:
     """Merge the markers of every Fence in one Step attempt into each heartbeat."""
 
-    def __init__(self, attempt: int, markers: dict[str, Marker]) -> None:
-        self.attempt = attempt
+    def __init__(self, markers: dict[str, Marker]) -> None:
         self._markers = markers
         self._lock = asyncio.Lock()
 
@@ -27,21 +26,15 @@ class _StepCheckpoint:
             self._markers = markers
 
 
-_step_checkpoints: "weakref.WeakKeyDictionary[object, _StepCheckpoint]" = weakref.WeakKeyDictionary()
+def _new_step_checkpoint(context: dex.AsyncContext) -> _StepCheckpoint:
+    return _StepCheckpoint(_previous_attempt_markers(context))
+
+
+_step_checkpoints: _StepAttemptRegistry[_StepCheckpoint] = _StepAttemptRegistry(_new_step_checkpoint)
 
 
 def _step_checkpoint_for(context: dex.AsyncContext) -> _StepCheckpoint:
-    # An unweakrefable context gets an unshared checkpoint; lost entries only overcount.
-    attempt = context.attempt
-    try:
-        existing = _step_checkpoints.get(context)
-    except TypeError:
-        return _StepCheckpoint(attempt, _previous_attempt_markers(context))
-    if existing is not None and existing.attempt == attempt:
-        return existing
-    checkpoint = _StepCheckpoint(attempt, _previous_attempt_markers(context))
-    _step_checkpoints[context] = checkpoint
-    return checkpoint
+    return _step_checkpoints.value_for(context)
 
 
 def _previous_attempt_markers(context: dex.AsyncContext) -> dict[str, Marker]:

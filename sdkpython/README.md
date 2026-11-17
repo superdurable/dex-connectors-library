@@ -565,6 +565,15 @@ attempt assumes each earlier attempt sent once, which can only overcount.
 The heartbeat format is internal to the connector SDKs and may change; hosts
 must not parse it and classify a result by the connector's selected branch.
 
+Each call needs its own Call ID even when one Step calls the same operation
+twice. `derive_step_call_id(context, operation)` counts the calls of each
+operation in a Step attempt: the first returns `derive_call_id`'s ID, so
+idempotency keys of single calls never change, and the n-th returns
+`derive_call_id(..., occurrence=n)`. Step factories use it; a Step that builds
+a `Call` for `run_query` or `run_mutation` itself calls it once per call. The
+count restarts each attempt, so the Step must make its calls in a
+deterministic order.
+
 `Fence(..., max_sends=n)` caps sends per call; the default 1 keeps the
 decisions above and omits `sendCount`. With a cap of 2
 or more, each marker also records `send_count`, JSON `sendCount`: the possibly
@@ -654,7 +663,7 @@ The core example sends through an in-process HTTP transport.
 
 ## Version history
 
-- `0.13.0` (breaking): One Step may make several fenced writes. Every Fence heartbeat holds one marker per Call ID of the Step attempt, merged across Fences, including concurrent tasks, and `decide_dispatch` takes the whole previous heartbeat and reads only its own Call ID's entry. A heartbeat it cannot read, including a single marker from an earlier release, counts as no marker instead of failing closed; a later attempt then assumes each earlier attempt sent once. The heartbeat format is internal and may change; hosts must not parse it. Releases before `0.13.0` fail closed on the new format.
+- `0.13.0` (breaking): One Step may make several fenced writes. Every Fence heartbeat holds one marker per Call ID of the Step attempt, merged across Fences, including concurrent tasks, and `decide_dispatch` takes the whole previous heartbeat and reads only its own Call ID's entry. A heartbeat it cannot read, including a single marker from an earlier release, counts as no marker instead of failing closed; a later attempt then assumes each earlier attempt sent once. The heartbeat format is internal and may change; hosts must not parse it. Releases before `0.13.0` fail closed on the new format. `derive_step_call_id` and `derive_call_id(..., occurrence=n)` give the n-th call of one operation in a Step attempt its own Call ID; the first call's ID is unchanged.
 - `0.12.0`: Add the durable poll Trigger kit `pollingtrigger` (binding and feed pollers, `PollRunner`, keyed snapshots, `new_binding_trigger_source`, `new_trigger_credential_call`) and `projectconfig.PollCursorStore` with `LoadedProject.poll_cursor_store` and `poll_feed_cursor_store`, byte-compatible with the Go kit. Local poll cursor objects may be 8 MiB. This addition is not breaking.
 - `0.11.0`: Add Trigger support: Trigger identities and runners, `deliver_trigger` with capped retries, Dex Flow and RPC Trigger targets, durable project Trigger inboxes byte-compatible with Go and TypeScript (file-backed for Dex Web projects), relay signatures and `LoadedProject.verify_relayed_request` and `register_relayed_trigger`, and `webhooktrigger.WebhookEndpoint` as an ASGI application with lifespan-run Trigger runners. Local Trigger inbox objects may be 8 MiB. This addition is not breaking.
 - `0.10.0`: The single-dispatch fence supports bounded resend on unknown outcomes. `Fence` and `decide_dispatch` accept `max_sends` (default 1, unchanged decisions and marker bytes); with a cap of 2 or more, markers carry an optional `sendCount` and decisions can return `DecisionKind.READ_BACK_THEN_RESEND_ALLOWED`. `RepeatOnUnknown`, `MutationDefinition.repeat_on_unknown` and `max_sends`, `Call.max_sends`, and `MutationStepConfig.max_sends_override` expose the send cap to Steps. Workers on `0.9.0` ignore `sendCount` and keep their conservative decisions. This addition is not breaking.

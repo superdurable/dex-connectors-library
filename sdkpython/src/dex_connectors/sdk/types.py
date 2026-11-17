@@ -37,12 +37,24 @@ class CallID(str):
             raise ValueError("call ID must be a UUID") from error
 
 
-def derive_call_id(flow_id: str, step_execution_id: str, operation: "OperationRef") -> CallID:
-    """Derive Go's length-prefixed SHA-1 UUID for one Dex Step execution."""
+def derive_call_id(
+    flow_id: str, step_execution_id: str, operation: "OperationRef", *, occurrence: int = 1,
+) -> CallID:
+    """Derive Go's length-prefixed SHA-1 UUID for one Dex Step execution.
+
+    `occurrence` is the one-based ordinal of this call among the calls of
+    the same operation in one Step attempt. Occurrence 1 keeps the
+    four-field derivation; from 2 the decimal ordinal is a fifth field, as
+    in Go.
+    """
     if not flow_id or not step_execution_id:
         raise ValueError("Dex Flow and Step execution IDs are required")
+    if not isinstance(occurrence, int) or isinstance(occurrence, bool) or occurrence < 1:
+        raise ValueError("call occurrence must be a positive integer")
     operation.validate()
-    fields = (flow_id, step_execution_id, operation.connector_id, operation.operation_id)
+    fields: tuple[str, ...] = (flow_id, step_execution_id, operation.connector_id, operation.operation_id)
+    if occurrence > 1:
+        fields = (*fields, str(occurrence))
     payload = b"".join(len(field.encode()).to_bytes(4, "big") + field.encode() for field in fields)
     digest = hashlib.sha1(_CALL_ID_NAMESPACE.bytes + payload).digest()[:16]
     return CallID(str(UUID(bytes=digest, version=5)))

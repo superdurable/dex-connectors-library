@@ -10,6 +10,7 @@ from typing import Generic, NoReturn, TypeVar, cast
 
 import dex
 
+from ._step_attempt import _next_call_occurrence
 from .configuration_ui import ConnectorConfigurationUI
 from .errors import Failure, RetryError
 from .operations import Mutation, Query, run_mutation, run_query
@@ -17,9 +18,11 @@ from .retry_policy import default_connector_step_execute_retry_policy
 from .singledispatch.markers import MINIMUM_MAX_SENDS, validate_max_sends
 from .types import (
     Call,
+    CallID,
     ConnectionRef,
     MutationDefinition,
     MutationResult,
+    OperationRef,
     ProgressUpdate,
     QueryResult,
     RepeatOnUnknown,
@@ -354,12 +357,10 @@ def _call(
     text_stream: dex.Stream[str] | None, text_flush_interval: timedelta,
     text_max_buffered_bytes: int, *, max_sends: int = MINIMUM_MAX_SENDS,
 ) -> Call:
-    from .types import OperationRef
-
     operation_ref = cast(OperationRef, operation)
     if not context.flow_id or not context.step_execution_id:
         raise ValueError("connector operations require a Dex Flow and Step execution")
-    call_id = derive_call_id(context.flow_id, context.step_execution_id, operation_ref)
+    call_id = derive_step_call_id(context, operation_ref)
     progress_reporter = (
         _ProgressReporter(progress_stream, context, call_id)
         if progress_stream is not None else None
@@ -374,6 +375,26 @@ def _call(
     return Call(
         call_id, connection, operation_ref, context=context,
         _progress_reporter=progress_reporter, _text_writer=text_writer, max_sends=max_sends,
+    )
+
+
+def derive_step_call_id(context: dex.AsyncContext, operation: OperationRef) -> CallID:
+    """Derive the Call ID of the next call of `operation` in this Step attempt.
+
+    The first call of an operation in a Step attempt gets `derive_call_id`'s
+    ID; the n-th call of the same operation gets occurrence n, so several
+    fenced writes of one operation keep separate checkpoint entries. The
+    count restarts each attempt, so the IDs stay stable across retries only
+    when the Step makes its calls in a deterministic order. Step factories
+    call it; a Step that builds a `Call` for `run_query` or `run_mutation`
+    itself calls it once per call.
+    """
+    if not context.flow_id or not context.step_execution_id:
+        raise ValueError("connector operations require a Dex Flow and Step execution")
+    operation.validate()
+    occurrence = _next_call_occurrence(context, operation.connector_id, operation.operation_id)
+    return derive_call_id(
+        context.flow_id, context.step_execution_id, operation, occurrence=occurrence
     )
 
 

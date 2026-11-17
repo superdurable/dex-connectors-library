@@ -11,7 +11,7 @@ from typing import Any, cast
 import dex
 import pytest
 
-from dex_connectors.sdk import Call, CallID, ConnectionRef, OperationRef
+from dex_connectors.sdk import Call, CallID, ConnectionRef, OperationRef, derive_step_call_id
 from dex_connectors.sdk.singledispatch import (
     CheckpointError,
     DecisionKind,
@@ -276,6 +276,8 @@ class FakeContext:
 
     def __init__(self, attempt: int = 1, previous: object | None = None) -> None:
         self.attempt = attempt
+        self.flow_id = "flow-1"
+        self.step_execution_id = "step-1"
         self.deadline = datetime.now(UTC) + timedelta(seconds=10)
         self.previous = previous
         self.heartbeats: list[object] = []
@@ -794,6 +796,36 @@ async def test_failed_heartbeat_does_not_commit_entry() -> None:
     await other.decide()
     await other.dispatch(lambda deadline: asyncio.sleep(0))
     assert list(markers_from_heartbeat(context.heartbeats[-1])) == [GMAIL_CALL_ID]
+
+
+@pytest.mark.asyncio
+async def test_repeated_operation_in_one_step_gets_distinct_stable_call_ids() -> None:
+    """Two calls of one operation keep separate entries and the same IDs on retry."""
+
+    def occurrence_fence(context: FakeContext) -> Fence:
+        step_context = cast(dex.AsyncContext, context)
+        operation = OperationRef("sample", "createItem")
+        call = Call(
+            derive_step_call_id(step_context, operation), ConnectionRef("sample", "main"),
+            operation, context=step_context,
+        )
+        return Fence(call, timedelta(minutes=1))
+
+    context = FakeContext()
+    first_ids = []
+    for _ in range(2):
+        fence = occurrence_fence(context)
+        assert (await fence.decide()).kind == DecisionKind.SEND_ALLOWED
+        await fence.dispatch(lambda deadline: asyncio.sleep(0))
+        first_ids.append(fence._call.id)
+    assert first_ids[0] != first_ids[1]
+    assert sorted(markers_from_heartbeat(context.heartbeats[-1])) == sorted(first_ids)
+
+    retry = FakeContext(2, context.heartbeats[-1])
+    for expected_id in first_ids:
+        fence = occurrence_fence(retry)
+        assert fence._call.id == expected_id
+        assert (await fence.decide()).kind == DecisionKind.READ_BACK_REQUIRED
 
 
 def test_step_checkpoint_is_shared_per_attempt_and_released_with_context() -> None:
