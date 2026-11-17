@@ -28496,6 +28496,3501 @@
       },
       "name": "deleteSuppression-defect",
       "operation": "deleteSuppression"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"webhook\",\"id\":\"webhook-1\",\"endpoint\":\"https://hooks.example.test/resend\",\"events\":[\"email.sent\",\"email.delivered\"],\"status\":\"enabled\",\"created_at\":\"2026-11-16T00:00:00Z\",\"signing_secret\":\"whsec_test_only\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "created_at": "2026-11-16T00:00:00Z",
+          "endpoint": "https://hooks.example.test/resend",
+          "events": [
+            "email.sent",
+            "email.delivered"
+          ],
+          "id": "webhook-1",
+          "status": "enabled"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "webhook-1"
+      },
+      "name": "getWebhook-success",
+      "operation": "getWebhook"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"webhook_event\",\"id\":\"event-1\",\"type\":\"email.sent\",\"created_at\":\"2026-11-16T00:00:00Z\",\"status\":\"success\",\"payload\":{\"test_secret\":\"never-persist\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "created_at": "2026-11-16T00:00:00Z",
+          "id": "event-1",
+          "next_attempt_at": "",
+          "status": "success",
+          "type": "email.sent"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "event-1",
+        "webhookId": "webhook-1"
+      },
+      "name": "getWebhookEvent-success",
+      "operation": "getWebhookEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "created_at": "",
+          "endpoint": "",
+          "events": [],
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "webhook-1"
+      },
+      "name": "getWebhook-missing",
+      "operation": "getWebhook"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "created_at": "",
+          "id": "",
+          "next_attempt_at": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "event-1",
+        "webhookId": "webhook-1"
+      },
+      "name": "getWebhookEvent-missing",
+      "operation": "getWebhookEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "created_at": "",
+          "endpoint": "",
+          "events": [],
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "webhook-1"
+      },
+      "name": "getWebhook-rejected",
+      "operation": "getWebhook"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "created_at": "",
+          "id": "",
+          "next_attempt_at": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "event-1",
+        "webhookId": "webhook-1"
+      },
+      "name": "getWebhookEvent-rejected",
+      "operation": "getWebhookEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "created_at": "",
+          "endpoint": "",
+          "events": [],
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "webhook-1"
+      },
+      "name": "getWebhook-invalid",
+      "operation": "getWebhook"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "created_at": "",
+          "id": "",
+          "next_attempt_at": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "event-1",
+        "webhookId": "webhook-1"
+      },
+      "name": "getWebhookEvent-invalid",
+      "operation": "getWebhookEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "created_at": "",
+          "endpoint": "",
+          "events": [],
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": ""
+      },
+      "name": "getWebhook-defect",
+      "operation": "getWebhook"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "created_at": "",
+          "id": "",
+          "next_attempt_at": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "event-1",
+        "webhookId": ""
+      },
+      "name": "getWebhookEvent-defect",
+      "operation": "getWebhookEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "webhook-1"
+      },
+      "name": "getWebhook-rate",
+      "operation": "getWebhook"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "event-1",
+        "webhookId": "webhook-1"
+      },
+      "name": "getWebhookEvent-rate",
+      "operation": "getWebhookEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "webhook-1"
+      },
+      "name": "getWebhook-server",
+      "operation": "getWebhook"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "event-1",
+        "webhookId": "webhook-1"
+      },
+      "name": "getWebhookEvent-server",
+      "operation": "getWebhookEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "webhook-1"
+      },
+      "name": "getWebhook-transport",
+      "operation": "getWebhook"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "event-1",
+        "webhookId": "webhook-1"
+      },
+      "name": "getWebhookEvent-transport",
+      "operation": "getWebhookEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"object\":\"webhook\",\"id\":\"webhook-1\",\"endpoint\":\"https://hooks.example.test/resend\",\"events\":[\"email.sent\",\"email.delivered\"],\"status\":\"enabled\",\"created_at\":\"2026-11-16T00:00:00Z\",\"signing_secret\":\"whsec_test_only\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks",
+          "query": {
+            "after": [
+              "webhook-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "created_at": "2026-11-16T00:00:00Z",
+              "endpoint": "https://hooks.example.test/resend",
+              "events": [
+                "email.sent",
+                "email.delivered"
+              ],
+              "id": "webhook-1",
+              "status": "enabled"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "webhook-0",
+        "limit": 10
+      },
+      "name": "listWebhooks-success",
+      "operation": "listWebhooks"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"object\":\"webhook_event\",\"id\":\"event-1\",\"type\":\"email.sent\",\"created_at\":\"2026-11-16T00:00:00Z\",\"status\":\"success\",\"payload\":{\"test_secret\":\"never-persist\"}}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1/events",
+          "query": {
+            "after": [
+              "event-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "created_at": "2026-11-16T00:00:00Z",
+              "id": "event-1",
+              "next_attempt_at": "",
+              "status": "success",
+              "type": "email.sent"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "event-0",
+        "limit": 10,
+        "webhookId": "webhook-1"
+      },
+      "name": "listWebhookEvents-success",
+      "operation": "listWebhookEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"attempt-1\",\"http_status_code\":200,\"sent_at\":\"2026-11-16T00:00:01Z\",\"response\":\"secret response body\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1/events/event-1/attempts",
+          "query": {
+            "after": [
+              "attempt-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "http_status_code": 200,
+              "id": "attempt-1",
+              "sent_at": "2026-11-16T00:00:01Z"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attempt-0",
+        "eventId": "event-1",
+        "limit": 10,
+        "webhookId": "webhook-1"
+      },
+      "name": "listWebhookEventAttempts-success",
+      "operation": "listWebhookEventAttempts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks",
+          "query": {
+            "after": [
+              "webhook-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "webhook-0",
+        "limit": 10
+      },
+      "name": "listWebhooks-rejected",
+      "operation": "listWebhooks"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1/events",
+          "query": {
+            "after": [
+              "event-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "event-0",
+        "limit": 10,
+        "webhookId": "webhook-1"
+      },
+      "name": "listWebhookEvents-rejected",
+      "operation": "listWebhookEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1/events/event-1/attempts",
+          "query": {
+            "after": [
+              "attempt-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attempt-0",
+        "eventId": "event-1",
+        "limit": 10,
+        "webhookId": "webhook-1"
+      },
+      "name": "listWebhookEventAttempts-rejected",
+      "operation": "listWebhookEventAttempts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks",
+          "query": {
+            "after": [
+              "webhook-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "webhook-0",
+        "limit": 10
+      },
+      "name": "listWebhooks-invalid",
+      "operation": "listWebhooks"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1/events",
+          "query": {
+            "after": [
+              "event-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "event-0",
+        "limit": 10,
+        "webhookId": "webhook-1"
+      },
+      "name": "listWebhookEvents-invalid",
+      "operation": "listWebhookEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1/events/event-1/attempts",
+          "query": {
+            "after": [
+              "attempt-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attempt-0",
+        "eventId": "event-1",
+        "limit": 10,
+        "webhookId": "webhook-1"
+      },
+      "name": "listWebhookEventAttempts-invalid",
+      "operation": "listWebhookEventAttempts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "webhook-0",
+        "limit": -1
+      },
+      "name": "listWebhooks-defect",
+      "operation": "listWebhooks"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "event-0",
+        "limit": 10,
+        "webhookId": ""
+      },
+      "name": "listWebhookEvents-defect",
+      "operation": "listWebhookEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attempt-0",
+        "eventId": "event-1",
+        "limit": 10,
+        "webhookId": ""
+      },
+      "name": "listWebhookEventAttempts-defect",
+      "operation": "listWebhookEventAttempts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks",
+          "query": {
+            "after": [
+              "webhook-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "webhook-0",
+        "limit": 10
+      },
+      "name": "listWebhooks-rate",
+      "operation": "listWebhooks"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1/events",
+          "query": {
+            "after": [
+              "event-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "event-0",
+        "limit": 10,
+        "webhookId": "webhook-1"
+      },
+      "name": "listWebhookEvents-rate",
+      "operation": "listWebhookEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1/events/event-1/attempts",
+          "query": {
+            "after": [
+              "attempt-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attempt-0",
+        "eventId": "event-1",
+        "limit": 10,
+        "webhookId": "webhook-1"
+      },
+      "name": "listWebhookEventAttempts-rate",
+      "operation": "listWebhookEventAttempts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks",
+          "query": {
+            "after": [
+              "webhook-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "webhook-0",
+        "limit": 10
+      },
+      "name": "listWebhooks-server",
+      "operation": "listWebhooks"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1/events",
+          "query": {
+            "after": [
+              "event-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "event-0",
+        "limit": 10,
+        "webhookId": "webhook-1"
+      },
+      "name": "listWebhookEvents-server",
+      "operation": "listWebhookEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1/events/event-1/attempts",
+          "query": {
+            "after": [
+              "attempt-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attempt-0",
+        "eventId": "event-1",
+        "limit": 10,
+        "webhookId": "webhook-1"
+      },
+      "name": "listWebhookEventAttempts-server",
+      "operation": "listWebhookEventAttempts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks",
+          "query": {
+            "after": [
+              "webhook-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "webhook-0",
+        "limit": 10
+      },
+      "name": "listWebhooks-transport",
+      "operation": "listWebhooks"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1/events",
+          "query": {
+            "after": [
+              "event-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "event-0",
+        "limit": 10,
+        "webhookId": "webhook-1"
+      },
+      "name": "listWebhookEvents-transport",
+      "operation": "listWebhookEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks/webhook-1/events/event-1/attempts",
+          "query": {
+            "after": [
+              "attempt-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attempt-0",
+        "eventId": "event-1",
+        "limit": 10,
+        "webhookId": "webhook-1"
+      },
+      "name": "listWebhookEventAttempts-transport",
+      "operation": "listWebhookEventAttempts"
+    },
+    {
+      "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"webhook\",\"id\":\"webhook-1\",\"signing_secret\":\"whsec_test_only\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks",
+          "requestBody": {
+            "endpoint": "https://hooks.example.test/resend",
+            "events": [
+              "email.sent",
+              "email.delivered"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "webhook-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+      "input": {
+        "endpoint": "https://hooks.example.test/resend",
+        "events": [
+          "email.sent",
+          "email.delivered"
+        ]
+      },
+      "name": "createWebhook-success",
+      "operation": "createWebhook"
+    },
+    {
+      "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks",
+          "requestBody": {
+            "endpoint": "https://hooks.example.test/resend",
+            "events": [
+              "email.sent",
+              "email.delivered"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+      "input": {
+        "endpoint": "https://hooks.example.test/resend",
+        "events": [
+          "email.sent",
+          "email.delivered"
+        ]
+      },
+      "name": "createWebhook-rejected",
+      "operation": "createWebhook"
+    },
+    {
+      "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks",
+          "requestBody": {
+            "endpoint": "https://hooks.example.test/resend",
+            "events": [
+              "email.sent",
+              "email.delivered"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+      "input": {
+        "endpoint": "https://hooks.example.test/resend",
+        "events": [
+          "email.sent",
+          "email.delivered"
+        ]
+      },
+      "name": "createWebhook-429",
+      "operation": "createWebhook"
+    },
+    {
+      "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks",
+          "requestBody": {
+            "endpoint": "https://hooks.example.test/resend",
+            "events": [
+              "email.sent",
+              "email.delivered"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+      "input": {
+        "endpoint": "https://hooks.example.test/resend",
+        "events": [
+          "email.sent",
+          "email.delivered"
+        ]
+      },
+      "name": "createWebhook-5xx",
+      "operation": "createWebhook"
+    },
+    {
+      "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks",
+          "requestBody": {
+            "endpoint": "https://hooks.example.test/resend",
+            "events": [
+              "email.sent",
+              "email.delivered"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+      "input": {
+        "endpoint": "https://hooks.example.test/resend",
+        "events": [
+          "email.sent",
+          "email.delivered"
+        ]
+      },
+      "name": "createWebhook-transport",
+      "operation": "createWebhook"
+    },
+    {
+      "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+      "input": {
+        "endpoint": "",
+        "events": [
+          "email.sent",
+          "email.delivered"
+        ]
+      },
+      "name": "createWebhook-defect",
+      "operation": "createWebhook"
+    },
+    {
+      "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks",
+          "requestBody": {
+            "endpoint": "https://hooks.example.test/resend",
+            "events": [
+              "email.sent",
+              "email.delivered"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+      "input": {
+        "endpoint": "https://hooks.example.test/resend",
+        "events": [
+          "email.sent",
+          "email.delivered"
+        ]
+      },
+      "name": "createWebhook-conflict",
+      "operation": "createWebhook"
+    },
+    {
+      "attempts": 2,
+      "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks",
+          "requestBody": {
+            "endpoint": "https://hooks.example.test/resend",
+            "events": [
+              "email.sent",
+              "email.delivered"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"object\":\"webhook\",\"id\":\"webhook-1\",\"endpoint\":\"https://hooks.example.test/resend\",\"events\":[\"email.sent\",\"email.delivered\"],\"status\":\"enabled\",\"created_at\":\"2026-11-16T00:00:00Z\",\"signing_secret\":\"whsec_test_only\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "webhook-1"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+      "input": {
+        "endpoint": "https://hooks.example.test/resend",
+        "events": [
+          "email.sent",
+          "email.delivered"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createWebhook-retry-readback",
+      "operation": "createWebhook"
+    },
+    {
+      "attempts": 3,
+      "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks",
+          "requestBody": {
+            "endpoint": "https://hooks.example.test/resend",
+            "events": [
+              "email.sent",
+              "email.delivered"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"object\":\"list\",\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks",
+          "requestBody": {
+            "endpoint": "https://hooks.example.test/resend",
+            "events": [
+              "email.sent",
+              "email.delivered"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"object\":\"list\",\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhooks",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks",
+          "requestBody": {
+            "endpoint": "https://hooks.example.test/resend",
+            "events": [
+              "email.sent",
+              "email.delivered"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+      "input": {
+        "endpoint": "https://hooks.example.test/resend",
+        "events": [
+          "email.sent",
+          "email.delivered"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createWebhook-send-cap",
+      "operation": "createWebhook"
+    },
+    {
+      "callId": "1034d05a-5cfa-5523-bcbb-aabac0a9cf57",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"webhook\",\"id\":\"webhook-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/webhooks/webhook-1",
+          "requestBody": {
+            "endpoint": "https://hooks.example.test/resend",
+            "events": [
+              "email.sent",
+              "email.delivered"
+            ],
+            "status": "enabled"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "webhook-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1034d05a-5cfa-5523-bcbb-aabac0a9cf57",
+      "input": {
+        "endpoint": "https://hooks.example.test/resend",
+        "events": [
+          "email.sent",
+          "email.delivered"
+        ],
+        "id": "webhook-1",
+        "status": "enabled"
+      },
+      "name": "updateWebhook-success",
+      "operation": "updateWebhook"
+    },
+    {
+      "callId": "1034d05a-5cfa-5523-bcbb-aabac0a9cf57",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/webhooks/webhook-1",
+          "requestBody": {
+            "endpoint": "https://hooks.example.test/resend",
+            "events": [
+              "email.sent",
+              "email.delivered"
+            ],
+            "status": "enabled"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1034d05a-5cfa-5523-bcbb-aabac0a9cf57",
+      "input": {
+        "endpoint": "https://hooks.example.test/resend",
+        "events": [
+          "email.sent",
+          "email.delivered"
+        ],
+        "id": "webhook-1",
+        "status": "enabled"
+      },
+      "name": "updateWebhook-notFound",
+      "operation": "updateWebhook"
+    },
+    {
+      "callId": "1034d05a-5cfa-5523-bcbb-aabac0a9cf57",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/webhooks/webhook-1",
+          "requestBody": {
+            "endpoint": "https://hooks.example.test/resend",
+            "events": [
+              "email.sent",
+              "email.delivered"
+            ],
+            "status": "enabled"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1034d05a-5cfa-5523-bcbb-aabac0a9cf57",
+      "input": {
+        "endpoint": "https://hooks.example.test/resend",
+        "events": [
+          "email.sent",
+          "email.delivered"
+        ],
+        "id": "webhook-1",
+        "status": "enabled"
+      },
+      "name": "updateWebhook-providerRejected",
+      "operation": "updateWebhook"
+    },
+    {
+      "callId": "1034d05a-5cfa-5523-bcbb-aabac0a9cf57",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/webhooks/webhook-1",
+          "requestBody": {
+            "endpoint": "https://hooks.example.test/resend",
+            "events": [
+              "email.sent",
+              "email.delivered"
+            ],
+            "status": "enabled"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1034d05a-5cfa-5523-bcbb-aabac0a9cf57",
+      "input": {
+        "endpoint": "https://hooks.example.test/resend",
+        "events": [
+          "email.sent",
+          "email.delivered"
+        ],
+        "id": "webhook-1",
+        "status": "enabled"
+      },
+      "name": "updateWebhook-invalidResponse",
+      "operation": "updateWebhook"
+    },
+    {
+      "callId": "1034d05a-5cfa-5523-bcbb-aabac0a9cf57",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1034d05a-5cfa-5523-bcbb-aabac0a9cf57",
+      "input": {
+        "id": ""
+      },
+      "name": "updateWebhook-defect",
+      "operation": "updateWebhook"
+    },
+    {
+      "callId": "1034d05a-5cfa-5523-bcbb-aabac0a9cf57",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/webhooks/webhook-1",
+          "requestBody": {
+            "endpoint": "https://hooks.example.test/resend",
+            "events": [
+              "email.sent",
+              "email.delivered"
+            ],
+            "status": "enabled"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1034d05a-5cfa-5523-bcbb-aabac0a9cf57",
+      "input": {
+        "endpoint": "https://hooks.example.test/resend",
+        "events": [
+          "email.sent",
+          "email.delivered"
+        ],
+        "id": "webhook-1",
+        "status": "enabled"
+      },
+      "name": "updateWebhook-429",
+      "operation": "updateWebhook"
+    },
+    {
+      "callId": "1034d05a-5cfa-5523-bcbb-aabac0a9cf57",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/webhooks/webhook-1",
+          "requestBody": {
+            "endpoint": "https://hooks.example.test/resend",
+            "events": [
+              "email.sent",
+              "email.delivered"
+            ],
+            "status": "enabled"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1034d05a-5cfa-5523-bcbb-aabac0a9cf57",
+      "input": {
+        "endpoint": "https://hooks.example.test/resend",
+        "events": [
+          "email.sent",
+          "email.delivered"
+        ],
+        "id": "webhook-1",
+        "status": "enabled"
+      },
+      "name": "updateWebhook-5xx",
+      "operation": "updateWebhook"
+    },
+    {
+      "callId": "1034d05a-5cfa-5523-bcbb-aabac0a9cf57",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/webhooks/webhook-1",
+          "requestBody": {
+            "endpoint": "https://hooks.example.test/resend",
+            "events": [
+              "email.sent",
+              "email.delivered"
+            ],
+            "status": "enabled"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1034d05a-5cfa-5523-bcbb-aabac0a9cf57",
+      "input": {
+        "endpoint": "https://hooks.example.test/resend",
+        "events": [
+          "email.sent",
+          "email.delivered"
+        ],
+        "id": "webhook-1",
+        "status": "enabled"
+      },
+      "name": "updateWebhook-transport",
+      "operation": "updateWebhook"
+    },
+    {
+      "callId": "95df1c43-da05-5490-b641-e7721c569a90",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"webhook\",\"id\":\"webhook-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/webhooks/webhook-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "webhook-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "95df1c43-da05-5490-b641-e7721c569a90",
+      "input": {
+        "id": "webhook-1"
+      },
+      "name": "deleteWebhook-success",
+      "operation": "deleteWebhook"
+    },
+    {
+      "callId": "95df1c43-da05-5490-b641-e7721c569a90",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/webhooks/webhook-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "95df1c43-da05-5490-b641-e7721c569a90",
+      "input": {
+        "id": "webhook-1"
+      },
+      "name": "deleteWebhook-notFound",
+      "operation": "deleteWebhook"
+    },
+    {
+      "callId": "95df1c43-da05-5490-b641-e7721c569a90",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/webhooks/webhook-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "95df1c43-da05-5490-b641-e7721c569a90",
+      "input": {
+        "id": "webhook-1"
+      },
+      "name": "deleteWebhook-rejected",
+      "operation": "deleteWebhook"
+    },
+    {
+      "callId": "95df1c43-da05-5490-b641-e7721c569a90",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/webhooks/webhook-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "95df1c43-da05-5490-b641-e7721c569a90",
+      "input": {
+        "id": "webhook-1"
+      },
+      "name": "deleteWebhook-invalid",
+      "operation": "deleteWebhook"
+    },
+    {
+      "callId": "95df1c43-da05-5490-b641-e7721c569a90",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/webhooks/webhook-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "95df1c43-da05-5490-b641-e7721c569a90",
+      "input": {
+        "id": "webhook-1"
+      },
+      "name": "deleteWebhook-429",
+      "operation": "deleteWebhook"
+    },
+    {
+      "callId": "95df1c43-da05-5490-b641-e7721c569a90",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/webhooks/webhook-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "95df1c43-da05-5490-b641-e7721c569a90",
+      "input": {
+        "id": "webhook-1"
+      },
+      "name": "deleteWebhook-5xx",
+      "operation": "deleteWebhook"
+    },
+    {
+      "callId": "95df1c43-da05-5490-b641-e7721c569a90",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/webhooks/webhook-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "95df1c43-da05-5490-b641-e7721c569a90",
+      "input": {
+        "id": "webhook-1"
+      },
+      "name": "deleteWebhook-transport",
+      "operation": "deleteWebhook"
+    },
+    {
+      "callId": "95df1c43-da05-5490-b641-e7721c569a90",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "95df1c43-da05-5490-b641-e7721c569a90",
+      "input": {
+        "id": ""
+      },
+      "name": "deleteWebhook-defect",
+      "operation": "deleteWebhook"
+    },
+    {
+      "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"webhook_event\",\"id\":\"event-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks/webhook-1/events/event-1/replay",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "replayed",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "created_at": "",
+          "id": "event-1",
+          "next_attempt_at": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+      "input": {
+        "eventId": "event-1",
+        "webhookId": "webhook-1"
+      },
+      "name": "replayWebhookEvent-success",
+      "operation": "replayWebhookEvent"
+    },
+    {
+      "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks/webhook-1/events/event-1/replay",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "created_at": "",
+          "id": "",
+          "next_attempt_at": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+      "input": {
+        "eventId": "event-1",
+        "webhookId": "webhook-1"
+      },
+      "name": "replayWebhookEvent-rejected",
+      "operation": "replayWebhookEvent"
+    },
+    {
+      "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks/webhook-1/events/event-1/replay",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+      "input": {
+        "eventId": "event-1",
+        "webhookId": "webhook-1"
+      },
+      "name": "replayWebhookEvent-429",
+      "operation": "replayWebhookEvent"
+    },
+    {
+      "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks/webhook-1/events/event-1/replay",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+      "input": {
+        "eventId": "event-1",
+        "webhookId": "webhook-1"
+      },
+      "name": "replayWebhookEvent-5xx",
+      "operation": "replayWebhookEvent"
+    },
+    {
+      "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks/webhook-1/events/event-1/replay",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+      "input": {
+        "eventId": "event-1",
+        "webhookId": "webhook-1"
+      },
+      "name": "replayWebhookEvent-transport",
+      "operation": "replayWebhookEvent"
+    },
+    {
+      "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "created_at": "",
+          "id": "",
+          "next_attempt_at": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+      "input": {
+        "eventId": "event-1",
+        "webhookId": ""
+      },
+      "name": "replayWebhookEvent-defect",
+      "operation": "replayWebhookEvent"
+    },
+    {
+      "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks/webhook-1/events/event-1/replay",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "created_at": "",
+          "id": "",
+          "next_attempt_at": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+      "input": {
+        "eventId": "event-1",
+        "webhookId": "webhook-1"
+      },
+      "name": "replayWebhookEvent-conflict",
+      "operation": "replayWebhookEvent"
+    },
+    {
+      "attempts": 2,
+      "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks/webhook-1/events/event-1/replay",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"object\":\"webhook_event\",\"id\":\"event-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks/webhook-1/events/event-1/replay",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "replayed",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "created_at": "",
+          "id": "event-1",
+          "next_attempt_at": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+      "input": {
+        "eventId": "event-1",
+        "webhookId": "webhook-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "replayWebhookEvent-retry-readback",
+      "operation": "replayWebhookEvent"
+    },
+    {
+      "attempts": 3,
+      "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks/webhook-1/events/event-1/replay",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks/webhook-1/events/event-1/replay",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhooks/webhook-1/events/event-1/replay",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "created_at": "",
+          "id": "",
+          "next_attempt_at": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+      "input": {
+        "eventId": "event-1",
+        "webhookId": "webhook-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "replayWebhookEvent-send-cap",
+      "operation": "replayWebhookEvent"
     }
   ],
   "schemaVersion": 1

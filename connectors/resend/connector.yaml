@@ -1330,3 +1330,151 @@ spec:
     execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: batchRemoveSuppressionsDefault, branch: removed, default: true, description: Resend completed the suppression request., output: {data: [{id: suppression-1, deleted: true}]}}
+  - name: createWebhook
+    goName: CreateWebhook
+    inputType: CreateWebhookInput
+    outputType: WebhookReference
+    kind: mutation
+    description: Create an HTTPS webhook subscription; discard its signing secret.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend completed the webhook request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createWebhookDefault, branch: created, default: true, description: Resend completed the webhook request., output: {id: webhook-1}}
+  - name: getWebhook
+    goName: GetWebhook
+    inputType: GetWebhookInput
+    outputType: Webhook
+    kind: query
+    description: Retrieve webhook metadata without the signing secret.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the webhook request.}
+    - {id: notFound, goName: NotFound, description: The webhook resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getWebhookDefault, branch: found, default: true, description: Resend completed the webhook request., output: {id: webhook-1, endpoint: 'https://hooks.example.test/resend', events: [email.sent], status: enabled}}
+  - name: listWebhooks
+    goName: ListWebhooks
+    inputType: ListWebhooksInput
+    outputType: WebhookPage
+    kind: query
+    description: List webhook metadata without signing secrets.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the webhook request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listWebhooksDefault, branch: listed, default: true, description: Resend completed the webhook request., output: {data: [{id: webhook-1, endpoint: 'https://hooks.example.test/resend', events: [email.sent], status: enabled}], has_more: false}}
+  - name: updateWebhook
+    goName: UpdateWebhook
+    inputType: UpdateWebhookInput
+    outputType: WebhookReference
+    kind: mutation
+    description: Replace selected absolute webhook subscription fields.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the webhook request.}
+    - {id: notFound, goName: NotFound, description: The webhook resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateWebhookDefault, branch: updated, default: true, description: Resend completed the webhook request., output: {id: webhook-1}}
+  - name: deleteWebhook
+    goName: DeleteWebhook
+    inputType: DeleteWebhookInput
+    outputType: DeletedWebhook
+    kind: mutation
+    description: Delete a webhook subscription.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend completed the webhook request.}
+    - {id: notFound, goName: NotFound, description: The webhook resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteWebhookDefault, branch: deleted, default: true, description: Resend completed the webhook request., output: {id: webhook-1, deleted: true}}
+  - name: listWebhookEvents
+    goName: ListWebhookEvents
+    inputType: ListWebhookEventsInput
+    outputType: WebhookEventPage
+    kind: query
+    description: List webhook delivery events without payloads.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the webhook request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listWebhookEventsDefault, branch: listed, default: true, description: Resend completed the webhook request., output: {data: [{id: event-1, type: email.sent, status: success}], has_more: false}}
+  - name: getWebhookEvent
+    goName: GetWebhookEvent
+    inputType: GetWebhookEventInput
+    outputType: WebhookEvent
+    kind: query
+    description: Get one webhook delivery event without its payload.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the webhook request.}
+    - {id: notFound, goName: NotFound, description: The webhook resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getWebhookEventDefault, branch: found, default: true, description: Resend completed the webhook request., output: {id: event-1, type: email.sent, status: success}}
+  - name: listWebhookEventAttempts
+    goName: ListWebhookEventAttempts
+    inputType: ListWebhookEventAttemptsInput
+    outputType: WebhookEventAttemptPage
+    kind: query
+    description: List webhook delivery attempt metadata without response bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the webhook request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listWebhookEventAttemptsDefault, branch: listed, default: true, description: Resend completed the webhook request., output: {data: [{id: attempt-1, http_status_code: 200}], has_more: false}}
+  - name: replayWebhookEvent
+    goName: ReplayWebhookEvent
+    inputType: ReplayWebhookEventInput
+    outputType: WebhookEvent
+    kind: mutation
+    description: Queue another delivery of one webhook event.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: replayed, goName: Replayed, description: Resend completed the webhook request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: replayWebhookEventDefault, branch: replayed, default: true, description: Resend completed the webhook request., output: {id: event-1}}

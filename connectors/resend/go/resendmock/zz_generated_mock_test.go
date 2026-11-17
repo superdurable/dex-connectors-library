@@ -308,6 +308,42 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[resend.RemovedSuppressionBatch](`{"data":[{"id":"suppression-1","deleted":true}]}`)
 			return err
 		}},
+		{name: "createWebhook/createWebhookDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.WebhookReference](`{"id":"webhook-1"}`)
+			return err
+		}},
+		{name: "getWebhook/getWebhookDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Webhook](`{"id":"webhook-1","endpoint":"https://hooks.example.test/resend","events":["email.sent"],"status":"enabled"}`)
+			return err
+		}},
+		{name: "listWebhooks/listWebhooksDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.WebhookPage](`{"data":[{"id":"webhook-1","endpoint":"https://hooks.example.test/resend","events":["email.sent"],"status":"enabled"}],"has_more":false}`)
+			return err
+		}},
+		{name: "updateWebhook/updateWebhookDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.WebhookReference](`{"id":"webhook-1"}`)
+			return err
+		}},
+		{name: "deleteWebhook/deleteWebhookDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedWebhook](`{"id":"webhook-1","deleted":true}`)
+			return err
+		}},
+		{name: "listWebhookEvents/listWebhookEventsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.WebhookEventPage](`{"data":[{"id":"event-1","type":"email.sent","status":"success"}],"has_more":false}`)
+			return err
+		}},
+		{name: "getWebhookEvent/getWebhookEventDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.WebhookEvent](`{"id":"event-1","type":"email.sent","status":"success"}`)
+			return err
+		}},
+		{name: "listWebhookEventAttempts/listWebhookEventAttemptsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.WebhookEventAttemptPage](`{"data":[{"id":"attempt-1","http_status_code":200}],"has_more":false}`)
+			return err
+		}},
+		{name: "replayWebhookEvent/replayWebhookEventDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.WebhookEvent](`{"id":"event-1"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -536,5 +572,32 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.BatchRemoveSuppressions().Definition().Operation.OperationID != "batchRemoveSuppressions" {
 		t.Errorf("batchRemoveSuppressions mock has another definition")
+	}
+	if mock.CreateWebhook().Definition().Operation.OperationID != "createWebhook" {
+		t.Errorf("createWebhook mock has another definition")
+	}
+	if mock.GetWebhook().Definition().Operation.OperationID != "getWebhook" {
+		t.Errorf("getWebhook mock has another definition")
+	}
+	if mock.ListWebhooks().Definition().Operation.OperationID != "listWebhooks" {
+		t.Errorf("listWebhooks mock has another definition")
+	}
+	if mock.UpdateWebhook().Definition().Operation.OperationID != "updateWebhook" {
+		t.Errorf("updateWebhook mock has another definition")
+	}
+	if mock.DeleteWebhook().Definition().Operation.OperationID != "deleteWebhook" {
+		t.Errorf("deleteWebhook mock has another definition")
+	}
+	if mock.ListWebhookEvents().Definition().Operation.OperationID != "listWebhookEvents" {
+		t.Errorf("listWebhookEvents mock has another definition")
+	}
+	if mock.GetWebhookEvent().Definition().Operation.OperationID != "getWebhookEvent" {
+		t.Errorf("getWebhookEvent mock has another definition")
+	}
+	if mock.ListWebhookEventAttempts().Definition().Operation.OperationID != "listWebhookEventAttempts" {
+		t.Errorf("listWebhookEventAttempts mock has another definition")
+	}
+	if mock.ReplayWebhookEvent().Definition().Operation.OperationID != "replayWebhookEvent" {
+		t.Errorf("replayWebhookEvent mock has another definition")
 	}
 }

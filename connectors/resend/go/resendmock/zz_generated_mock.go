@@ -91,6 +91,15 @@ type Mock struct {
 	deleteSuppression            *connectormock.Mutation[resend.DeleteSuppressionInput, resend.DeletedSuppression]
 	batchAddSuppressions         *connectormock.Mutation[resend.BatchAddSuppressionsInput, resend.SuppressionBatch]
 	batchRemoveSuppressions      *connectormock.Mutation[resend.BatchRemoveSuppressionsInput, resend.RemovedSuppressionBatch]
+	createWebhook                *connectormock.Mutation[resend.CreateWebhookInput, resend.WebhookReference]
+	getWebhook                   *connectormock.Query[resend.GetWebhookInput, resend.Webhook]
+	listWebhooks                 *connectormock.Query[resend.ListWebhooksInput, resend.WebhookPage]
+	updateWebhook                *connectormock.Mutation[resend.UpdateWebhookInput, resend.WebhookReference]
+	deleteWebhook                *connectormock.Mutation[resend.DeleteWebhookInput, resend.DeletedWebhook]
+	listWebhookEvents            *connectormock.Query[resend.ListWebhookEventsInput, resend.WebhookEventPage]
+	getWebhookEvent              *connectormock.Query[resend.GetWebhookEventInput, resend.WebhookEvent]
+	listWebhookEventAttempts     *connectormock.Query[resend.ListWebhookEventAttemptsInput, resend.WebhookEventAttemptPage]
+	replayWebhookEvent           *connectormock.Mutation[resend.ReplayWebhookEventInput, resend.WebhookEvent]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -171,6 +180,15 @@ func New(t testing.TB, connectionName string) *Mock {
 		deleteSuppression:            connectormock.NewMutation[resend.DeleteSuppressionInput, resend.DeletedSuppression](t, resend.DeleteSuppressionDefinition),
 		batchAddSuppressions:         connectormock.NewMutation[resend.BatchAddSuppressionsInput, resend.SuppressionBatch](t, resend.BatchAddSuppressionsDefinition),
 		batchRemoveSuppressions:      connectormock.NewMutation[resend.BatchRemoveSuppressionsInput, resend.RemovedSuppressionBatch](t, resend.BatchRemoveSuppressionsDefinition),
+		createWebhook:                connectormock.NewMutation[resend.CreateWebhookInput, resend.WebhookReference](t, resend.CreateWebhookDefinition),
+		getWebhook:                   connectormock.NewQuery[resend.GetWebhookInput, resend.Webhook](t, resend.GetWebhookDefinition),
+		listWebhooks:                 connectormock.NewQuery[resend.ListWebhooksInput, resend.WebhookPage](t, resend.ListWebhooksDefinition),
+		updateWebhook:                connectormock.NewMutation[resend.UpdateWebhookInput, resend.WebhookReference](t, resend.UpdateWebhookDefinition),
+		deleteWebhook:                connectormock.NewMutation[resend.DeleteWebhookInput, resend.DeletedWebhook](t, resend.DeleteWebhookDefinition),
+		listWebhookEvents:            connectormock.NewQuery[resend.ListWebhookEventsInput, resend.WebhookEventPage](t, resend.ListWebhookEventsDefinition),
+		getWebhookEvent:              connectormock.NewQuery[resend.GetWebhookEventInput, resend.WebhookEvent](t, resend.GetWebhookEventDefinition),
+		listWebhookEventAttempts:     connectormock.NewQuery[resend.ListWebhookEventAttemptsInput, resend.WebhookEventAttemptPage](t, resend.ListWebhookEventAttemptsDefinition),
+		replayWebhookEvent:           connectormock.NewMutation[resend.ReplayWebhookEventInput, resend.WebhookEvent](t, resend.ReplayWebhookEventDefinition),
 	}
 	mock.createContact.Default(CreateContactDefault())
 	mock.createDomain.Default(CreateDomainDefault())
@@ -245,6 +263,15 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.deleteSuppression.Default(DeleteSuppressionDefault())
 	mock.batchAddSuppressions.Default(BatchAddSuppressionsDefault())
 	mock.batchRemoveSuppressions.Default(BatchRemoveSuppressionsDefault())
+	mock.createWebhook.Default(CreateWebhookDefault())
+	mock.getWebhook.Default(GetWebhookDefault())
+	mock.listWebhooks.Default(ListWebhooksDefault())
+	mock.updateWebhook.Default(UpdateWebhookDefault())
+	mock.deleteWebhook.Default(DeleteWebhookDefault())
+	mock.listWebhookEvents.Default(ListWebhookEventsDefault())
+	mock.getWebhookEvent.Default(GetWebhookEventDefault())
+	mock.listWebhookEventAttempts.Default(ListWebhookEventAttemptsDefault())
+	mock.replayWebhookEvent.Default(ReplayWebhookEventDefault())
 	connection, err := resend.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "resend", Name: connectionName})
 	if err != nil {
 		t.Fatalf("resend mock connection: %v", err)
@@ -621,6 +648,51 @@ func (mock *Mock) BatchRemoveSuppressions() *connectormock.Mutation[resend.Batch
 	return mock.batchRemoveSuppressions
 }
 
+// CreateWebhook returns the createWebhook script.
+func (mock *Mock) CreateWebhook() *connectormock.Mutation[resend.CreateWebhookInput, resend.WebhookReference] {
+	return mock.createWebhook
+}
+
+// GetWebhook returns the getWebhook script.
+func (mock *Mock) GetWebhook() *connectormock.Query[resend.GetWebhookInput, resend.Webhook] {
+	return mock.getWebhook
+}
+
+// ListWebhooks returns the listWebhooks script.
+func (mock *Mock) ListWebhooks() *connectormock.Query[resend.ListWebhooksInput, resend.WebhookPage] {
+	return mock.listWebhooks
+}
+
+// UpdateWebhook returns the updateWebhook script.
+func (mock *Mock) UpdateWebhook() *connectormock.Mutation[resend.UpdateWebhookInput, resend.WebhookReference] {
+	return mock.updateWebhook
+}
+
+// DeleteWebhook returns the deleteWebhook script.
+func (mock *Mock) DeleteWebhook() *connectormock.Mutation[resend.DeleteWebhookInput, resend.DeletedWebhook] {
+	return mock.deleteWebhook
+}
+
+// ListWebhookEvents returns the listWebhookEvents script.
+func (mock *Mock) ListWebhookEvents() *connectormock.Query[resend.ListWebhookEventsInput, resend.WebhookEventPage] {
+	return mock.listWebhookEvents
+}
+
+// GetWebhookEvent returns the getWebhookEvent script.
+func (mock *Mock) GetWebhookEvent() *connectormock.Query[resend.GetWebhookEventInput, resend.WebhookEvent] {
+	return mock.getWebhookEvent
+}
+
+// ListWebhookEventAttempts returns the listWebhookEventAttempts script.
+func (mock *Mock) ListWebhookEventAttempts() *connectormock.Query[resend.ListWebhookEventAttemptsInput, resend.WebhookEventAttemptPage] {
+	return mock.listWebhookEventAttempts
+}
+
+// ReplayWebhookEvent returns the replayWebhookEvent script.
+func (mock *Mock) ReplayWebhookEvent() *connectormock.Mutation[resend.ReplayWebhookEventInput, resend.WebhookEvent] {
+	return mock.replayWebhookEvent
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreateContact() sdkgo.Mutation[resend.CreateContactInput, resend.ContactReference] {
@@ -841,6 +913,33 @@ func (operations mockOperations) BatchAddSuppressions() sdkgo.Mutation[resend.Ba
 }
 func (operations mockOperations) BatchRemoveSuppressions() sdkgo.Mutation[resend.BatchRemoveSuppressionsInput, resend.RemovedSuppressionBatch] {
 	return operations.mock.batchRemoveSuppressions
+}
+func (operations mockOperations) CreateWebhook() sdkgo.Mutation[resend.CreateWebhookInput, resend.WebhookReference] {
+	return operations.mock.createWebhook
+}
+func (operations mockOperations) GetWebhook() sdkgo.Query[resend.GetWebhookInput, resend.Webhook] {
+	return operations.mock.getWebhook
+}
+func (operations mockOperations) ListWebhooks() sdkgo.Query[resend.ListWebhooksInput, resend.WebhookPage] {
+	return operations.mock.listWebhooks
+}
+func (operations mockOperations) UpdateWebhook() sdkgo.Mutation[resend.UpdateWebhookInput, resend.WebhookReference] {
+	return operations.mock.updateWebhook
+}
+func (operations mockOperations) DeleteWebhook() sdkgo.Mutation[resend.DeleteWebhookInput, resend.DeletedWebhook] {
+	return operations.mock.deleteWebhook
+}
+func (operations mockOperations) ListWebhookEvents() sdkgo.Query[resend.ListWebhookEventsInput, resend.WebhookEventPage] {
+	return operations.mock.listWebhookEvents
+}
+func (operations mockOperations) GetWebhookEvent() sdkgo.Query[resend.GetWebhookEventInput, resend.WebhookEvent] {
+	return operations.mock.getWebhookEvent
+}
+func (operations mockOperations) ListWebhookEventAttempts() sdkgo.Query[resend.ListWebhookEventAttemptsInput, resend.WebhookEventAttemptPage] {
+	return operations.mock.listWebhookEventAttempts
+}
+func (operations mockOperations) ReplayWebhookEvent() sdkgo.Mutation[resend.ReplayWebhookEventInput, resend.WebhookEvent] {
+	return operations.mock.replayWebhookEvent
 }
 
 // CreateContactCreated selects the created branch: Resend created or confirmed the contact.
@@ -3615,4 +3714,346 @@ func BatchRemoveSuppressionsBatchRemoveSuppressionsDefault() connectormock.Case[
 // BatchRemoveSuppressionsDefault is the manifest default, batchRemoveSuppressionsDefault, which New installs.
 func BatchRemoveSuppressionsDefault() connectormock.Case[resend.RemovedSuppressionBatch] {
 	return BatchRemoveSuppressionsBatchRemoveSuppressionsDefault()
+}
+
+// CreateWebhookCreated selects the created branch: Resend completed the webhook request.
+func CreateWebhookCreated(value resend.WebhookReference, failure *sdkgo.Failure) connectormock.Case[resend.WebhookReference] {
+	return connectormock.Branch(resend.CreateWebhookBranchCreated, value, failure)
+}
+
+// CreateWebhookProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func CreateWebhookProviderRejected(value resend.WebhookReference, failure *sdkgo.Failure) connectormock.Case[resend.WebhookReference] {
+	return connectormock.Branch(resend.CreateWebhookBranchProviderRejected, value, failure)
+}
+
+// CreateWebhookDefect selects the defect branch: Local input or credentials are invalid.
+func CreateWebhookDefect(value resend.WebhookReference, failure *sdkgo.Failure) connectormock.Case[resend.WebhookReference] {
+	return connectormock.Branch(resend.CreateWebhookBranchDefect, value, failure)
+}
+
+// CreateWebhookUncertain returns an uncertain createWebhook outcome.
+func CreateWebhookUncertain(value resend.WebhookReference, failure sdkgo.Failure) connectormock.Case[resend.WebhookReference] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateWebhookRetry asks Dex to retry the createWebhook Step, after the delay when it is positive.
+func CreateWebhookRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.WebhookReference] {
+	return connectormock.Retry[resend.WebhookReference](failure, after)
+}
+
+// CreateWebhookCreateWebhookDefault is the manifest mock createWebhookDefault: Resend completed the webhook request.
+func CreateWebhookCreateWebhookDefault() connectormock.Case[resend.WebhookReference] {
+	value := connectormock.MustDecodeOutput[resend.WebhookReference](`{"id":"webhook-1"}`)
+	return connectormock.Branch(resend.CreateWebhookBranchCreated, value, nil)
+}
+
+// CreateWebhookDefault is the manifest default, createWebhookDefault, which New installs.
+func CreateWebhookDefault() connectormock.Case[resend.WebhookReference] {
+	return CreateWebhookCreateWebhookDefault()
+}
+
+// GetWebhookFound selects the found branch: Resend completed the webhook request.
+func GetWebhookFound(value resend.Webhook, failure *sdkgo.Failure) connectormock.Case[resend.Webhook] {
+	return connectormock.Branch(resend.GetWebhookBranchFound, value, failure)
+}
+
+// GetWebhookNotFound selects the notFound branch: The webhook resource does not exist.
+func GetWebhookNotFound(value resend.Webhook, failure *sdkgo.Failure) connectormock.Case[resend.Webhook] {
+	return connectormock.Branch(resend.GetWebhookBranchNotFound, value, failure)
+}
+
+// GetWebhookProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetWebhookProviderRejected(value resend.Webhook, failure *sdkgo.Failure) connectormock.Case[resend.Webhook] {
+	return connectormock.Branch(resend.GetWebhookBranchProviderRejected, value, failure)
+}
+
+// GetWebhookInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func GetWebhookInvalidResponse(value resend.Webhook, failure *sdkgo.Failure) connectormock.Case[resend.Webhook] {
+	return connectormock.Branch(resend.GetWebhookBranchInvalidResponse, value, failure)
+}
+
+// GetWebhookDefect selects the defect branch: Local input or credentials are invalid.
+func GetWebhookDefect(value resend.Webhook, failure *sdkgo.Failure) connectormock.Case[resend.Webhook] {
+	return connectormock.Branch(resend.GetWebhookBranchDefect, value, failure)
+}
+
+// GetWebhookRetry asks Dex to retry the getWebhook Step, after the delay when it is positive.
+func GetWebhookRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.Webhook] {
+	return connectormock.Retry[resend.Webhook](failure, after)
+}
+
+// GetWebhookGetWebhookDefault is the manifest mock getWebhookDefault: Resend completed the webhook request.
+func GetWebhookGetWebhookDefault() connectormock.Case[resend.Webhook] {
+	value := connectormock.MustDecodeOutput[resend.Webhook](`{"id":"webhook-1","endpoint":"https://hooks.example.test/resend","events":["email.sent"],"status":"enabled"}`)
+	return connectormock.Branch(resend.GetWebhookBranchFound, value, nil)
+}
+
+// GetWebhookDefault is the manifest default, getWebhookDefault, which New installs.
+func GetWebhookDefault() connectormock.Case[resend.Webhook] { return GetWebhookGetWebhookDefault() }
+
+// ListWebhooksListed selects the listed branch: Resend completed the webhook request.
+func ListWebhooksListed(value resend.WebhookPage, failure *sdkgo.Failure) connectormock.Case[resend.WebhookPage] {
+	return connectormock.Branch(resend.ListWebhooksBranchListed, value, failure)
+}
+
+// ListWebhooksProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListWebhooksProviderRejected(value resend.WebhookPage, failure *sdkgo.Failure) connectormock.Case[resend.WebhookPage] {
+	return connectormock.Branch(resend.ListWebhooksBranchProviderRejected, value, failure)
+}
+
+// ListWebhooksInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListWebhooksInvalidResponse(value resend.WebhookPage, failure *sdkgo.Failure) connectormock.Case[resend.WebhookPage] {
+	return connectormock.Branch(resend.ListWebhooksBranchInvalidResponse, value, failure)
+}
+
+// ListWebhooksDefect selects the defect branch: Local input or credentials are invalid.
+func ListWebhooksDefect(value resend.WebhookPage, failure *sdkgo.Failure) connectormock.Case[resend.WebhookPage] {
+	return connectormock.Branch(resend.ListWebhooksBranchDefect, value, failure)
+}
+
+// ListWebhooksRetry asks Dex to retry the listWebhooks Step, after the delay when it is positive.
+func ListWebhooksRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.WebhookPage] {
+	return connectormock.Retry[resend.WebhookPage](failure, after)
+}
+
+// ListWebhooksListWebhooksDefault is the manifest mock listWebhooksDefault: Resend completed the webhook request.
+func ListWebhooksListWebhooksDefault() connectormock.Case[resend.WebhookPage] {
+	value := connectormock.MustDecodeOutput[resend.WebhookPage](`{"data":[{"id":"webhook-1","endpoint":"https://hooks.example.test/resend","events":["email.sent"],"status":"enabled"}],"has_more":false}`)
+	return connectormock.Branch(resend.ListWebhooksBranchListed, value, nil)
+}
+
+// ListWebhooksDefault is the manifest default, listWebhooksDefault, which New installs.
+func ListWebhooksDefault() connectormock.Case[resend.WebhookPage] {
+	return ListWebhooksListWebhooksDefault()
+}
+
+// UpdateWebhookUpdated selects the updated branch: Resend completed the webhook request.
+func UpdateWebhookUpdated(value resend.WebhookReference, failure *sdkgo.Failure) connectormock.Case[resend.WebhookReference] {
+	return connectormock.Branch(resend.UpdateWebhookBranchUpdated, value, failure)
+}
+
+// UpdateWebhookNotFound selects the notFound branch: The webhook resource does not exist.
+func UpdateWebhookNotFound(value resend.WebhookReference, failure *sdkgo.Failure) connectormock.Case[resend.WebhookReference] {
+	return connectormock.Branch(resend.UpdateWebhookBranchNotFound, value, failure)
+}
+
+// UpdateWebhookProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func UpdateWebhookProviderRejected(value resend.WebhookReference, failure *sdkgo.Failure) connectormock.Case[resend.WebhookReference] {
+	return connectormock.Branch(resend.UpdateWebhookBranchProviderRejected, value, failure)
+}
+
+// UpdateWebhookInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func UpdateWebhookInvalidResponse(value resend.WebhookReference, failure *sdkgo.Failure) connectormock.Case[resend.WebhookReference] {
+	return connectormock.Branch(resend.UpdateWebhookBranchInvalidResponse, value, failure)
+}
+
+// UpdateWebhookDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateWebhookDefect(value resend.WebhookReference, failure *sdkgo.Failure) connectormock.Case[resend.WebhookReference] {
+	return connectormock.Branch(resend.UpdateWebhookBranchDefect, value, failure)
+}
+
+// UpdateWebhookRetry asks Dex to retry the updateWebhook Step, after the delay when it is positive.
+func UpdateWebhookRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.WebhookReference] {
+	return connectormock.Retry[resend.WebhookReference](failure, after)
+}
+
+// UpdateWebhookUpdateWebhookDefault is the manifest mock updateWebhookDefault: Resend completed the webhook request.
+func UpdateWebhookUpdateWebhookDefault() connectormock.Case[resend.WebhookReference] {
+	value := connectormock.MustDecodeOutput[resend.WebhookReference](`{"id":"webhook-1"}`)
+	return connectormock.Branch(resend.UpdateWebhookBranchUpdated, value, nil)
+}
+
+// UpdateWebhookDefault is the manifest default, updateWebhookDefault, which New installs.
+func UpdateWebhookDefault() connectormock.Case[resend.WebhookReference] {
+	return UpdateWebhookUpdateWebhookDefault()
+}
+
+// DeleteWebhookDeleted selects the deleted branch: Resend completed the webhook request.
+func DeleteWebhookDeleted(value resend.DeletedWebhook, failure *sdkgo.Failure) connectormock.Case[resend.DeletedWebhook] {
+	return connectormock.Branch(resend.DeleteWebhookBranchDeleted, value, failure)
+}
+
+// DeleteWebhookNotFound selects the notFound branch: The webhook resource does not exist.
+func DeleteWebhookNotFound(value resend.DeletedWebhook, failure *sdkgo.Failure) connectormock.Case[resend.DeletedWebhook] {
+	return connectormock.Branch(resend.DeleteWebhookBranchNotFound, value, failure)
+}
+
+// DeleteWebhookProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func DeleteWebhookProviderRejected(value resend.DeletedWebhook, failure *sdkgo.Failure) connectormock.Case[resend.DeletedWebhook] {
+	return connectormock.Branch(resend.DeleteWebhookBranchProviderRejected, value, failure)
+}
+
+// DeleteWebhookInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func DeleteWebhookInvalidResponse(value resend.DeletedWebhook, failure *sdkgo.Failure) connectormock.Case[resend.DeletedWebhook] {
+	return connectormock.Branch(resend.DeleteWebhookBranchInvalidResponse, value, failure)
+}
+
+// DeleteWebhookDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteWebhookDefect(value resend.DeletedWebhook, failure *sdkgo.Failure) connectormock.Case[resend.DeletedWebhook] {
+	return connectormock.Branch(resend.DeleteWebhookBranchDefect, value, failure)
+}
+
+// DeleteWebhookRetry asks Dex to retry the deleteWebhook Step, after the delay when it is positive.
+func DeleteWebhookRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.DeletedWebhook] {
+	return connectormock.Retry[resend.DeletedWebhook](failure, after)
+}
+
+// DeleteWebhookDeleteWebhookDefault is the manifest mock deleteWebhookDefault: Resend completed the webhook request.
+func DeleteWebhookDeleteWebhookDefault() connectormock.Case[resend.DeletedWebhook] {
+	value := connectormock.MustDecodeOutput[resend.DeletedWebhook](`{"id":"webhook-1","deleted":true}`)
+	return connectormock.Branch(resend.DeleteWebhookBranchDeleted, value, nil)
+}
+
+// DeleteWebhookDefault is the manifest default, deleteWebhookDefault, which New installs.
+func DeleteWebhookDefault() connectormock.Case[resend.DeletedWebhook] {
+	return DeleteWebhookDeleteWebhookDefault()
+}
+
+// ListWebhookEventsListed selects the listed branch: Resend completed the webhook request.
+func ListWebhookEventsListed(value resend.WebhookEventPage, failure *sdkgo.Failure) connectormock.Case[resend.WebhookEventPage] {
+	return connectormock.Branch(resend.ListWebhookEventsBranchListed, value, failure)
+}
+
+// ListWebhookEventsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListWebhookEventsProviderRejected(value resend.WebhookEventPage, failure *sdkgo.Failure) connectormock.Case[resend.WebhookEventPage] {
+	return connectormock.Branch(resend.ListWebhookEventsBranchProviderRejected, value, failure)
+}
+
+// ListWebhookEventsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListWebhookEventsInvalidResponse(value resend.WebhookEventPage, failure *sdkgo.Failure) connectormock.Case[resend.WebhookEventPage] {
+	return connectormock.Branch(resend.ListWebhookEventsBranchInvalidResponse, value, failure)
+}
+
+// ListWebhookEventsDefect selects the defect branch: Local input or credentials are invalid.
+func ListWebhookEventsDefect(value resend.WebhookEventPage, failure *sdkgo.Failure) connectormock.Case[resend.WebhookEventPage] {
+	return connectormock.Branch(resend.ListWebhookEventsBranchDefect, value, failure)
+}
+
+// ListWebhookEventsRetry asks Dex to retry the listWebhookEvents Step, after the delay when it is positive.
+func ListWebhookEventsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.WebhookEventPage] {
+	return connectormock.Retry[resend.WebhookEventPage](failure, after)
+}
+
+// ListWebhookEventsListWebhookEventsDefault is the manifest mock listWebhookEventsDefault: Resend completed the webhook request.
+func ListWebhookEventsListWebhookEventsDefault() connectormock.Case[resend.WebhookEventPage] {
+	value := connectormock.MustDecodeOutput[resend.WebhookEventPage](`{"data":[{"id":"event-1","type":"email.sent","status":"success"}],"has_more":false}`)
+	return connectormock.Branch(resend.ListWebhookEventsBranchListed, value, nil)
+}
+
+// ListWebhookEventsDefault is the manifest default, listWebhookEventsDefault, which New installs.
+func ListWebhookEventsDefault() connectormock.Case[resend.WebhookEventPage] {
+	return ListWebhookEventsListWebhookEventsDefault()
+}
+
+// GetWebhookEventFound selects the found branch: Resend completed the webhook request.
+func GetWebhookEventFound(value resend.WebhookEvent, failure *sdkgo.Failure) connectormock.Case[resend.WebhookEvent] {
+	return connectormock.Branch(resend.GetWebhookEventBranchFound, value, failure)
+}
+
+// GetWebhookEventNotFound selects the notFound branch: The webhook resource does not exist.
+func GetWebhookEventNotFound(value resend.WebhookEvent, failure *sdkgo.Failure) connectormock.Case[resend.WebhookEvent] {
+	return connectormock.Branch(resend.GetWebhookEventBranchNotFound, value, failure)
+}
+
+// GetWebhookEventProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetWebhookEventProviderRejected(value resend.WebhookEvent, failure *sdkgo.Failure) connectormock.Case[resend.WebhookEvent] {
+	return connectormock.Branch(resend.GetWebhookEventBranchProviderRejected, value, failure)
+}
+
+// GetWebhookEventInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func GetWebhookEventInvalidResponse(value resend.WebhookEvent, failure *sdkgo.Failure) connectormock.Case[resend.WebhookEvent] {
+	return connectormock.Branch(resend.GetWebhookEventBranchInvalidResponse, value, failure)
+}
+
+// GetWebhookEventDefect selects the defect branch: Local input or credentials are invalid.
+func GetWebhookEventDefect(value resend.WebhookEvent, failure *sdkgo.Failure) connectormock.Case[resend.WebhookEvent] {
+	return connectormock.Branch(resend.GetWebhookEventBranchDefect, value, failure)
+}
+
+// GetWebhookEventRetry asks Dex to retry the getWebhookEvent Step, after the delay when it is positive.
+func GetWebhookEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.WebhookEvent] {
+	return connectormock.Retry[resend.WebhookEvent](failure, after)
+}
+
+// GetWebhookEventGetWebhookEventDefault is the manifest mock getWebhookEventDefault: Resend completed the webhook request.
+func GetWebhookEventGetWebhookEventDefault() connectormock.Case[resend.WebhookEvent] {
+	value := connectormock.MustDecodeOutput[resend.WebhookEvent](`{"id":"event-1","type":"email.sent","status":"success"}`)
+	return connectormock.Branch(resend.GetWebhookEventBranchFound, value, nil)
+}
+
+// GetWebhookEventDefault is the manifest default, getWebhookEventDefault, which New installs.
+func GetWebhookEventDefault() connectormock.Case[resend.WebhookEvent] {
+	return GetWebhookEventGetWebhookEventDefault()
+}
+
+// ListWebhookEventAttemptsListed selects the listed branch: Resend completed the webhook request.
+func ListWebhookEventAttemptsListed(value resend.WebhookEventAttemptPage, failure *sdkgo.Failure) connectormock.Case[resend.WebhookEventAttemptPage] {
+	return connectormock.Branch(resend.ListWebhookEventAttemptsBranchListed, value, failure)
+}
+
+// ListWebhookEventAttemptsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListWebhookEventAttemptsProviderRejected(value resend.WebhookEventAttemptPage, failure *sdkgo.Failure) connectormock.Case[resend.WebhookEventAttemptPage] {
+	return connectormock.Branch(resend.ListWebhookEventAttemptsBranchProviderRejected, value, failure)
+}
+
+// ListWebhookEventAttemptsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListWebhookEventAttemptsInvalidResponse(value resend.WebhookEventAttemptPage, failure *sdkgo.Failure) connectormock.Case[resend.WebhookEventAttemptPage] {
+	return connectormock.Branch(resend.ListWebhookEventAttemptsBranchInvalidResponse, value, failure)
+}
+
+// ListWebhookEventAttemptsDefect selects the defect branch: Local input or credentials are invalid.
+func ListWebhookEventAttemptsDefect(value resend.WebhookEventAttemptPage, failure *sdkgo.Failure) connectormock.Case[resend.WebhookEventAttemptPage] {
+	return connectormock.Branch(resend.ListWebhookEventAttemptsBranchDefect, value, failure)
+}
+
+// ListWebhookEventAttemptsRetry asks Dex to retry the listWebhookEventAttempts Step, after the delay when it is positive.
+func ListWebhookEventAttemptsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.WebhookEventAttemptPage] {
+	return connectormock.Retry[resend.WebhookEventAttemptPage](failure, after)
+}
+
+// ListWebhookEventAttemptsListWebhookEventAttemptsDefault is the manifest mock listWebhookEventAttemptsDefault: Resend completed the webhook request.
+func ListWebhookEventAttemptsListWebhookEventAttemptsDefault() connectormock.Case[resend.WebhookEventAttemptPage] {
+	value := connectormock.MustDecodeOutput[resend.WebhookEventAttemptPage](`{"data":[{"id":"attempt-1","http_status_code":200}],"has_more":false}`)
+	return connectormock.Branch(resend.ListWebhookEventAttemptsBranchListed, value, nil)
+}
+
+// ListWebhookEventAttemptsDefault is the manifest default, listWebhookEventAttemptsDefault, which New installs.
+func ListWebhookEventAttemptsDefault() connectormock.Case[resend.WebhookEventAttemptPage] {
+	return ListWebhookEventAttemptsListWebhookEventAttemptsDefault()
+}
+
+// ReplayWebhookEventReplayed selects the replayed branch: Resend completed the webhook request.
+func ReplayWebhookEventReplayed(value resend.WebhookEvent, failure *sdkgo.Failure) connectormock.Case[resend.WebhookEvent] {
+	return connectormock.Branch(resend.ReplayWebhookEventBranchReplayed, value, failure)
+}
+
+// ReplayWebhookEventProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ReplayWebhookEventProviderRejected(value resend.WebhookEvent, failure *sdkgo.Failure) connectormock.Case[resend.WebhookEvent] {
+	return connectormock.Branch(resend.ReplayWebhookEventBranchProviderRejected, value, failure)
+}
+
+// ReplayWebhookEventDefect selects the defect branch: Local input or credentials are invalid.
+func ReplayWebhookEventDefect(value resend.WebhookEvent, failure *sdkgo.Failure) connectormock.Case[resend.WebhookEvent] {
+	return connectormock.Branch(resend.ReplayWebhookEventBranchDefect, value, failure)
+}
+
+// ReplayWebhookEventUncertain returns an uncertain replayWebhookEvent outcome.
+func ReplayWebhookEventUncertain(value resend.WebhookEvent, failure sdkgo.Failure) connectormock.Case[resend.WebhookEvent] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// ReplayWebhookEventRetry asks Dex to retry the replayWebhookEvent Step, after the delay when it is positive.
+func ReplayWebhookEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.WebhookEvent] {
+	return connectormock.Retry[resend.WebhookEvent](failure, after)
+}
+
+// ReplayWebhookEventReplayWebhookEventDefault is the manifest mock replayWebhookEventDefault: Resend completed the webhook request.
+func ReplayWebhookEventReplayWebhookEventDefault() connectormock.Case[resend.WebhookEvent] {
+	value := connectormock.MustDecodeOutput[resend.WebhookEvent](`{"id":"event-1"}`)
+	return connectormock.Branch(resend.ReplayWebhookEventBranchReplayed, value, nil)
+}
+
+// ReplayWebhookEventDefault is the manifest default, replayWebhookEventDefault, which New installs.
+func ReplayWebhookEventDefault() connectormock.Case[resend.WebhookEvent] {
+	return ReplayWebhookEventReplayWebhookEventDefault()
 }

@@ -113,6 +113,15 @@ type Operations interface {
 	DeleteSuppression() sdkgo.Mutation[DeleteSuppressionInput, DeletedSuppression]
 	BatchAddSuppressions() sdkgo.Mutation[BatchAddSuppressionsInput, SuppressionBatch]
 	BatchRemoveSuppressions() sdkgo.Mutation[BatchRemoveSuppressionsInput, RemovedSuppressionBatch]
+	CreateWebhook() sdkgo.Mutation[CreateWebhookInput, WebhookReference]
+	GetWebhook() sdkgo.Query[GetWebhookInput, Webhook]
+	ListWebhooks() sdkgo.Query[ListWebhooksInput, WebhookPage]
+	UpdateWebhook() sdkgo.Mutation[UpdateWebhookInput, WebhookReference]
+	DeleteWebhook() sdkgo.Mutation[DeleteWebhookInput, DeletedWebhook]
+	ListWebhookEvents() sdkgo.Query[ListWebhookEventsInput, WebhookEventPage]
+	GetWebhookEvent() sdkgo.Query[GetWebhookEventInput, WebhookEvent]
+	ListWebhookEventAttempts() sdkgo.Query[ListWebhookEventAttemptsInput, WebhookEventAttemptPage]
+	ReplayWebhookEvent() sdkgo.Mutation[ReplayWebhookEventInput, WebhookEvent]
 }
 
 type clientOperations struct{ client *Client }
@@ -335,6 +344,33 @@ func (operations clientOperations) BatchAddSuppressions() sdkgo.Mutation[BatchAd
 }
 func (operations clientOperations) BatchRemoveSuppressions() sdkgo.Mutation[BatchRemoveSuppressionsInput, RemovedSuppressionBatch] {
 	return operations.client.BatchRemoveSuppressions()
+}
+func (operations clientOperations) CreateWebhook() sdkgo.Mutation[CreateWebhookInput, WebhookReference] {
+	return operations.client.CreateWebhook()
+}
+func (operations clientOperations) GetWebhook() sdkgo.Query[GetWebhookInput, Webhook] {
+	return operations.client.GetWebhook()
+}
+func (operations clientOperations) ListWebhooks() sdkgo.Query[ListWebhooksInput, WebhookPage] {
+	return operations.client.ListWebhooks()
+}
+func (operations clientOperations) UpdateWebhook() sdkgo.Mutation[UpdateWebhookInput, WebhookReference] {
+	return operations.client.UpdateWebhook()
+}
+func (operations clientOperations) DeleteWebhook() sdkgo.Mutation[DeleteWebhookInput, DeletedWebhook] {
+	return operations.client.DeleteWebhook()
+}
+func (operations clientOperations) ListWebhookEvents() sdkgo.Query[ListWebhookEventsInput, WebhookEventPage] {
+	return operations.client.ListWebhookEvents()
+}
+func (operations clientOperations) GetWebhookEvent() sdkgo.Query[GetWebhookEventInput, WebhookEvent] {
+	return operations.client.GetWebhookEvent()
+}
+func (operations clientOperations) ListWebhookEventAttempts() sdkgo.Query[ListWebhookEventAttemptsInput, WebhookEventAttemptPage] {
+	return operations.client.ListWebhookEventAttempts()
+}
+func (operations clientOperations) ReplayWebhookEvent() sdkgo.Mutation[ReplayWebhookEventInput, WebhookEvent] {
+	return operations.client.ReplayWebhookEvent()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -5944,5 +5980,680 @@ func NewBatchRemoveSuppressionsStep[IN any](config BatchRemoveSuppressionsStepCo
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateWebhookBranchCreated sdkgo.BranchID = "created"
+const CreateWebhookBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateWebhookBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateWebhookBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateWebhookDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createWebhook"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateWebhookBranchCreated, Description: "Resend completed the webhook request."},
+		{ID: CreateWebhookBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: CreateWebhookBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateWebhookBranchUncertain, Description: "Bounded sends ended without confirming the request.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateWebhookResult = sdkgo.MutationResult[WebhookReference]
+
+type CreateWebhookStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=resend"`
+	operationID                       struct{}                                               `connector:"operationId=createWebhook"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateWebhookInput                            `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateWebhookResult]                      `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateWebhookResult]                      `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateWebhookResult]                      `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateWebhookResult]                      `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[WebhookReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateWebhookStep[IN any](config CreateWebhookStepConfig[IN]) sdkgo.MutationStep[IN, CreateWebhookInput, WebhookReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateWebhookInput, WebhookReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateWebhook(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateWebhookResult] {
+			branches := make([]sdkgo.BranchTarget[CreateWebhookResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateWebhookBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateWebhookBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateWebhookBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateWebhookBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const GetWebhookBranchFound sdkgo.BranchID = "found"
+const GetWebhookBranchNotFound sdkgo.BranchID = "notFound"
+const GetWebhookBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetWebhookBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetWebhookBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetWebhookDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getWebhook"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetWebhookBranchFound, Description: "Resend completed the webhook request."},
+		{ID: GetWebhookBranchNotFound, Description: "The webhook resource does not exist.", Optional: true},
+		{ID: GetWebhookBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: GetWebhookBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: GetWebhookBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetWebhookResult = sdkgo.QueryResult[Webhook]
+
+type GetWebhookStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=resend"`
+	operationID                    struct{}                                   `connector:"operationId=getWebhook"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetWebhookInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetWebhookResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetWebhookResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetWebhookResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetWebhookResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetWebhookResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Webhook]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewGetWebhookStep[IN any](config GetWebhookStepConfig[IN]) sdkgo.QueryStep[IN, GetWebhookInput, Webhook] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetWebhookInput, Webhook]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetWebhook(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetWebhookResult] {
+			branches := make([]sdkgo.BranchTarget[GetWebhookResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetWebhookBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetWebhookBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetWebhookBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetWebhookBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetWebhookBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListWebhooksBranchListed sdkgo.BranchID = "listed"
+const ListWebhooksBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListWebhooksBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListWebhooksBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListWebhooksDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listWebhooks"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListWebhooksBranchListed, Description: "Resend completed the webhook request."},
+		{ID: ListWebhooksBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: ListWebhooksBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: ListWebhooksBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListWebhooksResult = sdkgo.QueryResult[WebhookPage]
+
+type ListWebhooksStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=resend"`
+	operationID                    struct{}                                       `connector:"operationId=listWebhooks"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListWebhooksInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListWebhooksResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListWebhooksResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListWebhooksResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListWebhooksResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[WebhookPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListWebhooksStep[IN any](config ListWebhooksStepConfig[IN]) sdkgo.QueryStep[IN, ListWebhooksInput, WebhookPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListWebhooksInput, WebhookPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListWebhooks(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListWebhooksResult] {
+			branches := make([]sdkgo.BranchTarget[ListWebhooksResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListWebhooksBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListWebhooksBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListWebhooksBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListWebhooksBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateWebhookBranchUpdated sdkgo.BranchID = "updated"
+const UpdateWebhookBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateWebhookBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateWebhookBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateWebhookBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateWebhookDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateWebhook"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateWebhookBranchUpdated, Description: "Resend completed the webhook request."},
+		{ID: UpdateWebhookBranchNotFound, Description: "The webhook resource does not exist.", Optional: true},
+		{ID: UpdateWebhookBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: UpdateWebhookBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: UpdateWebhookBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateWebhookResult = sdkgo.MutationResult[WebhookReference]
+
+type UpdateWebhookStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=resend"`
+	operationID                       struct{}                                               `connector:"operationId=updateWebhook"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateWebhookInput                            `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateWebhookResult]                      `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateWebhookResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateWebhookResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateWebhookResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateWebhookResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[WebhookReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateWebhookStep[IN any](config UpdateWebhookStepConfig[IN]) sdkgo.MutationStep[IN, UpdateWebhookInput, WebhookReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateWebhookInput, WebhookReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateWebhook(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateWebhookResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateWebhookResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateWebhookBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateWebhookBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateWebhookBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateWebhookBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateWebhookBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteWebhookBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteWebhookBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteWebhookBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteWebhookBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteWebhookBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteWebhookDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteWebhook"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteWebhookBranchDeleted, Description: "Resend completed the webhook request."},
+		{ID: DeleteWebhookBranchNotFound, Description: "The webhook resource does not exist.", Optional: true},
+		{ID: DeleteWebhookBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: DeleteWebhookBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: DeleteWebhookBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteWebhookResult = sdkgo.MutationResult[DeletedWebhook]
+
+type DeleteWebhookStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=resend"`
+	operationID                       struct{}                                             `connector:"operationId=deleteWebhook"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteWebhookInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteWebhookResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteWebhookResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteWebhookResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteWebhookResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteWebhookResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedWebhook]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteWebhookStep[IN any](config DeleteWebhookStepConfig[IN]) sdkgo.MutationStep[IN, DeleteWebhookInput, DeletedWebhook] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteWebhookInput, DeletedWebhook]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteWebhook(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteWebhookResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteWebhookResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteWebhookBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteWebhookBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteWebhookBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteWebhookBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteWebhookBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListWebhookEventsBranchListed sdkgo.BranchID = "listed"
+const ListWebhookEventsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListWebhookEventsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListWebhookEventsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListWebhookEventsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listWebhookEvents"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListWebhookEventsBranchListed, Description: "Resend completed the webhook request."},
+		{ID: ListWebhookEventsBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: ListWebhookEventsBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: ListWebhookEventsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListWebhookEventsResult = sdkgo.QueryResult[WebhookEventPage]
+
+type ListWebhookEventsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=resend"`
+	operationID                    struct{}                                            `connector:"operationId=listWebhookEvents"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListWebhookEventsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListWebhookEventsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListWebhookEventsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListWebhookEventsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListWebhookEventsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[WebhookEventPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewListWebhookEventsStep[IN any](config ListWebhookEventsStepConfig[IN]) sdkgo.QueryStep[IN, ListWebhookEventsInput, WebhookEventPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListWebhookEventsInput, WebhookEventPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListWebhookEvents(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListWebhookEventsResult] {
+			branches := make([]sdkgo.BranchTarget[ListWebhookEventsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListWebhookEventsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListWebhookEventsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListWebhookEventsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListWebhookEventsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetWebhookEventBranchFound sdkgo.BranchID = "found"
+const GetWebhookEventBranchNotFound sdkgo.BranchID = "notFound"
+const GetWebhookEventBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetWebhookEventBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetWebhookEventBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetWebhookEventDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getWebhookEvent"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetWebhookEventBranchFound, Description: "Resend completed the webhook request."},
+		{ID: GetWebhookEventBranchNotFound, Description: "The webhook resource does not exist.", Optional: true},
+		{ID: GetWebhookEventBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: GetWebhookEventBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: GetWebhookEventBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetWebhookEventResult = sdkgo.QueryResult[WebhookEvent]
+
+type GetWebhookEventStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=resend"`
+	operationID                    struct{}                                        `connector:"operationId=getWebhookEvent"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetWebhookEventInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetWebhookEventResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetWebhookEventResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetWebhookEventResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetWebhookEventResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetWebhookEventResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[WebhookEvent]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetWebhookEventStep[IN any](config GetWebhookEventStepConfig[IN]) sdkgo.QueryStep[IN, GetWebhookEventInput, WebhookEvent] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetWebhookEventInput, WebhookEvent]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetWebhookEvent(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetWebhookEventResult] {
+			branches := make([]sdkgo.BranchTarget[GetWebhookEventResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetWebhookEventBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetWebhookEventBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetWebhookEventBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetWebhookEventBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetWebhookEventBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListWebhookEventAttemptsBranchListed sdkgo.BranchID = "listed"
+const ListWebhookEventAttemptsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListWebhookEventAttemptsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListWebhookEventAttemptsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListWebhookEventAttemptsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listWebhookEventAttempts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListWebhookEventAttemptsBranchListed, Description: "Resend completed the webhook request."},
+		{ID: ListWebhookEventAttemptsBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: ListWebhookEventAttemptsBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: ListWebhookEventAttemptsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListWebhookEventAttemptsResult = sdkgo.QueryResult[WebhookEventAttemptPage]
+
+type ListWebhookEventAttemptsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                   `connector:"connectorId=resend"`
+	operationID                    struct{}                                                   `connector:"operationId=listWebhookEventAttempts"`
+	StepType                       string                                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                     Connection                                                 `connector:"connection"`
+	ConnectionName                 string                                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListWebhookEventAttemptsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListWebhookEventAttemptsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListWebhookEventAttemptsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListWebhookEventAttemptsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListWebhookEventAttemptsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[WebhookEventAttemptPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewListWebhookEventAttemptsStep[IN any](config ListWebhookEventAttemptsStepConfig[IN]) sdkgo.QueryStep[IN, ListWebhookEventAttemptsInput, WebhookEventAttemptPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListWebhookEventAttemptsInput, WebhookEventAttemptPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListWebhookEventAttempts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListWebhookEventAttemptsResult] {
+			branches := make([]sdkgo.BranchTarget[ListWebhookEventAttemptsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListWebhookEventAttemptsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListWebhookEventAttemptsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListWebhookEventAttemptsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListWebhookEventAttemptsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ReplayWebhookEventBranchReplayed sdkgo.BranchID = "replayed"
+const ReplayWebhookEventBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ReplayWebhookEventBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const ReplayWebhookEventBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var ReplayWebhookEventDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "replayWebhookEvent"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ReplayWebhookEventBranchReplayed, Description: "Resend completed the webhook request."},
+		{ID: ReplayWebhookEventBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: ReplayWebhookEventBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: ReplayWebhookEventBranchUncertain, Description: "Bounded sends ended without confirming the request.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type ReplayWebhookEventResult = sdkgo.MutationResult[WebhookEvent]
+
+type ReplayWebhookEventStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=resend"`
+	operationID                       struct{}                                           `connector:"operationId=replayWebhookEvent"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) ReplayWebhookEventInput                   `connector:"mapToOperationInput"`
+	Replayed                          sdkgo.Target[ReplayWebhookEventResult]             `connector:"branch=replayed"`
+	ProviderRejected                  sdkgo.Target[ReplayWebhookEventResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[ReplayWebhookEventResult]             `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[ReplayWebhookEventResult]             `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[WebhookEvent]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewReplayWebhookEventStep[IN any](config ReplayWebhookEventStepConfig[IN]) sdkgo.MutationStep[IN, ReplayWebhookEventInput, WebhookEvent] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ReplayWebhookEventInput, WebhookEvent]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ReplayWebhookEvent(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ReplayWebhookEventResult] {
+			branches := make([]sdkgo.BranchTarget[ReplayWebhookEventResult], 0, 4)
+			if config.Replayed.HasStep() {
+				branches = append(branches, config.Replayed.BranchTarget(ReplayWebhookEventBranchReplayed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ReplayWebhookEventBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ReplayWebhookEventBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(ReplayWebhookEventBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

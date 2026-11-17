@@ -236,6 +236,17 @@ Every non-happy branch is optional. The example wires only the happy branch;
 an unwired optional outcome fails the Flow. Provider error response text and
 credentials never enter a Dex result, receipt, Stream, or log.
 
+## Webhooks
+
+`CreateWebhook` and `ReplayWebhookEvent` use bounded `limited` retries;
+create reads back matching endpoint and event subscriptions. Get/list,
+absolute updates, deletion, and delivery history reads are safe. Webhook
+results omit signing secrets, event payloads, and receiver response bodies.
+Secret rotation is not exposed because the only useful response is a new
+signing secret, which must not enter Dex Results. The runnable
+[`create-webhook` example](go/examples/create-webhook/README.md) exercises
+creation through a real Dex Worker and generated provider mock.
+
 ## Suppressions
 
 `CreateSuppression` and `BatchAddSuppressions` use bounded `limited` retries
