@@ -414,7 +414,8 @@ def mutation_self_test(connectors: list[Path]) -> None:
                                     str(python_package / "tests/test_conformance.py"), "-q"], ROOT)
             python_descriptor, = (python_package / "src/dex_connectors").glob("*/dex-connector.json")
             supported_operations["python"] = {factory["operationId"] for factory in
-                                              json.loads(python_descriptor.read_text())["factories"]}
+                                              json.loads(python_descriptor.read_text())["factories"]
+                                              if "operationId" in factory}
         typescript_package = connector / "typescript"
         if (typescript_package / "package.json").is_file():
             subprocess.run(["npm", "ci", "--prefix", str(typescript_package)], cwd=ROOT, check=True)
@@ -423,7 +424,8 @@ def mutation_self_test(connectors: list[Path]) -> None:
                                         "test/conformance.test.ts"], typescript_package)
             typescript_descriptor = typescript_package / "dex-connector.json"
             supported_operations["typescript"] = {factory["operationId"] for factory in
-                                                  json.loads(typescript_descriptor.read_text())["factories"]}
+                                                  json.loads(typescript_descriptor.read_text())["factories"]
+                                                  if "operationId" in factory}
         mutation_sources = [("classification", scenario), ("exchange", scenario),
                             ("wrong-output-field", scenario), ("pending-passing-go", scenario)]
         list_output_scenario = next((item for item in original["scenarios"]
