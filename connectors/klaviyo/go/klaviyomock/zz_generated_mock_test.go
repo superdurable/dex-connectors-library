@@ -24,6 +24,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[klaviyo.EventAcceptance](`{"accepted":true}`)
 			return err
 		}},
+		{name: "listProfiles/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[klaviyo.ProfilesPage](`{"profiles":[{"id":"profile-meridian-1","email":"member@meridian.co"}],"nextCursor":""}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +43,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.CreateEvent().Definition().Operation.OperationID != "createEvent" {
 		t.Errorf("createEvent mock has another definition")
+	}
+	if mock.ListProfiles().Definition().Operation.OperationID != "listProfiles" {
+		t.Errorf("listProfiles mock has another definition")
 	}
 }
