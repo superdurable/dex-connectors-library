@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: vercel
   displayName: Vercel
-  description: "Inspect and manage Vercel deployments through typed Dex connector Steps."
+  description: "Inspect and manage Vercel deployments, projects, and project domains through typed Dex connector Steps."
   company: Vercel
   categories: [developer-tools]
   version: v0.3.0
@@ -220,3 +220,102 @@ spec:
         - {id: defect, goName: Defect, description: The project ID or connection is invalid., optional: true}
       mocks:
         - {name: deletedDefault, branch: deleted, default: true, description: One example project is deleted., output: {projectId: prj_meridian1}}
+    - name: listProjectDomains
+      goName: ListProjectDomains
+      inputType: ListProjectDomainsInput
+      outputType: ProjectDomainsPage
+      kind: query
+      description: List the domains assigned to one project.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: The project domains were returned.}
+        - {id: notFound, goName: NotFound, description: The project does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Vercel rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Vercel returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One project domain is listed., output: {domains: [{name: meridian.example.com, projectId: prj_meridian1, verified: true}], pagination: {next: null}}}
+    - name: getProjectDomain
+      goName: GetProjectDomain
+      inputType: ProjectDomainInput
+      outputType: ProjectDomain
+      kind: query
+      description: Read a project's assigned domain.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: The project domain was returned.}
+        - {id: notFound, goName: NotFound, description: The domain is not assigned to the project., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Vercel rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Vercel returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One project domain is found., output: {name: meridian.example.com, projectId: prj_meridian1, verified: true}}
+    - name: addProjectDomain
+      goName: AddProjectDomain
+      inputType: ProjectDomainInput
+      outputType: ProjectDomain
+      kind: mutation
+      description: Assign a domain to a project.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: added, goName: Added, description: The domain was assigned.}
+        - {id: providerRejected, goName: ProviderRejected, description: Vercel rejected the assignment., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The assignment may have succeeded but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - {name: addedDefault, branch: added, default: true, description: One domain was assigned., output: {name: meridian.example.com, projectId: prj_meridian1, verified: false}}
+    - name: updateProjectDomain
+      goName: UpdateProjectDomain
+      inputType: UpdateProjectDomainInput
+      outputType: ProjectDomain
+      kind: mutation
+      description: Set the Git branch assigned to a project domain.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: The domain uses the requested branch.}
+        - {id: notFound, goName: NotFound, description: The domain is not assigned to the project., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Vercel rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Vercel returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: One domain was assigned to a branch., output: {name: meridian.example.com, projectId: prj_meridian1, gitBranch: staging, verified: true}}
+    - name: removeProjectDomain
+      goName: RemoveProjectDomain
+      inputType: ProjectDomainInput
+      outputType: RemovedProjectDomain
+      kind: mutation
+      description: Remove a domain assignment from a project.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: removed, goName: Removed, description: The domain is no longer assigned.}
+        - {id: providerRejected, goName: ProviderRejected, description: Vercel rejected the removal., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - {name: removedDefault, branch: removed, default: true, description: One domain assignment was removed., output: {name: meridian.example.com, projectId: prj_meridian1}}
+    - name: verifyProjectDomain
+      goName: VerifyProjectDomain
+      inputType: ProjectDomainInput
+      outputType: ProjectDomain
+      kind: mutation
+      description: Verify a project's domain after its DNS challenge is satisfied.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: verified, goName: Verified, description: The domain was verified.}
+        - {id: notFound, goName: NotFound, description: The domain is not assigned to the project., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The challenge is incomplete or Vercel rejected it., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Vercel returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - {name: verifiedDefault, branch: verified, default: true, description: One domain was verified., output: {name: meridian.example.com, projectId: prj_meridian1, verified: true}}

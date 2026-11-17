@@ -4,6 +4,8 @@ This runnable Flow calls `vercel.NewListDeploymentsStep` with the static connect
 
 `NewCancelFlow` runs `vercel.NewCancelDeploymentStep` with the same static connection. Its mock-backed real Dex test confirms the cancellation result and one connector call.
 
+`NewProjectDomainFlow` runs `vercel.NewCreateProjectStep` followed by `vercel.NewAddProjectDomainStep`, using the created project ID for the assignment. In Dex Web **Start Flow**, select `VercelCreateProjectWithDomain` and enter `{"name":"meridian-web","domain":"meridian.example.com"}`; set `teamId` when creating in a team. Both writes use bounded possible sends. Its mock-backed real Dex test confirms the project and domain connector calls.
+
 ## Generate the strict Flow Definition
 
 From `connectors/vercel`, use the latest stable dexcli:

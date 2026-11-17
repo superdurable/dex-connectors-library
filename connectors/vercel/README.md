@@ -24,8 +24,14 @@ The TypeScript package is [`@superdurable/connector-vercel`](typescript/README.m
 | NewCreateProjectStep | POST /v9/projects | project name, optional team ID | `Project` | `created` | `providerRejected`, `defect` |
 | NewUpdateProjectStep | PATCH /v9/projects/{idOrName} | project ID, replacement name, optional team ID | `Project` | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | NewDeleteProjectStep | DELETE /v9/projects/{idOrName} | project ID or name, optional team ID | `DeletedProject` | `deleted` | `providerRejected`, `defect` |
+| NewListProjectDomainsStep | GET /v9/projects/{idOrName}/domains | project ID, optional team ID | `ProjectDomainsPage` | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| NewGetProjectDomainStep | GET /v9/projects/{idOrName}/domains/{domain} | project ID, domain, optional team ID | `ProjectDomain` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| NewAddProjectDomainStep | POST /v10/projects/{idOrName}/domains | project ID, domain, optional team ID | `ProjectDomain` | `added` | `providerRejected`, `uncertain`, `defect` |
+| NewUpdateProjectDomainStep | PATCH /v9/projects/{idOrName}/domains/{domain} | project ID, domain, Git branch, optional team ID | `ProjectDomain` | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| NewRemoveProjectDomainStep | DELETE /v9/projects/{idOrName}/domains/{domain} | project ID, domain, optional team ID | `RemovedProjectDomain` | `removed` | `providerRejected`, `defect` |
+| NewVerifyProjectDomainStep | POST /v9/projects/{idOrName}/domains/{domain}/verify | project ID, domain, optional team ID | `ProjectDomain` | `verified` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
-Deployment and project reads are safe Queries. Cancellation, deletion, and the absolute project rename are safe Mutations; an already absent deployment or project counts as deleted. Project creation is limited to three possible sends per call and selects uncertainty when the result cannot be confirmed. Creating deployments requires file upload and is deferred as a binary-heavy operation.
+Deployment, project, and domain reads are safe Queries. Cancellation, deletion, absolute project rename, domain branch assignment, domain removal, and domain verification are safe Mutations. An already absent deployment, project, or domain assignment counts as deleted or removed. Project creation and domain assignment are limited to three possible sends per call and select uncertainty when the result cannot be confirmed. Creating deployments requires file upload and is deferred as a binary-heavy operation. Environment variable operations are omitted because variable values may be secrets and the connector contract forbids placing secrets in Flow input or output.
 
 ## Authorization
 
@@ -58,6 +64,7 @@ The [mock-backed example test](go/examples/vercel-lookup/flow/workflow_mock_inte
 ## Official API references
 
 - [https://vercel.com/docs/rest-api](https://vercel.com/docs/rest-api)
+- [Vercel project domain API](https://vercel.com/docs/rest-api/projects/add-a-domain-to-a-project)
 - [https://vercel.com/docs/deployments/managing-deployments](https://vercel.com/docs/deployments/managing-deployments)
 - [https://vercel.com/kb/guide/how-do-i-use-a-vercel-api-access-token](https://vercel.com/kb/guide/how-do-i-use-a-vercel-api-access-token)
 - [Vercel SDK deployment response fields](https://github.com/vercel/sdk/blob/main/docs/models/deployments.md)

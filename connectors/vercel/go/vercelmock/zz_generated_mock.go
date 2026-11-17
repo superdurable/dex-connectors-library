@@ -17,16 +17,22 @@ import (
 
 // Mock is a scripted vercel connection. Script each operation through its accessor.
 type Mock struct {
-	connection       vercel.Connection
-	listDeployments  *connectormock.Query[vercel.ListDeploymentsInput, vercel.DeploymentsPage]
-	getDeployment    *connectormock.Query[vercel.GetDeploymentInput, vercel.Deployment]
-	cancelDeployment *connectormock.Mutation[vercel.CancelDeploymentInput, vercel.Deployment]
-	deleteDeployment *connectormock.Mutation[vercel.DeleteDeploymentInput, vercel.DeletedDeployment]
-	listProjects     *connectormock.Query[vercel.ListProjectsInput, vercel.ProjectsPage]
-	getProject       *connectormock.Query[vercel.GetProjectInput, vercel.Project]
-	createProject    *connectormock.Mutation[vercel.CreateProjectInput, vercel.Project]
-	updateProject    *connectormock.Mutation[vercel.UpdateProjectInput, vercel.Project]
-	deleteProject    *connectormock.Mutation[vercel.DeleteProjectInput, vercel.DeletedProject]
+	connection          vercel.Connection
+	listDeployments     *connectormock.Query[vercel.ListDeploymentsInput, vercel.DeploymentsPage]
+	getDeployment       *connectormock.Query[vercel.GetDeploymentInput, vercel.Deployment]
+	cancelDeployment    *connectormock.Mutation[vercel.CancelDeploymentInput, vercel.Deployment]
+	deleteDeployment    *connectormock.Mutation[vercel.DeleteDeploymentInput, vercel.DeletedDeployment]
+	listProjects        *connectormock.Query[vercel.ListProjectsInput, vercel.ProjectsPage]
+	getProject          *connectormock.Query[vercel.GetProjectInput, vercel.Project]
+	createProject       *connectormock.Mutation[vercel.CreateProjectInput, vercel.Project]
+	updateProject       *connectormock.Mutation[vercel.UpdateProjectInput, vercel.Project]
+	deleteProject       *connectormock.Mutation[vercel.DeleteProjectInput, vercel.DeletedProject]
+	listProjectDomains  *connectormock.Query[vercel.ListProjectDomainsInput, vercel.ProjectDomainsPage]
+	getProjectDomain    *connectormock.Query[vercel.ProjectDomainInput, vercel.ProjectDomain]
+	addProjectDomain    *connectormock.Mutation[vercel.ProjectDomainInput, vercel.ProjectDomain]
+	updateProjectDomain *connectormock.Mutation[vercel.UpdateProjectDomainInput, vercel.ProjectDomain]
+	removeProjectDomain *connectormock.Mutation[vercel.ProjectDomainInput, vercel.RemovedProjectDomain]
+	verifyProjectDomain *connectormock.Mutation[vercel.ProjectDomainInput, vercel.ProjectDomain]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -34,15 +40,21 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listDeployments:  connectormock.NewQuery[vercel.ListDeploymentsInput, vercel.DeploymentsPage](t, vercel.ListDeploymentsDefinition),
-		getDeployment:    connectormock.NewQuery[vercel.GetDeploymentInput, vercel.Deployment](t, vercel.GetDeploymentDefinition),
-		cancelDeployment: connectormock.NewMutation[vercel.CancelDeploymentInput, vercel.Deployment](t, vercel.CancelDeploymentDefinition),
-		deleteDeployment: connectormock.NewMutation[vercel.DeleteDeploymentInput, vercel.DeletedDeployment](t, vercel.DeleteDeploymentDefinition),
-		listProjects:     connectormock.NewQuery[vercel.ListProjectsInput, vercel.ProjectsPage](t, vercel.ListProjectsDefinition),
-		getProject:       connectormock.NewQuery[vercel.GetProjectInput, vercel.Project](t, vercel.GetProjectDefinition),
-		createProject:    connectormock.NewMutation[vercel.CreateProjectInput, vercel.Project](t, vercel.CreateProjectDefinition),
-		updateProject:    connectormock.NewMutation[vercel.UpdateProjectInput, vercel.Project](t, vercel.UpdateProjectDefinition),
-		deleteProject:    connectormock.NewMutation[vercel.DeleteProjectInput, vercel.DeletedProject](t, vercel.DeleteProjectDefinition),
+		listDeployments:     connectormock.NewQuery[vercel.ListDeploymentsInput, vercel.DeploymentsPage](t, vercel.ListDeploymentsDefinition),
+		getDeployment:       connectormock.NewQuery[vercel.GetDeploymentInput, vercel.Deployment](t, vercel.GetDeploymentDefinition),
+		cancelDeployment:    connectormock.NewMutation[vercel.CancelDeploymentInput, vercel.Deployment](t, vercel.CancelDeploymentDefinition),
+		deleteDeployment:    connectormock.NewMutation[vercel.DeleteDeploymentInput, vercel.DeletedDeployment](t, vercel.DeleteDeploymentDefinition),
+		listProjects:        connectormock.NewQuery[vercel.ListProjectsInput, vercel.ProjectsPage](t, vercel.ListProjectsDefinition),
+		getProject:          connectormock.NewQuery[vercel.GetProjectInput, vercel.Project](t, vercel.GetProjectDefinition),
+		createProject:       connectormock.NewMutation[vercel.CreateProjectInput, vercel.Project](t, vercel.CreateProjectDefinition),
+		updateProject:       connectormock.NewMutation[vercel.UpdateProjectInput, vercel.Project](t, vercel.UpdateProjectDefinition),
+		deleteProject:       connectormock.NewMutation[vercel.DeleteProjectInput, vercel.DeletedProject](t, vercel.DeleteProjectDefinition),
+		listProjectDomains:  connectormock.NewQuery[vercel.ListProjectDomainsInput, vercel.ProjectDomainsPage](t, vercel.ListProjectDomainsDefinition),
+		getProjectDomain:    connectormock.NewQuery[vercel.ProjectDomainInput, vercel.ProjectDomain](t, vercel.GetProjectDomainDefinition),
+		addProjectDomain:    connectormock.NewMutation[vercel.ProjectDomainInput, vercel.ProjectDomain](t, vercel.AddProjectDomainDefinition),
+		updateProjectDomain: connectormock.NewMutation[vercel.UpdateProjectDomainInput, vercel.ProjectDomain](t, vercel.UpdateProjectDomainDefinition),
+		removeProjectDomain: connectormock.NewMutation[vercel.ProjectDomainInput, vercel.RemovedProjectDomain](t, vercel.RemoveProjectDomainDefinition),
+		verifyProjectDomain: connectormock.NewMutation[vercel.ProjectDomainInput, vercel.ProjectDomain](t, vercel.VerifyProjectDomainDefinition),
 	}
 	mock.listDeployments.Default(ListDeploymentsDefault())
 	mock.getDeployment.Default(GetDeploymentDefault())
@@ -53,6 +65,12 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createProject.Default(CreateProjectDefault())
 	mock.updateProject.Default(UpdateProjectDefault())
 	mock.deleteProject.Default(DeleteProjectDefault())
+	mock.listProjectDomains.Default(ListProjectDomainsDefault())
+	mock.getProjectDomain.Default(GetProjectDomainDefault())
+	mock.addProjectDomain.Default(AddProjectDomainDefault())
+	mock.updateProjectDomain.Default(UpdateProjectDomainDefault())
+	mock.removeProjectDomain.Default(RemoveProjectDomainDefault())
+	mock.verifyProjectDomain.Default(VerifyProjectDomainDefault())
 	connection, err := vercel.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "vercel", Name: connectionName})
 	if err != nil {
 		t.Fatalf("vercel mock connection: %v", err)
@@ -109,6 +127,36 @@ func (mock *Mock) DeleteProject() *connectormock.Mutation[vercel.DeleteProjectIn
 	return mock.deleteProject
 }
 
+// ListProjectDomains returns the listProjectDomains script.
+func (mock *Mock) ListProjectDomains() *connectormock.Query[vercel.ListProjectDomainsInput, vercel.ProjectDomainsPage] {
+	return mock.listProjectDomains
+}
+
+// GetProjectDomain returns the getProjectDomain script.
+func (mock *Mock) GetProjectDomain() *connectormock.Query[vercel.ProjectDomainInput, vercel.ProjectDomain] {
+	return mock.getProjectDomain
+}
+
+// AddProjectDomain returns the addProjectDomain script.
+func (mock *Mock) AddProjectDomain() *connectormock.Mutation[vercel.ProjectDomainInput, vercel.ProjectDomain] {
+	return mock.addProjectDomain
+}
+
+// UpdateProjectDomain returns the updateProjectDomain script.
+func (mock *Mock) UpdateProjectDomain() *connectormock.Mutation[vercel.UpdateProjectDomainInput, vercel.ProjectDomain] {
+	return mock.updateProjectDomain
+}
+
+// RemoveProjectDomain returns the removeProjectDomain script.
+func (mock *Mock) RemoveProjectDomain() *connectormock.Mutation[vercel.ProjectDomainInput, vercel.RemovedProjectDomain] {
+	return mock.removeProjectDomain
+}
+
+// VerifyProjectDomain returns the verifyProjectDomain script.
+func (mock *Mock) VerifyProjectDomain() *connectormock.Mutation[vercel.ProjectDomainInput, vercel.ProjectDomain] {
+	return mock.verifyProjectDomain
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListDeployments() sdkgo.Query[vercel.ListDeploymentsInput, vercel.DeploymentsPage] {
@@ -137,6 +185,24 @@ func (operations mockOperations) UpdateProject() sdkgo.Mutation[vercel.UpdatePro
 }
 func (operations mockOperations) DeleteProject() sdkgo.Mutation[vercel.DeleteProjectInput, vercel.DeletedProject] {
 	return operations.mock.deleteProject
+}
+func (operations mockOperations) ListProjectDomains() sdkgo.Query[vercel.ListProjectDomainsInput, vercel.ProjectDomainsPage] {
+	return operations.mock.listProjectDomains
+}
+func (operations mockOperations) GetProjectDomain() sdkgo.Query[vercel.ProjectDomainInput, vercel.ProjectDomain] {
+	return operations.mock.getProjectDomain
+}
+func (operations mockOperations) AddProjectDomain() sdkgo.Mutation[vercel.ProjectDomainInput, vercel.ProjectDomain] {
+	return operations.mock.addProjectDomain
+}
+func (operations mockOperations) UpdateProjectDomain() sdkgo.Mutation[vercel.UpdateProjectDomainInput, vercel.ProjectDomain] {
+	return operations.mock.updateProjectDomain
+}
+func (operations mockOperations) RemoveProjectDomain() sdkgo.Mutation[vercel.ProjectDomainInput, vercel.RemovedProjectDomain] {
+	return operations.mock.removeProjectDomain
+}
+func (operations mockOperations) VerifyProjectDomain() sdkgo.Mutation[vercel.ProjectDomainInput, vercel.ProjectDomain] {
+	return operations.mock.verifyProjectDomain
 }
 
 // ListDeploymentsListed selects the listed branch: List deployments visible to a personal account or team.
@@ -463,4 +529,235 @@ func DeleteProjectDeletedDefault() connectormock.Case[vercel.DeletedProject] {
 // DeleteProjectDefault is the manifest default, deletedDefault, which New installs.
 func DeleteProjectDefault() connectormock.Case[vercel.DeletedProject] {
 	return DeleteProjectDeletedDefault()
+}
+
+// ListProjectDomainsListed selects the listed branch: The project domains were returned.
+func ListProjectDomainsListed(value vercel.ProjectDomainsPage, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomainsPage] {
+	return connectormock.Branch(vercel.ListProjectDomainsBranchListed, value, failure)
+}
+
+// ListProjectDomainsNotFound selects the notFound branch: The project does not exist.
+func ListProjectDomainsNotFound(value vercel.ProjectDomainsPage, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomainsPage] {
+	return connectormock.Branch(vercel.ListProjectDomainsBranchNotFound, value, failure)
+}
+
+// ListProjectDomainsProviderRejected selects the providerRejected branch: Vercel rejected the request.
+func ListProjectDomainsProviderRejected(value vercel.ProjectDomainsPage, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomainsPage] {
+	return connectormock.Branch(vercel.ListProjectDomainsBranchProviderRejected, value, failure)
+}
+
+// ListProjectDomainsInvalidResponse selects the invalidResponse branch: Vercel returned malformed or oversized JSON.
+func ListProjectDomainsInvalidResponse(value vercel.ProjectDomainsPage, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomainsPage] {
+	return connectormock.Branch(vercel.ListProjectDomainsBranchInvalidResponse, value, failure)
+}
+
+// ListProjectDomainsDefect selects the defect branch: The input or connection is invalid.
+func ListProjectDomainsDefect(value vercel.ProjectDomainsPage, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomainsPage] {
+	return connectormock.Branch(vercel.ListProjectDomainsBranchDefect, value, failure)
+}
+
+// ListProjectDomainsRetry asks Dex to retry the listProjectDomains Step, after the delay when it is positive.
+func ListProjectDomainsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[vercel.ProjectDomainsPage] {
+	return connectormock.Retry[vercel.ProjectDomainsPage](failure, after)
+}
+
+// ListProjectDomainsListedDefault is the manifest mock listedDefault: One project domain is listed.
+func ListProjectDomainsListedDefault() connectormock.Case[vercel.ProjectDomainsPage] {
+	value := connectormock.MustDecodeOutput[vercel.ProjectDomainsPage](`{"domains":[{"name":"meridian.example.com","projectId":"prj_meridian1","verified":true}],"pagination":{"next":null}}`)
+	return connectormock.Branch(vercel.ListProjectDomainsBranchListed, value, nil)
+}
+
+// ListProjectDomainsDefault is the manifest default, listedDefault, which New installs.
+func ListProjectDomainsDefault() connectormock.Case[vercel.ProjectDomainsPage] {
+	return ListProjectDomainsListedDefault()
+}
+
+// GetProjectDomainFound selects the found branch: The project domain was returned.
+func GetProjectDomainFound(value vercel.ProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Branch(vercel.GetProjectDomainBranchFound, value, failure)
+}
+
+// GetProjectDomainNotFound selects the notFound branch: The domain is not assigned to the project.
+func GetProjectDomainNotFound(value vercel.ProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Branch(vercel.GetProjectDomainBranchNotFound, value, failure)
+}
+
+// GetProjectDomainProviderRejected selects the providerRejected branch: Vercel rejected the request.
+func GetProjectDomainProviderRejected(value vercel.ProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Branch(vercel.GetProjectDomainBranchProviderRejected, value, failure)
+}
+
+// GetProjectDomainInvalidResponse selects the invalidResponse branch: Vercel returned malformed or oversized JSON.
+func GetProjectDomainInvalidResponse(value vercel.ProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Branch(vercel.GetProjectDomainBranchInvalidResponse, value, failure)
+}
+
+// GetProjectDomainDefect selects the defect branch: The input or connection is invalid.
+func GetProjectDomainDefect(value vercel.ProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Branch(vercel.GetProjectDomainBranchDefect, value, failure)
+}
+
+// GetProjectDomainRetry asks Dex to retry the getProjectDomain Step, after the delay when it is positive.
+func GetProjectDomainRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Retry[vercel.ProjectDomain](failure, after)
+}
+
+// GetProjectDomainFoundDefault is the manifest mock foundDefault: One project domain is found.
+func GetProjectDomainFoundDefault() connectormock.Case[vercel.ProjectDomain] {
+	value := connectormock.MustDecodeOutput[vercel.ProjectDomain](`{"name":"meridian.example.com","projectId":"prj_meridian1","verified":true}`)
+	return connectormock.Branch(vercel.GetProjectDomainBranchFound, value, nil)
+}
+
+// GetProjectDomainDefault is the manifest default, foundDefault, which New installs.
+func GetProjectDomainDefault() connectormock.Case[vercel.ProjectDomain] {
+	return GetProjectDomainFoundDefault()
+}
+
+// AddProjectDomainAdded selects the added branch: The domain was assigned.
+func AddProjectDomainAdded(value vercel.ProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Branch(vercel.AddProjectDomainBranchAdded, value, failure)
+}
+
+// AddProjectDomainProviderRejected selects the providerRejected branch: Vercel rejected the assignment.
+func AddProjectDomainProviderRejected(value vercel.ProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Branch(vercel.AddProjectDomainBranchProviderRejected, value, failure)
+}
+
+// AddProjectDomainUncertain returns an uncertain addProjectDomain outcome.
+func AddProjectDomainUncertain(value vercel.ProjectDomain, failure sdkgo.Failure) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// AddProjectDomainDefect selects the defect branch: The input or connection is invalid.
+func AddProjectDomainDefect(value vercel.ProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Branch(vercel.AddProjectDomainBranchDefect, value, failure)
+}
+
+// AddProjectDomainRetry asks Dex to retry the addProjectDomain Step, after the delay when it is positive.
+func AddProjectDomainRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Retry[vercel.ProjectDomain](failure, after)
+}
+
+// AddProjectDomainAddedDefault is the manifest mock addedDefault: One domain was assigned.
+func AddProjectDomainAddedDefault() connectormock.Case[vercel.ProjectDomain] {
+	value := connectormock.MustDecodeOutput[vercel.ProjectDomain](`{"name":"meridian.example.com","projectId":"prj_meridian1","verified":false}`)
+	return connectormock.Branch(vercel.AddProjectDomainBranchAdded, value, nil)
+}
+
+// AddProjectDomainDefault is the manifest default, addedDefault, which New installs.
+func AddProjectDomainDefault() connectormock.Case[vercel.ProjectDomain] {
+	return AddProjectDomainAddedDefault()
+}
+
+// UpdateProjectDomainUpdated selects the updated branch: The domain uses the requested branch.
+func UpdateProjectDomainUpdated(value vercel.ProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Branch(vercel.UpdateProjectDomainBranchUpdated, value, failure)
+}
+
+// UpdateProjectDomainNotFound selects the notFound branch: The domain is not assigned to the project.
+func UpdateProjectDomainNotFound(value vercel.ProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Branch(vercel.UpdateProjectDomainBranchNotFound, value, failure)
+}
+
+// UpdateProjectDomainProviderRejected selects the providerRejected branch: Vercel rejected the update.
+func UpdateProjectDomainProviderRejected(value vercel.ProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Branch(vercel.UpdateProjectDomainBranchProviderRejected, value, failure)
+}
+
+// UpdateProjectDomainInvalidResponse selects the invalidResponse branch: Vercel returned malformed or oversized JSON.
+func UpdateProjectDomainInvalidResponse(value vercel.ProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Branch(vercel.UpdateProjectDomainBranchInvalidResponse, value, failure)
+}
+
+// UpdateProjectDomainDefect selects the defect branch: The input or connection is invalid.
+func UpdateProjectDomainDefect(value vercel.ProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Branch(vercel.UpdateProjectDomainBranchDefect, value, failure)
+}
+
+// UpdateProjectDomainRetry asks Dex to retry the updateProjectDomain Step, after the delay when it is positive.
+func UpdateProjectDomainRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Retry[vercel.ProjectDomain](failure, after)
+}
+
+// UpdateProjectDomainUpdatedDefault is the manifest mock updatedDefault: One domain was assigned to a branch.
+func UpdateProjectDomainUpdatedDefault() connectormock.Case[vercel.ProjectDomain] {
+	value := connectormock.MustDecodeOutput[vercel.ProjectDomain](`{"name":"meridian.example.com","projectId":"prj_meridian1","gitBranch":"staging","verified":true}`)
+	return connectormock.Branch(vercel.UpdateProjectDomainBranchUpdated, value, nil)
+}
+
+// UpdateProjectDomainDefault is the manifest default, updatedDefault, which New installs.
+func UpdateProjectDomainDefault() connectormock.Case[vercel.ProjectDomain] {
+	return UpdateProjectDomainUpdatedDefault()
+}
+
+// RemoveProjectDomainRemoved selects the removed branch: The domain is no longer assigned.
+func RemoveProjectDomainRemoved(value vercel.RemovedProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.RemovedProjectDomain] {
+	return connectormock.Branch(vercel.RemoveProjectDomainBranchRemoved, value, failure)
+}
+
+// RemoveProjectDomainProviderRejected selects the providerRejected branch: Vercel rejected the removal.
+func RemoveProjectDomainProviderRejected(value vercel.RemovedProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.RemovedProjectDomain] {
+	return connectormock.Branch(vercel.RemoveProjectDomainBranchProviderRejected, value, failure)
+}
+
+// RemoveProjectDomainDefect selects the defect branch: The input or connection is invalid.
+func RemoveProjectDomainDefect(value vercel.RemovedProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.RemovedProjectDomain] {
+	return connectormock.Branch(vercel.RemoveProjectDomainBranchDefect, value, failure)
+}
+
+// RemoveProjectDomainRetry asks Dex to retry the removeProjectDomain Step, after the delay when it is positive.
+func RemoveProjectDomainRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[vercel.RemovedProjectDomain] {
+	return connectormock.Retry[vercel.RemovedProjectDomain](failure, after)
+}
+
+// RemoveProjectDomainRemovedDefault is the manifest mock removedDefault: One domain assignment was removed.
+func RemoveProjectDomainRemovedDefault() connectormock.Case[vercel.RemovedProjectDomain] {
+	value := connectormock.MustDecodeOutput[vercel.RemovedProjectDomain](`{"name":"meridian.example.com","projectId":"prj_meridian1"}`)
+	return connectormock.Branch(vercel.RemoveProjectDomainBranchRemoved, value, nil)
+}
+
+// RemoveProjectDomainDefault is the manifest default, removedDefault, which New installs.
+func RemoveProjectDomainDefault() connectormock.Case[vercel.RemovedProjectDomain] {
+	return RemoveProjectDomainRemovedDefault()
+}
+
+// VerifyProjectDomainVerified selects the verified branch: The domain was verified.
+func VerifyProjectDomainVerified(value vercel.ProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Branch(vercel.VerifyProjectDomainBranchVerified, value, failure)
+}
+
+// VerifyProjectDomainNotFound selects the notFound branch: The domain is not assigned to the project.
+func VerifyProjectDomainNotFound(value vercel.ProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Branch(vercel.VerifyProjectDomainBranchNotFound, value, failure)
+}
+
+// VerifyProjectDomainProviderRejected selects the providerRejected branch: The challenge is incomplete or Vercel rejected it.
+func VerifyProjectDomainProviderRejected(value vercel.ProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Branch(vercel.VerifyProjectDomainBranchProviderRejected, value, failure)
+}
+
+// VerifyProjectDomainInvalidResponse selects the invalidResponse branch: Vercel returned malformed or oversized JSON.
+func VerifyProjectDomainInvalidResponse(value vercel.ProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Branch(vercel.VerifyProjectDomainBranchInvalidResponse, value, failure)
+}
+
+// VerifyProjectDomainDefect selects the defect branch: The input or connection is invalid.
+func VerifyProjectDomainDefect(value vercel.ProjectDomain, failure *sdkgo.Failure) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Branch(vercel.VerifyProjectDomainBranchDefect, value, failure)
+}
+
+// VerifyProjectDomainRetry asks Dex to retry the verifyProjectDomain Step, after the delay when it is positive.
+func VerifyProjectDomainRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[vercel.ProjectDomain] {
+	return connectormock.Retry[vercel.ProjectDomain](failure, after)
+}
+
+// VerifyProjectDomainVerifiedDefault is the manifest mock verifiedDefault: One domain was verified.
+func VerifyProjectDomainVerifiedDefault() connectormock.Case[vercel.ProjectDomain] {
+	value := connectormock.MustDecodeOutput[vercel.ProjectDomain](`{"name":"meridian.example.com","projectId":"prj_meridian1","verified":true}`)
+	return connectormock.Branch(vercel.VerifyProjectDomainBranchVerified, value, nil)
+}
+
+// VerifyProjectDomainDefault is the manifest default, verifiedDefault, which New installs.
+func VerifyProjectDomainDefault() connectormock.Case[vercel.ProjectDomain] {
+	return VerifyProjectDomainVerifiedDefault()
 }

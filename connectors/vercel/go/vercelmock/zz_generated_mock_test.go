@@ -52,6 +52,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[vercel.DeletedProject](`{"projectId":"prj_meridian1"}`)
 			return err
 		}},
+		{name: "listProjectDomains/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[vercel.ProjectDomainsPage](`{"domains":[{"name":"meridian.example.com","projectId":"prj_meridian1","verified":true}],"pagination":{"next":null}}`)
+			return err
+		}},
+		{name: "getProjectDomain/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[vercel.ProjectDomain](`{"name":"meridian.example.com","projectId":"prj_meridian1","verified":true}`)
+			return err
+		}},
+		{name: "addProjectDomain/addedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[vercel.ProjectDomain](`{"name":"meridian.example.com","projectId":"prj_meridian1","verified":false}`)
+			return err
+		}},
+		{name: "updateProjectDomain/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[vercel.ProjectDomain](`{"name":"meridian.example.com","projectId":"prj_meridian1","gitBranch":"staging","verified":true}`)
+			return err
+		}},
+		{name: "removeProjectDomain/removedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[vercel.RemovedProjectDomain](`{"name":"meridian.example.com","projectId":"prj_meridian1"}`)
+			return err
+		}},
+		{name: "verifyProjectDomain/verifiedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[vercel.ProjectDomain](`{"name":"meridian.example.com","projectId":"prj_meridian1","verified":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -88,5 +112,23 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteProject().Definition().Operation.OperationID != "deleteProject" {
 		t.Errorf("deleteProject mock has another definition")
+	}
+	if mock.ListProjectDomains().Definition().Operation.OperationID != "listProjectDomains" {
+		t.Errorf("listProjectDomains mock has another definition")
+	}
+	if mock.GetProjectDomain().Definition().Operation.OperationID != "getProjectDomain" {
+		t.Errorf("getProjectDomain mock has another definition")
+	}
+	if mock.AddProjectDomain().Definition().Operation.OperationID != "addProjectDomain" {
+		t.Errorf("addProjectDomain mock has another definition")
+	}
+	if mock.UpdateProjectDomain().Definition().Operation.OperationID != "updateProjectDomain" {
+		t.Errorf("updateProjectDomain mock has another definition")
+	}
+	if mock.RemoveProjectDomain().Definition().Operation.OperationID != "removeProjectDomain" {
+		t.Errorf("removeProjectDomain mock has another definition")
+	}
+	if mock.VerifyProjectDomain().Definition().Operation.OperationID != "verifyProjectDomain" {
+		t.Errorf("verifyProjectDomain mock has another definition")
 	}
 }
