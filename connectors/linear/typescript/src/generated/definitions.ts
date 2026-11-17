@@ -92,6 +92,8 @@ export const CreateIssueDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for createIssue. */
 export const CreateIssueMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -125,6 +127,8 @@ export const UpdateIssueDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for updateIssue. */
 export const UpdateIssueMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -154,6 +158,8 @@ export const AddCommentDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for addComment. */
 export const AddCommentMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

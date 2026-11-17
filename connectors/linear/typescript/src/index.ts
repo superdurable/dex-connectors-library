@@ -8,3 +8,4 @@ export { Connection, newConnection, newConnectionWithOperations } from './genera
 export { newProjectConnection } from './project.js';
 export { LinearClient, type LinearClientOptions } from './client.js';
 export { AddCommentOperation, CreateIssueOperation, FindUserByEmailOperation, GetIssueOperation, ListWorkflowStatesOperation, SearchIssuesOperation, UpdateIssueOperation } from './operations.js';
+export * from './trigger.js';

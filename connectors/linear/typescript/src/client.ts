@@ -3,7 +3,7 @@
 
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { RefreshFailedError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
@@ -21,6 +21,8 @@ export interface LinearClientOptions {
   send?: (request: ProviderRequest) => Promise<ProviderResponse>;
   /** Clock for receipts and Retry-After. */
   now?: () => Date;
+  /** Receives webhook delivery, retry, and durable inbox records. */
+  logger?: TriggerLogger;
 }
 
 /** One classified GraphQL exchange. */
@@ -38,8 +40,11 @@ export class LinearClient {
   private readonly endpoint: string;
   private readonly maxResponseBytes: number;
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
-  private readonly now: () => Date;
-  private readonly refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Linear', auth: Authorization, credentialFields: CredentialFields });
+  /** Clock for webhook signature freshness. */ readonly now: () => Date;
+  /** Largest accepted raw webhook body, in bytes. */ readonly webhookMaxBodyBytes: number;
+  /** Allowed webhookTimestamp drift in milliseconds. */ readonly webhookSignatureToleranceMs: number;
+  /** Secret-safe Trigger record destination. */ readonly triggerLogger: TriggerLogger;
+  /** Generated OAuth refresh behavior shared by provider calls and webhook verification. */ readonly refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Linear', auth: Authorization, credentialFields: CredentialFields });
 
   /** Validate configuration and bind a renewable credential source. */
   constructor(config: Config, readonly credentials: CredentialSource, options: LinearClientOptions = {}) {
@@ -51,6 +56,9 @@ export class LinearClient {
     if (config.webhookSignatureToleranceMs !== undefined && (!Number.isSafeInteger(config.webhookSignatureToleranceMs) || config.webhookSignatureToleranceMs < 1_000)) throw new TypeError('Linear webhookSignatureTolerance must be at least one second');
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
+    this.webhookMaxBodyBytes = config.webhookMaxBodyBytes || 1_048_576;
+    this.webhookSignatureToleranceMs = config.webhookSignatureToleranceMs || 60_000;
+    this.triggerLogger = options.logger ?? defaultTriggerLogger;
   }
 
   /** Bind the search query. */ searchIssues() { return new SearchIssuesOperation(this); }
