@@ -17,11 +17,17 @@ import (
 
 // Mock is a scripted microsoft-teams connection. Script each operation through its accessor.
 type Mock struct {
-	connection         teams.Connection
-	listThreadReplies  *connectormock.Query[teams.ListThreadRepliesInput, teams.ListThreadRepliesOutput]
-	postChannelMessage *connectormock.Mutation[teams.PostChannelMessageInput, teams.PostMessageOutput]
-	postThreadReply    *connectormock.Mutation[teams.PostThreadReplyInput, teams.PostMessageOutput]
-	postChatMessage    *connectormock.Mutation[teams.PostChatMessageInput, teams.PostMessageOutput]
+	connection          teams.Connection
+	listChannels        *connectormock.Query[teams.ListChannelsInput, teams.ListChannelsOutput]
+	getChannel          *connectormock.Query[teams.GetChannelInput, teams.Channel]
+	listChannelMessages *connectormock.Query[teams.ListChannelMessagesInput, teams.ListChannelMessagesOutput]
+	getChannelMessage   *connectormock.Query[teams.GetChannelMessageInput, teams.Message]
+	listChats           *connectormock.Query[teams.ListChatsInput, teams.ListChatsOutput]
+	getChat             *connectormock.Query[teams.GetChatInput, teams.Chat]
+	listThreadReplies   *connectormock.Query[teams.ListThreadRepliesInput, teams.ListThreadRepliesOutput]
+	postChannelMessage  *connectormock.Mutation[teams.PostChannelMessageInput, teams.PostMessageOutput]
+	postThreadReply     *connectormock.Mutation[teams.PostThreadReplyInput, teams.PostMessageOutput]
+	postChatMessage     *connectormock.Mutation[teams.PostChatMessageInput, teams.PostMessageOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -29,11 +35,23 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listThreadReplies:  connectormock.NewQuery[teams.ListThreadRepliesInput, teams.ListThreadRepliesOutput](t, teams.ListThreadRepliesDefinition),
-		postChannelMessage: connectormock.NewMutation[teams.PostChannelMessageInput, teams.PostMessageOutput](t, teams.PostChannelMessageDefinition),
-		postThreadReply:    connectormock.NewMutation[teams.PostThreadReplyInput, teams.PostMessageOutput](t, teams.PostThreadReplyDefinition),
-		postChatMessage:    connectormock.NewMutation[teams.PostChatMessageInput, teams.PostMessageOutput](t, teams.PostChatMessageDefinition),
+		listChannels:        connectormock.NewQuery[teams.ListChannelsInput, teams.ListChannelsOutput](t, teams.ListChannelsDefinition),
+		getChannel:          connectormock.NewQuery[teams.GetChannelInput, teams.Channel](t, teams.GetChannelDefinition),
+		listChannelMessages: connectormock.NewQuery[teams.ListChannelMessagesInput, teams.ListChannelMessagesOutput](t, teams.ListChannelMessagesDefinition),
+		getChannelMessage:   connectormock.NewQuery[teams.GetChannelMessageInput, teams.Message](t, teams.GetChannelMessageDefinition),
+		listChats:           connectormock.NewQuery[teams.ListChatsInput, teams.ListChatsOutput](t, teams.ListChatsDefinition),
+		getChat:             connectormock.NewQuery[teams.GetChatInput, teams.Chat](t, teams.GetChatDefinition),
+		listThreadReplies:   connectormock.NewQuery[teams.ListThreadRepliesInput, teams.ListThreadRepliesOutput](t, teams.ListThreadRepliesDefinition),
+		postChannelMessage:  connectormock.NewMutation[teams.PostChannelMessageInput, teams.PostMessageOutput](t, teams.PostChannelMessageDefinition),
+		postThreadReply:     connectormock.NewMutation[teams.PostThreadReplyInput, teams.PostMessageOutput](t, teams.PostThreadReplyDefinition),
+		postChatMessage:     connectormock.NewMutation[teams.PostChatMessageInput, teams.PostMessageOutput](t, teams.PostChatMessageDefinition),
 	}
+	mock.listChannels.Default(ListChannelsDefault())
+	mock.getChannel.Default(GetChannelDefault())
+	mock.listChannelMessages.Default(ListChannelMessagesDefault())
+	mock.getChannelMessage.Default(GetChannelMessageDefault())
+	mock.listChats.Default(ListChatsDefault())
+	mock.getChat.Default(GetChatDefault())
 	mock.listThreadReplies.Default(ListThreadRepliesDefault())
 	mock.postChannelMessage.Default(PostChannelMessageDefault())
 	mock.postThreadReply.Default(PostThreadReplyDefault())
@@ -48,6 +66,34 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() teams.Connection { return mock.connection }
+
+// ListChannels returns the listChannels script.
+func (mock *Mock) ListChannels() *connectormock.Query[teams.ListChannelsInput, teams.ListChannelsOutput] {
+	return mock.listChannels
+}
+
+// GetChannel returns the getChannel script.
+func (mock *Mock) GetChannel() *connectormock.Query[teams.GetChannelInput, teams.Channel] {
+	return mock.getChannel
+}
+
+// ListChannelMessages returns the listChannelMessages script.
+func (mock *Mock) ListChannelMessages() *connectormock.Query[teams.ListChannelMessagesInput, teams.ListChannelMessagesOutput] {
+	return mock.listChannelMessages
+}
+
+// GetChannelMessage returns the getChannelMessage script.
+func (mock *Mock) GetChannelMessage() *connectormock.Query[teams.GetChannelMessageInput, teams.Message] {
+	return mock.getChannelMessage
+}
+
+// ListChats returns the listChats script.
+func (mock *Mock) ListChats() *connectormock.Query[teams.ListChatsInput, teams.ListChatsOutput] {
+	return mock.listChats
+}
+
+// GetChat returns the getChat script.
+func (mock *Mock) GetChat() *connectormock.Query[teams.GetChatInput, teams.Chat] { return mock.getChat }
 
 // ListThreadReplies returns the listThreadReplies script.
 func (mock *Mock) ListThreadReplies() *connectormock.Query[teams.ListThreadRepliesInput, teams.ListThreadRepliesOutput] {
@@ -71,6 +117,24 @@ func (mock *Mock) PostChatMessage() *connectormock.Mutation[teams.PostChatMessag
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListChannels() sdkgo.Query[teams.ListChannelsInput, teams.ListChannelsOutput] {
+	return operations.mock.listChannels
+}
+func (operations mockOperations) GetChannel() sdkgo.Query[teams.GetChannelInput, teams.Channel] {
+	return operations.mock.getChannel
+}
+func (operations mockOperations) ListChannelMessages() sdkgo.Query[teams.ListChannelMessagesInput, teams.ListChannelMessagesOutput] {
+	return operations.mock.listChannelMessages
+}
+func (operations mockOperations) GetChannelMessage() sdkgo.Query[teams.GetChannelMessageInput, teams.Message] {
+	return operations.mock.getChannelMessage
+}
+func (operations mockOperations) ListChats() sdkgo.Query[teams.ListChatsInput, teams.ListChatsOutput] {
+	return operations.mock.listChats
+}
+func (operations mockOperations) GetChat() sdkgo.Query[teams.GetChatInput, teams.Chat] {
+	return operations.mock.getChat
+}
 func (operations mockOperations) ListThreadReplies() sdkgo.Query[teams.ListThreadRepliesInput, teams.ListThreadRepliesOutput] {
 	return operations.mock.listThreadReplies
 }
@@ -83,6 +147,243 @@ func (operations mockOperations) PostThreadReply() sdkgo.Mutation[teams.PostThre
 func (operations mockOperations) PostChatMessage() sdkgo.Mutation[teams.PostChatMessageInput, teams.PostMessageOutput] {
 	return operations.mock.postChatMessage
 }
+
+// ListChannelsListed selects the listed branch: A page of channels was listed.
+func ListChannelsListed(value teams.ListChannelsOutput, failure *sdkgo.Failure) connectormock.Case[teams.ListChannelsOutput] {
+	return connectormock.Branch(teams.ListChannelsBranchListed, value, failure)
+}
+
+// ListChannelsNotFound selects the notFound branch: The team is absent.
+func ListChannelsNotFound(value teams.ListChannelsOutput, failure *sdkgo.Failure) connectormock.Case[teams.ListChannelsOutput] {
+	return connectormock.Branch(teams.ListChannelsBranchNotFound, value, failure)
+}
+
+// ListChannelsProviderRejected selects the providerRejected branch: Graph rejected the channel list.
+func ListChannelsProviderRejected(value teams.ListChannelsOutput, failure *sdkgo.Failure) connectormock.Case[teams.ListChannelsOutput] {
+	return connectormock.Branch(teams.ListChannelsBranchProviderRejected, value, failure)
+}
+
+// ListChannelsInvalidResponse selects the invalidResponse branch: Graph returned invalid channel metadata.
+func ListChannelsInvalidResponse(value teams.ListChannelsOutput, failure *sdkgo.Failure) connectormock.Case[teams.ListChannelsOutput] {
+	return connectormock.Branch(teams.ListChannelsBranchInvalidResponse, value, failure)
+}
+
+// ListChannelsDefect selects the defect branch: Local input or configuration is invalid.
+func ListChannelsDefect(value teams.ListChannelsOutput, failure *sdkgo.Failure) connectormock.Case[teams.ListChannelsOutput] {
+	return connectormock.Branch(teams.ListChannelsBranchDefect, value, failure)
+}
+
+// ListChannelsRetry asks Dex to retry the listChannels Step, after the delay when it is positive.
+func ListChannelsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[teams.ListChannelsOutput] {
+	return connectormock.Retry[teams.ListChannelsOutput](failure, after)
+}
+
+// ListChannelsListedDefaultAnswer is the manifest mock listedDefaultAnswer: List the incident channel.
+func ListChannelsListedDefaultAnswer() connectormock.Case[teams.ListChannelsOutput] {
+	value := connectormock.MustDecodeOutput[teams.ListChannelsOutput](`{"channels":[{"id":"19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2","displayName":"Incidents","membershipType":"standard"}]}`)
+	return connectormock.Branch(teams.ListChannelsBranchListed, value, nil)
+}
+
+// ListChannelsDefault is the manifest default, listedDefaultAnswer, which New installs.
+func ListChannelsDefault() connectormock.Case[teams.ListChannelsOutput] {
+	return ListChannelsListedDefaultAnswer()
+}
+
+// GetChannelFound selects the found branch: The channel was found.
+func GetChannelFound(value teams.Channel, failure *sdkgo.Failure) connectormock.Case[teams.Channel] {
+	return connectormock.Branch(teams.GetChannelBranchFound, value, failure)
+}
+
+// GetChannelNotFound selects the notFound branch: The team or channel is absent.
+func GetChannelNotFound(value teams.Channel, failure *sdkgo.Failure) connectormock.Case[teams.Channel] {
+	return connectormock.Branch(teams.GetChannelBranchNotFound, value, failure)
+}
+
+// GetChannelProviderRejected selects the providerRejected branch: Graph rejected the channel read.
+func GetChannelProviderRejected(value teams.Channel, failure *sdkgo.Failure) connectormock.Case[teams.Channel] {
+	return connectormock.Branch(teams.GetChannelBranchProviderRejected, value, failure)
+}
+
+// GetChannelInvalidResponse selects the invalidResponse branch: Graph returned invalid channel metadata.
+func GetChannelInvalidResponse(value teams.Channel, failure *sdkgo.Failure) connectormock.Case[teams.Channel] {
+	return connectormock.Branch(teams.GetChannelBranchInvalidResponse, value, failure)
+}
+
+// GetChannelDefect selects the defect branch: Local input or configuration is invalid.
+func GetChannelDefect(value teams.Channel, failure *sdkgo.Failure) connectormock.Case[teams.Channel] {
+	return connectormock.Branch(teams.GetChannelBranchDefect, value, failure)
+}
+
+// GetChannelRetry asks Dex to retry the getChannel Step, after the delay when it is positive.
+func GetChannelRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[teams.Channel] {
+	return connectormock.Retry[teams.Channel](failure, after)
+}
+
+// GetChannelFoundDefaultAnswer is the manifest mock foundDefaultAnswer: Read the incident channel.
+func GetChannelFoundDefaultAnswer() connectormock.Case[teams.Channel] {
+	value := connectormock.MustDecodeOutput[teams.Channel](`{"id":"19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2","displayName":"Incidents","membershipType":"standard"}`)
+	return connectormock.Branch(teams.GetChannelBranchFound, value, nil)
+}
+
+// GetChannelDefault is the manifest default, foundDefaultAnswer, which New installs.
+func GetChannelDefault() connectormock.Case[teams.Channel] { return GetChannelFoundDefaultAnswer() }
+
+// ListChannelMessagesListed selects the listed branch: A page of messages was listed.
+func ListChannelMessagesListed(value teams.ListChannelMessagesOutput, failure *sdkgo.Failure) connectormock.Case[teams.ListChannelMessagesOutput] {
+	return connectormock.Branch(teams.ListChannelMessagesBranchListed, value, failure)
+}
+
+// ListChannelMessagesNotFound selects the notFound branch: The team or channel is absent.
+func ListChannelMessagesNotFound(value teams.ListChannelMessagesOutput, failure *sdkgo.Failure) connectormock.Case[teams.ListChannelMessagesOutput] {
+	return connectormock.Branch(teams.ListChannelMessagesBranchNotFound, value, failure)
+}
+
+// ListChannelMessagesProviderRejected selects the providerRejected branch: Graph rejected the message list.
+func ListChannelMessagesProviderRejected(value teams.ListChannelMessagesOutput, failure *sdkgo.Failure) connectormock.Case[teams.ListChannelMessagesOutput] {
+	return connectormock.Branch(teams.ListChannelMessagesBranchProviderRejected, value, failure)
+}
+
+// ListChannelMessagesInvalidResponse selects the invalidResponse branch: Graph returned invalid messages.
+func ListChannelMessagesInvalidResponse(value teams.ListChannelMessagesOutput, failure *sdkgo.Failure) connectormock.Case[teams.ListChannelMessagesOutput] {
+	return connectormock.Branch(teams.ListChannelMessagesBranchInvalidResponse, value, failure)
+}
+
+// ListChannelMessagesDefect selects the defect branch: Local input or configuration is invalid.
+func ListChannelMessagesDefect(value teams.ListChannelMessagesOutput, failure *sdkgo.Failure) connectormock.Case[teams.ListChannelMessagesOutput] {
+	return connectormock.Branch(teams.ListChannelMessagesBranchDefect, value, failure)
+}
+
+// ListChannelMessagesRetry asks Dex to retry the listChannelMessages Step, after the delay when it is positive.
+func ListChannelMessagesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[teams.ListChannelMessagesOutput] {
+	return connectormock.Retry[teams.ListChannelMessagesOutput](failure, after)
+}
+
+// ListChannelMessagesListedDefaultAnswer is the manifest mock listedDefaultAnswer: List the incident root message.
+func ListChannelMessagesListedDefaultAnswer() connectormock.Case[teams.ListChannelMessagesOutput] {
+	value := connectormock.MustDecodeOutput[teams.ListChannelMessagesOutput](`{"messages":[{"id":"1616990032035","messageType":"message","createdAt":"2026-10-01T09:30:00Z","sender":{"userId":"8ea0e38b-efb3-4757-924a-5f94061cf8c2","displayName":"Incident Bot"},"importance":"normal","contentType":"text","text":"INC-1042"}]}`)
+	return connectormock.Branch(teams.ListChannelMessagesBranchListed, value, nil)
+}
+
+// ListChannelMessagesDefault is the manifest default, listedDefaultAnswer, which New installs.
+func ListChannelMessagesDefault() connectormock.Case[teams.ListChannelMessagesOutput] {
+	return ListChannelMessagesListedDefaultAnswer()
+}
+
+// GetChannelMessageFound selects the found branch: The message was found.
+func GetChannelMessageFound(value teams.Message, failure *sdkgo.Failure) connectormock.Case[teams.Message] {
+	return connectormock.Branch(teams.GetChannelMessageBranchFound, value, failure)
+}
+
+// GetChannelMessageNotFound selects the notFound branch: The message is absent.
+func GetChannelMessageNotFound(value teams.Message, failure *sdkgo.Failure) connectormock.Case[teams.Message] {
+	return connectormock.Branch(teams.GetChannelMessageBranchNotFound, value, failure)
+}
+
+// GetChannelMessageProviderRejected selects the providerRejected branch: Graph rejected the message read.
+func GetChannelMessageProviderRejected(value teams.Message, failure *sdkgo.Failure) connectormock.Case[teams.Message] {
+	return connectormock.Branch(teams.GetChannelMessageBranchProviderRejected, value, failure)
+}
+
+// GetChannelMessageInvalidResponse selects the invalidResponse branch: Graph returned an invalid message.
+func GetChannelMessageInvalidResponse(value teams.Message, failure *sdkgo.Failure) connectormock.Case[teams.Message] {
+	return connectormock.Branch(teams.GetChannelMessageBranchInvalidResponse, value, failure)
+}
+
+// GetChannelMessageDefect selects the defect branch: Local input or configuration is invalid.
+func GetChannelMessageDefect(value teams.Message, failure *sdkgo.Failure) connectormock.Case[teams.Message] {
+	return connectormock.Branch(teams.GetChannelMessageBranchDefect, value, failure)
+}
+
+// GetChannelMessageRetry asks Dex to retry the getChannelMessage Step, after the delay when it is positive.
+func GetChannelMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[teams.Message] {
+	return connectormock.Retry[teams.Message](failure, after)
+}
+
+// GetChannelMessageFoundDefaultAnswer is the manifest mock foundDefaultAnswer: Read the incident root message.
+func GetChannelMessageFoundDefaultAnswer() connectormock.Case[teams.Message] {
+	value := connectormock.MustDecodeOutput[teams.Message](`{"id":"1616990032035","messageType":"message","createdAt":"2026-10-01T09:30:00Z","sender":{"userId":"8ea0e38b-efb3-4757-924a-5f94061cf8c2","displayName":"Incident Bot"},"importance":"normal","contentType":"text","text":"INC-1042"}`)
+	return connectormock.Branch(teams.GetChannelMessageBranchFound, value, nil)
+}
+
+// GetChannelMessageDefault is the manifest default, foundDefaultAnswer, which New installs.
+func GetChannelMessageDefault() connectormock.Case[teams.Message] {
+	return GetChannelMessageFoundDefaultAnswer()
+}
+
+// ListChatsListed selects the listed branch: A page of chats was listed.
+func ListChatsListed(value teams.ListChatsOutput, failure *sdkgo.Failure) connectormock.Case[teams.ListChatsOutput] {
+	return connectormock.Branch(teams.ListChatsBranchListed, value, failure)
+}
+
+// ListChatsProviderRejected selects the providerRejected branch: Graph rejected the chat list.
+func ListChatsProviderRejected(value teams.ListChatsOutput, failure *sdkgo.Failure) connectormock.Case[teams.ListChatsOutput] {
+	return connectormock.Branch(teams.ListChatsBranchProviderRejected, value, failure)
+}
+
+// ListChatsInvalidResponse selects the invalidResponse branch: Graph returned invalid chat metadata.
+func ListChatsInvalidResponse(value teams.ListChatsOutput, failure *sdkgo.Failure) connectormock.Case[teams.ListChatsOutput] {
+	return connectormock.Branch(teams.ListChatsBranchInvalidResponse, value, failure)
+}
+
+// ListChatsDefect selects the defect branch: Local input or configuration is invalid.
+func ListChatsDefect(value teams.ListChatsOutput, failure *sdkgo.Failure) connectormock.Case[teams.ListChatsOutput] {
+	return connectormock.Branch(teams.ListChatsBranchDefect, value, failure)
+}
+
+// ListChatsRetry asks Dex to retry the listChats Step, after the delay when it is positive.
+func ListChatsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[teams.ListChatsOutput] {
+	return connectormock.Retry[teams.ListChatsOutput](failure, after)
+}
+
+// ListChatsListedDefaultAnswer is the manifest mock listedDefaultAnswer: List an incident group chat.
+func ListChatsListedDefaultAnswer() connectormock.Case[teams.ListChatsOutput] {
+	value := connectormock.MustDecodeOutput[teams.ListChatsOutput](`{"chats":[{"id":"19:incident@thread.v2","chatType":"group","topic":"Incident response"}]}`)
+	return connectormock.Branch(teams.ListChatsBranchListed, value, nil)
+}
+
+// ListChatsDefault is the manifest default, listedDefaultAnswer, which New installs.
+func ListChatsDefault() connectormock.Case[teams.ListChatsOutput] {
+	return ListChatsListedDefaultAnswer()
+}
+
+// GetChatFound selects the found branch: The chat was found.
+func GetChatFound(value teams.Chat, failure *sdkgo.Failure) connectormock.Case[teams.Chat] {
+	return connectormock.Branch(teams.GetChatBranchFound, value, failure)
+}
+
+// GetChatNotFound selects the notFound branch: The chat is absent.
+func GetChatNotFound(value teams.Chat, failure *sdkgo.Failure) connectormock.Case[teams.Chat] {
+	return connectormock.Branch(teams.GetChatBranchNotFound, value, failure)
+}
+
+// GetChatProviderRejected selects the providerRejected branch: Graph rejected the chat read.
+func GetChatProviderRejected(value teams.Chat, failure *sdkgo.Failure) connectormock.Case[teams.Chat] {
+	return connectormock.Branch(teams.GetChatBranchProviderRejected, value, failure)
+}
+
+// GetChatInvalidResponse selects the invalidResponse branch: Graph returned invalid chat metadata.
+func GetChatInvalidResponse(value teams.Chat, failure *sdkgo.Failure) connectormock.Case[teams.Chat] {
+	return connectormock.Branch(teams.GetChatBranchInvalidResponse, value, failure)
+}
+
+// GetChatDefect selects the defect branch: Local input or configuration is invalid.
+func GetChatDefect(value teams.Chat, failure *sdkgo.Failure) connectormock.Case[teams.Chat] {
+	return connectormock.Branch(teams.GetChatBranchDefect, value, failure)
+}
+
+// GetChatRetry asks Dex to retry the getChat Step, after the delay when it is positive.
+func GetChatRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[teams.Chat] {
+	return connectormock.Retry[teams.Chat](failure, after)
+}
+
+// GetChatFoundDefaultAnswer is the manifest mock foundDefaultAnswer: Read an incident group chat.
+func GetChatFoundDefaultAnswer() connectormock.Case[teams.Chat] {
+	value := connectormock.MustDecodeOutput[teams.Chat](`{"id":"19:incident@thread.v2","chatType":"group","topic":"Incident response"}`)
+	return connectormock.Branch(teams.GetChatBranchFound, value, nil)
+}
+
+// GetChatDefault is the manifest default, foundDefaultAnswer, which New installs.
+func GetChatDefault() connectormock.Case[teams.Chat] { return GetChatFoundDefaultAnswer() }
 
 // ListThreadRepliesRead selects the read branch: One page of replies was read; it may be empty.
 func ListThreadRepliesRead(value teams.ListThreadRepliesOutput, failure *sdkgo.Failure) connectormock.Case[teams.ListThreadRepliesOutput] {

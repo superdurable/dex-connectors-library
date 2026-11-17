@@ -25,6 +25,8 @@ const (
 	ConnectionName = "outlook-calendar-scheduler"
 
 	recordMeetingRequestStepType         = "RecordMeetingRequest"
+	checkSelectedCalendarStepType        = "CheckSelectedCalendar"
+	verifySelectedCalendarStepType       = "VerifySelectedCalendar"
 	checkAttendeeAvailabilityStepType    = "CheckAttendeeAvailability"
 	evaluateAttendeeAvailabilityStepType = "EvaluateAttendeeAvailability"
 	placeMeetingHoldStepType             = "PlaceMeetingHold"
@@ -155,6 +157,16 @@ func (*Flow) GetFlowType() string { return FlowType }
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(recordMeetingRequest{calendarID: flow.calendarID}),
+		dex.DefineStep(outlookcalendar.NewGetCalendarStep(outlookcalendar.GetCalendarStepConfig[MeetingRequest]{
+			StepType: checkSelectedCalendarStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "outlook-calendar", GroupLabel: "Outlook Calendar", Explanation: "Verify the selected calendar is still visible and editable before booking a meeting."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(request MeetingRequest) outlookcalendar.GetCalendarInput {
+				return outlookcalendar.GetCalendarInput{CalendarID: request.CalendarID}
+			},
+			Found: sdkgo.GoTo(verifySelectedCalendar{}),
+		})),
+		dex.DefineStep(verifySelectedCalendar{}),
 		dex.DefineStep(outlookcalendar.NewQueryFreeBusyStep(outlookcalendar.QueryFreeBusyStepConfig[MeetingRequest]{
 			StepType: checkAttendeeAvailabilityStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -368,6 +380,28 @@ func (step recordMeetingRequest) Execute(ctx dex.Context, input Input) (*dex.Ste
 		return dex.ForceFail(err.Error()), nil
 	}
 	if err := meetingRequestAttribute.Set(ctx, request); err != nil {
+		return nil, err
+	}
+	if request.CalendarID != "" {
+		return dex.GoTo(sdkgo.StepRef[MeetingRequest](checkSelectedCalendarStepType), request), nil
+	}
+	return dex.GoTo(sdkgo.StepRef[MeetingRequest](checkAttendeeAvailabilityStepType), request), nil
+}
+
+// dex:group group-id:meeting group-label:"Meeting"
+// dex:explanation text:"Continue only when the selected calendar still allows edits."
+type verifySelectedCalendar struct {
+	dex.StepDefaultsNoWaitFor[outlookcalendar.GetCalendarResult]
+}
+
+func (verifySelectedCalendar) GetStepType() string { return verifySelectedCalendarStepType }
+
+func (verifySelectedCalendar) Execute(ctx dex.Context, result outlookcalendar.GetCalendarResult) (*dex.StepDecision, error) {
+	if !result.Value.CanEdit {
+		return dex.ForceFail("selected calendar is read-only"), nil
+	}
+	request, err := meetingRequestAttribute.Get(ctx)
+	if err != nil {
 		return nil, err
 	}
 	return dex.GoTo(sdkgo.StepRef[MeetingRequest](checkAttendeeAvailabilityStepType), request), nil

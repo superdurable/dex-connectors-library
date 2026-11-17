@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package incidentacknowledgement demonstrates every Microsoft Teams operation in one Flow started from
+// Package incidentacknowledgement demonstrates Teams messaging and channel reads in one Flow started from
 // Dex Web Start Flow: post an incident update to a channel, reply in its thread with the status, read the
 // thread's replies on a durable Timer until a person acknowledges, and escalate to a chat when nobody does.
 package incidentacknowledgement
@@ -26,6 +26,8 @@ const (
 	ConnectionName = "microsoft-teams"
 
 	recordIncidentUpdateStepType   = "RecordIncidentUpdate"
+	checkIncidentChannelStepType   = "CheckIncidentChannel"
+	verifyIncidentChannelStepType  = "VerifyIncidentChannel"
 	postIncidentUpdateStepType     = "PostIncidentUpdate"
 	recordIncidentPostStepType     = "RecordIncidentPost"
 	postStatusReplyStepType        = "PostStatusReply"
@@ -248,6 +250,16 @@ func (*Flow) GetFlowType() string { return FlowType }
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(recordIncidentUpdate{}),
+		dex.DefineStep(teams.NewGetChannelStep(teams.GetChannelStepConfig[IncidentUpdate]{
+			StepType: checkIncidentChannelStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "teams", GroupLabel: "Microsoft Teams", Explanation: "Confirm the picked incident channel is still visible before posting."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(IncidentUpdate) teams.GetChannelInput {
+				return teams.GetChannelInput{TeamID: flow.channel.TeamID, ChannelID: flow.channel.ChannelID}
+			},
+			Found: sdkgo.GoTo(verifyIncidentChannel{}),
+		})),
+		dex.DefineStep(verifyIncidentChannel{}),
 		dex.DefineStep(teams.NewPostChannelMessageStep(teams.PostChannelMessageStepConfig[IncidentUpdate]{
 			StepType: postIncidentUpdateStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -528,7 +540,23 @@ func (recordIncidentUpdate) Execute(ctx dex.Context, input Input) (*dex.StepDeci
 	if err := incidentAttribute.Set(ctx, record); err != nil {
 		return nil, err
 	}
-	return dex.GoTo(sdkgo.StepRef[IncidentUpdate](postIncidentUpdateStepType), update), nil
+	return dex.GoTo(sdkgo.StepRef[IncidentUpdate](checkIncidentChannelStepType), update), nil
+}
+
+// dex:group group-id:incident group-label:"Incident"
+// dex:explanation text:"Post only after Graph confirms the picked channel still exists."
+type verifyIncidentChannel struct {
+	dex.StepDefaultsNoWaitFor[teams.GetChannelResult]
+}
+
+func (verifyIncidentChannel) GetStepType() string { return verifyIncidentChannelStepType }
+
+func (verifyIncidentChannel) Execute(ctx dex.Context, _ teams.GetChannelResult) (*dex.StepDecision, error) {
+	record, err := incidentAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[IncidentUpdate](postIncidentUpdateStepType), record.Update), nil
 }
 
 // dex:group group-id:posting group-label:"Posting"

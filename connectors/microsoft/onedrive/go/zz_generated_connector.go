@@ -63,6 +63,10 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	DeleteItem() sdkgo.Mutation[DeleteItemInput, DeleteItemOutput]
+	RenameItem() sdkgo.Mutation[RenameItemInput, RenameItemOutput]
+	MoveItem() sdkgo.Mutation[MoveItemInput, MoveItemOutput]
+	CopyFile() sdkgo.Mutation[CopyFileInput, CopyFileOutput]
 	SearchFiles() sdkgo.Query[SearchFilesInput, SearchFilesOutput]
 	GetFile() sdkgo.Query[GetFileInput, DriveItem]
 	ReadFileText() sdkgo.Query[ReadFileTextInput, ReadFileTextOutput]
@@ -72,6 +76,18 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) DeleteItem() sdkgo.Mutation[DeleteItemInput, DeleteItemOutput] {
+	return operations.client.DeleteItem()
+}
+func (operations clientOperations) RenameItem() sdkgo.Mutation[RenameItemInput, RenameItemOutput] {
+	return operations.client.RenameItem()
+}
+func (operations clientOperations) MoveItem() sdkgo.Mutation[MoveItemInput, MoveItemOutput] {
+	return operations.client.MoveItem()
+}
+func (operations clientOperations) CopyFile() sdkgo.Mutation[CopyFileInput, CopyFileOutput] {
+	return operations.client.CopyFile()
+}
 func (operations clientOperations) SearchFiles() sdkgo.Query[SearchFilesInput, SearchFilesOutput] {
 	return operations.client.SearchFiles()
 }
@@ -352,6 +368,312 @@ func (credentials Credentials) validateSharedCredential() error {
 	return nil
 }
 
+const DeleteItemBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteItemDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteItemBranchDeleted, Description: "The item is absent from the drive."},
+		{ID: DeleteItemBranchProviderRejected, Description: "Graph rejected deletion of the item.", Optional: true},
+		{ID: DeleteItemBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteItemResult = sdkgo.MutationResult[DeleteItemOutput]
+
+type DeleteItemStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=microsoft-onedrive"`
+	operationID                       struct{}                                               `connector:"operationId=deleteItem"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                         `connector:"configurationUI"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteItemInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteItemResult]                         `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteItemResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteItemResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeleteItemOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteItemStep[IN any](config DeleteItemStepConfig[IN]) sdkgo.MutationStep[IN, DeleteItemInput, DeleteItemOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-onedrive connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteItemInput, DeleteItemOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.DeleteItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteItemResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteItemResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteItemBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteItemBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RenameItemBranchRenamed sdkgo.BranchID = "renamed"
+const RenameItemBranchNotFound sdkgo.BranchID = "notFound"
+const RenameItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RenameItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RenameItemDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "renameItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RenameItemBranchRenamed, Description: "The item has the requested name."},
+		{ID: RenameItemBranchNotFound, Description: "The item was not found.", Optional: true},
+		{ID: RenameItemBranchProviderRejected, Description: "Graph rejected the rename.", Optional: true},
+		{ID: RenameItemBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type RenameItemResult = sdkgo.MutationResult[RenameItemOutput]
+
+type RenameItemStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=microsoft-onedrive"`
+	operationID                       struct{}                                               `connector:"operationId=renameItem"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                         `connector:"configurationUI"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) RenameItemInput                               `connector:"mapToOperationInput"`
+	Renamed                           sdkgo.Target[RenameItemResult]                         `connector:"branch=renamed"`
+	NotFound                          sdkgo.Target[RenameItemResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[RenameItemResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[RenameItemResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[RenameItemOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewRenameItemStep[IN any](config RenameItemStepConfig[IN]) sdkgo.MutationStep[IN, RenameItemInput, RenameItemOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-onedrive connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, RenameItemInput, RenameItemOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.RenameItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RenameItemResult] {
+			branches := make([]sdkgo.BranchTarget[RenameItemResult], 0, 4)
+			if config.Renamed.HasStep() {
+				branches = append(branches, config.Renamed.BranchTarget(RenameItemBranchRenamed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(RenameItemBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RenameItemBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RenameItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const MoveItemBranchMoved sdkgo.BranchID = "moved"
+const MoveItemBranchNotFound sdkgo.BranchID = "notFound"
+const MoveItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const MoveItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var MoveItemDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "moveItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: MoveItemBranchMoved, Description: "The item is in the requested parent folder."},
+		{ID: MoveItemBranchNotFound, Description: "The item or parent folder was not found.", Optional: true},
+		{ID: MoveItemBranchProviderRejected, Description: "Graph rejected the move.", Optional: true},
+		{ID: MoveItemBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type MoveItemResult = sdkgo.MutationResult[MoveItemOutput]
+
+type MoveItemStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=microsoft-onedrive"`
+	operationID                       struct{}                                             `connector:"operationId=moveItem"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                       `connector:"configurationUI"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) MoveItemInput                               `connector:"mapToOperationInput"`
+	Moved                             sdkgo.Target[MoveItemResult]                         `connector:"branch=moved"`
+	NotFound                          sdkgo.Target[MoveItemResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[MoveItemResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[MoveItemResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[MoveItemOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewMoveItemStep[IN any](config MoveItemStepConfig[IN]) sdkgo.MutationStep[IN, MoveItemInput, MoveItemOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-onedrive connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, MoveItemInput, MoveItemOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.MoveItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[MoveItemResult] {
+			branches := make([]sdkgo.BranchTarget[MoveItemResult], 0, 4)
+			if config.Moved.HasStep() {
+				branches = append(branches, config.Moved.BranchTarget(MoveItemBranchMoved))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(MoveItemBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(MoveItemBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(MoveItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CopyFileBranchQueued sdkgo.BranchID = "queued"
+const CopyFileBranchNameConflict sdkgo.BranchID = "nameConflict"
+const CopyFileBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CopyFileBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CopyFileBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CopyFileBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CopyFileDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "copyFile"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CopyFileBranchQueued, Description: "Graph accepted the copy job or the destination was found after an earlier send."},
+		{ID: CopyFileBranchNameConflict, Description: "The destination path existed before the first send.", Optional: true},
+		{ID: CopyFileBranchProviderRejected, Description: "Graph rejected the copy.", Optional: true},
+		{ID: CopyFileBranchInvalidResponse, Description: "Graph returned invalid destination metadata.", Optional: true},
+		{ID: CopyFileBranchUncertain, Description: "The send cap was reached and the destination still was not found.", Optional: true},
+		{ID: CopyFileBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CopyFileResult = sdkgo.MutationResult[CopyFileOutput]
+
+type CopyFileStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=microsoft-onedrive"`
+	operationID                       struct{}                                             `connector:"operationId=copyFile"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                       `connector:"configurationUI"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CopyFileInput                               `connector:"mapToOperationInput"`
+	Queued                            sdkgo.Target[CopyFileResult]                         `connector:"branch=queued"`
+	NameConflict                      sdkgo.Target[CopyFileResult]                         `connector:"branch=nameConflict,optional"`
+	ProviderRejected                  sdkgo.Target[CopyFileResult]                         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CopyFileResult]                         `connector:"branch=invalidResponse,optional"`
+	Uncertain                         sdkgo.Target[CopyFileResult]                         `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CopyFileResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CopyFileOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCopyFileStep[IN any](config CopyFileStepConfig[IN]) sdkgo.MutationStep[IN, CopyFileInput, CopyFileOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-onedrive connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CopyFileInput, CopyFileOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.CopyFile(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CopyFileResult] {
+			branches := make([]sdkgo.BranchTarget[CopyFileResult], 0, 6)
+			if config.Queued.HasStep() {
+				branches = append(branches, config.Queued.BranchTarget(CopyFileBranchQueued))
+			}
+			if config.NameConflict.HasStep() {
+				branches = append(branches, config.NameConflict.BranchTarget(CopyFileBranchNameConflict))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CopyFileBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CopyFileBranchInvalidResponse))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CopyFileBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CopyFileBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
 const SearchFilesBranchFound sdkgo.BranchID = "found"
 const SearchFilesBranchNotFound sdkgo.BranchID = "notFound"
 const SearchFilesBranchProviderRejected sdkgo.BranchID = "providerRejected"
@@ -621,6 +943,8 @@ var UploadFileDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type UploadFileResult = sdkgo.MutationResult[UploadFileOutput]
@@ -642,6 +966,8 @@ type UploadFileStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UploadFileResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UploadFileOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUploadFileStep[IN any](config UploadFileStepConfig[IN]) sdkgo.MutationStep[IN, UploadFileInput, UploadFileOutput] {
@@ -677,6 +1003,7 @@ func NewUploadFileStep[IN any](config UploadFileStepConfig[IN]) sdkgo.MutationSt
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -700,6 +1027,8 @@ var CreateFolderDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateFolderResult = sdkgo.MutationResult[CreateFolderOutput]
@@ -721,6 +1050,8 @@ type CreateFolderStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateFolderResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateFolderOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateFolderStep[IN any](config CreateFolderStepConfig[IN]) sdkgo.MutationStep[IN, CreateFolderInput, CreateFolderOutput] {
@@ -756,5 +1087,6 @@ func NewCreateFolderStep[IN any](config CreateFolderStepConfig[IN]) sdkgo.Mutati
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

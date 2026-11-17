@@ -56,6 +56,12 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListChannels() sdkgo.Query[ListChannelsInput, ListChannelsOutput]
+	GetChannel() sdkgo.Query[GetChannelInput, Channel]
+	ListChannelMessages() sdkgo.Query[ListChannelMessagesInput, ListChannelMessagesOutput]
+	GetChannelMessage() sdkgo.Query[GetChannelMessageInput, Message]
+	ListChats() sdkgo.Query[ListChatsInput, ListChatsOutput]
+	GetChat() sdkgo.Query[GetChatInput, Chat]
 	ListThreadReplies() sdkgo.Query[ListThreadRepliesInput, ListThreadRepliesOutput]
 	PostChannelMessage() sdkgo.Mutation[PostChannelMessageInput, PostMessageOutput]
 	PostThreadReply() sdkgo.Mutation[PostThreadReplyInput, PostMessageOutput]
@@ -64,6 +70,24 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListChannels() sdkgo.Query[ListChannelsInput, ListChannelsOutput] {
+	return operations.client.ListChannels()
+}
+func (operations clientOperations) GetChannel() sdkgo.Query[GetChannelInput, Channel] {
+	return operations.client.GetChannel()
+}
+func (operations clientOperations) ListChannelMessages() sdkgo.Query[ListChannelMessagesInput, ListChannelMessagesOutput] {
+	return operations.client.ListChannelMessages()
+}
+func (operations clientOperations) GetChannelMessage() sdkgo.Query[GetChannelMessageInput, Message] {
+	return operations.client.GetChannelMessage()
+}
+func (operations clientOperations) ListChats() sdkgo.Query[ListChatsInput, ListChatsOutput] {
+	return operations.client.ListChats()
+}
+func (operations clientOperations) GetChat() sdkgo.Query[GetChatInput, Chat] {
+	return operations.client.GetChat()
+}
 func (operations clientOperations) ListThreadReplies() sdkgo.Query[ListThreadRepliesInput, ListThreadRepliesOutput] {
 	return operations.client.ListThreadReplies()
 }
@@ -277,6 +301,474 @@ func (credentials Credentials) validateSharedCredential() error {
 	return nil
 }
 
+const ListChannelsBranchListed sdkgo.BranchID = "listed"
+const ListChannelsBranchNotFound sdkgo.BranchID = "notFound"
+const ListChannelsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListChannelsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListChannelsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListChannelsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listChannels"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListChannelsBranchListed, Description: "A page of channels was listed."},
+		{ID: ListChannelsBranchNotFound, Description: "The team is absent.", Optional: true},
+		{ID: ListChannelsBranchProviderRejected, Description: "Graph rejected the channel list.", Optional: true},
+		{ID: ListChannelsBranchInvalidResponse, Description: "Graph returned invalid channel metadata.", Optional: true},
+		{ID: ListChannelsBranchDefect, Description: "Local input or configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListChannelsResult = sdkgo.QueryResult[ListChannelsOutput]
+
+type ListChannelsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=microsoft-teams"`
+	operationID                    struct{}                                              `connector:"operationId=listChannels"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                        `connector:"configurationUI"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListChannelsInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListChannelsResult]                      `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListChannelsResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListChannelsResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListChannelsResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListChannelsResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListChannelsOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewListChannelsStep[IN any](config ListChannelsStepConfig[IN]) sdkgo.QueryStep[IN, ListChannelsInput, ListChannelsOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-teams connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListChannelsInput, ListChannelsOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListChannels(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListChannelsResult] {
+			branches := make([]sdkgo.BranchTarget[ListChannelsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListChannelsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListChannelsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListChannelsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListChannelsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListChannelsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetChannelBranchFound sdkgo.BranchID = "found"
+const GetChannelBranchNotFound sdkgo.BranchID = "notFound"
+const GetChannelBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetChannelBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetChannelBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetChannelDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getChannel"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetChannelBranchFound, Description: "The channel was found."},
+		{ID: GetChannelBranchNotFound, Description: "The team or channel is absent.", Optional: true},
+		{ID: GetChannelBranchProviderRejected, Description: "Graph rejected the channel read.", Optional: true},
+		{ID: GetChannelBranchInvalidResponse, Description: "Graph returned invalid channel metadata.", Optional: true},
+		{ID: GetChannelBranchDefect, Description: "Local input or configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetChannelResult = sdkgo.QueryResult[Channel]
+
+type GetChannelStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=microsoft-teams"`
+	operationID                    struct{}                                   `connector:"operationId=getChannel"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI             `connector:"configurationUI"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetChannelInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetChannelResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetChannelResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetChannelResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetChannelResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetChannelResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Channel]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewGetChannelStep[IN any](config GetChannelStepConfig[IN]) sdkgo.QueryStep[IN, GetChannelInput, Channel] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-teams connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetChannelInput, Channel]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetChannel(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetChannelResult] {
+			branches := make([]sdkgo.BranchTarget[GetChannelResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetChannelBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetChannelBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetChannelBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetChannelBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetChannelBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListChannelMessagesBranchListed sdkgo.BranchID = "listed"
+const ListChannelMessagesBranchNotFound sdkgo.BranchID = "notFound"
+const ListChannelMessagesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListChannelMessagesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListChannelMessagesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListChannelMessagesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listChannelMessages"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListChannelMessagesBranchListed, Description: "A page of messages was listed."},
+		{ID: ListChannelMessagesBranchNotFound, Description: "The team or channel is absent.", Optional: true},
+		{ID: ListChannelMessagesBranchProviderRejected, Description: "Graph rejected the message list.", Optional: true},
+		{ID: ListChannelMessagesBranchInvalidResponse, Description: "Graph returned invalid messages.", Optional: true},
+		{ID: ListChannelMessagesBranchDefect, Description: "Local input or configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListChannelMessagesResult = sdkgo.QueryResult[ListChannelMessagesOutput]
+
+type ListChannelMessagesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                     `connector:"connectorId=microsoft-teams"`
+	operationID                    struct{}                                                     `connector:"operationId=listChannelMessages"`
+	StepType                       string                                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                        `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                               `connector:"configurationUI"`
+	Connection                     Connection                                                   `connector:"connection"`
+	ConnectionName                 string                                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListChannelMessagesInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListChannelMessagesResult]                      `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListChannelMessagesResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListChannelMessagesResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListChannelMessagesResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListChannelMessagesResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListChannelMessagesOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+}
+
+func NewListChannelMessagesStep[IN any](config ListChannelMessagesStepConfig[IN]) sdkgo.QueryStep[IN, ListChannelMessagesInput, ListChannelMessagesOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-teams connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListChannelMessagesInput, ListChannelMessagesOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListChannelMessages(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListChannelMessagesResult] {
+			branches := make([]sdkgo.BranchTarget[ListChannelMessagesResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListChannelMessagesBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListChannelMessagesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListChannelMessagesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListChannelMessagesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListChannelMessagesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetChannelMessageBranchFound sdkgo.BranchID = "found"
+const GetChannelMessageBranchNotFound sdkgo.BranchID = "notFound"
+const GetChannelMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetChannelMessageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetChannelMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetChannelMessageDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getChannelMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetChannelMessageBranchFound, Description: "The message was found."},
+		{ID: GetChannelMessageBranchNotFound, Description: "The message is absent.", Optional: true},
+		{ID: GetChannelMessageBranchProviderRejected, Description: "Graph rejected the message read.", Optional: true},
+		{ID: GetChannelMessageBranchInvalidResponse, Description: "Graph returned an invalid message.", Optional: true},
+		{ID: GetChannelMessageBranchDefect, Description: "Local input or configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetChannelMessageResult = sdkgo.QueryResult[Message]
+
+type GetChannelMessageStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=microsoft-teams"`
+	operationID                    struct{}                                   `connector:"operationId=getChannelMessage"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI             `connector:"configurationUI"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetChannelMessageInput            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetChannelMessageResult]      `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetChannelMessageResult]      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetChannelMessageResult]      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetChannelMessageResult]      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetChannelMessageResult]      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Message]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewGetChannelMessageStep[IN any](config GetChannelMessageStepConfig[IN]) sdkgo.QueryStep[IN, GetChannelMessageInput, Message] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-teams connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetChannelMessageInput, Message]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetChannelMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetChannelMessageResult] {
+			branches := make([]sdkgo.BranchTarget[GetChannelMessageResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetChannelMessageBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetChannelMessageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetChannelMessageBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetChannelMessageBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetChannelMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListChatsBranchListed sdkgo.BranchID = "listed"
+const ListChatsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListChatsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListChatsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListChatsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listChats"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListChatsBranchListed, Description: "A page of chats was listed."},
+		{ID: ListChatsBranchProviderRejected, Description: "Graph rejected the chat list.", Optional: true},
+		{ID: ListChatsBranchInvalidResponse, Description: "Graph returned invalid chat metadata.", Optional: true},
+		{ID: ListChatsBranchDefect, Description: "Local input or configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListChatsResult = sdkgo.QueryResult[ListChatsOutput]
+
+type ListChatsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=microsoft-teams"`
+	operationID                    struct{}                                           `connector:"operationId=listChats"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                     `connector:"configurationUI"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListChatsInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListChatsResult]                      `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListChatsResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListChatsResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListChatsResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListChatsOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewListChatsStep[IN any](config ListChatsStepConfig[IN]) sdkgo.QueryStep[IN, ListChatsInput, ListChatsOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-teams connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListChatsInput, ListChatsOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListChats(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListChatsResult] {
+			branches := make([]sdkgo.BranchTarget[ListChatsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListChatsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListChatsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListChatsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListChatsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetChatBranchFound sdkgo.BranchID = "found"
+const GetChatBranchNotFound sdkgo.BranchID = "notFound"
+const GetChatBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetChatBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetChatBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetChatDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getChat"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetChatBranchFound, Description: "The chat was found."},
+		{ID: GetChatBranchNotFound, Description: "The chat is absent.", Optional: true},
+		{ID: GetChatBranchProviderRejected, Description: "Graph rejected the chat read.", Optional: true},
+		{ID: GetChatBranchInvalidResponse, Description: "Graph returned invalid chat metadata.", Optional: true},
+		{ID: GetChatBranchDefect, Description: "Local input or configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetChatResult = sdkgo.QueryResult[Chat]
+
+type GetChatStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                `connector:"connectorId=microsoft-teams"`
+	operationID                    struct{}                                `connector:"operationId=getChat"`
+	StepType                       string                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                   `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI          `connector:"configurationUI"`
+	Connection                     Connection                              `connector:"connection"`
+	ConnectionName                 string                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetChatInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetChatResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetChatResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetChatResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetChatResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetChatResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Chat]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                        `connector:"stepOptionsOverride"`
+}
+
+func NewGetChatStep[IN any](config GetChatStepConfig[IN]) sdkgo.QueryStep[IN, GetChatInput, Chat] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-teams connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetChatInput, Chat]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetChat(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetChatResult] {
+			branches := make([]sdkgo.BranchTarget[GetChatResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetChatBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetChatBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetChatBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetChatBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetChatBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
 const ListThreadRepliesBranchRead sdkgo.BranchID = "read"
 const ListThreadRepliesBranchNotFound sdkgo.BranchID = "notFound"
 const ListThreadRepliesBranchProviderRejected sdkgo.BranchID = "providerRejected"
@@ -374,6 +866,8 @@ var PostChannelMessageDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type PostChannelMessageResult = sdkgo.MutationResult[PostMessageOutput]
@@ -394,6 +888,8 @@ type PostChannelMessageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[PostChannelMessageResult]                  `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PostMessageOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewPostChannelMessageStep[IN any](config PostChannelMessageStepConfig[IN]) sdkgo.MutationStep[IN, PostChannelMessageInput, PostMessageOutput] {
@@ -426,6 +922,7 @@ func NewPostChannelMessageStep[IN any](config PostChannelMessageStepConfig[IN]) 
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -447,6 +944,8 @@ var PostThreadReplyDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type PostThreadReplyResult = sdkgo.MutationResult[PostMessageOutput]
@@ -467,6 +966,8 @@ type PostThreadReplyStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[PostThreadReplyResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PostMessageOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewPostThreadReplyStep[IN any](config PostThreadReplyStepConfig[IN]) sdkgo.MutationStep[IN, PostThreadReplyInput, PostMessageOutput] {
@@ -499,6 +1000,7 @@ func NewPostThreadReplyStep[IN any](config PostThreadReplyStepConfig[IN]) sdkgo.
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -520,6 +1022,8 @@ var PostChatMessageDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type PostChatMessageResult = sdkgo.MutationResult[PostMessageOutput]
@@ -540,6 +1044,8 @@ type PostChatMessageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[PostChatMessageResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PostMessageOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewPostChatMessageStep[IN any](config PostChatMessageStepConfig[IN]) sdkgo.MutationStep[IN, PostChatMessageInput, PostMessageOutput] {
@@ -572,5 +1078,6 @@ func NewPostChatMessageStep[IN any](config PostChatMessageStepConfig[IN]) sdkgo.
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

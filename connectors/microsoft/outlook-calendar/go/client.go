@@ -15,6 +15,7 @@ package outlookcalendar
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -94,7 +95,8 @@ type Client struct {
 }
 
 type graphRequest struct {
-	method string
+	method         string
+	requestContext context.Context
 	// path is relative to the Graph v1.0 base URL and already includes the mailbox root.
 	path string
 	// nextLink replaces path and query with a validated @odata.nextLink URL.
@@ -234,6 +236,32 @@ func (client *Client) QueryFreeBusy() QueryFreeBusyOperation {
 	return QueryFreeBusyOperation{client: client}
 }
 
+// ListCalendars returns the listCalendars Query bound to this client.
+func (client *Client) ListCalendars() ListCalendarsOperation {
+	return ListCalendarsOperation{client: client}
+}
+
+// GetCalendar returns the getCalendar Query bound to this client.
+func (client *Client) GetCalendar() GetCalendarOperation { return GetCalendarOperation{client: client} }
+
+// DeleteEvent returns the deleteEvent Mutation bound to this client.
+func (client *Client) DeleteEvent() DeleteEventOperation { return DeleteEventOperation{client: client} }
+
+// CreateCalendar returns the createCalendar Mutation bound to this client.
+func (client *Client) CreateCalendar() CreateCalendarOperation {
+	return CreateCalendarOperation{client: client}
+}
+
+// UpdateCalendar returns the updateCalendar Mutation bound to this client.
+func (client *Client) UpdateCalendar() UpdateCalendarOperation {
+	return UpdateCalendarOperation{client: client}
+}
+
+// DeleteCalendar returns the deleteCalendar Mutation bound to this client.
+func (client *Client) DeleteCalendar() DeleteCalendarOperation {
+	return DeleteCalendarOperation{client: client}
+}
+
 // resolveCredentials returns the call's credentials and the Graph path of the mailbox they reach.
 func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, string, *sdkgo.Failure) {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
@@ -348,7 +376,11 @@ func (client *Client) send(call sdkgo.Call, credentials *Credentials, request gr
 		if encodedPayload != nil {
 			body = bytes.NewReader(encodedPayload)
 		}
-		httpRequest, err := http.NewRequestWithContext(call.Context, request.method, strings.TrimSuffix(target, "?"), body)
+		var requestContext context.Context = call.Context
+		if request.requestContext != nil {
+			requestContext = request.requestContext
+		}
+		httpRequest, err := http.NewRequestWithContext(requestContext, request.method, strings.TrimSuffix(target, "?"), body)
 		if err != nil {
 			return graphResponse{}, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "provider request could not be built"}
 		}
@@ -404,8 +436,9 @@ func validateNextLink(nextLink string) error {
 	if err != nil || parsed.Scheme != "https" || parsed.Host != graphHost || parsed.User != nil || parsed.Fragment != "" {
 		return errors.New("pageToken must be the nextPageToken of a previous page, an https://graph.microsoft.com URL")
 	}
-	if !strings.HasPrefix(parsed.Path, "/v1.0/") || !strings.HasSuffix(strings.ToLower(parsed.Path), "/calendarview") {
-		return errors.New("pageToken must continue a Microsoft Graph v1.0 calendarView listing")
+	if !strings.HasPrefix(parsed.Path, "/v1.0/") ||
+		(!strings.HasSuffix(strings.ToLower(parsed.Path), "/calendarview") && !strings.HasSuffix(strings.ToLower(parsed.Path), "/calendars")) {
+		return errors.New("pageToken must continue a Microsoft Graph v1.0 calendarView or calendars listing")
 	}
 	return nil
 }

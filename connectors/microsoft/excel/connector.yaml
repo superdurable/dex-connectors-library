@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: microsoft-excel
   displayName: Microsoft Excel
-  description: Read Excel tables as rows keyed by column name, read and write bounded ranges, and append table rows without duplicates in workbooks stored in OneDrive for work or school and SharePoint, through Microsoft Graph.
+  description: Discover workbooks, worksheets, and table columns; find rows, read and write ranges, append table rows, and create worksheets in OneDrive and SharePoint through Microsoft Graph.
   company: Microsoft
   categories: [productivity]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: microsoft
   languages:
@@ -179,6 +179,111 @@ spec:
           - {name: table, goName: Table, type: string}
           - {name: tableName, goName: TableName, type: string}
   operations:
+    - name: listTableColumns
+      goName: ListTableColumns
+      inputType: ListTableColumnsInput
+      outputType: ListTableColumnsOutput
+      kind: query
+      description: List the ordered column IDs and names of one workbook table.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: The table columns were listed.}
+        - {id: notFound, goName: NotFound, description: The workbook or table was not found., optional: true}
+        - {id: tooLarge, goName: TooLarge, description: The response exceeds the configured limit., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the column read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned invalid table columns., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - name: policyColumns
+          branch: listed
+          description: The approval policy table has three ordered columns.
+          default: true
+          output: {columns: [{id: "0", index: 0, name: Category}, {id: "1", index: 1, name: MaxAutoApproveUsd}, {id: "2", index: 2, name: Approver}]}
+    - name: findTableRow
+      goName: FindTableRow
+      inputType: FindTableRowInput
+      outputType: FindTableRowOutput
+      kind: query
+      description: Find the first table row whose named column equals a supplied cell value.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: A matching row was found.}
+        - {id: notFound, goName: NotFound, description: "The workbook, table, or row was not found.", optional: true}
+        - {id: tooLarge, goName: TooLarge, description: The table exceeds the configured limit., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the table read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned an invalid table response., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - name: travelPolicy
+          branch: found
+          description: The travel row is found in the approval policy table.
+          default: true
+          output: {row: {index: 0, values: {Category: travel, MaxAutoApproveUsd: 500, Approver: "lead@contoso.com"}}}
+    - name: listWorksheets
+      goName: ListWorksheets
+      inputType: ListWorksheetsInput
+      outputType: ListWorksheetsOutput
+      kind: query
+      description: List the worksheets in one workbook with their stable IDs and names.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: The workbook worksheets were listed.}
+        - {id: notFound, goName: NotFound, description: The workbook was not found., optional: true}
+        - {id: tooLarge, goName: TooLarge, description: The response exceeds the configured limit., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the worksheet read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned an invalid worksheet list., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - name: approvalWorksheets
+          branch: listed
+          description: The policy workbook has Policy and Summary worksheets.
+          default: true
+          output: {worksheets: [{id: "{FC034FA8-F8CC-4D24-9C0A-02A81B7792A0}", name: Policy, position: 0, visibility: Visible}, {id: "{FC034FA8-F8CC-4D24-9C0A-02A81B7792A1}", name: Summary, position: 1, visibility: Visible}]}
+    - name: listWorkbooks
+      goName: ListWorkbooks
+      inputType: ListWorkbooksInput
+      outputType: ListWorkbooksOutput
+      kind: query
+      description: Search one drive for Excel workbooks and return a page of workbook metadata.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: One page of workbooks was listed.}
+        - {id: notFound, goName: NotFound, description: The drive was not found., optional: true}
+        - {id: tooLarge, goName: TooLarge, description: The response exceeds the configured limit., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the drive search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned an invalid workbook page., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - name: approvalWorkbooks
+          branch: listed
+          description: The drive contains the approval policy workbook.
+          default: true
+          output: {workbooks: [{id: 01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K, name: Approval.xlsx, driveId: "b!driveKey-123_abc"}]}
+    - name: createWorksheet
+      goName: CreateWorksheet
+      inputType: CreateWorksheetInput
+      outputType: CreateWorksheetOutput
+      kind: mutation
+      description: Add a named worksheet to one workbook, reading back its unique name before resending an unconfirmed creation.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
+      branches:
+        - {id: created, goName: Created, description: The named worksheet was created or found after an earlier send.}
+        - {id: nameConflict, goName: NameConflict, description: A worksheet already held that name before the first send., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the worksheet creation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned an invalid worksheet., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The capped sends were not confirmed by read-back., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - name: auditWorksheet
+          branch: created
+          description: An Audit worksheet is added to the policy workbook.
+          default: true
+          output: {worksheet: {id: "{FC034FA8-F8CC-4D24-9C0A-02A81B7792A2}", name: Audit, position: 2, visibility: Visible}}
     - name: getTableRows
       goName: GetTableRows
       inputType: GetTableRowsInput

@@ -1530,6 +1530,1122 @@
       }
     },
     {
+      "callId": "00000000-0000-4000-8000-000000000101",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"id\":\"0\",\"index\":0,\"name\":\"Category\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/ApprovalPolicy/columns",
+          "query": {
+            "$select": [
+              "id,index,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "columns": [
+            {
+              "id": "0",
+              "index": 0,
+              "name": "Category"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!driveKey-123_abc",
+        "table": "ApprovalPolicy",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "name": "listTableColumns-success",
+      "operation": "listTableColumns"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000102",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/ApprovalPolicy/columns",
+          "query": {
+            "$select": [
+              "id,index,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!driveKey-123_abc",
+        "table": "ApprovalPolicy",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "name": "listTableColumns-429",
+      "operation": "listTableColumns"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000103",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/ApprovalPolicy/columns",
+          "query": {
+            "$select": [
+              "id,index,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!driveKey-123_abc",
+        "table": "ApprovalPolicy",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "name": "listTableColumns-500",
+      "operation": "listTableColumns"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000104",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/ApprovalPolicy/columns",
+          "query": {
+            "$select": [
+              "id,index,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!driveKey-123_abc",
+        "table": "ApprovalPolicy",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "name": "listTableColumns-transport",
+      "operation": "listTableColumns"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000105",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"id\":\"0\",\"index\":0,\"name\":\"Category\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/ApprovalPolicy/columns",
+          "query": {
+            "$select": [
+              "id,index,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"address\":\"Policy!A2:A2\",\"rowCount\":1,\"columnCount\":1,\"values\":[[\"travel\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/ApprovalPolicy/dataBodyRange",
+          "query": {
+            "$select": [
+              "address,rowCount,columnCount,values"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "row": {
+            "index": 0,
+            "values": {
+              "Category": "travel"
+            }
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "column": "Category",
+        "driveId": "b!driveKey-123_abc",
+        "table": "ApprovalPolicy",
+        "value": "travel",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "name": "findTableRow-success",
+      "operation": "findTableRow"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000106",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/ApprovalPolicy/columns",
+          "query": {
+            "$select": [
+              "id,index,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "column": "Category",
+        "driveId": "b!driveKey-123_abc",
+        "table": "ApprovalPolicy",
+        "value": "travel",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "name": "findTableRow-429",
+      "operation": "findTableRow"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000107",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/ApprovalPolicy/columns",
+          "query": {
+            "$select": [
+              "id,index,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "column": "Category",
+        "driveId": "b!driveKey-123_abc",
+        "table": "ApprovalPolicy",
+        "value": "travel",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "name": "findTableRow-500",
+      "operation": "findTableRow"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000108",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/ApprovalPolicy/columns",
+          "query": {
+            "$select": [
+              "id,index,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "column": "Category",
+        "driveId": "b!driveKey-123_abc",
+        "table": "ApprovalPolicy",
+        "value": "travel",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "name": "findTableRow-transport",
+      "operation": "findTableRow"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000109",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"id\":\"{FC034FA8-F8CC-4D24-9C0A-02A81B7792A0}\",\"name\":\"Policy\",\"position\":0,\"visibility\":\"Visible\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/worksheets",
+          "query": {
+            "$select": [
+              "id,name,position,visibility"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "worksheets": [
+            {
+              "id": "{FC034FA8-F8CC-4D24-9C0A-02A81B7792A0}",
+              "name": "Policy",
+              "position": 0,
+              "visibility": "Visible"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!driveKey-123_abc",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "name": "listWorksheets-success",
+      "operation": "listWorksheets"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000110",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/worksheets",
+          "query": {
+            "$select": [
+              "id,name,position,visibility"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!driveKey-123_abc",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "name": "listWorksheets-429",
+      "operation": "listWorksheets"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/worksheets",
+          "query": {
+            "$select": [
+              "id,name,position,visibility"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!driveKey-123_abc",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "name": "listWorksheets-500",
+      "operation": "listWorksheets"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000112",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/worksheets",
+          "query": {
+            "$select": [
+              "id,name,position,visibility"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!driveKey-123_abc",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "name": "listWorksheets-transport",
+      "operation": "listWorksheets"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000113",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"id\":\"01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K\",\"name\":\"Approval.xlsx\",\"file\":{},\"parentReference\":{\"driveId\":\"b!driveKey-123_abc\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/root/search(q='.xlsx')",
+          "query": {
+            "$select": [
+              "id,name,file,parentReference"
+            ],
+            "$skiptoken": [
+              "next-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "workbooks": [
+            {
+              "driveId": "b!driveKey-123_abc",
+              "id": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K",
+              "name": "Approval.xlsx"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!driveKey-123_abc",
+        "pageToken": "next-1"
+      },
+      "name": "listWorkbooks-success",
+      "operation": "listWorkbooks"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000114",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/root/search(q='.xlsx')",
+          "query": {
+            "$select": [
+              "id,name,file,parentReference"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!driveKey-123_abc"
+      },
+      "name": "listWorkbooks-429",
+      "operation": "listWorkbooks"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000115",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/root/search(q='.xlsx')",
+          "query": {
+            "$select": [
+              "id,name,file,parentReference"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!driveKey-123_abc"
+      },
+      "name": "listWorkbooks-500",
+      "operation": "listWorkbooks"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000116",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/root/search(q='.xlsx')",
+          "query": {
+            "$select": [
+              "id,name,file,parentReference"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!driveKey-123_abc"
+      },
+      "name": "listWorkbooks-transport",
+      "operation": "listWorkbooks"
+    },
+    {
+      "callId": "30a54b4d-5ccc-5ea9-bfeb-c480ce87ed8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/worksheets/Audit",
+          "query": {
+            "$select": [
+              "id,name,position,visibility"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{\"id\":\"{FC034FA8-F8CC-4D24-9C0A-02A81B7792A2}\",\"name\":\"Audit\",\"position\":2,\"visibility\":\"Visible\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/worksheets/add",
+          "requestBody": {
+            "name": "Audit"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "30a54b4d-5ccc-5ea9-bfeb-c480ce87ed8f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "worksheet": {
+            "id": "{FC034FA8-F8CC-4D24-9C0A-02A81B7792A2}",
+            "name": "Audit",
+            "position": 2,
+            "visibility": "Visible"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "30a54b4d-5ccc-5ea9-bfeb-c480ce87ed8f",
+      "input": {
+        "driveId": "b!driveKey-123_abc",
+        "name": "Audit",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "name": "createWorksheet-success",
+      "operation": "createWorksheet"
+    },
+    {
+      "callId": "30a54b4d-5ccc-5ea9-bfeb-c480ce87ed8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/worksheets/Audit",
+          "query": {
+            "$select": [
+              "id,name,position,visibility"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "30a54b4d-5ccc-5ea9-bfeb-c480ce87ed8f",
+      "input": {
+        "driveId": "b!driveKey-123_abc",
+        "name": "Audit",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "name": "createWorksheet-429",
+      "operation": "createWorksheet"
+    },
+    {
+      "callId": "30a54b4d-5ccc-5ea9-bfeb-c480ce87ed8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/worksheets/Audit",
+          "query": {
+            "$select": [
+              "id,name,position,visibility"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "30a54b4d-5ccc-5ea9-bfeb-c480ce87ed8f",
+      "input": {
+        "driveId": "b!driveKey-123_abc",
+        "name": "Audit",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "name": "createWorksheet-500",
+      "operation": "createWorksheet"
+    },
+    {
+      "callId": "30a54b4d-5ccc-5ea9-bfeb-c480ce87ed8f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/worksheets/Audit",
+          "query": {
+            "$select": [
+              "id,name,position,visibility"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "30a54b4d-5ccc-5ea9-bfeb-c480ce87ed8f",
+      "input": {
+        "driveId": "b!driveKey-123_abc",
+        "name": "Audit",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "name": "createWorksheet-transport",
+      "operation": "createWorksheet"
+    },
+    {
+      "attempts": 4,
+      "callId": "30a54b4d-5ccc-5ea9-bfeb-c480ce87ed8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/worksheets/Audit",
+          "query": {
+            "$select": [
+              "id,name,position,visibility"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/worksheets/add",
+          "requestBody": {
+            "name": "Audit"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/worksheets/Audit",
+          "query": {
+            "$select": [
+              "id,name,position,visibility"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/worksheets/add",
+          "requestBody": {
+            "name": "Audit"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/worksheets/Audit",
+          "query": {
+            "$select": [
+              "id,name,position,visibility"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/worksheets/add",
+          "requestBody": {
+            "name": "Audit"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/worksheets/Audit",
+          "query": {
+            "$select": [
+              "id,name,position,visibility"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "worksheet": {
+            "id": "",
+            "name": "",
+            "position": 0,
+            "visibility": ""
+          }
+        },
+        "requestCount": 7,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "30a54b4d-5ccc-5ea9-bfeb-c480ce87ed8f",
+      "input": {
+        "driveId": "b!driveKey-123_abc",
+        "name": "Audit",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "30a54b4d-5ccc-5ea9-bfeb-c480ce87ed8f",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 4,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "30a54b4d-5ccc-5ea9-bfeb-c480ce87ed8f",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 6,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 3,
+            "callId": "30a54b4d-5ccc-5ea9-bfeb-c480ce87ed8f",
+            "sendCount": 3,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createWorksheet-uncertain",
+      "operation": "createWorksheet"
+    },
+    {
       "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
       "exchanges": [
         {

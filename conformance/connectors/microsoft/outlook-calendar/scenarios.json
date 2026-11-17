@@ -4209,6 +4209,1379 @@
       },
       "name": "updateEvent-null-attendees-defect",
       "operation": "updateEvent"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000301",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"id\":\"team-calendar\",\"name\":\"Ops Team\",\"canEdit\":true}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/calendars",
+          "query": {
+            "$select": [
+              "id,name,canEdit"
+            ],
+            "$top": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "5340b70d-ccfb-54c5-8c98-15d300c9e2a1"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "calendars": [
+            {
+              "canEdit": true,
+              "id": "team-calendar",
+              "name": "Ops Team"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "listCalendars-success",
+      "operation": "listCalendars"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000301",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"id\":\"team-calendar\",\"name\":\"Ops Team\",\"canEdit\":true}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/calendars",
+          "query": {
+            "$skiptoken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "5340b70d-ccfb-54c5-8c98-15d300c9e2a1"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "calendars": [
+            {
+              "canEdit": true,
+              "id": "team-calendar",
+              "name": "Ops Team"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "https://graph.microsoft.com/v1.0/me/calendars?%24skiptoken=next"
+      },
+      "name": "listCalendars-page",
+      "operation": "listCalendars"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000301",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/calendars",
+          "query": {
+            "$select": [
+              "id,name,canEdit"
+            ],
+            "$top": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "5340b70d-ccfb-54c5-8c98-15d300c9e2a1"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "listCalendars-429",
+      "operation": "listCalendars"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000301",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/calendars",
+          "query": {
+            "$select": [
+              "id,name,canEdit"
+            ],
+            "$top": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "5340b70d-ccfb-54c5-8c98-15d300c9e2a1"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "listCalendars-500",
+      "operation": "listCalendars"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000301",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/calendars",
+          "query": {
+            "$select": [
+              "id,name,canEdit"
+            ],
+            "$top": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "5340b70d-ccfb-54c5-8c98-15d300c9e2a1"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "listCalendars-transport",
+      "operation": "listCalendars"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000302",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"team-calendar\",\"name\":\"Ops Team\",\"canEdit\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/calendars/team-calendar",
+          "query": {
+            "$select": [
+              "id,name,canEdit"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "2be4fd0a-d6a7-5694-bc5e-a088c57dd7e8"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "canEdit": true,
+          "id": "team-calendar",
+          "name": "Ops Team"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "team-calendar"
+      },
+      "name": "getCalendar-success",
+      "operation": "getCalendar"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000302",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/calendars/team-calendar",
+          "query": {
+            "$select": [
+              "id,name,canEdit"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "2be4fd0a-d6a7-5694-bc5e-a088c57dd7e8"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "team-calendar"
+      },
+      "name": "getCalendar-429",
+      "operation": "getCalendar"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000302",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/calendars/team-calendar",
+          "query": {
+            "$select": [
+              "id,name,canEdit"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "2be4fd0a-d6a7-5694-bc5e-a088c57dd7e8"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "team-calendar"
+      },
+      "name": "getCalendar-500",
+      "operation": "getCalendar"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000302",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/calendars/team-calendar",
+          "query": {
+            "$select": [
+              "id,name,canEdit"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "2be4fd0a-d6a7-5694-bc5e-a088c57dd7e8"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "team-calendar"
+      },
+      "name": "getCalendar-transport",
+      "operation": "getCalendar"
+    },
+    {
+      "callId": "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"team-calendar\",\"name\":\"Ops Team\",\"canEdit\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendars",
+          "requestBody": {
+            "name": "Ops Team"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "canEdit": true,
+          "id": "team-calendar",
+          "name": "Ops Team"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8",
+      "input": {
+        "name": "Ops Team"
+      },
+      "name": "createCalendar-success",
+      "operation": "createCalendar"
+    },
+    {
+      "callId": "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendars",
+          "requestBody": {
+            "name": "Ops Team"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8",
+      "input": {
+        "name": "Ops Team"
+      },
+      "name": "createCalendar-429",
+      "operation": "createCalendar"
+    },
+    {
+      "callId": "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendars",
+          "requestBody": {
+            "name": "Ops Team"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8",
+      "input": {
+        "name": "Ops Team"
+      },
+      "name": "createCalendar-500",
+      "operation": "createCalendar"
+    },
+    {
+      "callId": "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendars",
+          "requestBody": {
+            "name": "Ops Team"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8",
+      "input": {
+        "name": "Ops Team"
+      },
+      "name": "createCalendar-transport",
+      "operation": "createCalendar"
+    },
+    {
+      "callId": "5f768ff6-a4fa-581b-a76e-29bd7fe51be4",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"team-calendar\",\"name\":\"Operations\",\"canEdit\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/me/calendars/team-calendar",
+          "requestBody": {
+            "name": "Operations"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "5f768ff6-a4fa-581b-a76e-29bd7fe51be4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "canEdit": true,
+          "id": "team-calendar",
+          "name": "Operations"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f768ff6-a4fa-581b-a76e-29bd7fe51be4",
+      "input": {
+        "calendarId": "team-calendar",
+        "name": "Operations"
+      },
+      "name": "updateCalendar-success",
+      "operation": "updateCalendar"
+    },
+    {
+      "callId": "5f768ff6-a4fa-581b-a76e-29bd7fe51be4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/me/calendars/team-calendar",
+          "requestBody": {
+            "name": "Operations"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "5f768ff6-a4fa-581b-a76e-29bd7fe51be4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f768ff6-a4fa-581b-a76e-29bd7fe51be4",
+      "input": {
+        "calendarId": "team-calendar",
+        "name": "Operations"
+      },
+      "name": "updateCalendar-429",
+      "operation": "updateCalendar"
+    },
+    {
+      "callId": "5f768ff6-a4fa-581b-a76e-29bd7fe51be4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/me/calendars/team-calendar",
+          "requestBody": {
+            "name": "Operations"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "5f768ff6-a4fa-581b-a76e-29bd7fe51be4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f768ff6-a4fa-581b-a76e-29bd7fe51be4",
+      "input": {
+        "calendarId": "team-calendar",
+        "name": "Operations"
+      },
+      "name": "updateCalendar-500",
+      "operation": "updateCalendar"
+    },
+    {
+      "callId": "5f768ff6-a4fa-581b-a76e-29bd7fe51be4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/me/calendars/team-calendar",
+          "requestBody": {
+            "name": "Operations"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "5f768ff6-a4fa-581b-a76e-29bd7fe51be4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f768ff6-a4fa-581b-a76e-29bd7fe51be4",
+      "input": {
+        "calendarId": "team-calendar",
+        "name": "Operations"
+      },
+      "name": "updateCalendar-transport",
+      "operation": "updateCalendar"
+    },
+    {
+      "callId": "e3f6bdf3-9b79-59c7-91c6-67a38048f369",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/me/calendars/team-calendar",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "e3f6bdf3-9b79-59c7-91c6-67a38048f369"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "calendarId": "team-calendar"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e3f6bdf3-9b79-59c7-91c6-67a38048f369",
+      "input": {
+        "calendarId": "team-calendar"
+      },
+      "name": "deleteCalendar-success",
+      "operation": "deleteCalendar"
+    },
+    {
+      "callId": "e3f6bdf3-9b79-59c7-91c6-67a38048f369",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/me/calendars/team-calendar",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "e3f6bdf3-9b79-59c7-91c6-67a38048f369"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e3f6bdf3-9b79-59c7-91c6-67a38048f369",
+      "input": {
+        "calendarId": "team-calendar"
+      },
+      "name": "deleteCalendar-429",
+      "operation": "deleteCalendar"
+    },
+    {
+      "callId": "e3f6bdf3-9b79-59c7-91c6-67a38048f369",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/me/calendars/team-calendar",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "e3f6bdf3-9b79-59c7-91c6-67a38048f369"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e3f6bdf3-9b79-59c7-91c6-67a38048f369",
+      "input": {
+        "calendarId": "team-calendar"
+      },
+      "name": "deleteCalendar-500",
+      "operation": "deleteCalendar"
+    },
+    {
+      "callId": "e3f6bdf3-9b79-59c7-91c6-67a38048f369",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/me/calendars/team-calendar",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "e3f6bdf3-9b79-59c7-91c6-67a38048f369"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e3f6bdf3-9b79-59c7-91c6-67a38048f369",
+      "input": {
+        "calendarId": "team-calendar"
+      },
+      "name": "deleteCalendar-transport",
+      "operation": "deleteCalendar"
+    },
+    {
+      "callId": "4ee8593d-e147-536b-9b5b-f15598c38fe3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/me/events/hold-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "4ee8593d-e147-536b-9b5b-f15598c38fe3"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "eventId": "hold-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4ee8593d-e147-536b-9b5b-f15598c38fe3",
+      "input": {
+        "eventId": "hold-1"
+      },
+      "name": "deleteEvent-success",
+      "operation": "deleteEvent"
+    },
+    {
+      "callId": "4ee8593d-e147-536b-9b5b-f15598c38fe3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/me/events/hold-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "4ee8593d-e147-536b-9b5b-f15598c38fe3"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4ee8593d-e147-536b-9b5b-f15598c38fe3",
+      "input": {
+        "eventId": "hold-1"
+      },
+      "name": "deleteEvent-429",
+      "operation": "deleteEvent"
+    },
+    {
+      "callId": "4ee8593d-e147-536b-9b5b-f15598c38fe3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/me/events/hold-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "4ee8593d-e147-536b-9b5b-f15598c38fe3"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4ee8593d-e147-536b-9b5b-f15598c38fe3",
+      "input": {
+        "eventId": "hold-1"
+      },
+      "name": "deleteEvent-500",
+      "operation": "deleteEvent"
+    },
+    {
+      "callId": "4ee8593d-e147-536b-9b5b-f15598c38fe3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/me/events/hold-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "4ee8593d-e147-536b-9b5b-f15598c38fe3"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4ee8593d-e147-536b-9b5b-f15598c38fe3",
+      "input": {
+        "eventId": "hold-1"
+      },
+      "name": "deleteEvent-transport",
+      "operation": "deleteEvent"
+    },
+    {
+      "attempts": 4,
+      "callId": "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendars",
+          "requestBody": {
+            "name": "Ops Team"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendars",
+          "requestBody": {
+            "name": "Ops Team"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendars",
+          "requestBody": {
+            "name": "Ops Team"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/calendars",
+          "query": {
+            "$filter": [
+              "name eq 'Ops Team'"
+            ],
+            "$select": [
+              "id,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "canEdit": false,
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 4,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8",
+      "input": {
+        "name": "Ops Team"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 3,
+            "callId": "45538397-3f91-5de5-b4f7-6dc4d4d9a6b8",
+            "sendCount": 3,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCalendar-uncertain",
+      "operation": "createCalendar"
     }
   ],
   "schemaVersion": 1

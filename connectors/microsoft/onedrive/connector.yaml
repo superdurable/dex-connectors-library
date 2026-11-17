@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: microsoft-onedrive
   displayName: Microsoft OneDrive and SharePoint
-  description: Find, read, and write files in OneDrive and SharePoint document libraries through Microsoft Graph, with uploads and folders that stay single under retries.
+  description: Find, read, write, copy, move, rename, and delete files and folders in OneDrive and SharePoint document libraries through Microsoft Graph.
   company: Microsoft
   categories: [files-documents]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: microsoft
   languages:
@@ -263,6 +263,67 @@ spec:
           - {name: folderId, goName: FolderID, type: string}
           - {name: folderName, goName: FolderName, type: string}
   operations:
+    - name: deleteItem
+      goName: DeleteItem
+      inputType: DeleteItemInput
+      outputType: DeleteItemOutput
+      kind: mutation
+      description: Move one file or folder to the drive recycle bin; an already absent item is considered deleted.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The item is absent from the drive.}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected deletion of the item., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - {name: removedCopy, branch: deleted, description: The copied file was moved to the recycle bin., default: true, output: {itemId: copy-file-1}}
+    - name: renameItem
+      goName: RenameItem
+      inputType: RenameItemInput
+      outputType: RenameItemOutput
+      kind: mutation
+      description: Set the name of a file or folder to an absolute value, so retries converge on the same name.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: renamed, goName: Renamed, description: The item has the requested name.}
+        - {id: notFound, goName: NotFound, description: The item was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the rename., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - {name: renamedCopy, branch: renamed, description: The copied text file has its final name., default: true, output: {item: {id: copy-file-1, name: Ops-Policy-Final.txt, driveId: "b!financeLibrary-2", parentFolderId: copy-folder-1, mimeType: text/plain, sizeBytes: 44}}}
+    - name: moveItem
+      goName: MoveItem
+      inputType: MoveItemInput
+      outputType: MoveItemOutput
+      kind: mutation
+      description: Move a file or folder to one parent folder by absolute parent ID.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: moved, goName: Moved, description: The item is in the requested parent folder.}
+        - {id: notFound, goName: NotFound, description: The item or parent folder was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the move., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - {name: movedCopy, branch: moved, description: The copied text file is in the archive folder., default: true, output: {item: {id: copy-file-1, name: Ops-Policy-Final.txt, driveId: "b!financeLibrary-2", parentFolderId: archive-folder-1, mimeType: text/plain, sizeBytes: 44}}}
+    - name: copyFile
+      goName: CopyFile
+      inputType: CopyFileInput
+      outputType: CopyFileOutput
+      kind: mutation
+      description: Queue an asynchronous copy to a unique destination path and reconcile unknown sends by reading that path.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
+      branches:
+        - {id: queued, goName: Queued, description: Graph accepted the copy job or the destination was found after an earlier send.}
+        - {id: nameConflict, goName: NameConflict, description: The destination path existed before the first send., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the copy., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned invalid destination metadata., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send cap was reached and the destination still was not found., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - {name: queuedPolicyCopy, branch: queued, description: Graph accepted the policy copy to the destination folder., default: true, output: {destinationDriveId: "b!financeLibrary-2", destinationFolderId: copy-folder-1, name: Ops-Policy-Copy.txt, isQueued: true}}
     - name: searchFiles
       goName: SearchFiles
       inputType: SearchFilesInput
