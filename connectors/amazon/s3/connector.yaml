@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: amazon-s3
   displayName: Amazon S3
-  description: List, inspect, and read bounded text from objects in Amazon S3 or an S3-compatible store such as Cloudflare R2 or MinIO, and store objects with retry-safe overwrite or create-only writes.
+  description: List, inspect, and read bounded text from objects in Amazon S3 or an S3-compatible store such as Cloudflare R2 or MinIO, and store or delete objects.
   company: Amazon
   categories: [databases-storage, files-documents]
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: amazon-s3
   languages:
@@ -93,7 +93,7 @@ spec:
     guide:
       startURL: https://console.aws.amazon.com/iam
       steps:
-        - "Amazon S3: open IAM > Users > Create user and create a user only for Dex; do not use the account's root user. On Permissions, attach an inline policy that allows s3:ListBucket on arn:aws:s3:::your-bucket and s3:GetObject and s3:PutObject on arn:aws:s3:::your-bucket/*, so the key reaches nothing else. putObject's create-only mode also needs s3:GetObject to recognize its own earlier attempt, and headObject reads a missing key as notFound only with s3:ListBucket."
+        - "Amazon S3: open IAM > Users > Create user and create a user only for Dex; do not use the account's root user. On Permissions, attach an inline policy that allows s3:ListBucket on arn:aws:s3:::your-bucket and s3:GetObject, s3:PutObject, and s3:DeleteObject on arn:aws:s3:::your-bucket/*, so the key reaches nothing else. putObject's create-only mode also needs s3:GetObject to recognize its own earlier attempt, and headObject reads a missing key as notFound only with s3:ListBucket."
         - "Open the user > Security credentials > Access keys > Create access key, choose Other > Next, then Create access key. On the Retrieve access keys page choose Show, paste the Access key into access_key_id and the Secret access key into secret_access_key; AWS never shows the secret again. Leave session_token blank for these long-term keys."
         - "Set region to the bucket's AWS Region from https://console.aws.amazon.com/s3/buckets and leave endpoint blank. Optionally set defaultBucket so operations can leave bucket blank."
         - "Cloudflare R2: open https://dash.cloudflare.com > R2 object storage > Account Details > API Tokens > Manage, choose Create Account API token with Object Read & Write scoped to the bucket, and copy the Access Key ID and Secret Access Key shown once. Set endpoint to https://<ACCOUNT_ID>.r2.cloudflarestorage.com and region to auto."
@@ -243,3 +243,29 @@ spec:
           branch: providerRejected
           description: "Storing reports/ops-weekly.md without s3:PutObject permission is denied."
           failure: {kind: AUTHORIZATION, message: S3 denied the object write.}
+    - name: deleteObject
+      goName: DeleteObject
+      inputType: DeleteObjectInput
+      outputType: DeletedObject
+      kind: mutation
+      description: Delete the current object at a key; repeating the same deletion leaves the key absent.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: S3 accepted the deletion.}
+        - {id: providerRejected, goName: ProviderRejected, description: S3 conclusively rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: The object key or connection is invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: deletedReport
+          branch: deleted
+          description: Deleting a report removes its current object.
+          default: true
+          output: {bucket: acme-reports, key: reports/ops-weekly.md}
+        - name: deleteDenied
+          branch: providerRejected
+          description: Deleting an object without s3:DeleteObject permission is denied.
+          failure: {kind: AUTHORIZATION, message: S3 denied the object deletion.}

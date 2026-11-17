@@ -64,6 +64,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[s3.StoredObject](`{"bucket":"acme-reports","key":"reports/ops-weekly.md","eTag":"\"existing-report\"","sizeBytes":43,"contentType":"text/markdown; charset=utf-8","lastModified":"2026-10-24T09:00:00Z"}`)
 			return err
 		}},
+		{name: "deleteObject/deletedReport/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.DeletedObject](`{"bucket":"acme-reports","key":"reports/ops-weekly.md"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -85,5 +89,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.PutObject().Definition().Operation.OperationID != "putObject" {
 		t.Errorf("putObject mock has another definition")
+	}
+	if mock.DeleteObject().Definition().Operation.OperationID != "deleteObject" {
+		t.Errorf("deleteObject mock has another definition")
 	}
 }

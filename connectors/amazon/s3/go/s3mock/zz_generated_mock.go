@@ -22,6 +22,7 @@ type Mock struct {
 	headObject    *connectormock.Query[s3.HeadObjectInput, s3.ObjectMetadata]
 	getObjectText *connectormock.Query[s3.GetObjectTextInput, s3.ObjectText]
 	putObject     *connectormock.Mutation[s3.PutObjectInput, s3.StoredObject]
+	deleteObject  *connectormock.Mutation[s3.DeleteObjectInput, s3.DeletedObject]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -33,11 +34,13 @@ func New(t testing.TB, connectionName string) *Mock {
 		headObject:    connectormock.NewQuery[s3.HeadObjectInput, s3.ObjectMetadata](t, s3.HeadObjectDefinition),
 		getObjectText: connectormock.NewQuery[s3.GetObjectTextInput, s3.ObjectText](t, s3.GetObjectTextDefinition),
 		putObject:     connectormock.NewMutation[s3.PutObjectInput, s3.StoredObject](t, s3.PutObjectDefinition),
+		deleteObject:  connectormock.NewMutation[s3.DeleteObjectInput, s3.DeletedObject](t, s3.DeleteObjectDefinition),
 	}
 	mock.listObjects.Default(ListObjectsDefault())
 	mock.headObject.Default(HeadObjectDefault())
 	mock.getObjectText.Default(GetObjectTextDefault())
 	mock.putObject.Default(PutObjectDefault())
+	mock.deleteObject.Default(DeleteObjectDefault())
 	connection, err := s3.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "amazon-s3", Name: connectionName})
 	if err != nil {
 		t.Fatalf("amazon-s3 mock connection: %v", err)
@@ -69,6 +72,11 @@ func (mock *Mock) PutObject() *connectormock.Mutation[s3.PutObjectInput, s3.Stor
 	return mock.putObject
 }
 
+// DeleteObject returns the deleteObject script.
+func (mock *Mock) DeleteObject() *connectormock.Mutation[s3.DeleteObjectInput, s3.DeletedObject] {
+	return mock.deleteObject
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListObjects() sdkgo.Query[s3.ListObjectsInput, s3.ListObjectsOutput] {
@@ -82,6 +90,9 @@ func (operations mockOperations) GetObjectText() sdkgo.Query[s3.GetObjectTextInp
 }
 func (operations mockOperations) PutObject() sdkgo.Mutation[s3.PutObjectInput, s3.StoredObject] {
 	return operations.mock.putObject
+}
+func (operations mockOperations) DeleteObject() sdkgo.Mutation[s3.DeleteObjectInput, s3.DeletedObject] {
+	return operations.mock.deleteObject
 }
 
 // ListObjectsFound selects the found branch: The page holds objects or common prefixes, or more pages remain.
@@ -315,3 +326,38 @@ func PutObjectStoreDenied() connectormock.Case[s3.StoredObject] {
 
 // PutObjectDefault is the manifest default, storedOpsReport, which New installs.
 func PutObjectDefault() connectormock.Case[s3.StoredObject] { return PutObjectStoredOpsReport() }
+
+// DeleteObjectDeleted selects the deleted branch: S3 accepted the deletion.
+func DeleteObjectDeleted(value s3.DeletedObject, failure *sdkgo.Failure) connectormock.Case[s3.DeletedObject] {
+	return connectormock.Branch(s3.DeleteObjectBranchDeleted, value, failure)
+}
+
+// DeleteObjectProviderRejected selects the providerRejected branch: S3 conclusively rejected the deletion.
+func DeleteObjectProviderRejected(value s3.DeletedObject, failure *sdkgo.Failure) connectormock.Case[s3.DeletedObject] {
+	return connectormock.Branch(s3.DeleteObjectBranchProviderRejected, value, failure)
+}
+
+// DeleteObjectDefect selects the defect branch: The object key or connection is invalid.
+func DeleteObjectDefect(value s3.DeletedObject, failure *sdkgo.Failure) connectormock.Case[s3.DeletedObject] {
+	return connectormock.Branch(s3.DeleteObjectBranchDefect, value, failure)
+}
+
+// DeleteObjectRetry asks Dex to retry the deleteObject Step, after the delay when it is positive.
+func DeleteObjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[s3.DeletedObject] {
+	return connectormock.Retry[s3.DeletedObject](failure, after)
+}
+
+// DeleteObjectDeletedReport is the manifest mock deletedReport: Deleting a report removes its current object.
+func DeleteObjectDeletedReport() connectormock.Case[s3.DeletedObject] {
+	value := connectormock.MustDecodeOutput[s3.DeletedObject](`{"bucket":"acme-reports","key":"reports/ops-weekly.md"}`)
+	return connectormock.Branch(s3.DeleteObjectBranchDeleted, value, nil)
+}
+
+// DeleteObjectDeleteDenied is the manifest mock deleteDenied: Deleting an object without s3:DeleteObject permission is denied.
+func DeleteObjectDeleteDenied() connectormock.Case[s3.DeletedObject] {
+	var value s3.DeletedObject
+	return connectormock.Branch(s3.DeleteObjectBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "S3 denied the object deletion."})
+}
+
+// DeleteObjectDefault is the manifest default, deletedReport, which New installs.
+func DeleteObjectDefault() connectormock.Case[s3.DeletedObject] { return DeleteObjectDeletedReport() }

@@ -1,6 +1,6 @@
 # Amazon S3 Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/amazon/s3/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/amazon/s3/go@v0.24.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/amazon/s3`.
 
@@ -8,7 +8,7 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/amazon/s3`
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
 
-The Amazon S3 Connector lists, inspects, reads, and stores objects in Amazon S3
+The Amazon S3 Connector lists, inspects, reads, stores, and deletes objects in Amazon S3
 and in S3-compatible stores, such as Cloudflare R2 and MinIO, through the S3 REST
 API. It exposes operation-specific Dex Step factories:
 
@@ -24,11 +24,12 @@ specific to the Go package described above.
 | `headObject` | Query | `HEAD /{key}` | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `getObjectText` | Query | `GET /{key}` | async | `read` | `notFound`, `unsupportedContent`, `tooLarge`, `providerRejected`, `invalidResponse`, `defect` |
 | `putObject` | Mutation | `PUT /{key}`, and `HEAD /{key}` after a refused create-only write | async | `stored` | `alreadyExists`, `providerRejected`, `defect` |
+| `deleteObject` | Mutation | `DELETE /{key}` | async | `deleted` | `providerRejected`, `defect` |
 
 Most Flows use object storage to find an artifact by name or archive one, so
 `listObjects` is the resolver: it pages a bucket by prefix and delimiter and
-never reports an empty listing as success. The connector does not delete, copy,
-or tag objects, and this release has no Triggers and no Studio pickers; see
+never reports an empty listing as success. The connector does not copy or tag
+objects, and this release has no Triggers and no Studio pickers; see
 [Not in this release](#not-in-this-release).
 
 ## Mocks
@@ -63,7 +64,7 @@ are reread before every call, so a replaced key takes effect without a restart.
 - **Amazon S3**: create an IAM user only for Dex at
   <https://console.aws.amazon.com/iam> > **Users** > **Create user**, attach an
   inline policy that allows `s3:ListBucket` on `arn:aws:s3:::your-bucket` and
-  `s3:GetObject` and `s3:PutObject` on `arn:aws:s3:::your-bucket/*`, then open
+  `s3:GetObject`, `s3:PutObject`, and `s3:DeleteObject` on `arn:aws:s3:::your-bucket/*`, then open
   **Security credentials** > **Access keys** > **Create access key**, choose
   **Other**, and copy both values from **Retrieve access keys**; AWS never shows
   the secret again. Long-term IDs start with `AKIA`.
@@ -266,6 +267,16 @@ Limits of this design:
   `StepOptionsOverride` durability to sync; the write stays retry-safe either
   way.
 
+### deleteObject
+
+`deleteObject` sends a signed `DELETE /{key}` for the current object. S3 also
+accepts deletion of a key that is already absent, so a repeated Step attempt
+converges on an absent current key. Versioned buckets may retain older versions
+and add a delete marker; this operation does not permanently erase those
+versions. Grant `s3:DeleteObject` for the bucket's object ARN. A denied or
+invalid request selects `providerRejected`; throttling, transport failure, and
+server errors retry within the Step policy.
+
 ## Not in this release
 
 - **`presignGetURL`** was dropped. Presigning is a local computation, which a
@@ -286,7 +297,7 @@ Limits of this design:
   or EventBridge connector, or an SNS HTTPS subscription, which the endpoint
   must confirm through a handshake before SNS delivers to it; `webhooktrigger`
   has no handshake hook yet.
-- Deleting, copying, tagging, version-specific reads, multipart uploads,
+- Copying, tagging, version-specific reads, multipart uploads,
   ranged reads, SSE-C, S3 Express directory buckets, access point ARNs, and
   requester-pays buckets.
 
@@ -295,7 +306,8 @@ Limits of this design:
 [`examples/report-archive`](go/examples/report-archive) is a runnable Dex Web
 **Start Flow** example that generates a Markdown report, archives it once
 under `reports/<reportId>.md`, reads its metadata and text back, and lists the
-archive folder.
+archive folder. Set `shouldDeleteAfterVerification` to true to remove the
+verified report after listing; the output then sets `isDeleted`.
 
 The [TypeScript package](typescript/) implements all four operations at its
 independent `v0.1.0` package version. Its [report archive

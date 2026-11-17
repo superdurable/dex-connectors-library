@@ -59,6 +59,7 @@ type Operations interface {
 	HeadObject() sdkgo.Query[HeadObjectInput, ObjectMetadata]
 	GetObjectText() sdkgo.Query[GetObjectTextInput, ObjectText]
 	PutObject() sdkgo.Mutation[PutObjectInput, StoredObject]
+	DeleteObject() sdkgo.Mutation[DeleteObjectInput, DeletedObject]
 }
 
 type clientOperations struct{ client *Client }
@@ -74,6 +75,9 @@ func (operations clientOperations) GetObjectText() sdkgo.Query[GetObjectTextInpu
 }
 func (operations clientOperations) PutObject() sdkgo.Mutation[PutObjectInput, StoredObject] {
 	return operations.client.PutObject()
+}
+func (operations clientOperations) DeleteObject() sdkgo.Mutation[DeleteObjectInput, DeletedObject] {
+	return operations.client.DeleteObject()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -549,6 +553,71 @@ func NewPutObjectStep[IN any](config PutObjectStepConfig[IN]) sdkgo.MutationStep
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(PutObjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteObjectBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteObjectBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteObjectBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteObjectDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteObject"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteObjectBranchDeleted, Description: "S3 accepted the deletion."},
+		{ID: DeleteObjectBranchProviderRejected, Description: "S3 conclusively rejected the deletion.", Optional: true},
+		{ID: DeleteObjectBranchDefect, Description: "The object key or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteObjectResult = sdkgo.MutationResult[DeletedObject]
+
+type DeleteObjectStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=amazon-s3"`
+	operationID                       struct{}                                            `connector:"operationId=deleteObject"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteObjectInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteObjectResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteObjectResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteObjectResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedObject]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteObjectStep[IN any](config DeleteObjectStepConfig[IN]) sdkgo.MutationStep[IN, DeleteObjectInput, DeletedObject] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-s3 connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteObjectInput, DeletedObject]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteObject(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteObjectResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteObjectResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteObjectBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteObjectBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteObjectBranchDefect))
 			}
 			return branches
 		}(),

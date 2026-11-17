@@ -250,6 +250,11 @@ func (server *Server) serveHTTP(response http.ResponseWriter, httpRequest *http.
 		server.writeObject(response, bucket, key, true)
 	case httpRequest.Method == http.MethodPut && hasKey:
 		server.putObject(response, httpRequest, bucket, key, body)
+	case httpRequest.Method == http.MethodDelete && hasKey:
+		server.mutex.Lock()
+		delete(server.objects, bucket+"/"+key)
+		server.mutex.Unlock()
+		response.WriteHeader(http.StatusNoContent)
 	default:
 		writeError(response, http.StatusMethodNotAllowed, "MethodNotAllowed")
 	}

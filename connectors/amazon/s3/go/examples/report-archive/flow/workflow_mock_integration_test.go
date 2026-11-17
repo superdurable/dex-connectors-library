@@ -47,3 +47,16 @@ func TestReportArchiveUsesMockDefaultsWithRealDex(t *testing.T) {
 	require.Len(t, lists, 1, "the Flow intentionally uses only the first archive page")
 	require.Equal(t, s3.ListObjectsInput{Bucket: "acme-reports", Prefix: "reports/", Delimiter: "/", MaxKeys: 10}, lists[0].Input)
 }
+
+func TestReportArchiveDeletesVerifiedReportWithRealDex(t *testing.T) {
+	mock := s3mock.New(t, ConnectionName)
+	flow, harness := newReportArchiveHarnessWithConnection(t, mock.Connection())
+	result := runReportArchive(t, integrationContext(t), harness.client, flow,
+		"mock-delete-report-"+strconv.FormatInt(time.Now().UnixNano(), 10), Input{
+			ReportID: "ops-weekly", Title: "Ops weekly", ShouldDeleteAfterVerification: true,
+		})
+	require.Equal(t, dex.FlowCompleted, result.status)
+	require.True(t, result.outcome.IsDeleted)
+	require.Len(t, mock.DeleteObject().Calls(), 1)
+	require.Equal(t, s3.DeleteObjectInput{Key: "reports/ops-weekly.md"}, mock.DeleteObject().Calls()[0].Input)
+}

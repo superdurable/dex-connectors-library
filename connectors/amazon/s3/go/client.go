@@ -265,6 +265,9 @@ func (client *Client) GetObjectText() GetObjectTextOperation {
 // PutObject returns the putObject Mutation bound to this client.
 func (client *Client) PutObject() PutObjectOperation { return PutObjectOperation{client: client} }
 
+// DeleteObject returns the deleteObject Mutation bound to this client.
+func (client *Client) DeleteObject() DeleteObjectOperation { return DeleteObjectOperation{client: client} }
+
 // startSession resolves the credential, reread before every call; the caller must call the returned cancel.
 func (client *Client) startSession(call sdkgo.Call, operationID string) (*operationSession, context.CancelFunc, *sdkgo.Failure) {
 	credentials, err := client.credentials.Resolve(call)

@@ -2210,6 +2210,245 @@
       ],
       "name": "put-lost-response-then-own-write",
       "operation": "putObject"
+    },
+    {
+      "callId": "eb945527-5374-5783-8e68-6156eb2db384",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=4b1b88f7690d4ab35becace916423533b4c5862e2af554d74951ef28c60c6467"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "bucket": "acme-reports",
+          "key": "reports/weekly.md"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eb945527-5374-5783-8e68-6156eb2db384",
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "delete-deleted",
+      "operation": "deleteObject"
+    },
+    {
+      "callId": "eb945527-5374-5783-8e68-6156eb2db384",
+      "exchanges": [
+        {
+          "body": "\u003cError\u003e\u003cCode\u003eAccessDenied\u003c/Code\u003e\u003c/Error\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=4b1b88f7690d4ab35becace916423533b4c5862e2af554d74951ef28c60c6467"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "bucket": "acme-reports",
+          "key": "reports/weekly.md"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eb945527-5374-5783-8e68-6156eb2db384",
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "delete-rejected",
+      "operation": "deleteObject"
+    },
+    {
+      "callId": "eb945527-5374-5783-8e68-6156eb2db384",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "bucket": "",
+          "key": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eb945527-5374-5783-8e68-6156eb2db384",
+      "input": {
+        "bucket": "BAD",
+        "key": "reports/weekly.md"
+      },
+      "name": "delete-defect",
+      "operation": "deleteObject"
+    },
+    {
+      "callId": "eb945527-5374-5783-8e68-6156eb2db384",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=4b1b88f7690d4ab35becace916423533b4c5862e2af554d74951ef28c60c6467"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eb945527-5374-5783-8e68-6156eb2db384",
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "delete-rate-limit",
+      "operation": "deleteObject"
+    },
+    {
+      "callId": "eb945527-5374-5783-8e68-6156eb2db384",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=4b1b88f7690d4ab35becace916423533b4c5862e2af554d74951ef28c60c6467"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eb945527-5374-5783-8e68-6156eb2db384",
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "delete-server-failure",
+      "operation": "deleteObject"
+    },
+    {
+      "callId": "eb945527-5374-5783-8e68-6156eb2db384",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=4b1b88f7690d4ab35becace916423533b4c5862e2af554d74951ef28c60c6467"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eb945527-5374-5783-8e68-6156eb2db384",
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "delete-transport",
+      "operation": "deleteObject"
     }
   ],
   "schemaVersion": 1

@@ -44,5 +44,6 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"headObject":    newConformanceQueryInvocation(t, scenario.Input, context, client.HeadObject(), testConnection),
 		"getObjectText": newConformanceQueryInvocation(t, scenario.Input, context, client.GetObjectText(), testConnection),
 		"putObject":     newConformanceMutationInvocation(t, scenario.Input, context, client.PutObject(), testConnection, scenario.CallID),
+		"deleteObject":  newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteObject(), testConnection, scenario.CallID),
 	}}
 }
