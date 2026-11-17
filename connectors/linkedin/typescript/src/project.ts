@@ -21,14 +21,21 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
     const raw = selected.configuration as Record<string, unknown>;
     const settings = ConfigSchema.parse({ ...raw,
       ...(raw.timeout !== undefined ? { timeoutMs: typeof raw.timeout === 'number' ? Math.ceil(raw.timeout / 1_000_000) : parseDurationMilliseconds(raw.timeout) } : {}),
+      ...(raw.pollInterval !== undefined ? { pollIntervalMs: decodePollIntervalMilliseconds(raw.pollInterval) } : {}),
     });
     const config: Config = {
       ...(settings.userInfoUrl !== undefined ? { userInfoUrl: settings.userInfoUrl } : {}),
       ...(settings.timeoutMs !== undefined ? { timeoutMs: settings.timeoutMs } : {}),
       ...(settings.maxResponseBytes !== undefined ? { maxResponseBytes: settings.maxResponseBytes } : {}),
+      ...(settings.pollIntervalMs !== undefined ? { pollIntervalMs: settings.pollIntervalMs } : {}),
     };
     return new LinkedInClient(config, newProjectCredentialProvider(loadedProject, name, decodeCredentials, encodeCredentials, decodeSharedCredentials), options);
   });
+}
+
+function decodePollIntervalMilliseconds(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) throw new TypeError('LinkedIn pollInterval must be Go duration nanoseconds');
+  return Math.ceil(value / 1_000_000);
 }
 
 function parseDurationMilliseconds(value: unknown): number {
