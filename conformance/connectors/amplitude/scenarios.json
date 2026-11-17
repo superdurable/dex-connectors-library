@@ -2,6 +2,713 @@
   "connector": "amplitude",
   "scenarios": [
     {
+      "callId": "04a2af53-925c-538a-9f4a-6354413468e7",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "api_key": [
+              "sample-amplitude-api-key"
+            ],
+            "identification": [
+              "{\"user_id\":\"example-user\",\"user_properties\":{\"$unset\":{\"oldPlan\":\"-\"}}}"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/identify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "unset",
+        "failureKind": "",
+        "output": {
+          "propertyName": "oldPlan",
+          "userID": "example-user"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04a2af53-925c-538a-9f4a-6354413468e7",
+      "input": {
+        "propertyName": "oldPlan",
+        "userID": "example-user"
+      },
+      "name": "unsetUserProperty-success",
+      "operation": "unsetUserProperty"
+    },
+    {
+      "callId": "04a2af53-925c-538a-9f4a-6354413468e7",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"denied\"}",
+          "form": {
+            "api_key": [
+              "sample-amplitude-api-key"
+            ],
+            "identification": [
+              "{\"user_id\":\"example-user\",\"user_properties\":{\"$unset\":{\"oldPlan\":\"-\"}}}"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/identify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "propertyName": "",
+          "userID": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04a2af53-925c-538a-9f4a-6354413468e7",
+      "input": {
+        "propertyName": "oldPlan",
+        "userID": "example-user"
+      },
+      "name": "unsetUserProperty-rejected",
+      "operation": "unsetUserProperty"
+    },
+    {
+      "callId": "04a2af53-925c-538a-9f4a-6354413468e7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "propertyName": "",
+          "userID": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04a2af53-925c-538a-9f4a-6354413468e7",
+      "input": {
+        "propertyName": "",
+        "userID": "example-user"
+      },
+      "name": "unsetUserProperty-defect",
+      "operation": "unsetUserProperty"
+    },
+    {
+      "callId": "04a2af53-925c-538a-9f4a-6354413468e7",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limit\"}",
+          "form": {
+            "api_key": [
+              "sample-amplitude-api-key"
+            ],
+            "identification": [
+              "{\"user_id\":\"example-user\",\"user_properties\":{\"$unset\":{\"oldPlan\":\"-\"}}}"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/identify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04a2af53-925c-538a-9f4a-6354413468e7",
+      "input": {
+        "propertyName": "oldPlan",
+        "userID": "example-user"
+      },
+      "name": "unsetUserProperty-rate-limit",
+      "operation": "unsetUserProperty"
+    },
+    {
+      "callId": "04a2af53-925c-538a-9f4a-6354413468e7",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "form": {
+            "api_key": [
+              "sample-amplitude-api-key"
+            ],
+            "identification": [
+              "{\"user_id\":\"example-user\",\"user_properties\":{\"$unset\":{\"oldPlan\":\"-\"}}}"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/identify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04a2af53-925c-538a-9f4a-6354413468e7",
+      "input": {
+        "propertyName": "oldPlan",
+        "userID": "example-user"
+      },
+      "name": "unsetUserProperty-service-unavailable",
+      "operation": "unsetUserProperty"
+    },
+    {
+      "callId": "04a2af53-925c-538a-9f4a-6354413468e7",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"failure\"}",
+          "form": {
+            "api_key": [
+              "sample-amplitude-api-key"
+            ],
+            "identification": [
+              "{\"user_id\":\"example-user\",\"user_properties\":{\"$unset\":{\"oldPlan\":\"-\"}}}"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/identify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04a2af53-925c-538a-9f4a-6354413468e7",
+      "input": {
+        "propertyName": "oldPlan",
+        "userID": "example-user"
+      },
+      "name": "unsetUserProperty-server-failure",
+      "operation": "unsetUserProperty"
+    },
+    {
+      "callId": "04a2af53-925c-538a-9f4a-6354413468e7",
+      "exchanges": [
+        {
+          "form": {
+            "api_key": [
+              "sample-amplitude-api-key"
+            ],
+            "identification": [
+              "{\"user_id\":\"example-user\",\"user_properties\":{\"$unset\":{\"oldPlan\":\"-\"}}}"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/identify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04a2af53-925c-538a-9f4a-6354413468e7",
+      "input": {
+        "propertyName": "oldPlan",
+        "userID": "example-user"
+      },
+      "name": "unsetUserProperty-transport",
+      "operation": "unsetUserProperty"
+    },
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"userData\":{\"user_id\":\"example-user\",\"num_events\":142,\"num_sessions\":23},\"events\":[{\"event_type\":\"purchase\"},{\"event_type\":\"login\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2/useractivity",
+          "query": {
+            "direction": [
+              "latest"
+            ],
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "2"
+            ],
+            "user": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFtcGxpdHVkZS1hcGkta2V5OnNhbXBsZS1hbXBsaXR1ZGUtc2VjcmV0LWtleQ=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "amplitudeID": "12345",
+          "eventCount": 142,
+          "eventTypes": [
+            "purchase",
+            "login"
+          ],
+          "returnedEvents": 2,
+          "sessionCount": 23,
+          "userID": "example-user"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "amplitudeID": "12345",
+        "direction": "latest",
+        "limit": 10,
+        "offset": 2
+      },
+      "name": "getUserActivity-matched",
+      "operation": "getUserActivity"
+    },
+    {
+      "callId": "c9b68062-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "access denied",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2/useractivity",
+          "query": {
+            "direction": [
+              "latest"
+            ],
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "2"
+            ],
+            "user": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFtcGxpdHVkZS1hcGkta2V5OnNhbXBsZS1hbXBsaXR1ZGUtc2VjcmV0LWtleQ=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amplitudeID": "",
+          "eventCount": 0,
+          "returnedEvents": 0,
+          "sessionCount": 0,
+          "userID": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "amplitudeID": "12345",
+        "direction": "latest",
+        "limit": 10,
+        "offset": 2
+      },
+      "name": "getUserActivity-providerRejected",
+      "operation": "getUserActivity"
+    },
+    {
+      "callId": "70e762e3-11d6-5d97-af52-c9a551737c8f",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2/useractivity",
+          "query": {
+            "direction": [
+              "latest"
+            ],
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "2"
+            ],
+            "user": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFtcGxpdHVkZS1hcGkta2V5OnNhbXBsZS1hbXBsaXR1ZGUtc2VjcmV0LWtleQ=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "amplitudeID": "",
+          "eventCount": 0,
+          "returnedEvents": 0,
+          "sessionCount": 0,
+          "userID": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "amplitudeID": "12345",
+        "direction": "latest",
+        "limit": 10,
+        "offset": 2
+      },
+      "name": "getUserActivity-invalidResponse",
+      "operation": "getUserActivity"
+    },
+    {
+      "callId": "8e29694d-a049-5f1b-be0b-5006c90def90",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amplitudeID": "",
+          "eventCount": 0,
+          "returnedEvents": 0,
+          "sessionCount": 0,
+          "userID": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "amplitudeID": "invalid",
+        "direction": "latest",
+        "limit": 10,
+        "offset": 2
+      },
+      "name": "getUserActivity-defect",
+      "operation": "getUserActivity"
+    },
+    {
+      "callId": "0740ee38-e35f-5b33-b16c-5982c057eba7",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2/useractivity",
+          "query": {
+            "direction": [
+              "latest"
+            ],
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "2"
+            ],
+            "user": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFtcGxpdHVkZS1hcGkta2V5OnNhbXBsZS1hbXBsaXR1ZGUtc2VjcmV0LWtleQ=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "amplitudeID": "12345",
+        "direction": "latest",
+        "limit": 10,
+        "offset": 2
+      },
+      "name": "getUserActivity-rateLimit",
+      "operation": "getUserActivity"
+    },
+    {
+      "callId": "3fb444c7-c514-54c1-a5cd-f6b6bdd4e39f",
+      "exchanges": [
+        {
+          "body": "temporarily unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2/useractivity",
+          "query": {
+            "direction": [
+              "latest"
+            ],
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "2"
+            ],
+            "user": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFtcGxpdHVkZS1hcGkta2V5OnNhbXBsZS1hbXBsaXR1ZGUtc2VjcmV0LWtleQ=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "amplitudeID": "12345",
+        "direction": "latest",
+        "limit": 10,
+        "offset": 2
+      },
+      "name": "getUserActivity-serverUnavailable",
+      "operation": "getUserActivity"
+    },
+    {
+      "callId": "e79d52f6-13c4-5e48-a653-6e2606720195",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2/useractivity",
+          "query": {
+            "direction": [
+              "latest"
+            ],
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "2"
+            ],
+            "user": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFtcGxpdHVkZS1hcGkta2V5OnNhbXBsZS1hbXBsaXR1ZGUtc2VjcmV0LWtleQ=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "amplitudeID": "12345",
+        "direction": "latest",
+        "limit": 10,
+        "offset": 2
+      },
+      "name": "getUserActivity-transportFailure",
+      "operation": "getUserActivity"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2/useractivity",
+          "query": {
+            "direction": [
+              "latest"
+            ],
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "2"
+            ],
+            "user": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFtcGxpdHVkZS1hcGkta2V5OnNhbXBsZS1hbXBsaXR1ZGUtc2VjcmV0LWtleQ=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "",
+        "output": {
+          "amplitudeID": "",
+          "eventCount": 0,
+          "returnedEvents": 0,
+          "sessionCount": 0,
+          "userID": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "amplitudeID": "12345",
+        "direction": "latest",
+        "limit": 10,
+        "offset": 2
+      },
+      "name": "getUserActivity-missing",
+      "operation": "getUserActivity"
+    },
+    {
       "callId": "1734cffc-5461-555f-8202-4900a59cee41",
       "exchanges": [
         {

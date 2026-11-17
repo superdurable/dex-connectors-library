@@ -79,6 +79,10 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, user string) providerResponse {
+	return client.getDashboard(call, "/api/2/usersearch", url.Values{"user": {user}})
+}
+
+func (client *Client) getDashboard(call sdkgo.Call, path string, parameters url.Values) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -88,8 +92,7 @@ func (client *Client) get(call sdkgo.Call, user string) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(apiKey) || !providerhttp.IsHeaderSafeCredential(secretKey) || strings.Contains(apiKey, ":") {
 		return providerResponse{err: errCredential}
 	}
-	parameters := url.Values{"user": {user}}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, strings.TrimRight(client.baseURL, "/")+"/api/2/usersearch?"+parameters.Encode(), nil)
+	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, strings.TrimRight(client.baseURL, "/")+path+"?"+parameters.Encode(), nil)
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}

@@ -41,6 +41,8 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetUserActivity() sdkgo.Query[GetUserActivityInput, UserActivity]
+	UnsetUserProperty() sdkgo.Mutation[UnsetUserPropertyInput, IdentifiedUser]
 	TrackEvent() sdkgo.Mutation[TrackEventInput, TrackedEvent]
 	IdentifyUser() sdkgo.Mutation[IdentifyUserInput, IdentifiedUser]
 	SearchUsers() sdkgo.Query[SearchUsersInput, UserSearchPage]
@@ -48,6 +50,12 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetUserActivity() sdkgo.Query[GetUserActivityInput, UserActivity] {
+	return operations.client.GetUserActivity()
+}
+func (operations clientOperations) UnsetUserProperty() sdkgo.Mutation[UnsetUserPropertyInput, IdentifiedUser] {
+	return operations.client.UnsetUserProperty()
+}
 func (operations clientOperations) TrackEvent() sdkgo.Mutation[TrackEventInput, TrackedEvent] {
 	return operations.client.TrackEvent()
 }
@@ -198,6 +206,148 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential secretKey is required")
 	}
 	return nil
+}
+
+const GetUserActivityBranchFound sdkgo.BranchID = "found"
+const GetUserActivityBranchMissing sdkgo.BranchID = "missing"
+const GetUserActivityBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetUserActivityBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetUserActivityBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetUserActivityDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getUserActivity"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetUserActivityBranchFound, Description: "Amplitude returned the user's activity summary."},
+		{ID: GetUserActivityBranchMissing, Description: "Amplitude has no activity for this user.", Optional: true},
+		{ID: GetUserActivityBranchProviderRejected, Description: "Amplitude refused the activity read.", Optional: true},
+		{ID: GetUserActivityBranchInvalidResponse, Description: "Amplitude returned invalid activity JSON.", Optional: true},
+		{ID: GetUserActivityBranchDefect, Description: "The Amplitude ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetUserActivityResult = sdkgo.QueryResult[UserActivity]
+
+type GetUserActivityStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=amplitude"`
+	operationID                    struct{}                                        `connector:"operationId=getUserActivity"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetUserActivityInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetUserActivityResult]             `connector:"branch=found"`
+	Missing                        sdkgo.Target[GetUserActivityResult]             `connector:"branch=missing,optional"`
+	ProviderRejected               sdkgo.Target[GetUserActivityResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetUserActivityResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetUserActivityResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[UserActivity]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetUserActivityStep[IN any](config GetUserActivityStepConfig[IN]) sdkgo.QueryStep[IN, GetUserActivityInput, UserActivity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amplitude connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetUserActivityInput, UserActivity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetUserActivity(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetUserActivityResult] {
+			branches := make([]sdkgo.BranchTarget[GetUserActivityResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetUserActivityBranchFound))
+			}
+			if config.Missing.HasStep() {
+				branches = append(branches, config.Missing.BranchTarget(GetUserActivityBranchMissing))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetUserActivityBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetUserActivityBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetUserActivityBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UnsetUserPropertyBranchUnset sdkgo.BranchID = "unset"
+const UnsetUserPropertyBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UnsetUserPropertyBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UnsetUserPropertyDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "unsetUserProperty"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UnsetUserPropertyBranchUnset, Description: "Amplitude accepted the property removal."},
+		{ID: UnsetUserPropertyBranchProviderRejected, Description: "Amplitude conclusively refused the removal.", Optional: true},
+		{ID: UnsetUserPropertyBranchDefect, Description: "The user, property, or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UnsetUserPropertyResult = sdkgo.MutationResult[IdentifiedUser]
+
+type UnsetUserPropertyStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=amplitude"`
+	operationID                       struct{}                                             `connector:"operationId=unsetUserProperty"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) UnsetUserPropertyInput                      `connector:"mapToOperationInput"`
+	Unset                             sdkgo.Target[UnsetUserPropertyResult]                `connector:"branch=unset"`
+	ProviderRejected                  sdkgo.Target[UnsetUserPropertyResult]                `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UnsetUserPropertyResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[IdentifiedUser]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewUnsetUserPropertyStep[IN any](config UnsetUserPropertyStepConfig[IN]) sdkgo.MutationStep[IN, UnsetUserPropertyInput, IdentifiedUser] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amplitude connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UnsetUserPropertyInput, IdentifiedUser]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UnsetUserProperty(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UnsetUserPropertyResult] {
+			branches := make([]sdkgo.BranchTarget[UnsetUserPropertyResult], 0, 3)
+			if config.Unset.HasStep() {
+				branches = append(branches, config.Unset.BranchTarget(UnsetUserPropertyBranchUnset))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UnsetUserPropertyBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UnsetUserPropertyBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const TrackEventBranchTracked sdkgo.BranchID = "tracked"

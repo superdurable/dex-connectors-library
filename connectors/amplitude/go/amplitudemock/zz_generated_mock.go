@@ -17,10 +17,12 @@ import (
 
 // Mock is a scripted amplitude connection. Script each operation through its accessor.
 type Mock struct {
-	connection   amplitude.Connection
-	trackEvent   *connectormock.Mutation[amplitude.TrackEventInput, amplitude.TrackedEvent]
-	identifyUser *connectormock.Mutation[amplitude.IdentifyUserInput, amplitude.IdentifiedUser]
-	searchUsers  *connectormock.Query[amplitude.SearchUsersInput, amplitude.UserSearchPage]
+	connection        amplitude.Connection
+	getUserActivity   *connectormock.Query[amplitude.GetUserActivityInput, amplitude.UserActivity]
+	unsetUserProperty *connectormock.Mutation[amplitude.UnsetUserPropertyInput, amplitude.IdentifiedUser]
+	trackEvent        *connectormock.Mutation[amplitude.TrackEventInput, amplitude.TrackedEvent]
+	identifyUser      *connectormock.Mutation[amplitude.IdentifyUserInput, amplitude.IdentifiedUser]
+	searchUsers       *connectormock.Query[amplitude.SearchUsersInput, amplitude.UserSearchPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -28,10 +30,14 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		trackEvent:   connectormock.NewMutation[amplitude.TrackEventInput, amplitude.TrackedEvent](t, amplitude.TrackEventDefinition),
-		identifyUser: connectormock.NewMutation[amplitude.IdentifyUserInput, amplitude.IdentifiedUser](t, amplitude.IdentifyUserDefinition),
-		searchUsers:  connectormock.NewQuery[amplitude.SearchUsersInput, amplitude.UserSearchPage](t, amplitude.SearchUsersDefinition),
+		getUserActivity:   connectormock.NewQuery[amplitude.GetUserActivityInput, amplitude.UserActivity](t, amplitude.GetUserActivityDefinition),
+		unsetUserProperty: connectormock.NewMutation[amplitude.UnsetUserPropertyInput, amplitude.IdentifiedUser](t, amplitude.UnsetUserPropertyDefinition),
+		trackEvent:        connectormock.NewMutation[amplitude.TrackEventInput, amplitude.TrackedEvent](t, amplitude.TrackEventDefinition),
+		identifyUser:      connectormock.NewMutation[amplitude.IdentifyUserInput, amplitude.IdentifiedUser](t, amplitude.IdentifyUserDefinition),
+		searchUsers:       connectormock.NewQuery[amplitude.SearchUsersInput, amplitude.UserSearchPage](t, amplitude.SearchUsersDefinition),
 	}
+	mock.getUserActivity.Default(GetUserActivityDefault())
+	mock.unsetUserProperty.Default(UnsetUserPropertyDefault())
 	mock.trackEvent.Default(TrackEventDefault())
 	mock.identifyUser.Default(IdentifyUserDefault())
 	mock.searchUsers.Default(SearchUsersDefault())
@@ -45,6 +51,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() amplitude.Connection { return mock.connection }
+
+// GetUserActivity returns the getUserActivity script.
+func (mock *Mock) GetUserActivity() *connectormock.Query[amplitude.GetUserActivityInput, amplitude.UserActivity] {
+	return mock.getUserActivity
+}
+
+// UnsetUserProperty returns the unsetUserProperty script.
+func (mock *Mock) UnsetUserProperty() *connectormock.Mutation[amplitude.UnsetUserPropertyInput, amplitude.IdentifiedUser] {
+	return mock.unsetUserProperty
+}
 
 // TrackEvent returns the trackEvent script.
 func (mock *Mock) TrackEvent() *connectormock.Mutation[amplitude.TrackEventInput, amplitude.TrackedEvent] {
@@ -63,6 +79,12 @@ func (mock *Mock) SearchUsers() *connectormock.Query[amplitude.SearchUsersInput,
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetUserActivity() sdkgo.Query[amplitude.GetUserActivityInput, amplitude.UserActivity] {
+	return operations.mock.getUserActivity
+}
+func (operations mockOperations) UnsetUserProperty() sdkgo.Mutation[amplitude.UnsetUserPropertyInput, amplitude.IdentifiedUser] {
+	return operations.mock.unsetUserProperty
+}
 func (operations mockOperations) TrackEvent() sdkgo.Mutation[amplitude.TrackEventInput, amplitude.TrackedEvent] {
 	return operations.mock.trackEvent
 }
@@ -71,6 +93,78 @@ func (operations mockOperations) IdentifyUser() sdkgo.Mutation[amplitude.Identif
 }
 func (operations mockOperations) SearchUsers() sdkgo.Query[amplitude.SearchUsersInput, amplitude.UserSearchPage] {
 	return operations.mock.searchUsers
+}
+
+// GetUserActivityFound selects the found branch: Amplitude returned the user's activity summary.
+func GetUserActivityFound(value amplitude.UserActivity, failure *sdkgo.Failure) connectormock.Case[amplitude.UserActivity] {
+	return connectormock.Branch(amplitude.GetUserActivityBranchFound, value, failure)
+}
+
+// GetUserActivityMissing selects the missing branch: Amplitude has no activity for this user.
+func GetUserActivityMissing(value amplitude.UserActivity, failure *sdkgo.Failure) connectormock.Case[amplitude.UserActivity] {
+	return connectormock.Branch(amplitude.GetUserActivityBranchMissing, value, failure)
+}
+
+// GetUserActivityProviderRejected selects the providerRejected branch: Amplitude refused the activity read.
+func GetUserActivityProviderRejected(value amplitude.UserActivity, failure *sdkgo.Failure) connectormock.Case[amplitude.UserActivity] {
+	return connectormock.Branch(amplitude.GetUserActivityBranchProviderRejected, value, failure)
+}
+
+// GetUserActivityInvalidResponse selects the invalidResponse branch: Amplitude returned invalid activity JSON.
+func GetUserActivityInvalidResponse(value amplitude.UserActivity, failure *sdkgo.Failure) connectormock.Case[amplitude.UserActivity] {
+	return connectormock.Branch(amplitude.GetUserActivityBranchInvalidResponse, value, failure)
+}
+
+// GetUserActivityDefect selects the defect branch: The Amplitude ID or credentials are invalid.
+func GetUserActivityDefect(value amplitude.UserActivity, failure *sdkgo.Failure) connectormock.Case[amplitude.UserActivity] {
+	return connectormock.Branch(amplitude.GetUserActivityBranchDefect, value, failure)
+}
+
+// GetUserActivityRetry asks Dex to retry the getUserActivity Step, after the delay when it is positive.
+func GetUserActivityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[amplitude.UserActivity] {
+	return connectormock.Retry[amplitude.UserActivity](failure, after)
+}
+
+// GetUserActivityUserActivityDefault is the manifest mock userActivityDefault: Amplitude returned one user's counts.
+func GetUserActivityUserActivityDefault() connectormock.Case[amplitude.UserActivity] {
+	value := connectormock.MustDecodeOutput[amplitude.UserActivity](`{"amplitudeID":"12345","userID":"example-user","eventCount":142,"sessionCount":23,"returnedEvents":2}`)
+	return connectormock.Branch(amplitude.GetUserActivityBranchFound, value, nil)
+}
+
+// GetUserActivityDefault is the manifest default, userActivityDefault, which New installs.
+func GetUserActivityDefault() connectormock.Case[amplitude.UserActivity] {
+	return GetUserActivityUserActivityDefault()
+}
+
+// UnsetUserPropertyUnset selects the unset branch: Amplitude accepted the property removal.
+func UnsetUserPropertyUnset(value amplitude.IdentifiedUser, failure *sdkgo.Failure) connectormock.Case[amplitude.IdentifiedUser] {
+	return connectormock.Branch(amplitude.UnsetUserPropertyBranchUnset, value, failure)
+}
+
+// UnsetUserPropertyProviderRejected selects the providerRejected branch: Amplitude conclusively refused the removal.
+func UnsetUserPropertyProviderRejected(value amplitude.IdentifiedUser, failure *sdkgo.Failure) connectormock.Case[amplitude.IdentifiedUser] {
+	return connectormock.Branch(amplitude.UnsetUserPropertyBranchProviderRejected, value, failure)
+}
+
+// UnsetUserPropertyDefect selects the defect branch: The user, property, or connection is invalid.
+func UnsetUserPropertyDefect(value amplitude.IdentifiedUser, failure *sdkgo.Failure) connectormock.Case[amplitude.IdentifiedUser] {
+	return connectormock.Branch(amplitude.UnsetUserPropertyBranchDefect, value, failure)
+}
+
+// UnsetUserPropertyRetry asks Dex to retry the unsetUserProperty Step, after the delay when it is positive.
+func UnsetUserPropertyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[amplitude.IdentifiedUser] {
+	return connectormock.Retry[amplitude.IdentifiedUser](failure, after)
+}
+
+// UnsetUserPropertyUnsetDefault is the manifest mock unsetDefault: The obsolete plan property was removed.
+func UnsetUserPropertyUnsetDefault() connectormock.Case[amplitude.IdentifiedUser] {
+	value := connectormock.MustDecodeOutput[amplitude.IdentifiedUser](`{"userID":"example-user","propertyName":"oldPlan"}`)
+	return connectormock.Branch(amplitude.UnsetUserPropertyBranchUnset, value, nil)
+}
+
+// UnsetUserPropertyDefault is the manifest default, unsetDefault, which New installs.
+func UnsetUserPropertyDefault() connectormock.Case[amplitude.IdentifiedUser] {
+	return UnsetUserPropertyUnsetDefault()
 }
 
 // TrackEventTracked selects the tracked branch: Amplitude ingested the event.

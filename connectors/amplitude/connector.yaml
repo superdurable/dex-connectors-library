@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: amplitude
   displayName: Amplitude
-  description: Search project users, upload analytics events, and replace user properties.
+  description: Search project users, inspect activity, upload analytics events, and set or remove user properties.
   company: Amplitude
   categories: [analytics]
   version: v0.2.0
@@ -58,8 +58,40 @@ spec:
       startURL: https://amplitude.com
       steps:
         - In Amplitude open Organization settings > API Keys and select the project. A Manager or Admin can generate an API key and secret key. Copy the API key into apiKey and the secret key itself, not its Key ID, into secretKey. Both are secrets and blank prevents calls. Select keys for the same project.
-        - Leave baseUrl blank for the US region, or use https://analytics.eu.amplitude.com for an EU project; event and Identify requests use the matching ingestion region automatically. Leave timeout and maxResponseBytes blank for their displayed defaults. Find a non-secret user ID in Amplitude's User Lookup and pass the full ID or prefix as user; blank is invalid.
+        - Leave baseUrl blank for the US region, or use https://analytics.eu.amplitude.com for an EU project; event and Identify requests use the matching ingestion region automatically. Leave timeout and maxResponseBytes blank for their displayed defaults. Find a non-secret user ID or Amplitude ID in Amplitude's User Lookup; searchUsers accepts the full user ID or prefix, while getUserActivity requires the numeric Amplitude ID. Blank is invalid.
   operations:
+    - name: getUserActivity
+      goName: GetUserActivity
+      inputType: GetUserActivityInput
+      outputType: UserActivity
+      kind: query
+      description: Read one Amplitude user's event and session counts with a bounded event page.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Amplitude returned the user's activity summary.}
+        - {id: missing, goName: Missing, description: Amplitude has no activity for this user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Amplitude refused the activity read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Amplitude returned invalid activity JSON., optional: true}
+        - {id: defect, goName: Defect, description: The Amplitude ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: userActivityDefault, branch: found, default: true, description: Amplitude returned one user's counts., output: {amplitudeID: '12345', userID: example-user, eventCount: 142, sessionCount: 23, returnedEvents: 2}}
+    - name: unsetUserProperty
+      goName: UnsetUserProperty
+      inputType: UnsetUserPropertyInput
+      outputType: IdentifiedUser
+      kind: mutation
+      description: Remove one user property from future events with an absolute Identify $unset.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: unset, goName: Unset, description: Amplitude accepted the property removal.}
+        - {id: providerRejected, goName: ProviderRejected, description: Amplitude conclusively refused the removal., optional: true}
+        - {id: defect, goName: Defect, description: "The user, property, or connection is invalid.", optional: true}
+      mocks:
+        - {name: unsetDefault, branch: unset, default: true, description: The obsolete plan property was removed., output: {userID: example-user, propertyName: oldPlan}}
     - name: trackEvent
       goName: TrackEvent
       inputType: TrackEventInput

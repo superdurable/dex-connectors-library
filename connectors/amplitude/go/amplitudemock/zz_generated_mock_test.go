@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getUserActivity/userActivityDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[amplitude.UserActivity](`{"amplitudeID":"12345","userID":"example-user","eventCount":142,"sessionCount":23,"returnedEvents":2}`)
+			return err
+		}},
+		{name: "unsetUserProperty/unsetDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[amplitude.IdentifiedUser](`{"userID":"example-user","propertyName":"oldPlan"}`)
+			return err
+		}},
 		{name: "trackEvent/trackedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[amplitude.TrackedEvent](`{"userID":"example-user","eventType":"purchase","insertID":"example-insert-id"}`)
 			return err
@@ -38,6 +46,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetUserActivity().Definition().Operation.OperationID != "getUserActivity" {
+		t.Errorf("getUserActivity mock has another definition")
+	}
+	if mock.UnsetUserProperty().Definition().Operation.OperationID != "unsetUserProperty" {
+		t.Errorf("unsetUserProperty mock has another definition")
+	}
 	if mock.TrackEvent().Definition().Operation.OperationID != "trackEvent" {
 		t.Errorf("trackEvent mock has another definition")
 	}
