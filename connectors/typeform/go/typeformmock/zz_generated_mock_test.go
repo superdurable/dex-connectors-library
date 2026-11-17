@@ -32,6 +32,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[typeform.Webhook](`{"id":"webhook_signup_1","formId":"f_signup_1","tag":"dex-response-recorder","url":"https://example.test/webhooks/typeform","isEnabled":true,"eventTypes":["form_response"],"createdAt":"2026-10-26T12:00:00Z","updatedAt":"2026-10-26T12:00:00Z"}`)
 			return err
 		}},
+		{name: "listWebhooks/signupWebhooks/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[typeform.WebhookList](`{"webhooks":[{"id":"webhook_signup_1","formId":"f_signup_1","tag":"dex-response-recorder","url":"https://example.test/webhooks/typeform","isEnabled":true,"eventTypes":["form_response"],"createdAt":"2026-10-26T12:00:00Z","updatedAt":"2026-10-26T12:00:00Z"}]}`)
+			return err
+		}},
+		{name: "getWebhook/signupWebhook/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[typeform.Webhook](`{"id":"webhook_signup_1","formId":"f_signup_1","tag":"dex-response-recorder","url":"https://example.test/webhooks/typeform","isEnabled":true,"eventTypes":["form_response"],"createdAt":"2026-10-26T12:00:00Z","updatedAt":"2026-10-26T12:00:00Z"}`)
+			return err
+		}},
+		{name: "deleteWebhook/signupWebhookDeleted/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[typeform.DeletedWebhook](`{"formId":"f_signup_1","tag":"dex-response-recorder"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -53,5 +65,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.UpsertWebhook().Definition().Operation.OperationID != "upsertWebhook" {
 		t.Errorf("upsertWebhook mock has another definition")
+	}
+	if mock.ListWebhooks().Definition().Operation.OperationID != "listWebhooks" {
+		t.Errorf("listWebhooks mock has another definition")
+	}
+	if mock.GetWebhook().Definition().Operation.OperationID != "getWebhook" {
+		t.Errorf("getWebhook mock has another definition")
+	}
+	if mock.DeleteWebhook().Definition().Operation.OperationID != "deleteWebhook" {
+		t.Errorf("deleteWebhook mock has another definition")
 	}
 }

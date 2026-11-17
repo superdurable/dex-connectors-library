@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: typeform
   displayName: Typeform
-  description: "Receive signed Typeform form_response webhooks as typed, field-keyed answers, list and read forms, list responses, and create or update a form's webhook."
+  description: "Receive signed Typeform form_response webhooks as typed, field-keyed answers, list and read forms and responses, and manage form webhooks."
   company: Typeform
   categories: [productivity]
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: typeform
   languages:
@@ -58,7 +58,7 @@ spec:
           - name: access_token
             goName: AccessToken
             type: secretString
-            description: "Secret Typeform personal access token copied once from https://admin.typeform.com/user/tokens after choosing Generate a new token with the scopes forms:read, responses:read, and webhooks:write. It looks like tfp_ followed by letters and digits and is sent only as a bearer token to the dataCenter API host. Required: no operation can run without it."
+            description: "Secret Typeform personal access token copied once from https://admin.typeform.com/user/tokens after choosing Generate a new token with the scopes forms:read, responses:read, webhooks:read, and webhooks:write. It looks like tfp_ followed by letters and digits and is sent only as a bearer token to the dataCenter API host. Required: no operation can run without it."
             required: true
           - name: webhook_secret
             goName: WebhookSecret
@@ -69,7 +69,7 @@ spec:
           startURL: https://admin.typeform.com/user/tokens
           steps:
             - "Sign in to Typeform as the account that owns the forms, open the menu next to your name, choose Account, then Personal tokens, and choose Generate a new token."
-            - "Name the token, select the scopes forms:read, responses:read, and webhooks:write, choose Generate token, and copy it; Typeform shows the tfp_ token only once."
+            - "Name the token, select the scopes forms:read, responses:read, webhooks:read, and webhooks:write, choose Generate token, and copy it; Typeform shows the tfp_ token only once."
             - "Paste the token into access_token. To receive submissions, also paste a random secret such as the output of openssl rand -hex 32 into webhook_secret; upsertWebhook registers that same secret with Typeform."
             - "Leave dataCenter blank unless the account is an Enterprise account in the EU Responses Data Center; then choose eu or newEu as its Typeform Customer Success Manager confirms, and generate the token in that region's Typeform admin."
   studio:
@@ -241,3 +241,61 @@ spec:
           branch: providerRejected
           description: "Upserting the webhook without webhooks:write returns HTTP 403."
           failure: {kind: AUTHORIZATION, message: Typeform denied the webhook upsert.}
+    - name: listWebhooks
+      goName: ListWebhooks
+      inputType: ListWebhooksInput
+      outputType: WebhookList
+      kind: query
+      description: "List a form's webhooks without exposing their signing secrets."
+      idempotency: none
+      branches:
+        - {id: listed, goName: Listed, description: "Typeform returned the form's webhooks."}
+        - {id: notFound, goName: NotFound, description: "The form does not exist or is inaccessible.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Typeform rejected the request, such as a missing webhooks:read scope.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Typeform returned a malformed or oversized response.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection configuration is invalid.", optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: signupWebhooks
+          branch: listed
+          description: "Listing form f_signup_1 returns its response recorder webhook."
+          default: true
+          output: {webhooks: [{id: webhook_signup_1, formId: f_signup_1, tag: dex-response-recorder, url: "https://example.test/webhooks/typeform", isEnabled: true, eventTypes: [form_response], createdAt: "2026-10-26T12:00:00Z", updatedAt: "2026-10-26T12:00:00Z"}]}
+    - name: getWebhook
+      goName: GetWebhook
+      inputType: GetWebhookInput
+      outputType: Webhook
+      kind: query
+      description: "Read one form webhook by tag without exposing its signing secret."
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: "Typeform returned the webhook."}
+        - {id: notFound, goName: NotFound, description: "The webhook or form does not exist or is inaccessible.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Typeform rejected the request, such as a missing webhooks:read scope.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Typeform returned a malformed or oversized response.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection configuration is invalid.", optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: signupWebhook
+          branch: found
+          description: "Reading the response recorder webhook returns its public metadata."
+          default: true
+          output: {id: webhook_signup_1, formId: f_signup_1, tag: dex-response-recorder, url: "https://example.test/webhooks/typeform", isEnabled: true, eventTypes: [form_response], createdAt: "2026-10-26T12:00:00Z", updatedAt: "2026-10-26T12:00:00Z"}
+    - name: deleteWebhook
+      goName: DeleteWebhook
+      inputType: DeleteWebhookInput
+      outputType: DeletedWebhook
+      kind: mutation
+      description: "Delete a form webhook by tag; an already absent webhook is considered deleted."
+      idempotency: required
+      branches:
+        - {id: deleted, goName: Deleted, description: "The webhook is absent after the request."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Typeform rejected the request, such as a missing webhooks:write scope.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection configuration is invalid.", optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: signupWebhookDeleted
+          branch: deleted
+          description: "Deleting the response recorder webhook leaves it absent."
+          default: true
+          output: {formId: f_signup_1, tag: dex-response-recorder}

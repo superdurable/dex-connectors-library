@@ -1,13 +1,21 @@
 # Spotify playlist-tracks example
 
-This example runs one operation-only Flow from Dex Web **Start Flow**:
+This example runs a Flow from Dex Web **Start Flow**:
 
 1. `RecordPlaylistRequest` persists the typed playlist ID and page request;
-2. `ListPlaylistTracks` calls `spotify.NewListPlaylistTracksStep`;
-3. `CompletePlaylistTracks` persists the returned page and completes the Flow.
+2. `GetPlaylist` calls `spotify.NewGetPlaylistStep`;
+3. `ContinueAfterGetPlaylist` persists the playlist snapshot;
+4. `ListPlaylistTracks` calls `spotify.NewListPlaylistTracksStep`;
+5. `CompletePlaylistTracks` persists the returned page and requests its first available album;
+6. `GetAlbum` calls `spotify.NewGetAlbumStep` for that album;
+7. `CompleteAlbumMetadata` persists its metadata and requests its first artist;
+8. `GetArtist` calls `spotify.NewGetArtistStep`;
+9. `CompleteArtistMetadata` persists artist metadata and requests the first playlist track;
+10. `GetTrack` calls `spotify.NewGetTrackStep`;
+11. `CompleteTrackMetadata` persists full track metadata and completes the Flow.
 
-The summary and display RPCs expose the request and page in Dex Web. Only the
-`listed` branch is wired. Revoked authorization, access denial, not-found,
+The summary and display RPCs expose the request, playlist, album, artist, and track metadata, and page in Dex Web. Only the
+`found` and `listed` branches are wired. Revoked authorization, access denial, not-found,
 provider rejection, invalid response, and defect branches fail the Flow when
 selected.
 
@@ -41,8 +49,8 @@ mkdir -p /tmp/spotify-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/spotify/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/spotify/go \
-  --version v0.24.0 \
-  --tag connectors/spotify/go/v0.24.0 \
+  --version v0.25.0 \
+  --tag connectors/spotify/go/v0.25.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/spotify-release/connector-release.json \
   --digest-output /tmp/spotify-release/connector-release.json.sha256

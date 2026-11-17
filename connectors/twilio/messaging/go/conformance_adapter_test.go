@@ -66,7 +66,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		startAttempt = prior.Attempt
 	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { context.attempt = int32(attempt) + startAttempt }, actions: map[string]conformanceOperationInvocation{
-		"sendMessage": newConformanceMutationInvocation(t, scenario.Input, context, client.SendMessage(), twilioConnection, scenario.CallID),
-		"getMessage":  newConformanceQueryInvocation(t, scenario.Input, context, client.GetMessage(), twilioConnection),
+		"sendMessage":   newConformanceMutationInvocation(t, scenario.Input, context, client.SendMessage(), twilioConnection, scenario.CallID),
+		"getMessage":    newConformanceQueryInvocation(t, scenario.Input, context, client.GetMessage(), twilioConnection),
+		"listMessages":  newConformanceQueryInvocation(t, scenario.Input, context, client.ListMessages(), twilioConnection),
+		"deleteMessage": newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteMessage(), twilioConnection, scenario.CallID),
+		"redactMessage": newConformanceMutationInvocation(t, scenario.Input, context, client.RedactMessage(), twilioConnection, scenario.CallID),
 	}}
 }

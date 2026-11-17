@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{storyinspection.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{storyinspection.NewFlow(connection), storyinspection.NewSearchFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Shortcut story inspection Flow: %w", err)
 	}

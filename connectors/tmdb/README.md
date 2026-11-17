@@ -1,11 +1,11 @@
 # TMDB connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/tmdb/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/tmdb/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/tmdb`.
 
 This Dex connector calls the public TMDB JSON API. Its
-manifest version is `v0.2.0`; the Go module requires connector SDK `v0.33.0`
+manifest version is `v0.3.0`; the Go module requires connector SDK `v0.33.0`
     and Dex Go SDK `v1.5.0` or newer. The runnable
 [`movie-search` example](go/examples/movie-search/README.md) shows a
 complete Worker and the generated operation-specific Step factory.
@@ -23,6 +23,10 @@ uses the same static `tmdb` connection name and generated operation Step factory
 | --- | --- | --- |
 | `searchMovies` | query | MoviePage |
 | `getMovie` | query | Movie |
+| `searchTV` | query | TVPage |
+| `getTV` | query | TVSeries |
+| `searchPeople` | query | PeoplePage |
+| `getPerson` | query | Person |
 
 This connector is read-only and uses the API Read Access Token in an Authorization header, never a URL parameter.
 
@@ -67,10 +71,13 @@ flow := NewFlow(mock.Connection())
 
 - [https://developer.themoviedb.org/reference/search-movie](https://developer.themoviedb.org/reference/search-movie)
 - [https://developer.themoviedb.org/reference/movie-details](https://developer.themoviedb.org/reference/movie-details)
+- [https://developer.themoviedb.org/reference/search-tv](https://developer.themoviedb.org/reference/search-tv)
+- [https://developer.themoviedb.org/reference/tv-series-details](https://developer.themoviedb.org/reference/tv-series-details)
+- [https://developer.themoviedb.org/reference/search-person](https://developer.themoviedb.org/reference/search-person)
+- [https://developer.themoviedb.org/reference/person-details](https://developer.themoviedb.org/reference/person-details)
 - [https://developer.themoviedb.org/docs/authentication-application](https://developer.themoviedb.org/docs/authentication-application)
 
-The HTTP unit tests verify request shapes and local classification against
-an `httptest` server. Provider authorization, live API response variations,
-and real Dex integration remain unverified locally. CI runs the mock backed
-real Dex test; a user-controlled live connection is still needed to confirm
-the provider account and permissions.
+The HTTP and recorded conformance tests verify request shapes and local
+classification against fake responses. The TV search example passed against a
+local Dex Worker and generated mock. A user-controlled live connection is still
+needed to confirm provider authorization and response variations.

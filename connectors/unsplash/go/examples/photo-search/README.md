@@ -2,6 +2,14 @@
 
 This runnable Flow searches public Unsplash photos from Dex Web Start Flow. The `searched` branch completes with photo URLs and attribution. Other branches are unwired and fail the Flow. `ConnectionName` is statically `unsplash`. Dex Web summary and display views show the completed provider outcome.
 
+The same Worker registers `UnsplashCollectionBrowser`. Start it with
+`{"page":1,"perPage":10}` to list public collections. The integration test
+exercises both Flows with the generated mock and a real Dex Worker and Client.
+It also registers `UnsplashDownloadTracking`: start with
+`{"photoId":"<chosen photo ID>"}` only when the application performs a
+download-like action, so Unsplash records the event before using the URL it
+returns.
+
 ## Generate strict FDG 2.0
 
 From `connectors/unsplash` with the latest stable Dex CLI:
@@ -22,11 +30,11 @@ mkdir -p /tmp/unsplash-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/unsplash/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/unsplash/go \
-  --version v0.2.0 --tag connectors/unsplash/go/v0.2.0 \
+  --version v0.3.0 --tag connectors/unsplash/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/unsplash-release/connector-release.json \
   --digest-output /tmp/unsplash-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/unsplash/go/build" --connector-release-override unsplash=/tmp/unsplash-release
+dexcli dev -open=false --flow-rendering-dir "$PWD/connectors/unsplash/go/build" --connector-release-override unsplash=/tmp/unsplash-release
 ```
 
 Set the project environment described by [`projectconfig`](../../../../../sdkgo/projectconfig/README.md), then start the Worker:

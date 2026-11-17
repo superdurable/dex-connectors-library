@@ -24,3 +24,15 @@ func TestSourceInspectionFlowIdentityAndMapping(t *testing.T) {
 	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
 	require.NoError(t, err)
 }
+
+func TestSourceListFlowIdentity(t *testing.T) {
+	input := segment.ListSourcesInput{Count: 2}
+	require.Equal(t, sourceListFlowType, dex.GetFinalFlowType(NewSourceListFlow(segment.Connection{})))
+	require.Equal(t, "StartSourceList", dex.GetFinalStepType[segment.ListSourcesInput](startSourceList{}))
+	wait, err := startSourceList{}.WaitFor(nil, input)
+	require.NoError(t, err)
+	require.Equal(t, dex.SkipWaitImmediately(), wait)
+	mock := segmentmock.New(t, ConnectionName)
+	_, err = dex.NewRegistry([]dex.Flow{NewSourceListFlow(mock.Connection())})
+	require.NoError(t, err)
+}

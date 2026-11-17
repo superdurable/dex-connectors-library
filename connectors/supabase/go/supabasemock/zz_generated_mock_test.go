@@ -24,6 +24,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[supabase.UpsertRowsOutput](`{"data":[{"id":1,"name":"Meridian"}]}`)
 			return err
 		}},
+		{name: "getRow/defaultGetRow/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[supabase.GetRowOutput](`{"data":{"id":1,"name":"Meridian"}}`)
+			return err
+		}},
+		{name: "updateRow/defaultUpdateRow/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[supabase.UpdateRowOutput](`{"data":[{"id":1,"name":"Meridian"}]}`)
+			return err
+		}},
+		{name: "deleteRow/defaultDeleteRow/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[supabase.DeleteRowOutput](`{"data":[{"id":1,"name":"Meridian"}]}`)
+			return err
+		}},
+		{name: "createRow/defaultCreateRow/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[supabase.CreateRowOutput](`{"data":{"id":1,"external_key":"meridian","name":"Meridian"}}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +55,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.UpsertRows().Definition().Operation.OperationID != "upsertRows" {
 		t.Errorf("upsertRows mock has another definition")
+	}
+	if mock.GetRow().Definition().Operation.OperationID != "getRow" {
+		t.Errorf("getRow mock has another definition")
+	}
+	if mock.UpdateRow().Definition().Operation.OperationID != "updateRow" {
+		t.Errorf("updateRow mock has another definition")
+	}
+	if mock.DeleteRow().Definition().Operation.OperationID != "deleteRow" {
+		t.Errorf("deleteRow mock has another definition")
+	}
+	if mock.CreateRow().Definition().Operation.OperationID != "createRow" {
+		t.Errorf("createRow mock has another definition")
 	}
 }

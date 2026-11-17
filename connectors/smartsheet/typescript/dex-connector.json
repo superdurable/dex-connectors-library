@@ -1,6 +1,6 @@
 {
   "connectorId": "smartsheet",
-  "releaseTag": "connectors/smartsheet/go/v0.2.0",
+  "releaseTag": "connectors/smartsheet/go/v0.3.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-smartsheet",

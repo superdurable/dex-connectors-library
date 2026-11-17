@@ -41,12 +41,28 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	GetStory() sdkgo.Query[GetStoryInput, StoryMetadata]
+	SearchStories() sdkgo.Query[SearchStoriesInput, SearchStoriesOutput]
+	CreateStory() sdkgo.Mutation[CreateStoryInput, StoryMetadata]
+	UpdateStory() sdkgo.Mutation[UpdateStoryInput, StoryMetadata]
+	DeleteStory() sdkgo.Mutation[DeleteStoryInput, DeleteStoryOutput]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) GetStory() sdkgo.Query[GetStoryInput, StoryMetadata] {
 	return operations.client.GetStory()
+}
+func (operations clientOperations) SearchStories() sdkgo.Query[SearchStoriesInput, SearchStoriesOutput] {
+	return operations.client.SearchStories()
+}
+func (operations clientOperations) CreateStory() sdkgo.Mutation[CreateStoryInput, StoryMetadata] {
+	return operations.client.CreateStory()
+}
+func (operations clientOperations) UpdateStory() sdkgo.Mutation[UpdateStoryInput, StoryMetadata] {
+	return operations.client.UpdateStory()
+}
+func (operations clientOperations) DeleteStory() sdkgo.Mutation[DeleteStoryInput, DeleteStoryOutput] {
+	return operations.client.DeleteStory()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -255,6 +271,303 @@ func NewGetStoryStep[IN any](config GetStoryStepConfig[IN]) sdkgo.QueryStep[IN, 
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetStoryBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SearchStoriesBranchFound sdkgo.BranchID = "found"
+const SearchStoriesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SearchStoriesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SearchStoriesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SearchStoriesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchStories"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SearchStoriesBranchFound, Description: "Shortcut returned a story search page."},
+		{ID: SearchStoriesBranchProviderRejected, Description: "Shortcut rejected the search.", Optional: true},
+		{ID: SearchStoriesBranchInvalidResponse, Description: "Shortcut returned malformed search JSON.", Optional: true},
+		{ID: SearchStoriesBranchDefect, Description: "Search input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SearchStoriesResult = sdkgo.QueryResult[SearchStoriesOutput]
+
+type SearchStoriesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=shortcut"`
+	operationID                    struct{}                                               `connector:"operationId=searchStories"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) SearchStoriesInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[SearchStoriesResult]                      `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[SearchStoriesResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[SearchStoriesResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[SearchStoriesResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SearchStoriesOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewSearchStoriesStep[IN any](config SearchStoriesStepConfig[IN]) sdkgo.QueryStep[IN, SearchStoriesInput, SearchStoriesOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("shortcut connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchStoriesInput, SearchStoriesOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SearchStories(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SearchStoriesResult] {
+			branches := make([]sdkgo.BranchTarget[SearchStoriesResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(SearchStoriesBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SearchStoriesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SearchStoriesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SearchStoriesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateStoryBranchCreated sdkgo.BranchID = "created"
+const CreateStoryBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateStoryBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateStoryBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateStoryDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createStory"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateStoryBranchCreated, Description: "Shortcut created the story."},
+		{ID: CreateStoryBranchProviderRejected, Description: "Shortcut rejected the create request.", Optional: true},
+		{ID: CreateStoryBranchUncertain, Description: "The story create outcome cannot be confirmed.", Optional: true},
+		{ID: CreateStoryBranchDefect, Description: "Story input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateStoryResult = sdkgo.MutationResult[StoryMetadata]
+
+type CreateStoryStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=shortcut"`
+	operationID                       struct{}                                            `connector:"operationId=createStory"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateStoryInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateStoryResult]                     `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateStoryResult]                     `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateStoryResult]                     `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateStoryResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[StoryMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateStoryStep[IN any](config CreateStoryStepConfig[IN]) sdkgo.MutationStep[IN, CreateStoryInput, StoryMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("shortcut connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateStoryInput, StoryMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateStory(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateStoryResult] {
+			branches := make([]sdkgo.BranchTarget[CreateStoryResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateStoryBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateStoryBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateStoryBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateStoryBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateStoryBranchUpdated sdkgo.BranchID = "updated"
+const UpdateStoryBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateStoryBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateStoryBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateStoryBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateStoryDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateStory"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateStoryBranchUpdated, Description: "Shortcut updated the story."},
+		{ID: UpdateStoryBranchNotFound, Description: "Shortcut did not find the story.", Optional: true},
+		{ID: UpdateStoryBranchProviderRejected, Description: "Shortcut rejected the update.", Optional: true},
+		{ID: UpdateStoryBranchInvalidResponse, Description: "Shortcut returned malformed story JSON.", Optional: true},
+		{ID: UpdateStoryBranchDefect, Description: "Story input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateStoryResult = sdkgo.MutationResult[StoryMetadata]
+
+type UpdateStoryStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=shortcut"`
+	operationID                       struct{}                                            `connector:"operationId=updateStory"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateStoryInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateStoryResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateStoryResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateStoryResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateStoryResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateStoryResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[StoryMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateStoryStep[IN any](config UpdateStoryStepConfig[IN]) sdkgo.MutationStep[IN, UpdateStoryInput, StoryMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("shortcut connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateStoryInput, StoryMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateStory(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateStoryResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateStoryResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateStoryBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateStoryBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateStoryBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateStoryBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateStoryBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteStoryBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteStoryBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteStoryBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteStoryBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteStoryDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteStory"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteStoryBranchDeleted, Description: "Shortcut deleted the story."},
+		{ID: DeleteStoryBranchNotFound, Description: "Shortcut did not find the story.", Optional: true},
+		{ID: DeleteStoryBranchProviderRejected, Description: "Shortcut rejected the delete.", Optional: true},
+		{ID: DeleteStoryBranchDefect, Description: "Story ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteStoryResult = sdkgo.MutationResult[DeleteStoryOutput]
+
+type DeleteStoryStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=shortcut"`
+	operationID                       struct{}                                                `connector:"operationId=deleteStory"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteStoryInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteStoryResult]                         `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteStoryResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteStoryResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteStoryResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeleteStoryOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteStoryStep[IN any](config DeleteStoryStepConfig[IN]) sdkgo.MutationStep[IN, DeleteStoryInput, DeleteStoryOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("shortcut connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteStoryInput, DeleteStoryOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteStory(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteStoryResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteStoryResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteStoryBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteStoryBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteStoryBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteStoryBranchDefect))
 			}
 			return branches
 		}(),

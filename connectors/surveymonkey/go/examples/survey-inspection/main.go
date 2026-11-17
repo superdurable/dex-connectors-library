@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{surveyinspection.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{surveyinspection.NewFlow(connection), surveyinspection.NewGetSurveyFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register SurveyMonkey surveyinspection Flow: %w", err)
 	}

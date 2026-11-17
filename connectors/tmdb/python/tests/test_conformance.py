@@ -14,10 +14,16 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/tmdb/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/tmdb/scenarios.json")
+    if scenario["operation"] in {"searchMovies", "getMovie"}
+]
 CONNECTION = sdk.ConnectionRef("tmdb", "tmdb")
 ADAPTER = conformance.PythonOperationAdapter(
-    "tmdb", CONNECTION, tmdb,
+    "tmdb",
+    CONNECTION,
+    tmdb,
     lambda client, _: tmdb.Client(
         tmdb.Config(base_url="http://127.0.0.1:8848/3"),
         conformance.static_credentials(CONNECTION, tmdb.Credentials(sdk.SecretString("test-secret-token"))),

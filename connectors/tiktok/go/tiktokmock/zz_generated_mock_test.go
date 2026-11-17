@@ -16,6 +16,50 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createAd/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tiktok.AdWriteResult](`{"id":"1845123456789012347"}`)
+			return err
+		}},
+		{name: "updateAd/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tiktok.AdWriteResult](`{"id":"1845123456789012347"}`)
+			return err
+		}},
+		{name: "createAdgroup/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tiktok.AdgroupWriteResult](`{"id":"1845123456789012346"}`)
+			return err
+		}},
+		{name: "updateAdgroup/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tiktok.AdgroupWriteResult](`{"id":"1845123456789012346"}`)
+			return err
+		}},
+		{name: "createCampaign/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tiktok.CampaignWriteResult](`{"id":"1845123456789012345"}`)
+			return err
+		}},
+		{name: "updateCampaign/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tiktok.CampaignWriteResult](`{"id":"1845123456789012345"}`)
+			return err
+		}},
+		{name: "updateCampaignStatus/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tiktok.AdvertisingStatusResult](`{"resourceId":"1845123456789012345","operationStatus":"DISABLE"}`)
+			return err
+		}},
+		{name: "updateAdgroupStatus/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tiktok.AdvertisingStatusResult](`{"resourceId":"1845123456789012345","operationStatus":"DISABLE"}`)
+			return err
+		}},
+		{name: "updateAdStatus/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tiktok.AdvertisingStatusResult](`{"resourceId":"1845123456789012345","operationStatus":"DISABLE"}`)
+			return err
+		}},
+		{name: "listAdgroups/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tiktok.AdgroupsPage](`{"adgroups":[{"id":"1845123456789012346","name":"Example Ad Group"}],"page":1,"totalPages":1}`)
+			return err
+		}},
+		{name: "listAds/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tiktok.AdsPage](`{"ads":[{"id":"1845123456789012347","name":"Example Ad"}],"page":1,"totalPages":1}`)
+			return err
+		}},
 		{name: "listCampaigns/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[tiktok.CampaignsPage](`{"campaigns":[{"id":"1845123456789012345","name":"Example Campaign"}],"page":1,"totalPages":1}`)
 			return err
@@ -30,6 +74,39 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateAd().Definition().Operation.OperationID != "createAd" {
+		t.Errorf("createAd mock has another definition")
+	}
+	if mock.UpdateAd().Definition().Operation.OperationID != "updateAd" {
+		t.Errorf("updateAd mock has another definition")
+	}
+	if mock.CreateAdgroup().Definition().Operation.OperationID != "createAdgroup" {
+		t.Errorf("createAdgroup mock has another definition")
+	}
+	if mock.UpdateAdgroup().Definition().Operation.OperationID != "updateAdgroup" {
+		t.Errorf("updateAdgroup mock has another definition")
+	}
+	if mock.CreateCampaign().Definition().Operation.OperationID != "createCampaign" {
+		t.Errorf("createCampaign mock has another definition")
+	}
+	if mock.UpdateCampaign().Definition().Operation.OperationID != "updateCampaign" {
+		t.Errorf("updateCampaign mock has another definition")
+	}
+	if mock.UpdateCampaignStatus().Definition().Operation.OperationID != "updateCampaignStatus" {
+		t.Errorf("updateCampaignStatus mock has another definition")
+	}
+	if mock.UpdateAdgroupStatus().Definition().Operation.OperationID != "updateAdgroupStatus" {
+		t.Errorf("updateAdgroupStatus mock has another definition")
+	}
+	if mock.UpdateAdStatus().Definition().Operation.OperationID != "updateAdStatus" {
+		t.Errorf("updateAdStatus mock has another definition")
+	}
+	if mock.ListAdgroups().Definition().Operation.OperationID != "listAdgroups" {
+		t.Errorf("listAdgroups mock has another definition")
+	}
+	if mock.ListAds().Definition().Operation.OperationID != "listAds" {
+		t.Errorf("listAds mock has another definition")
+	}
 	if mock.ListCampaigns().Definition().Operation.OperationID != "listCampaigns" {
 		t.Errorf("listCampaigns mock has another definition")
 	}

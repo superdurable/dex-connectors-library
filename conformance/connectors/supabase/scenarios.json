@@ -878,6 +878,2025 @@
       },
       "name": "upsertRows-transport-after-send",
       "operation": "upsertRows"
+    },
+    {
+      "attempts": 1,
+      "callId": "f5ccafa5-fb47-51db-8123-3397c9dbb9e6",
+      "exchanges": [
+        {
+          "body": "[{\"id\":1,\"name\":\"Meridian\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ],
+            "limit": [
+              "1"
+            ],
+            "select": [
+              "*"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "data": {
+            "id": 1,
+            "name": "Meridian"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "getRow-success",
+      "operation": "getRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "f5ccafa5-fb47-51db-8123-3397c9dbb9e6",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ],
+            "limit": [
+              "1"
+            ],
+            "select": [
+              "*"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "getRow-provider-rejected",
+      "operation": "getRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "f5ccafa5-fb47-51db-8123-3397c9dbb9e6",
+      "exchanges": [
+        {
+          "body": "{\"bad\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ],
+            "limit": [
+              "1"
+            ],
+            "select": [
+              "*"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "getRow-invalid-response",
+      "operation": "getRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "f5ccafa5-fb47-51db-8123-3397c9dbb9e6",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ],
+            "limit": [
+              "1"
+            ],
+            "select": [
+              "*"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "getRow-not-found",
+      "operation": "getRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "f5ccafa5-fb47-51db-8123-3397c9dbb9e6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "column": "id",
+        "table": "bad/table",
+        "value": "1"
+      },
+      "name": "getRow-defect-input",
+      "operation": "getRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "f5ccafa5-fb47-51db-8123-3397c9dbb9e6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ],
+            "limit": [
+              "1"
+            ],
+            "select": [
+              "*"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "getRow-rate-limit",
+      "operation": "getRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "f5ccafa5-fb47-51db-8123-3397c9dbb9e6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ],
+            "limit": [
+              "1"
+            ],
+            "select": [
+              "*"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "getRow-server-error",
+      "operation": "getRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "f5ccafa5-fb47-51db-8123-3397c9dbb9e6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ],
+            "limit": [
+              "1"
+            ],
+            "select": [
+              "*"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "getRow-transport-before-send",
+      "operation": "getRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "f5ccafa5-fb47-51db-8123-3397c9dbb9e6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ],
+            "limit": [
+              "1"
+            ],
+            "select": [
+              "*"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "getRow-transport-after-send",
+      "operation": "getRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "exchanges": [
+        {
+          "body": "[{\"id\":1,\"name\":\"Meridian\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestBody": {
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "id": 1,
+              "name": "Meridian"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1",
+        "values": {
+          "name": "Meridian"
+        }
+      },
+      "name": "updateRow-success",
+      "operation": "updateRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestBody": {
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1",
+        "values": {
+          "name": "Meridian"
+        }
+      },
+      "name": "updateRow-provider-rejected",
+      "operation": "updateRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "exchanges": [
+        {
+          "body": "{\"bad\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestBody": {
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1",
+        "values": {
+          "name": "Meridian"
+        }
+      },
+      "name": "updateRow-invalid-response",
+      "operation": "updateRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "input": {
+        "column": "id",
+        "table": "bad/table",
+        "value": "1",
+        "values": {
+          "name": "Meridian"
+        }
+      },
+      "name": "updateRow-defect-input",
+      "operation": "updateRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestBody": {
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1",
+        "values": {
+          "name": "Meridian"
+        }
+      },
+      "name": "updateRow-rate-limit",
+      "operation": "updateRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestBody": {
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1",
+        "values": {
+          "name": "Meridian"
+        }
+      },
+      "name": "updateRow-server-error",
+      "operation": "updateRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestBody": {
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1",
+        "values": {
+          "name": "Meridian"
+        }
+      },
+      "name": "updateRow-transport-before-send",
+      "operation": "updateRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestBody": {
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1",
+        "values": {
+          "name": "Meridian"
+        }
+      },
+      "name": "updateRow-transport-after-send",
+      "operation": "updateRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "exchanges": [
+        {
+          "body": "[{\"id\":1,\"name\":\"Meridian\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "id": 1,
+              "name": "Meridian"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "deleteRow-success",
+      "operation": "deleteRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "deleteRow-provider-rejected",
+      "operation": "deleteRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "exchanges": [
+        {
+          "body": "{\"bad\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "deleteRow-invalid-response",
+      "operation": "deleteRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "input": {
+        "column": "id",
+        "table": "bad/table",
+        "value": "1"
+      },
+      "name": "deleteRow-defect-input",
+      "operation": "deleteRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "deleteRow-rate-limit",
+      "operation": "deleteRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "deleteRow-server-error",
+      "operation": "deleteRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "deleteRow-transport-before-send",
+      "operation": "deleteRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "deleteRow-transport-after-send",
+      "operation": "deleteRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+      "exchanges": [
+        {
+          "body": "[{\"id\":1,\"external_key\":\"meridian-001\",\"name\":\"Meridian\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v1/projects",
+          "requestBody": {
+            "external_key": "meridian-001",
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "data": {
+            "external_key": "meridian-001",
+            "id": 1,
+            "name": "Meridian"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+      "input": {
+        "table": "projects",
+        "uniqueColumn": "external_key",
+        "uniqueValue": "meridian-001",
+        "values": {
+          "external_key": "meridian-001",
+          "name": "Meridian"
+        }
+      },
+      "name": "createRow-success",
+      "operation": "createRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v1/projects",
+          "requestBody": {
+            "external_key": "meridian-001",
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+      "input": {
+        "table": "projects",
+        "uniqueColumn": "external_key",
+        "uniqueValue": "meridian-001",
+        "values": {
+          "external_key": "meridian-001",
+          "name": "Meridian"
+        }
+      },
+      "name": "createRow-provider-rejected",
+      "operation": "createRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+      "input": {
+        "table": "bad/table",
+        "uniqueColumn": "external_key",
+        "uniqueValue": "meridian-001",
+        "values": {
+          "external_key": "meridian-001",
+          "name": "Meridian"
+        }
+      },
+      "name": "createRow-defect-input",
+      "operation": "createRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v1/projects",
+          "requestBody": {
+            "external_key": "meridian-001",
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+      "input": {
+        "table": "projects",
+        "uniqueColumn": "external_key",
+        "uniqueValue": "meridian-001",
+        "values": {
+          "external_key": "meridian-001",
+          "name": "Meridian"
+        }
+      },
+      "name": "createRow-rate-limit",
+      "operation": "createRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v1/projects",
+          "requestBody": {
+            "external_key": "meridian-001",
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+      "input": {
+        "table": "projects",
+        "uniqueColumn": "external_key",
+        "uniqueValue": "meridian-001",
+        "values": {
+          "external_key": "meridian-001",
+          "name": "Meridian"
+        }
+      },
+      "name": "createRow-server-error",
+      "operation": "createRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v1/projects",
+          "requestBody": {
+            "external_key": "meridian-001",
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+      "input": {
+        "table": "projects",
+        "uniqueColumn": "external_key",
+        "uniqueValue": "meridian-001",
+        "values": {
+          "external_key": "meridian-001",
+          "name": "Meridian"
+        }
+      },
+      "name": "createRow-transport-before-send",
+      "operation": "createRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v1/projects",
+          "requestBody": {
+            "external_key": "meridian-001",
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+      "input": {
+        "table": "projects",
+        "uniqueColumn": "external_key",
+        "uniqueValue": "meridian-001",
+        "values": {
+          "external_key": "meridian-001",
+          "name": "Meridian"
+        }
+      },
+      "name": "createRow-transport-after-send",
+      "operation": "createRow"
+    },
+    {
+      "attempts": 4,
+      "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v1/projects",
+          "requestBody": {
+            "external_key": "meridian-001",
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v1/projects",
+          "query": {
+            "external_key": [
+              "eq.meridian-001"
+            ],
+            "limit": [
+              "1"
+            ],
+            "select": [
+              "*"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v1/projects",
+          "requestBody": {
+            "external_key": "meridian-001",
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v1/projects",
+          "query": {
+            "external_key": [
+              "eq.meridian-001"
+            ],
+            "limit": [
+              "1"
+            ],
+            "select": [
+              "*"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v1/projects",
+          "requestBody": {
+            "external_key": "meridian-001",
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v1/projects",
+          "query": {
+            "external_key": [
+              "eq.meridian-001"
+            ],
+            "limit": [
+              "1"
+            ],
+            "select": [
+              "*"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "data": null
+        },
+        "requestCount": 6,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+      "input": {
+        "table": "projects",
+        "uniqueColumn": "external_key",
+        "uniqueValue": "meridian-001",
+        "values": {
+          "external_key": "meridian-001",
+          "name": "Meridian"
+        }
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 5,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 3,
+            "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+            "sendCount": 3,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createRow-uncertain-after-cap",
+      "operation": "createRow"
+    },
+    {
+      "attempts": 2,
+      "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v1/projects",
+          "requestBody": {
+            "external_key": "meridian-001",
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "[{\"id\":1,\"external_key\":\"meridian-001\",\"name\":\"Meridian\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v1/projects",
+          "query": {
+            "external_key": [
+              "eq.meridian-001"
+            ],
+            "limit": [
+              "1"
+            ],
+            "select": [
+              "*"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "data": {
+            "external_key": "meridian-001",
+            "id": 1,
+            "name": "Meridian"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+      "input": {
+        "table": "projects",
+        "uniqueColumn": "external_key",
+        "uniqueValue": "meridian-001",
+        "values": {
+          "external_key": "meridian-001",
+          "name": "Meridian"
+        }
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createRow-read-back-confirms",
+      "operation": "createRow"
     }
   ],
   "schemaVersion": 1

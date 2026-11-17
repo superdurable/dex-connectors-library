@@ -24,7 +24,8 @@ import (
 func TestResponseRecorderExampleRunsOnTypeformMockWithRealDex(t *testing.T) {
 	mock := typeformmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	auditFlow := NewWebhookAuditFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, auditFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -86,4 +87,17 @@ func TestResponseRecorderExampleRunsOnTypeformMockWithRealDex(t *testing.T) {
 	require.Equal(t, flowID, calls[0].FlowID)
 	require.Equal(t, typeform.GetFormInput{FormID: "f_signup_1"}, calls[0].Input)
 	require.Equal(t, typeform.GetFormBranchFound, calls[0].Branch)
+	auditFlowID := "typeform-webhook-audit-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, auditFlow, auditFlowID, WebhookAuditInput{FormID: "f_signup_1"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	auditResult, err := client.WaitForFlow(ctx, auditFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, auditResult.Status, auditResult.ErrorMessage)
+	var webhooks typeform.WebhookList
+	require.NoError(t, auditResult.DecodeSingleOutput(&webhooks))
+	require.Len(t, webhooks.Webhooks, 1)
+	require.Equal(t, "dex-response-recorder", webhooks.Webhooks[0].Tag)
+	auditCalls := mock.ListWebhooks().Calls()
+	require.Len(t, auditCalls, 1)
+	require.Equal(t, auditFlowID, auditCalls[0].FlowID)
 }

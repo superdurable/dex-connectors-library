@@ -6,6 +6,7 @@ package supabase
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -97,6 +98,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 
 type providerResponse struct {
 	body       []byte
+	status     int
 	branch     sdkgo.BranchID
 	failure    *sdkgo.Failure
 	retry      bool
@@ -104,6 +106,10 @@ type providerResponse struct {
 }
 
 func (client *Client) send(call sdkgo.Call, operationID, method, path string, query url.Values, body []byte, hasNotFound bool, successStatus int) providerResponse {
+	return client.sendWithContext(call, call.Context, operationID, method, path, query, body, hasNotFound, successStatus)
+}
+
+func (client *Client) sendWithContext(call sdkgo.Call, requestContext context.Context, operationID, method, path string, query url.Values, body []byte, hasNotFound bool, successStatus int) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil {
 		return providerResponse{branch: sdkgo.DefectBranchID, failure: failure(operationID, sdkgo.FailureAuthentication, "connection credentials are unavailable")}
@@ -116,15 +122,19 @@ func (client *Client) send(call sdkgo.Call, operationID, method, path string, qu
 	if len(query) > 0 {
 		address += "?" + query.Encode()
 	}
-	request, err := http.NewRequestWithContext(call.Context, method, address, bytes.NewReader(body))
+	request, err := http.NewRequestWithContext(requestContext, method, address, bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{branch: sdkgo.DefectBranchID, failure: failure(operationID, sdkgo.FailureLocalDefect, "request could not be built")}
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("User-Agent", "superdurable-supabase/0.1")
 	request.Header.Set("apikey", token)
-	if method == http.MethodPost {
+	if operationID == "createRow" {
+		request.Header.Set("Prefer", "return=representation")
+	} else if method == http.MethodPost {
 		request.Header.Set("Prefer", "resolution=merge-duplicates,return=representation")
+	} else if method == http.MethodPatch || method == http.MethodDelete {
+		request.Header.Set("Prefer", "return=representation")
 	}
 	if body != nil {
 		request.Header.Set("Content-Type", "application/json")
@@ -139,7 +149,7 @@ func (client *Client) send(call sdkgo.Call, operationID, method, path string, qu
 		if response.StatusCode == http.StatusTooManyRequests {
 			kind = sdkgo.FailureRateLimit
 		}
-		return providerResponse{retry: true, retryAfter: providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()), failure: failure(operationID, kind, "provider is temporarily unavailable")}
+		return providerResponse{status: response.StatusCode, retry: true, retryAfter: providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()), failure: failure(operationID, kind, "provider is temporarily unavailable")}
 	}
 	if response.StatusCode == http.StatusNotFound && hasNotFound {
 		return providerResponse{branch: "notFound", failure: failure(operationID, sdkgo.FailureNotFound, "resource was not found")}
@@ -153,7 +163,7 @@ func (client *Client) send(call sdkgo.Call, operationID, method, path string, qu
 		} else if response.StatusCode == http.StatusBadRequest || response.StatusCode == http.StatusUnprocessableEntity {
 			kind = sdkgo.FailureValidation
 		}
-		return providerResponse{branch: "providerRejected", failure: failure(operationID, kind, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))}
+		return providerResponse{status: response.StatusCode, branch: "providerRejected", failure: failure(operationID, kind, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))}
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
@@ -165,7 +175,7 @@ func (client *Client) send(call sdkgo.Call, operationID, method, path string, qu
 	if !json.Valid(responseBody) {
 		return providerResponse{branch: "invalidResponse", failure: failure(operationID, sdkgo.FailureProtocol, "provider returned malformed JSON")}
 	}
-	return providerResponse{body: responseBody}
+	return providerResponse{status: response.StatusCode, body: responseBody}
 }
 func failure(operationID string, kind sdkgo.FailureKind, message string) *sdkgo.Failure {
 	return &sdkgo.Failure{Kind: kind, Provider: "supabase", Operation: operationID, Message: message}

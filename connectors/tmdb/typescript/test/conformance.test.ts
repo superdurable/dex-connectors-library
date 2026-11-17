@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenari
 import { TMDBClient } from '../src/client.js';
 import { GetMovieInputSchema, SearchMoviesInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/tmdb/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/tmdb/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'searchMovies' || scenario.operation === 'getMovie');
 const connection = { provider: 'tmdb', name: 'tmdb' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeTMDB));

@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: twilio-messaging
   displayName: Twilio Messaging
-  description: Send SMS, MMS, and WhatsApp messages through Twilio Programmable Messaging, read their delivery status, and receive inbound messages.
+  description: Send, list, redact, and delete Twilio messages, read delivery status, and receive inbound messages.
   company: Twilio
   categories: [communication]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: twilio
   languages:
@@ -77,7 +77,7 @@ spec:
             - Rotate a leaked token under Account > API keys & tokens > Auth tokens, then paste the new primary token here.
       - id: api-key
         displayName: API key
-        description: Authenticate with a revocable API key that belongs to the account; Twilio recommends API keys for production, and a Restricted key can be limited to Messages.
+        description: Authenticate with a revocable API key that belongs to the account; a Restricted key can grant only the required Messages actions.
         recommended: true
         type: apiKey
         connectionKind: twilio-messaging-api-key
@@ -96,7 +96,7 @@ spec:
           startURL: https://console.twilio.com/us1/account/keys-credentials/api-keys
           steps:
             - In the account or subaccount that owns the sender, open Account > API keys & tokens and select Create API key.
-            - Enter a friendly name, choose the Twilio Region of the endpoint (United States (US1) for the default), and choose Standard, or Restricted with permission to create and read Messages.
+            - Enter a friendly name, choose the Twilio Region of the endpoint (United States (US1) for the default), and choose Standard, or Restricted with permission to create, read, list, update, and delete Messages for the operations used by your Flows.
             - Copy the SK SID into api_key_sid and the secret shown once into api_key_secret, then copy the account's AC Account SID from the Account Dashboard into accountSid.
             - To revoke access, delete the key on the same page; other keys and the Auth Token keep working.
   # No setup commands: Studio commands cannot send the HTTP Basic credential Twilio requires.
@@ -183,3 +183,75 @@ spec:
           branch: invalidResponse
           description: "Twilio returned a malformed response for the requested message SID."
           failure: {kind: PROTOCOL, message: Twilio returned an invalid message.}
+    - name: listMessages
+      goName: ListMessages
+      inputType: ListMessagesInput
+      outputType: MessagePage
+      kind: query
+      description: List one page of account messages filtered by sender or recipient, without exposing message bodies.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Twilio returned the requested message page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Twilio definitively rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Twilio returned an invalid or oversized message page., optional: true}
+        - {id: defect, goName: Defect, description: The list filters or connection are invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: recentMessages
+          branch: listed
+          description: A representative page of account messages without bodies.
+          default: true
+          output:
+            page: 0
+            pageSize: 50
+            messages:
+              - {sid: SMfedcba9876543210fedcba9876543210, accountSid: ACmockAccount, from: "+14155550100", to: "+14155550123", status: delivered, direction: outbound-api, segmentCount: 1, createdAt: "2026-09-30T17:04:05Z"}
+    - name: deleteMessage
+      goName: DeleteMessage
+      inputType: DeleteMessageInput
+      outputType: DeletedMessage
+      kind: mutation
+      description: Delete a Twilio message record and associated media; an already absent record is treated as deleted so retries converge.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: Twilio deleted the record or it was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Twilio definitively rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: The message SID or connection is invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: deletedMessage
+          branch: deleted
+          description: The message record was deleted.
+          default: true
+          output: {messageSid: SMfedcba9876543210fedcba9876543210}
+    - name: redactMessage
+      goName: RedactMessage
+      inputType: RedactMessageInput
+      outputType: Message
+      kind: mutation
+      description: Replace a Twilio message body with empty text while preserving its metadata.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: redacted, goName: Redacted, description: Twilio erased the stored message body.}
+        - {id: notFound, goName: NotFound, description: The message does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Twilio definitively rejected the redaction., optional: true}
+        - {id: defect, goName: Defect, description: The message SID or connection is invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: redactedMessage
+          branch: redacted
+          description: The stored body was erased.
+          default: true
+          output: {sid: SMfedcba9876543210fedcba9876543210, accountSid: ACmockAccount, from: "+14155550100", to: "+14155550123", status: delivered, direction: outbound-api, segmentCount: 1, createdAt: "2026-09-30T17:04:05Z"}

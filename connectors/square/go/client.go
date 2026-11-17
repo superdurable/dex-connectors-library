@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package square provides read-only Square Query operations for Dex Flows.
+// Package square provides Square Query and Mutation operations for Dex Flows.
 package square
 
 import (
