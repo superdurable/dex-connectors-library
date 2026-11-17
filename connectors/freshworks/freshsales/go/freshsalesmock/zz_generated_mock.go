@@ -36,6 +36,9 @@ type Mock struct {
 	createDeal       *connectormock.Mutation[freshsales.CreateDealInput, freshsales.CRMRecordMetadata]
 	updateDeal       *connectormock.Mutation[freshsales.UpdateDealInput, freshsales.CRMRecordMetadata]
 	deleteDeal       *connectormock.Mutation[freshsales.DeleteDealInput, freshsales.DeletedCRMRecord]
+	createNote       *connectormock.Mutation[freshsales.CreateNoteInput, freshsales.NoteMetadata]
+	updateNote       *connectormock.Mutation[freshsales.UpdateNoteInput, freshsales.NoteMetadata]
+	deleteNote       *connectormock.Mutation[freshsales.DeleteNoteInput, freshsales.DeletedCRMRecord]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -61,6 +64,9 @@ func New(t testing.TB, connectionName string) *Mock {
 		createDeal:       connectormock.NewMutation[freshsales.CreateDealInput, freshsales.CRMRecordMetadata](t, freshsales.CreateDealDefinition),
 		updateDeal:       connectormock.NewMutation[freshsales.UpdateDealInput, freshsales.CRMRecordMetadata](t, freshsales.UpdateDealDefinition),
 		deleteDeal:       connectormock.NewMutation[freshsales.DeleteDealInput, freshsales.DeletedCRMRecord](t, freshsales.DeleteDealDefinition),
+		createNote:       connectormock.NewMutation[freshsales.CreateNoteInput, freshsales.NoteMetadata](t, freshsales.CreateNoteDefinition),
+		updateNote:       connectormock.NewMutation[freshsales.UpdateNoteInput, freshsales.NoteMetadata](t, freshsales.UpdateNoteDefinition),
+		deleteNote:       connectormock.NewMutation[freshsales.DeleteNoteInput, freshsales.DeletedCRMRecord](t, freshsales.DeleteNoteDefinition),
 	}
 	mock.listContactViews.Default(ListContactViewsDefault())
 	mock.getContact.Default(GetContactDefault())
@@ -80,6 +86,9 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createDeal.Default(CreateDealDefault())
 	mock.updateDeal.Default(UpdateDealDefault())
 	mock.deleteDeal.Default(DeleteDealDefault())
+	mock.createNote.Default(CreateNoteDefault())
+	mock.updateNote.Default(UpdateNoteDefault())
+	mock.deleteNote.Default(DeleteNoteDefault())
 	connection, err := freshsales.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "freshsales", Name: connectionName})
 	if err != nil {
 		t.Fatalf("freshsales mock connection: %v", err)
@@ -181,6 +190,21 @@ func (mock *Mock) DeleteDeal() *connectormock.Mutation[freshsales.DeleteDealInpu
 	return mock.deleteDeal
 }
 
+// CreateNote returns the createNote script.
+func (mock *Mock) CreateNote() *connectormock.Mutation[freshsales.CreateNoteInput, freshsales.NoteMetadata] {
+	return mock.createNote
+}
+
+// UpdateNote returns the updateNote script.
+func (mock *Mock) UpdateNote() *connectormock.Mutation[freshsales.UpdateNoteInput, freshsales.NoteMetadata] {
+	return mock.updateNote
+}
+
+// DeleteNote returns the deleteNote script.
+func (mock *Mock) DeleteNote() *connectormock.Mutation[freshsales.DeleteNoteInput, freshsales.DeletedCRMRecord] {
+	return mock.deleteNote
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListContactViews() sdkgo.Query[freshsales.ListContactViewsInput, freshsales.ContactViews] {
@@ -236,6 +260,15 @@ func (operations mockOperations) UpdateDeal() sdkgo.Mutation[freshsales.UpdateDe
 }
 func (operations mockOperations) DeleteDeal() sdkgo.Mutation[freshsales.DeleteDealInput, freshsales.DeletedCRMRecord] {
 	return operations.mock.deleteDeal
+}
+func (operations mockOperations) CreateNote() sdkgo.Mutation[freshsales.CreateNoteInput, freshsales.NoteMetadata] {
+	return operations.mock.createNote
+}
+func (operations mockOperations) UpdateNote() sdkgo.Mutation[freshsales.UpdateNoteInput, freshsales.NoteMetadata] {
+	return operations.mock.updateNote
+}
+func (operations mockOperations) DeleteNote() sdkgo.Mutation[freshsales.DeleteNoteInput, freshsales.DeletedCRMRecord] {
+	return operations.mock.deleteNote
 }
 
 // ListContactViewsListed selects the listed branch: Freshsales returned the available contact views.
@@ -912,4 +945,107 @@ func DeleteDealDeletedDefault() connectormock.Case[freshsales.DeletedCRMRecord] 
 // DeleteDealDefault is the manifest default, deletedDefault, which New installs.
 func DeleteDealDefault() connectormock.Case[freshsales.DeletedCRMRecord] {
 	return DeleteDealDeletedDefault()
+}
+
+// CreateNoteCreated selects the created branch: Freshsales confirmed the createNote outcome.
+func CreateNoteCreated(value freshsales.NoteMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.NoteMetadata] {
+	return connectormock.Branch(freshsales.CreateNoteBranchCreated, value, failure)
+}
+
+// CreateNoteProviderRejected selects the providerRejected branch: Freshsales rejected the note.
+func CreateNoteProviderRejected(value freshsales.NoteMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.NoteMetadata] {
+	return connectormock.Branch(freshsales.CreateNoteBranchProviderRejected, value, failure)
+}
+
+// CreateNoteUncertain returns an uncertain createNote outcome.
+func CreateNoteUncertain(value freshsales.NoteMetadata, failure sdkgo.Failure) connectormock.Case[freshsales.NoteMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateNoteDefect selects the defect branch: The note input or connection is invalid.
+func CreateNoteDefect(value freshsales.NoteMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.NoteMetadata] {
+	return connectormock.Branch(freshsales.CreateNoteBranchDefect, value, failure)
+}
+
+// CreateNoteRetry asks Dex to retry the createNote Step, after the delay when it is positive.
+func CreateNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[freshsales.NoteMetadata] {
+	return connectormock.Retry[freshsales.NoteMetadata](failure, after)
+}
+
+// CreateNoteCreatedDefault is the manifest mock createdDefault: Example created note.
+func CreateNoteCreatedDefault() connectormock.Case[freshsales.NoteMetadata] {
+	value := connectormock.MustDecodeOutput[freshsales.NoteMetadata](`{"id":501,"description":"Example note"}`)
+	return connectormock.Branch(freshsales.CreateNoteBranchCreated, value, nil)
+}
+
+// CreateNoteDefault is the manifest default, createdDefault, which New installs.
+func CreateNoteDefault() connectormock.Case[freshsales.NoteMetadata] {
+	return CreateNoteCreatedDefault()
+}
+
+// UpdateNoteUpdated selects the updated branch: Freshsales confirmed the updateNote outcome.
+func UpdateNoteUpdated(value freshsales.NoteMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.NoteMetadata] {
+	return connectormock.Branch(freshsales.UpdateNoteBranchUpdated, value, failure)
+}
+
+// UpdateNoteNotFound selects the notFound branch: The note is absent.
+func UpdateNoteNotFound(value freshsales.NoteMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.NoteMetadata] {
+	return connectormock.Branch(freshsales.UpdateNoteBranchNotFound, value, failure)
+}
+
+// UpdateNoteProviderRejected selects the providerRejected branch: Freshsales rejected the note update.
+func UpdateNoteProviderRejected(value freshsales.NoteMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.NoteMetadata] {
+	return connectormock.Branch(freshsales.UpdateNoteBranchProviderRejected, value, failure)
+}
+
+// UpdateNoteDefect selects the defect branch: The note input or connection is invalid.
+func UpdateNoteDefect(value freshsales.NoteMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.NoteMetadata] {
+	return connectormock.Branch(freshsales.UpdateNoteBranchDefect, value, failure)
+}
+
+// UpdateNoteRetry asks Dex to retry the updateNote Step, after the delay when it is positive.
+func UpdateNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[freshsales.NoteMetadata] {
+	return connectormock.Retry[freshsales.NoteMetadata](failure, after)
+}
+
+// UpdateNoteUpdatedDefault is the manifest mock updatedDefault: Example updated note.
+func UpdateNoteUpdatedDefault() connectormock.Case[freshsales.NoteMetadata] {
+	value := connectormock.MustDecodeOutput[freshsales.NoteMetadata](`{"id":501,"description":"Updated note"}`)
+	return connectormock.Branch(freshsales.UpdateNoteBranchUpdated, value, nil)
+}
+
+// UpdateNoteDefault is the manifest default, updatedDefault, which New installs.
+func UpdateNoteDefault() connectormock.Case[freshsales.NoteMetadata] {
+	return UpdateNoteUpdatedDefault()
+}
+
+// DeleteNoteDeleted selects the deleted branch: Freshsales confirmed the deleteNote outcome.
+func DeleteNoteDeleted(value freshsales.DeletedCRMRecord, failure *sdkgo.Failure) connectormock.Case[freshsales.DeletedCRMRecord] {
+	return connectormock.Branch(freshsales.DeleteNoteBranchDeleted, value, failure)
+}
+
+// DeleteNoteProviderRejected selects the providerRejected branch: Freshsales rejected the note deletion.
+func DeleteNoteProviderRejected(value freshsales.DeletedCRMRecord, failure *sdkgo.Failure) connectormock.Case[freshsales.DeletedCRMRecord] {
+	return connectormock.Branch(freshsales.DeleteNoteBranchProviderRejected, value, failure)
+}
+
+// DeleteNoteDefect selects the defect branch: The note input or connection is invalid.
+func DeleteNoteDefect(value freshsales.DeletedCRMRecord, failure *sdkgo.Failure) connectormock.Case[freshsales.DeletedCRMRecord] {
+	return connectormock.Branch(freshsales.DeleteNoteBranchDefect, value, failure)
+}
+
+// DeleteNoteRetry asks Dex to retry the deleteNote Step, after the delay when it is positive.
+func DeleteNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[freshsales.DeletedCRMRecord] {
+	return connectormock.Retry[freshsales.DeletedCRMRecord](failure, after)
+}
+
+// DeleteNoteDeletedDefault is the manifest mock deletedDefault: Example deleted note.
+func DeleteNoteDeletedDefault() connectormock.Case[freshsales.DeletedCRMRecord] {
+	value := connectormock.MustDecodeOutput[freshsales.DeletedCRMRecord](`{"id":501,"deleted":true}`)
+	return connectormock.Branch(freshsales.DeleteNoteBranchDeleted, value, nil)
+}
+
+// DeleteNoteDefault is the manifest default, deletedDefault, which New installs.
+func DeleteNoteDefault() connectormock.Case[freshsales.DeletedCRMRecord] {
+	return DeleteNoteDeletedDefault()
 }

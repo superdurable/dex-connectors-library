@@ -6973,6 +6973,1281 @@
       },
       "name": "deleteDeal-defect",
       "operation": "deleteDeal"
+    },
+    {
+      "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+      "exchanges": [
+        {
+          "body": "{\"note\":{\"id\":501,\"description\":\"Expansion note\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/notes",
+          "requestBody": {
+            "note": {
+              "description": "Expansion note",
+              "targetable_id": 101,
+              "targetable_type": "Contact"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+          "providerId": "501",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "description": "Expansion note",
+          "id": 501
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+      "input": {
+        "description": "Expansion note",
+        "targetId": "101",
+        "targetType": "Contact"
+      },
+      "name": "createNote-success",
+      "operation": "createNote"
+    },
+    {
+      "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/notes",
+          "requestBody": {
+            "note": {
+              "description": "Expansion note",
+              "targetable_id": 101,
+              "targetable_type": "Contact"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "description": "",
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+      "input": {
+        "description": "Expansion note",
+        "targetId": "101",
+        "targetType": "Contact"
+      },
+      "name": "createNote-providerRejected",
+      "operation": "createNote"
+    },
+    {
+      "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/notes",
+          "requestBody": {
+            "note": {
+              "description": "Expansion note",
+              "targetable_id": 101,
+              "targetable_type": "Contact"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "description": "",
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+      "input": {
+        "description": "Expansion note",
+        "targetId": "101",
+        "targetType": "Contact"
+      },
+      "name": "createNote-acceptedMalformed",
+      "operation": "createNote"
+    },
+    {
+      "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/notes",
+          "requestBody": {
+            "note": {
+              "description": "Expansion note",
+              "targetable_id": 101,
+              "targetable_type": "Contact"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+      "input": {
+        "description": "Expansion note",
+        "targetId": "101",
+        "targetType": "Contact"
+      },
+      "name": "createNote-rateLimited",
+      "operation": "createNote"
+    },
+    {
+      "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/notes",
+          "requestBody": {
+            "note": {
+              "description": "Expansion note",
+              "targetable_id": 101,
+              "targetable_type": "Contact"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+      "input": {
+        "description": "Expansion note",
+        "targetId": "101",
+        "targetType": "Contact"
+      },
+      "name": "createNote-serverUnavailable",
+      "operation": "createNote"
+    },
+    {
+      "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/notes",
+          "requestBody": {
+            "note": {
+              "description": "Expansion note",
+              "targetable_id": 101,
+              "targetable_type": "Contact"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+      "input": {
+        "description": "Expansion note",
+        "targetId": "101",
+        "targetType": "Contact"
+      },
+      "name": "createNote-serviceUnavailable",
+      "operation": "createNote"
+    },
+    {
+      "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/notes",
+          "requestBody": {
+            "note": {
+              "description": "Expansion note",
+              "targetable_id": 101,
+              "targetable_type": "Contact"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+      "input": {
+        "description": "Expansion note",
+        "targetId": "101",
+        "targetType": "Contact"
+      },
+      "name": "createNote-transportFailure",
+      "operation": "createNote"
+    },
+    {
+      "attempts": 3,
+      "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/notes",
+          "requestBody": {
+            "note": {
+              "description": "Expansion note",
+              "targetable_id": 101,
+              "targetable_type": "Contact"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/notes",
+          "requestBody": {
+            "note": {
+              "description": "Expansion note",
+              "targetable_id": 101,
+              "targetable_type": "Contact"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/notes",
+          "requestBody": {
+            "note": {
+              "description": "Expansion note",
+              "targetable_id": 101,
+              "targetable_type": "Contact"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "description": "",
+          "id": 0
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+      "input": {
+        "description": "Expansion note",
+        "targetId": "101",
+        "targetType": "Contact"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createNote-sendCap",
+      "operation": "createNote"
+    },
+    {
+      "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "description": "",
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
+      "input": {
+        "description": "",
+        "targetId": "101",
+        "targetType": "Contact"
+      },
+      "name": "createNote-defect",
+      "operation": "createNote"
+    },
+    {
+      "callId": "452216a8-9346-5217-bf82-bc9f97530432",
+      "exchanges": [
+        {
+          "body": "{\"note\":{\"id\":501,\"description\":\"Updated note\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/notes/501",
+          "requestBody": {
+            "note": {
+              "description": "Updated note"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "description": "Updated note",
+          "id": 501
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "452216a8-9346-5217-bf82-bc9f97530432",
+      "input": {
+        "description": "Updated note",
+        "noteId": "501"
+      },
+      "name": "updateNote-success",
+      "operation": "updateNote"
+    },
+    {
+      "callId": "452216a8-9346-5217-bf82-bc9f97530432",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/notes/501",
+          "requestBody": {
+            "note": {
+              "description": "Updated note"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "description": "",
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "452216a8-9346-5217-bf82-bc9f97530432",
+      "input": {
+        "description": "Updated note",
+        "noteId": "501"
+      },
+      "name": "updateNote-notFound",
+      "operation": "updateNote"
+    },
+    {
+      "callId": "452216a8-9346-5217-bf82-bc9f97530432",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/notes/501",
+          "requestBody": {
+            "note": {
+              "description": "Updated note"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "description": "",
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "452216a8-9346-5217-bf82-bc9f97530432",
+      "input": {
+        "description": "Updated note",
+        "noteId": "501"
+      },
+      "name": "updateNote-providerRejected",
+      "operation": "updateNote"
+    },
+    {
+      "callId": "452216a8-9346-5217-bf82-bc9f97530432",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/notes/501",
+          "requestBody": {
+            "note": {
+              "description": "Updated note"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "452216a8-9346-5217-bf82-bc9f97530432",
+      "input": {
+        "description": "Updated note",
+        "noteId": "501"
+      },
+      "name": "updateNote-invalidResponse",
+      "operation": "updateNote"
+    },
+    {
+      "callId": "452216a8-9346-5217-bf82-bc9f97530432",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/notes/501",
+          "requestBody": {
+            "note": {
+              "description": "Updated note"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "452216a8-9346-5217-bf82-bc9f97530432",
+      "input": {
+        "description": "Updated note",
+        "noteId": "501"
+      },
+      "name": "updateNote-rateLimited",
+      "operation": "updateNote"
+    },
+    {
+      "callId": "452216a8-9346-5217-bf82-bc9f97530432",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/notes/501",
+          "requestBody": {
+            "note": {
+              "description": "Updated note"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "452216a8-9346-5217-bf82-bc9f97530432",
+      "input": {
+        "description": "Updated note",
+        "noteId": "501"
+      },
+      "name": "updateNote-serverUnavailable",
+      "operation": "updateNote"
+    },
+    {
+      "callId": "452216a8-9346-5217-bf82-bc9f97530432",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/notes/501",
+          "requestBody": {
+            "note": {
+              "description": "Updated note"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "452216a8-9346-5217-bf82-bc9f97530432",
+      "input": {
+        "description": "Updated note",
+        "noteId": "501"
+      },
+      "name": "updateNote-serviceUnavailable",
+      "operation": "updateNote"
+    },
+    {
+      "callId": "452216a8-9346-5217-bf82-bc9f97530432",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/notes/501",
+          "requestBody": {
+            "note": {
+              "description": "Updated note"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "452216a8-9346-5217-bf82-bc9f97530432",
+      "input": {
+        "description": "Updated note",
+        "noteId": "501"
+      },
+      "name": "updateNote-transportFailure",
+      "operation": "updateNote"
+    },
+    {
+      "callId": "452216a8-9346-5217-bf82-bc9f97530432",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "description": "",
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "452216a8-9346-5217-bf82-bc9f97530432",
+      "input": {
+        "description": "Updated note",
+        "noteId": "bad"
+      },
+      "name": "updateNote-defect",
+      "operation": "updateNote"
+    },
+    {
+      "callId": "09d20ab7-82a0-5fbc-9def-13ec5624ffc8",
+      "exchanges": [
+        {
+          "body": "true",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/notes/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": 501
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "09d20ab7-82a0-5fbc-9def-13ec5624ffc8",
+      "input": {
+        "noteId": "501"
+      },
+      "name": "deleteNote-success",
+      "operation": "deleteNote"
+    },
+    {
+      "callId": "09d20ab7-82a0-5fbc-9def-13ec5624ffc8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/notes/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": 501
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "09d20ab7-82a0-5fbc-9def-13ec5624ffc8",
+      "input": {
+        "noteId": "501"
+      },
+      "name": "deleteNote-alreadyMissing",
+      "operation": "deleteNote"
+    },
+    {
+      "callId": "09d20ab7-82a0-5fbc-9def-13ec5624ffc8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/notes/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "09d20ab7-82a0-5fbc-9def-13ec5624ffc8",
+      "input": {
+        "noteId": "501"
+      },
+      "name": "deleteNote-providerRejected",
+      "operation": "deleteNote"
+    },
+    {
+      "callId": "09d20ab7-82a0-5fbc-9def-13ec5624ffc8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/notes/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "09d20ab7-82a0-5fbc-9def-13ec5624ffc8",
+      "input": {
+        "noteId": "501"
+      },
+      "name": "deleteNote-rateLimited",
+      "operation": "deleteNote"
+    },
+    {
+      "callId": "09d20ab7-82a0-5fbc-9def-13ec5624ffc8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/notes/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "09d20ab7-82a0-5fbc-9def-13ec5624ffc8",
+      "input": {
+        "noteId": "501"
+      },
+      "name": "deleteNote-serverUnavailable",
+      "operation": "deleteNote"
+    },
+    {
+      "callId": "09d20ab7-82a0-5fbc-9def-13ec5624ffc8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/notes/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "09d20ab7-82a0-5fbc-9def-13ec5624ffc8",
+      "input": {
+        "noteId": "501"
+      },
+      "name": "deleteNote-serviceUnavailable",
+      "operation": "deleteNote"
+    },
+    {
+      "callId": "09d20ab7-82a0-5fbc-9def-13ec5624ffc8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/notes/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "09d20ab7-82a0-5fbc-9def-13ec5624ffc8",
+      "input": {
+        "noteId": "501"
+      },
+      "name": "deleteNote-transportFailure",
+      "operation": "deleteNote"
+    },
+    {
+      "callId": "09d20ab7-82a0-5fbc-9def-13ec5624ffc8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "09d20ab7-82a0-5fbc-9def-13ec5624ffc8",
+      "input": {
+        "noteId": "bad"
+      },
+      "name": "deleteNote-defect",
+      "operation": "deleteNote"
     }
   ],
   "schemaVersion": 1

@@ -94,6 +94,9 @@ func readBackCreated[T any](client *Client, call sdkgo.Call, operation, resource
 	if resourceID == "" {
 		return createUncertain[T](call, operation, sdkgo.FailureProtocol, "prior create has no resource ID", "")
 	}
+	if path == nil {
+		return createUncertain[T](call, operation, sdkgo.FailureAvailability, "provider has no read-back endpoint for this resource", resourceID)
+	}
 	body, status, delay, err := client.get(call, path(resourceID))
 	if status == http.StatusTooManyRequests || status >= 500 || status == http.StatusNotFound || err != nil {
 		return createRetry[T](operation, sdkgo.FailureAvailability, "created resource is not yet readable", delay)

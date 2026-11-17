@@ -88,6 +88,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[freshsales.DeletedCRMRecord](`{"id":401,"deleted":true}`)
 			return err
 		}},
+		{name: "createNote/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.NoteMetadata](`{"id":501,"description":"Example note"}`)
+			return err
+		}},
+		{name: "updateNote/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.NoteMetadata](`{"id":501,"description":"Updated note"}`)
+			return err
+		}},
+		{name: "deleteNote/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.DeletedCRMRecord](`{"id":501,"deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -151,5 +163,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteDeal().Definition().Operation.OperationID != "deleteDeal" {
 		t.Errorf("deleteDeal mock has another definition")
+	}
+	if mock.CreateNote().Definition().Operation.OperationID != "createNote" {
+		t.Errorf("createNote mock has another definition")
+	}
+	if mock.UpdateNote().Definition().Operation.OperationID != "updateNote" {
+		t.Errorf("updateNote mock has another definition")
+	}
+	if mock.DeleteNote().Definition().Operation.OperationID != "deleteNote" {
+		t.Errorf("deleteNote mock has another definition")
 	}
 }

@@ -71,5 +71,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"createDeal":       newConformanceMutationInvocation(t, scenario.Input, context, client.CreateDeal(), reference, scenario.CallID),
 		"updateDeal":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateDeal(), reference, scenario.CallID),
 		"deleteDeal":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteDeal(), reference, scenario.CallID),
+		"createNote":       newConformanceMutationInvocation(t, scenario.Input, context, client.CreateNote(), reference, scenario.CallID),
+		"updateNote":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateNote(), reference, scenario.CallID),
+		"deleteNote":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteNote(), reference, scenario.CallID),
 	}}
 }

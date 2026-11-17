@@ -356,3 +356,50 @@ spec:
         - {id: defect, goName: Defect, description: Freshsales could not complete the requested operation., optional: true}
       mocks:
         - {name: deletedDefault, branch: deleted, default: true, description: Example deleteDeal result., output: {id: 401, deleted: true}}
+    - name: createNote
+      goName: CreateNote
+      inputType: CreateNoteInput
+      outputType: NoteMetadata
+      kind: mutation
+      description: Create a note on a contact, sales account, or deal with bounded duplicate sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Freshsales confirmed the createNote outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales rejected the note., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The note may exist without a confirmed ID., optional: true}
+        - {id: defect, goName: Defect, description: The note input or connection is invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Example created note., output: {id: 501, description: Example note}}
+    - name: updateNote
+      goName: UpdateNote
+      inputType: UpdateNoteInput
+      outputType: NoteMetadata
+      kind: mutation
+      description: Replace the text of an existing note.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Freshsales confirmed the updateNote outcome.}
+        - {id: notFound, goName: NotFound, description: The note is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales rejected the note update., optional: true}
+        - {id: defect, goName: Defect, description: The note input or connection is invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Example updated note., output: {id: 501, description: Updated note}}
+    - name: deleteNote
+      goName: DeleteNote
+      inputType: DeleteNoteInput
+      outputType: DeletedCRMRecord
+      kind: mutation
+      description: Delete one note by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Freshsales confirmed the deleteNote outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales rejected the note deletion., optional: true}
+        - {id: defect, goName: Defect, description: The note input or connection is invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Example deleted note., output: {id: 501, deleted: true}}
