@@ -176,7 +176,7 @@ func TestCreateInvoiceSendsExactNumberLiteralsUnderTheStepKey(t *testing.T) {
 	require.Equal(t, request.header.Get("Idempotency-Key"), provider.request(1).header.Get("Idempotency-Key"), "one Step execution, one key")
 }
 
-func TestCreateInvoiceRetriesOnlyWhatTheKeyMakesSafe(t *testing.T) {
+func TestCreateInvoiceRetriesEveryUnknownOutcomeUnderTheKey(t *testing.T) {
 	for _, test := range []struct {
 		name  string
 		reply func(http.ResponseWriter)
@@ -204,10 +204,21 @@ func TestCreateInvoiceRetriesOnlyWhatTheKeyMakesSafe(t *testing.T) {
 			response.Header().Set("Location", "https://example.com/")
 			response.WriteHeader(http.StatusTemporaryRedirect)
 		}, kind: sdkgo.FailureProtocol},
+		{name: "internal error", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusInternalServerError, `{"Message":"SENTINEL"}`)
+		}, kind: sdkgo.FailureAvailability},
+		{name: "unusable accepted answer", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"Invoices":[{"InvoiceID":"not-a-uuid"}]}`)
+		}, kind: sdkgo.FailureProtocol},
+		{name: "oversized accepted answer", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"Invoices":[{"Description":"`+strings.Repeat("x", 2048)+`"}]}`)
+		}, kind: sdkgo.FailureResponseTooLarge},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingXero(t, func(response http.ResponseWriter, _ recordedRequest, _ int) { test.reply(response) })
-			_, err := sdkgo.RunMutation(newXeroDexContext("create-"+test.name), newXeroClient(t, provider.URL).CreateInvoice(), xeroConnection, validCreateInvoiceInput())
+			client, err := xero.New(xero.Config{MaxResponseBytes: 1024}, customConnectionCredentials(), xero.WithLocalProviderURL(provider.URL))
+			require.NoError(t, err)
+			_, err = sdkgo.RunMutation(newXeroDexContext("create-"+test.name), client.CreateInvoice(), xeroConnection, validCreateInvoiceInput())
 			var retry *sdkgo.RetryError
 			require.ErrorAs(t, err, &retry)
 			require.Equal(t, test.kind, retry.Failure.Kind)
@@ -254,15 +265,6 @@ func TestCreateInvoiceMapsRejectionsLimitsAndUnknownOutcomes(t *testing.T) {
 			writeJSON(t, response, http.StatusTooManyRequests, `{}`)
 		}, branch: xero.CreateInvoiceBranchDailyLimitReached, kind: sdkgo.FailureQuotaExhausted,
 			metadata: map[string]string{xero.RetryAfterSecondsReceiptKey: "3600"}},
-		{name: "cached internal error", reply: func(response http.ResponseWriter) {
-			writeJSON(t, response, http.StatusInternalServerError, `{"Message":"SENTINEL"}`)
-		}, branch: xero.CreateInvoiceBranchUncertain, kind: sdkgo.FailureAvailability},
-		{name: "unusable accepted answer", reply: func(response http.ResponseWriter) {
-			writeJSON(t, response, http.StatusOK, `{"Invoices":[{"InvoiceID":"not-a-uuid"}]}`)
-		}, branch: xero.CreateInvoiceBranchUncertain, kind: sdkgo.FailureProtocol},
-		{name: "oversized accepted answer", reply: func(response http.ResponseWriter) {
-			writeJSON(t, response, http.StatusOK, `{"Invoices":[{"Description":"`+strings.Repeat("x", 2048)+`"}]}`)
-		}, branch: xero.CreateInvoiceBranchUncertain, kind: sdkgo.FailureResponseTooLarge},
 		{name: "per-invoice error", reply: func(response http.ResponseWriter) {
 			invoice := invoiceJSON()
 			invoice["HasErrors"], invoice["ValidationErrors"] = true, []any{map[string]any{"Message": "SENTINEL"}}

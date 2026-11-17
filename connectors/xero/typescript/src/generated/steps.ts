@@ -152,7 +152,7 @@ export interface CreateInvoiceStepConfig<StepInput, OperationInput = CreateInvoi
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was created; the Receipt carries retryAfterSeconds. */
   dailyLimitReached?: StepTarget<MutationResult<OperationOutput>>;
-  /** Xero may have created the invoice but answered with an internal error, which it caches under the key, or with an unusable invoice; read it back by reference before creating again. */
+  /** Kept for compatibility and never selected: an internal error or an unusable invoice repeats the identical keyed request until the retry budget runs out. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -186,7 +186,7 @@ export interface RecordPaymentStepConfig<StepInput, OperationInput = RecordPayme
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was recorded; the Receipt carries retryAfterSeconds. */
   dailyLimitReached?: StepTarget<MutationResult<OperationOutput>>;
-  /** Xero may have recorded the payment but answered with an internal error, which it caches under the key, or with an unusable payment; read the invoice back before paying again. */
+  /** Kept for compatibility and never selected: an internal error or an unusable payment repeats the identical keyed request until the retry budget runs out. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

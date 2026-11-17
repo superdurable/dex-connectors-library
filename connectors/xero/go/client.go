@@ -194,9 +194,9 @@ const (
 	exchangeRetry
 	exchangeRejected
 	exchangeDailyLimit
-	// exchangeInvalid is an unusable 2xx: invalidResponse for a read, uncertain for a mutation.
+	// exchangeInvalid is an unusable 2xx: invalidResponse for a read, Retry for a keyed mutation.
 	exchangeInvalid
-	// exchangeServerError is HTTP 500, which Xero caches under an idempotency key: Retry for a read, uncertain for a mutation.
+	// exchangeServerError is HTTP 500: Retry for a read and for a keyed mutation.
 	exchangeServerError
 	exchangeDefect
 )
@@ -638,15 +638,13 @@ type mutationBranches struct {
 	defect            sdkgo.BranchID
 }
 
-// mutationAttemptForExchange retries what the key replays and reports a cached 500 or unusable answer as uncertain.
+// mutationAttemptForExchange retries every unknown outcome, including a 500 or an unusable answer, under the key.
 func mutationAttemptForExchange[OUT any](result xeroExchange, requested OUT, receipt sdkgo.Receipt, branches mutationBranches) (sdkgo.MutationAttempt[OUT], bool) {
 	switch result.outcome {
 	case exchangeSucceeded:
 		return sdkgo.MutationAttempt[OUT]{}, false
-	case exchangeRetry:
+	case exchangeRetry, exchangeServerError, exchangeInvalid:
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
-	case exchangeServerError, exchangeInvalid:
-		return sdkgo.NewMutationUncertain(requested, result.failure, receipt), true
 	case exchangeDailyLimit:
 		return sdkgo.NewMutationBranch(branches.dailyLimitReached, requested, &result.failure, receipt), true
 	case exchangeDefect:

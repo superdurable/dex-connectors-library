@@ -376,10 +376,9 @@ _DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 
 def _mutation_outcome(client: Client, call: Call, result: Exchange, empty: _T) -> MutationAttempt[_T] | None:
     if result.outcome == "success":
         return None
-    if result.outcome == "retry":
+    if result.outcome in ("retry", "server", "invalid"):
+        # A 500 or an unusable answer is unknown; the key makes the identical resend safe.
         return MutationAttempt.retry(_require_failure(result), result.retry_after)
-    if result.outcome in ("server", "invalid"):
-        return MutationAttempt.uncertain(empty, _require_failure(result), client.receipt(call, result))
     if (
         result.outcome == "rejected"
         and result.status >= 300
@@ -744,14 +743,12 @@ class CreateInvoiceOperation:
             invoice = _invoice(wire)
             warnings = len(_field(wire, "Warnings", list, []))
         except (ValueError, TypeError, KeyError):
-            return MutationAttempt.uncertain(
-                requested,
+            return MutationAttempt.retry(
                 failure(
                     operation,
                     FailureKind.PROTOCOL,
                     "Xero accepted the invoice but returned an unusable invoice",
-                ),
-                self._client.receipt(call, result),
+                )
             )
         return MutationAttempt.branch_result(
             "created",
@@ -826,14 +823,12 @@ class RecordPaymentOperation:
                 raise ValueError("payment applies to another invoice")
             warnings = len(_field(wire, "Warnings", list, []))
         except (ValueError, TypeError, KeyError):
-            return MutationAttempt.uncertain(
-                requested,
+            return MutationAttempt.retry(
                 failure(
                     operation,
                     FailureKind.PROTOCOL,
                     "Xero accepted the payment but returned an unusable payment",
-                ),
-                self._client.receipt(call, result),
+                )
             )
         return MutationAttempt.branch_result(
             "recorded",

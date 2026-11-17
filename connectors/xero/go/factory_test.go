@@ -94,7 +94,7 @@ func TestDefinitionsDeclareOptionalBranchesAndKeyedAsyncDurability(t *testing.T)
 	require.Equal(t, map[sdkgo.BranchID]bool{"listed": false, "providerRejected": true, "dailyLimitReached": true, "invalidResponse": true, "defect": true},
 		branchOptionality(xero.ListInvoicesDefinition.Branches))
 	require.Equal(t, map[sdkgo.BranchID]bool{"created": false, "providerRejected": true, "dailyLimitReached": true, "uncertain": true, "defect": true},
-		branchOptionality(xero.CreateInvoiceDefinition.Branches), "uncertain covers a cached 500 and an unusable accepted answer")
+		branchOptionality(xero.CreateInvoiceDefinition.Branches), "uncertain stays declared for compatibility; every unknown outcome retries")
 	require.Equal(t, map[sdkgo.BranchID]bool{"recorded": false, "providerRejected": true, "dailyLimitReached": true, "uncertain": true, "defect": true},
 		branchOptionality(xero.RecordPaymentDefinition.Branches))
 	reads := map[string]sdkgo.StepDefaults{

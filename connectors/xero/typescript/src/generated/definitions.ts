@@ -167,7 +167,7 @@ export const CreateInvoiceBranchCreated = CreateInvoiceBranch.Created;
 export const CreateInvoiceBranchProviderRejected = CreateInvoiceBranch.ProviderRejected;
 /** Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was created; the Receipt carries retryAfterSeconds. */
 export const CreateInvoiceBranchDailyLimitReached = CreateInvoiceBranch.DailyLimitReached;
-/** Xero may have created the invoice but answered with an internal error, which it caches under the key, or with an unusable invoice; read it back by reference before creating again. */
+/** Kept for compatibility and never selected: an internal error or an unusable invoice repeats the identical keyed request until the retry budget runs out. */
 export const CreateInvoiceBranchUncertain = CreateInvoiceBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateInvoiceBranchDefect = CreateInvoiceBranch.Defect;
@@ -178,7 +178,7 @@ export const CreateInvoiceDefinition: MutationDefinition = {
     { id: "created", description: "Xero created the invoice, or returned the invoice this Step already created, with its number and totals." },
     { id: "providerRejected", description: "Xero conclusively rejected the invoice, such as an unknown contact or account code, a locked period, a plan's invoice limit, or a missing scope; nothing was created.", optional: true },
     { id: "dailyLimitReached", description: "Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was created; the Receipt carries retryAfterSeconds.", optional: true },
-    { id: "uncertain", description: "Xero may have created the invoice but answered with an internal error, which it caches under the key, or with an unusable invoice; read it back by reference before creating again.", optional: true },
+    { id: "uncertain", description: "Kept for compatibility and never selected: an internal error or an unusable invoice repeats the identical keyed request until the retry budget runs out.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 6, totalDurationMs: 240000 } },
@@ -201,7 +201,7 @@ export const RecordPaymentBranchRecorded = RecordPaymentBranch.Recorded;
 export const RecordPaymentBranchProviderRejected = RecordPaymentBranch.ProviderRejected;
 /** Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was recorded; the Receipt carries retryAfterSeconds. */
 export const RecordPaymentBranchDailyLimitReached = RecordPaymentBranch.DailyLimitReached;
-/** Xero may have recorded the payment but answered with an internal error, which it caches under the key, or with an unusable payment; read the invoice back before paying again. */
+/** Kept for compatibility and never selected: an internal error or an unusable payment repeats the identical keyed request until the retry budget runs out. */
 export const RecordPaymentBranchUncertain = RecordPaymentBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const RecordPaymentBranchDefect = RecordPaymentBranch.Defect;
@@ -212,7 +212,7 @@ export const RecordPaymentDefinition: MutationDefinition = {
     { id: "recorded", description: "Xero recorded the payment, or returned the payment this Step already recorded, with the invoice's remaining amount due." },
     { id: "providerRejected", description: "Xero conclusively rejected the payment, such as an amount above the amount due, an invoice that is not approved, an account that cannot take payments, or a locked period; nothing was recorded.", optional: true },
     { id: "dailyLimitReached", description: "Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was recorded; the Receipt carries retryAfterSeconds.", optional: true },
-    { id: "uncertain", description: "Xero may have recorded the payment but answered with an internal error, which it caches under the key, or with an unusable payment; read the invoice back before paying again.", optional: true },
+    { id: "uncertain", description: "Kept for compatibility and never selected: an internal error or an unusable payment repeats the identical keyed request until the retry budget runs out.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 6, totalDurationMs: 240000 } },

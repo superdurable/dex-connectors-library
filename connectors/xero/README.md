@@ -18,8 +18,8 @@ operation-specific Dex Step factories:
 | `xero.NewFindContactByEmailStep` | Query | `found` | `notFound`, `ambiguous`, `providerRejected`, `dailyLimitReached`, `invalidResponse`, `defect` |
 | `xero.NewGetInvoiceStep` | Query | `found` | `notFound`, `providerRejected`, `dailyLimitReached`, `invalidResponse`, `defect` |
 | `xero.NewListInvoicesStep` | Query | `listed` | `providerRejected`, `dailyLimitReached`, `invalidResponse`, `defect` |
-| `xero.NewCreateInvoiceStep` | Mutation | `created` | `providerRejected`, `dailyLimitReached`, `uncertain`, `defect` |
-| `xero.NewRecordPaymentStep` | Mutation | `recorded` | `providerRejected`, `dailyLimitReached`, `uncertain`, `defect` |
+| `xero.NewCreateInvoiceStep` | Mutation | `created` | `providerRejected`, `dailyLimitReached`, `uncertain` (never selected), `defect` |
+| `xero.NewRecordPaymentStep` | Mutation | `recorded` | `providerRejected`, `dailyLimitReached`, `uncertain` (never selected), `defect` |
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
@@ -246,11 +246,12 @@ same key and body:
 - a lost response, a timeout, a 429 other than the daily limit, or a 502,
   503, or 504 is retried with the identical request, and Xero replays the
   first invoice or payment;
-- a 500 selects `uncertain` without a retry: Xero caches an internal error
-  under the key, so retrying cannot change the outcome, and the write may have
-  partly run. Read back with `listInvoices` by reference, or `getInvoice`,
-  before writing again with a new Step execution;
-- an accepted 2xx that cannot be decoded also selects `uncertain`;
+- a 500 and an accepted 2xx that cannot be decoded are unknown outcomes and
+  are retried with the identical request too. If Xero caches the 500 under the
+  key, every retry replays it and the retry budget fails the Flow; read back
+  with `listInvoices` by reference, or `getInvoice`, before writing again with
+  a new Step execution. Both writes keep their `uncertain` branch declared for
+  compatibility and never select it;
 - the four-minute retry window plus the 30-second Execute timeout stays
   inside the six-minute key lifetime, because a repeat after expiry would be
   processed as new.
@@ -292,11 +293,11 @@ errors, such as
 | 3xx | `providerRejected`, `PROTOCOL`, for a read; Retry under the same Idempotency-Key for a write; redirects are never followed |
 | 429 daily | `dailyLimitReached`, `QUOTA_EXHAUSTED` |
 | 429 other | Retry after `Retry-After` |
-| 500 | Retry for a read; `uncertain` for a write |
+| 500 | Retry, under the same Idempotency-Key for a write |
 | 408, 502, 503, 504, transport failure | Retry |
 | 409, 501, other 4xx except 411, 413, 414, 415, and 422 | `providerRejected` for a read; Retry under the same Idempotency-Key for a write, because the status does not prove Xero refused it |
 | 411, 413, 414, 415, 422 | `providerRejected` |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse`, or `uncertain` for a write |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for a read; Retry under the same Idempotency-Key for a write |
 | rejected client, grant, or scope at the token endpoint | `providerRejected`, `AUTHENTICATION` |
 | invalid input or connection configuration | `defect`, with no request |
 

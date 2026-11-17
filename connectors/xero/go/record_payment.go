@@ -112,8 +112,8 @@ func (operation RecordPaymentOperation) Invoke(call sdkgo.Call, input RecordPaym
 		err = errors.New("payment applies to another invoice")
 	}
 	if err != nil {
-		return sdkgo.NewMutationUncertain(requested, xeroFailure(sdkgo.FailureProtocol, recordPaymentOperationID,
-			"Xero accepted the payment but returned an unusable payment: "+err.Error()), receipt)
+		return sdkgo.NewMutationRetry[RecordPaymentOutput](xeroFailure(sdkgo.FailureProtocol, recordPaymentOperationID,
+			"Xero accepted the payment but returned an unusable payment: "+err.Error()), 0)
 	}
 	receipt.ProviderObjectID = payment.PaymentID
 	return sdkgo.NewMutationBranch(RecordPaymentBranchRecorded, RecordPaymentOutput{
