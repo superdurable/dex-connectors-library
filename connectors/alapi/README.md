@@ -5,3 +5,5 @@ The [ALAPI IP lookup API](https://www.alapi.cn/api/23/api_document) accepts an I
 Sign in at [ALAPI](https://www.alapi.cn/), enable **IP地址查询**, then open 控制台 > 数据中心 > token管理 to copy an authorized token. Store it in Dex Web Connections. The token is sent in the `token` header and is excluded from request bodies, Flow results, and errors. Queries may consume provider quota. The [official OpenAPI contract](https://v3.alapi.cn/openapi/23.json) defines the request and response.
 
 Run the [example Flow](go/examples/lookup-ip-location/) with its generated mock or a user-controlled connection. Pass only public IPv4 addresses you are authorized to query. Provider errors, malformed data, oversized bodies, and retryable transport failures have separate outcomes. Real provider authorization and billing have not been verified locally.
+
+The [TypeScript package](typescript/README.md) implements the same `lookupIPLocation` Query with Go-recorded conformance scenarios and a runnable Dex Flow.
