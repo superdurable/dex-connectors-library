@@ -22,6 +22,9 @@ it('calls a local OAuth API through real Dex and fails an unwired rejection', as
     requests.push(`${request.method} ${request.url}`);
     if (request.headers.authorization !== 'Bearer local-test-access-token') { response.writeHead(401).end(); return; }
     if (request.url === '/v1/rejected') { response.writeHead(403).end('forbidden'); return; }
+    if (request.method === 'POST' && request.url === '/v1/orders') { response.writeHead(201, { 'Content-Type': 'application/json' }).end('{"id":"order-1"}'); return; }
+    // A 502 after the POST arrived does not prove the order was refused.
+    if (request.method === 'POST' && request.url === '/v1/orders-unavailable') { response.writeHead(502).end(); return; }
     response.writeHead(200, { 'Content-Type': 'application/json', 'X-Request-Id': 'local-001' }).end('{"sub":"user-1"}');
   });
   server.listen(40912, '127.0.0.1');
@@ -55,7 +58,17 @@ it('calls a local OAuth API through real Dex and fails an unwired rejection', as
     const rejected = await client.waitForFlow(rejectedId, 60_000);
     expect(rejected.status).toBe('failed');
     expect(rejected.errorMessage).toContain('rejected');
-    expect(requests).toEqual(['GET /v1/userinfo', 'GET /v1/rejected']);
+    const orderId = `oauth2-http-order-${randomUUID()}`;
+    await client.startFlow(flow, orderId, { path: '/orders', orderBody: '{"item":"gear"}' });
+    const order = await client.waitForFlow(orderId, 60_000);
+    expect(order.status, order.errorMessage).toBe('completed');
+    expect(order.singleOutput<SendRequestOutput>()).toEqual({ statusCode: 201, contentType: 'application/json', body: '{"id":"order-1"}' });
+    const unknownId = `oauth2-http-order-unknown-${randomUUID()}`;
+    await client.startFlow(flow, unknownId, { path: '/orders-unavailable', orderBody: '{"item":"gear"}' });
+    const unknown = await client.waitForFlow(unknownId, 60_000);
+    expect(unknown.status).toBe('failed');
+    expect(unknown.errorMessage).toContain('uncertain');
+    expect(requests).toEqual(['GET /v1/userinfo', 'GET /v1/rejected', 'POST /v1/orders', 'POST /v1/orders-unavailable']);
   } finally {
     await client.close(); await worker.close(); cache.close();
     await rm(directory, { recursive: true, force: true });

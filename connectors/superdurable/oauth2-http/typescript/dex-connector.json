@@ -1,10 +1,10 @@
 {
   "connectorId": "oauth2-http",
-  "releaseTag": "connectors/superdurable/oauth2-http/go/v0.2.0",
+  "releaseTag": "connectors/superdurable/oauth2-http/go/v0.3.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-superdurable-oauth2-http",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -12,7 +12,7 @@
       "kind": "mutation",
       "operationId": "sendRequest",
       "inputType": "SendRequestInput",
-      "description": "Send one HTTP request to the connection's API with the OAuth access token as a Bearer credential, and return the status code and body. Refreshes the token first when it is about to expire and once more after a 401. GET, HEAD, and OPTIONS are retried on a transient failure; any other method whose request may have reached the API selects uncertain instead of repeating it.",
+      "description": "Send one HTTP request to the connection's API with the OAuth access token as a Bearer credential, and return the status code and body. Refreshes the token first when it is about to expire and once more after a 401. Every unknown outcome, such as a lost connection, a timeout, a 5xx, or a status that does not prove a refusal, sends the request again, except that a POST without idempotencyKeyHeader whose answer was lost selects uncertain; use it only for requests that are safe to repeat: reads, absolute updates, deletes, or writes the API deduplicates through idempotencyKeyHeader. Use postNonIdempotent for a POST that must never be sent twice.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -83,6 +83,80 @@
           },
           "url": {
             "description": "URL is an absolute http or https URL with the scheme, host, and port of the connection's apiBaseUrl, such as a next-page link the API returned. Set exactly one of Path and URL.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "newPostNonIdempotentStep",
+      "kind": "mutation",
+      "operationId": "postNonIdempotent",
+      "inputType": "PostNonIdempotentInput",
+      "description": "Send one HTTP POST that must never be sent twice, such as a payment or an order the API does not deduplicate, with the OAuth access token as a Bearer credential, and return the status code and body. It is sent at most once per Step execution: when the POST may have reached the API but no usable answer arrived, the Step selects uncertain instead of sending it again. A 401 renews the token and a 429 or 503 waits, then sends again, because those answers prove the API did not process it.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "completed",
+          "field": "completed",
+          "optional": false
+        },
+        {
+          "id": "rejected",
+          "field": "rejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "PostNonIdempotentInput describes one HTTP POST that must never be sent twice.",
+        "properties": {
+          "body": {
+            "description": "Body is the request body, sent as text and limited to the connection's maxBodyBytes. Content-Type defaults to application/json when Headers sets none. Blank sends an empty body.",
+            "type": "string"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Headers holds extra request headers, such as Accept. Authorization, Cookie, Host, and the headers the transport owns select defect; the connector always sends Authorization: Bearer with the access token.",
+            "type": "object"
+          },
+          "path": {
+            "description": "Path is the request path under the connection's apiBaseUrl. It starts with a single slash, may be percent-encoded, and carries no query, fragment, backslash, or .. segment. Set exactly one of Path and URL.",
+            "type": "string"
+          },
+          "query": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "description": "Query holds query parameters that are added to those already in URL. A name may repeat through several values.",
+            "type": "object"
+          },
+          "url": {
+            "description": "URL is an absolute http or https URL with the scheme, host, and port of the connection's apiBaseUrl. Set exactly one of Path and URL.",
             "type": "string"
           }
         },

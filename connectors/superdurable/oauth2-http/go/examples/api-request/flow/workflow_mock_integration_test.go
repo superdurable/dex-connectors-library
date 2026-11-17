@@ -50,4 +50,20 @@ func TestAPIRequestExampleRunsOnTheOAuth2HTTPMockWithRealDex(t *testing.T) {
 	_, err = harness.client.StartFlow(ctx, flow, defectFlowID, Input{Path: "userinfo"}, dex.StartFlowOptions{})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowFailed, waitForTerminalFlow(t, ctx, harness.client, defectFlowID).Status, "the unwired defect branch fails the Flow")
+
+	orderFlowID := "oauth2-http-api-request-mock-order-" + testRunID
+	_, err = harness.client.StartFlow(ctx, flow, orderFlowID, Input{Path: "/orders", OrderBody: `{"item":"gear"}`}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	order := waitForTerminalFlow(t, ctx, harness.client, orderFlowID)
+	require.Equal(t, dex.FlowCompleted, order.Status, order.ErrorMessage)
+	require.NoError(t, order.DecodeSingleOutput(&report))
+	require.Equal(t, 201, report.StatusCode, "the postNonIdempotent manifest default answers an unscripted call")
+
+	uncertainFlowID := "oauth2-http-api-request-mock-order-uncertain-" + testRunID
+	mock.PostNonIdempotent().ForFlow(uncertainFlowID).Respond(oauth2httpmock.PostNonIdempotentConnectionLost())
+	_, err = harness.client.StartFlow(ctx, flow, uncertainFlowID, Input{Path: "/orders", OrderBody: `{"item":"gear"}`}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	uncertain := waitForTerminalFlow(t, ctx, harness.client, uncertainFlowID)
+	require.Equal(t, dex.FlowFailed, uncertain.Status, "the unwired uncertain branch fails the Flow")
+	require.Contains(t, uncertain.ErrorMessage, "uncertain")
 }

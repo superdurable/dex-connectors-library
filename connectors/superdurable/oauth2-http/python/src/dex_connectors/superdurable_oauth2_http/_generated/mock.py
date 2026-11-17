@@ -8,8 +8,8 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import SendRequestInput, SendRequestOutput
-from .definitions import CONNECTOR_ID, COMPLETED, DEFECT, REJECTED, SEND_REQUEST_DEFINITION, UNCERTAIN
+from ..models import PostNonIdempotentInput, SendRequestInput, SendRequestOutput
+from .definitions import CONNECTOR_ID, COMPLETED, DEFECT, POST_NON_IDEMPOTENT_DEFINITION, REJECTED, SEND_REQUEST_DEFINITION, UNCERTAIN
 
 def send_request_completed(value: SendRequestOutput, failure: Failure | None = None) -> Case[SendRequestOutput]:
     return Case.branch_result(COMPLETED, value, failure)
@@ -52,7 +52,7 @@ def send_request_authorization_expired() -> Case[SendRequestOutput]:
 setattr(send_request_authorization_expired, '__module__', "dex_connectors.superdurable_oauth2_http.oauth2httpmock")
 
 def send_request_connection_lost() -> Case[SendRequestOutput]:
-    return Case.uncertain(SendRequestOutput(), Failure(FailureKind.TRANSPORT, CONNECTOR_ID, "sendRequest", "The connection closed before the API answered."))
+    return Case.retry(Failure(FailureKind.TRANSPORT, CONNECTOR_ID, "sendRequest", "The connection closed before the API answered."), 0)
 
 setattr(send_request_connection_lost, '__module__', "dex_connectors.superdurable_oauth2_http.oauth2httpmock")
 
@@ -66,14 +66,67 @@ def send_request_throttled() -> Case[SendRequestOutput]:
 
 setattr(send_request_throttled, '__module__', "dex_connectors.superdurable_oauth2_http.oauth2httpmock")
 
+def post_non_idempotent_completed(value: SendRequestOutput, failure: Failure | None = None) -> Case[SendRequestOutput]:
+    return Case.branch_result(COMPLETED, value, failure)
+
+setattr(post_non_idempotent_completed, '__module__', "dex_connectors.superdurable_oauth2_http.oauth2httpmock")
+
+def post_non_idempotent_rejected(value: SendRequestOutput, failure: Failure | None = None) -> Case[SendRequestOutput]:
+    return Case.branch_result(REJECTED, value, failure)
+
+setattr(post_non_idempotent_rejected, '__module__', "dex_connectors.superdurable_oauth2_http.oauth2httpmock")
+
+def post_non_idempotent_uncertain(value: SendRequestOutput, failure: Failure) -> Case[SendRequestOutput]:
+    return Case.uncertain(value, failure)
+
+setattr(post_non_idempotent_uncertain, '__module__', "dex_connectors.superdurable_oauth2_http.oauth2httpmock")
+
+def post_non_idempotent_defect(value: SendRequestOutput, failure: Failure | None = None) -> Case[SendRequestOutput]:
+    return Case.branch_result(DEFECT, value, failure)
+
+setattr(post_non_idempotent_defect, '__module__', "dex_connectors.superdurable_oauth2_http.oauth2httpmock")
+
+def post_non_idempotent_retry(failure: Failure, after_seconds: float = 0) -> Case[SendRequestOutput]:
+    return Case.retry(failure, after_seconds)
+
+setattr(post_non_idempotent_retry, '__module__', "dex_connectors.superdurable_oauth2_http.oauth2httpmock")
+
+def post_non_idempotent_created_order() -> Case[SendRequestOutput]:
+    return Case.branch_result(COMPLETED, SendRequestOutput(status_code=201, content_type='application/json', body='{"id":"order-1","status":"created"}'))
+
+setattr(post_non_idempotent_created_order, '__module__', "dex_connectors.superdurable_oauth2_http.oauth2httpmock")
+
+def post_non_idempotent_invalid_order() -> Case[SendRequestOutput]:
+    return Case.branch_result(REJECTED, SendRequestOutput(status_code=422, content_type='application/json', body='{"error":"invalid_order"}'), Failure(FailureKind.VALIDATION, CONNECTOR_ID, "postNonIdempotent", "The API answered HTTP 422."))
+
+setattr(post_non_idempotent_invalid_order, '__module__', "dex_connectors.superdurable_oauth2_http.oauth2httpmock")
+
+def post_non_idempotent_connection_lost() -> Case[SendRequestOutput]:
+    return Case.uncertain(SendRequestOutput(), Failure(FailureKind.TRANSPORT, CONNECTOR_ID, "postNonIdempotent", "The connection closed before the API answered."))
+
+setattr(post_non_idempotent_connection_lost, '__module__', "dex_connectors.superdurable_oauth2_http.oauth2httpmock")
+
+def post_non_idempotent_invalid_path() -> Case[SendRequestOutput]:
+    return Case.branch_result(DEFECT, SendRequestOutput(), Failure(FailureKind.VALIDATION, CONNECTOR_ID, "postNonIdempotent", "The request path must start with a slash."))
+
+setattr(post_non_idempotent_invalid_path, '__module__', "dex_connectors.superdurable_oauth2_http.oauth2httpmock")
+
+def post_non_idempotent_throttled() -> Case[SendRequestOutput]:
+    return Case.retry(Failure(FailureKind.RATE_LIMIT, CONNECTOR_ID, "postNonIdempotent", "The API answered HTTP 429."), 2)
+
+setattr(post_non_idempotent_throttled, '__module__', "dex_connectors.superdurable_oauth2_http.oauth2httpmock")
+
 
 class Mock:
 
     def __init__(self, connection_name: str = "oauth2-http") -> None:
         self.send_request_script: Mutation[SendRequestInput, SendRequestOutput] = Mutation(SEND_REQUEST_DEFINITION)
         self.send_request_script.default(send_request_user_profile())
+        self.post_non_idempotent_script: Mutation[PostNonIdempotentInput, SendRequestOutput] = Mutation(POST_NON_IDEMPOTENT_DEFINITION)
+        self.post_non_idempotent_script.default(post_non_idempotent_created_order())
         self._connection = new_connection_with_operations(
             send_request=self.send_request_script,
+            post_non_idempotent=self.post_non_idempotent_script,
             reference=ConnectionRef(CONNECTOR_ID, connection_name),
         )
 
@@ -95,4 +148,14 @@ __all__ = [
     "send_request_connection_lost",
     "send_request_invalid_path",
     "send_request_throttled",
+    "post_non_idempotent_completed",
+    "post_non_idempotent_rejected",
+    "post_non_idempotent_uncertain",
+    "post_non_idempotent_defect",
+    "post_non_idempotent_retry",
+    "post_non_idempotent_created_order",
+    "post_non_idempotent_invalid_order",
+    "post_non_idempotent_connection_lost",
+    "post_non_idempotent_invalid_path",
+    "post_non_idempotent_throttled",
 ]

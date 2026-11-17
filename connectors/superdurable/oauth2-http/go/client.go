@@ -7,8 +7,9 @@
 // The connection settings name the server's authorization and token endpoints, the scopes, and the API
 // base URL; the credential holds the OAuth client ID, the client secret, and the tokens. Dex Web
 // authorizes the connection with the authorization code flow and PKCE. The sendRequest Mutation then
-// sends one HTTP request with the access token as a Bearer credential and returns the status code and
-// body. CredentialRefreshDriver refreshes the access token before it expires and once after the API
+// sends one repeat-safe HTTP request with the access token as a Bearer credential and returns the status
+// code and body, and the postNonIdempotent Mutation sends one POST at most once per Step execution under
+// the single-dispatch fence. CredentialRefreshDriver refreshes the access token before it expires and once after the API
 // rejects it, and it follows a server that invalidates a refresh token when it is used.
 //
 // The token is sent only to the API base URL's origin, redirects are never followed, and the response
@@ -127,6 +128,11 @@ func (client *Client) SendRequest() SendRequestOperation {
 	return SendRequestOperation{client: client}
 }
 
+// PostNonIdempotent returns the postNonIdempotent Mutation bound to this client.
+func (client *Client) PostNonIdempotent() PostNonIdempotentOperation {
+	return PostNonIdempotentOperation{client: client}
+}
+
 // parseAPIBaseURL accepts an absolute http or https URL without user information, a query, or a fragment.
 // The scheme is the connection owner's choice, so plain http is accepted.
 func parseAPIBaseURL(value string) (*url.URL, error) {
@@ -174,6 +180,6 @@ func describeRefusal(target string, refusal *providerhttp.AddressRefusal) string
 	return fmt.Sprintf("the connection's %s resolves to an address the connector will not connect to: %s", target, refusal.Reason)
 }
 
-func sendRequestFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {
-	return sdkgo.Failure{Kind: kind, Provider: ConnectorID, Operation: SendRequestDefinition.Operation.OperationID, Message: message}
+func operationFailure(operationName string, kind sdkgo.FailureKind, message string) sdkgo.Failure {
+	return sdkgo.Failure{Kind: kind, Provider: ConnectorID, Operation: operationName, Message: message}
 }
