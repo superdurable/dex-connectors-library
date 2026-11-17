@@ -18,6 +18,10 @@ import (
 // Mock is a scripted adobe-marketo connection. Script each operation through its accessor.
 type Mock struct {
 	connection             marketo.Connection
+	getCompanyByExternalID *connectormock.Query[marketo.GetCompanyByExternalIDInput, marketo.CompanyProfile]
+	createCompany          *connectormock.Mutation[marketo.CreateCompanyInput, marketo.CompanyWriteResult]
+	upsertCompany          *connectormock.Mutation[marketo.UpsertCompanyInput, marketo.CompanyWriteResult]
+	deleteCompany          *connectormock.Mutation[marketo.DeleteCompanyInput, marketo.DeletedCompany]
 	getActivityPagingToken *connectormock.Query[marketo.GetActivityPagingTokenInput, marketo.ActivityPagingToken]
 	listActivityTypes      *connectormock.Query[marketo.ListActivityTypesInput, marketo.ActivityTypes]
 	listActivities         *connectormock.Query[marketo.ListActivitiesInput, marketo.ActivityPage]
@@ -33,6 +37,10 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		getCompanyByExternalID: connectormock.NewQuery[marketo.GetCompanyByExternalIDInput, marketo.CompanyProfile](t, marketo.GetCompanyByExternalIDDefinition),
+		createCompany:          connectormock.NewMutation[marketo.CreateCompanyInput, marketo.CompanyWriteResult](t, marketo.CreateCompanyDefinition),
+		upsertCompany:          connectormock.NewMutation[marketo.UpsertCompanyInput, marketo.CompanyWriteResult](t, marketo.UpsertCompanyDefinition),
+		deleteCompany:          connectormock.NewMutation[marketo.DeleteCompanyInput, marketo.DeletedCompany](t, marketo.DeleteCompanyDefinition),
 		getActivityPagingToken: connectormock.NewQuery[marketo.GetActivityPagingTokenInput, marketo.ActivityPagingToken](t, marketo.GetActivityPagingTokenDefinition),
 		listActivityTypes:      connectormock.NewQuery[marketo.ListActivityTypesInput, marketo.ActivityTypes](t, marketo.ListActivityTypesDefinition),
 		listActivities:         connectormock.NewQuery[marketo.ListActivitiesInput, marketo.ActivityPage](t, marketo.ListActivitiesDefinition),
@@ -42,6 +50,10 @@ func New(t testing.TB, connectionName string) *Mock {
 		findLeadsByEmail:       connectormock.NewQuery[marketo.FindLeadsByEmailInput, marketo.LeadProfilesPage](t, marketo.FindLeadsByEmailDefinition),
 		updateLead:             connectormock.NewMutation[marketo.UpdateLeadInput, marketo.UpdatedLead](t, marketo.UpdateLeadDefinition),
 	}
+	mock.getCompanyByExternalID.Default(GetCompanyByExternalIDDefault())
+	mock.createCompany.Default(CreateCompanyDefault())
+	mock.upsertCompany.Default(UpsertCompanyDefault())
+	mock.deleteCompany.Default(DeleteCompanyDefault())
 	mock.getActivityPagingToken.Default(GetActivityPagingTokenDefault())
 	mock.listActivityTypes.Default(ListActivityTypesDefault())
 	mock.listActivities.Default(ListActivitiesDefault())
@@ -60,6 +72,26 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() marketo.Connection { return mock.connection }
+
+// GetCompanyByExternalID returns the getCompanyByExternalID script.
+func (mock *Mock) GetCompanyByExternalID() *connectormock.Query[marketo.GetCompanyByExternalIDInput, marketo.CompanyProfile] {
+	return mock.getCompanyByExternalID
+}
+
+// CreateCompany returns the createCompany script.
+func (mock *Mock) CreateCompany() *connectormock.Mutation[marketo.CreateCompanyInput, marketo.CompanyWriteResult] {
+	return mock.createCompany
+}
+
+// UpsertCompany returns the upsertCompany script.
+func (mock *Mock) UpsertCompany() *connectormock.Mutation[marketo.UpsertCompanyInput, marketo.CompanyWriteResult] {
+	return mock.upsertCompany
+}
+
+// DeleteCompany returns the deleteCompany script.
+func (mock *Mock) DeleteCompany() *connectormock.Mutation[marketo.DeleteCompanyInput, marketo.DeletedCompany] {
+	return mock.deleteCompany
+}
 
 // GetActivityPagingToken returns the getActivityPagingToken script.
 func (mock *Mock) GetActivityPagingToken() *connectormock.Query[marketo.GetActivityPagingTokenInput, marketo.ActivityPagingToken] {
@@ -103,6 +135,18 @@ func (mock *Mock) UpdateLead() *connectormock.Mutation[marketo.UpdateLeadInput, 
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetCompanyByExternalID() sdkgo.Query[marketo.GetCompanyByExternalIDInput, marketo.CompanyProfile] {
+	return operations.mock.getCompanyByExternalID
+}
+func (operations mockOperations) CreateCompany() sdkgo.Mutation[marketo.CreateCompanyInput, marketo.CompanyWriteResult] {
+	return operations.mock.createCompany
+}
+func (operations mockOperations) UpsertCompany() sdkgo.Mutation[marketo.UpsertCompanyInput, marketo.CompanyWriteResult] {
+	return operations.mock.upsertCompany
+}
+func (operations mockOperations) DeleteCompany() sdkgo.Mutation[marketo.DeleteCompanyInput, marketo.DeletedCompany] {
+	return operations.mock.deleteCompany
+}
 func (operations mockOperations) GetActivityPagingToken() sdkgo.Query[marketo.GetActivityPagingTokenInput, marketo.ActivityPagingToken] {
 	return operations.mock.getActivityPagingToken
 }
@@ -126,6 +170,160 @@ func (operations mockOperations) FindLeadsByEmail() sdkgo.Query[marketo.FindLead
 }
 func (operations mockOperations) UpdateLead() sdkgo.Mutation[marketo.UpdateLeadInput, marketo.UpdatedLead] {
 	return operations.mock.updateLead
+}
+
+// GetCompanyByExternalIDFound selects the found branch: Marketo returned the company.
+func GetCompanyByExternalIDFound(value marketo.CompanyProfile, failure *sdkgo.Failure) connectormock.Case[marketo.CompanyProfile] {
+	return connectormock.Branch(marketo.GetCompanyByExternalIDBranchFound, value, failure)
+}
+
+// GetCompanyByExternalIDNotFound selects the notFound branch: Marketo found no matching company.
+func GetCompanyByExternalIDNotFound(value marketo.CompanyProfile, failure *sdkgo.Failure) connectormock.Case[marketo.CompanyProfile] {
+	return connectormock.Branch(marketo.GetCompanyByExternalIDBranchNotFound, value, failure)
+}
+
+// GetCompanyByExternalIDProviderRejected selects the providerRejected branch: Marketo rejected the company lookup.
+func GetCompanyByExternalIDProviderRejected(value marketo.CompanyProfile, failure *sdkgo.Failure) connectormock.Case[marketo.CompanyProfile] {
+	return connectormock.Branch(marketo.GetCompanyByExternalIDBranchProviderRejected, value, failure)
+}
+
+// GetCompanyByExternalIDInvalidResponse selects the invalidResponse branch: Marketo returned malformed company JSON.
+func GetCompanyByExternalIDInvalidResponse(value marketo.CompanyProfile, failure *sdkgo.Failure) connectormock.Case[marketo.CompanyProfile] {
+	return connectormock.Branch(marketo.GetCompanyByExternalIDBranchInvalidResponse, value, failure)
+}
+
+// GetCompanyByExternalIDDefect selects the defect branch: The external company ID is invalid.
+func GetCompanyByExternalIDDefect(value marketo.CompanyProfile, failure *sdkgo.Failure) connectormock.Case[marketo.CompanyProfile] {
+	return connectormock.Branch(marketo.GetCompanyByExternalIDBranchDefect, value, failure)
+}
+
+// GetCompanyByExternalIDRetry asks Dex to retry the getCompanyByExternalID Step, after the delay when it is positive.
+func GetCompanyByExternalIDRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[marketo.CompanyProfile] {
+	return connectormock.Retry[marketo.CompanyProfile](failure, after)
+}
+
+// GetCompanyByExternalIDFoundDefault is the manifest mock foundDefault: A sample company is returned.
+func GetCompanyByExternalIDFoundDefault() connectormock.Case[marketo.CompanyProfile] {
+	value := connectormock.MustDecodeOutput[marketo.CompanyProfile](`{"id":3433,"company":"Sample Company"}`)
+	return connectormock.Branch(marketo.GetCompanyByExternalIDBranchFound, value, nil)
+}
+
+// GetCompanyByExternalIDDefault is the manifest default, foundDefault, which New installs.
+func GetCompanyByExternalIDDefault() connectormock.Case[marketo.CompanyProfile] {
+	return GetCompanyByExternalIDFoundDefault()
+}
+
+// CreateCompanyCreated selects the created branch: Marketo created the company.
+func CreateCompanyCreated(value marketo.CompanyWriteResult, failure *sdkgo.Failure) connectormock.Case[marketo.CompanyWriteResult] {
+	return connectormock.Branch(marketo.CreateCompanyBranchCreated, value, failure)
+}
+
+// CreateCompanyAlreadyExists selects the alreadyExists branch: A company already uses the external ID.
+func CreateCompanyAlreadyExists(value marketo.CompanyWriteResult, failure *sdkgo.Failure) connectormock.Case[marketo.CompanyWriteResult] {
+	return connectormock.Branch(marketo.CreateCompanyBranchAlreadyExists, value, failure)
+}
+
+// CreateCompanyProviderRejected selects the providerRejected branch: Marketo conclusively rejected the create.
+func CreateCompanyProviderRejected(value marketo.CompanyWriteResult, failure *sdkgo.Failure) connectormock.Case[marketo.CompanyWriteResult] {
+	return connectormock.Branch(marketo.CreateCompanyBranchProviderRejected, value, failure)
+}
+
+// CreateCompanyUncertain returns an uncertain createCompany outcome.
+func CreateCompanyUncertain(value marketo.CompanyWriteResult, failure sdkgo.Failure) connectormock.Case[marketo.CompanyWriteResult] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateCompanyDefect selects the defect branch: The external company ID or name is invalid.
+func CreateCompanyDefect(value marketo.CompanyWriteResult, failure *sdkgo.Failure) connectormock.Case[marketo.CompanyWriteResult] {
+	return connectormock.Branch(marketo.CreateCompanyBranchDefect, value, failure)
+}
+
+// CreateCompanyRetry asks Dex to retry the createCompany Step, after the delay when it is positive.
+func CreateCompanyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[marketo.CompanyWriteResult] {
+	return connectormock.Retry[marketo.CompanyWriteResult](failure, after)
+}
+
+// CreateCompanyCreatedDefault is the manifest mock createdDefault: A sample company was created.
+func CreateCompanyCreatedDefault() connectormock.Case[marketo.CompanyWriteResult] {
+	value := connectormock.MustDecodeOutput[marketo.CompanyWriteResult](`{"id":3433,"status":"created"}`)
+	return connectormock.Branch(marketo.CreateCompanyBranchCreated, value, nil)
+}
+
+// CreateCompanyDefault is the manifest default, createdDefault, which New installs.
+func CreateCompanyDefault() connectormock.Case[marketo.CompanyWriteResult] {
+	return CreateCompanyCreatedDefault()
+}
+
+// UpsertCompanySynced selects the synced branch: Marketo created or updated the company.
+func UpsertCompanySynced(value marketo.CompanyWriteResult, failure *sdkgo.Failure) connectormock.Case[marketo.CompanyWriteResult] {
+	return connectormock.Branch(marketo.UpsertCompanyBranchSynced, value, failure)
+}
+
+// UpsertCompanyProviderRejected selects the providerRejected branch: Marketo rejected the upsert.
+func UpsertCompanyProviderRejected(value marketo.CompanyWriteResult, failure *sdkgo.Failure) connectormock.Case[marketo.CompanyWriteResult] {
+	return connectormock.Branch(marketo.UpsertCompanyBranchProviderRejected, value, failure)
+}
+
+// UpsertCompanyInvalidResponse selects the invalidResponse branch: Marketo returned malformed company JSON.
+func UpsertCompanyInvalidResponse(value marketo.CompanyWriteResult, failure *sdkgo.Failure) connectormock.Case[marketo.CompanyWriteResult] {
+	return connectormock.Branch(marketo.UpsertCompanyBranchInvalidResponse, value, failure)
+}
+
+// UpsertCompanyDefect selects the defect branch: The external company ID or name is invalid.
+func UpsertCompanyDefect(value marketo.CompanyWriteResult, failure *sdkgo.Failure) connectormock.Case[marketo.CompanyWriteResult] {
+	return connectormock.Branch(marketo.UpsertCompanyBranchDefect, value, failure)
+}
+
+// UpsertCompanyRetry asks Dex to retry the upsertCompany Step, after the delay when it is positive.
+func UpsertCompanyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[marketo.CompanyWriteResult] {
+	return connectormock.Retry[marketo.CompanyWriteResult](failure, after)
+}
+
+// UpsertCompanySyncedDefault is the manifest mock syncedDefault: A sample company was updated.
+func UpsertCompanySyncedDefault() connectormock.Case[marketo.CompanyWriteResult] {
+	value := connectormock.MustDecodeOutput[marketo.CompanyWriteResult](`{"id":3433,"status":"updated"}`)
+	return connectormock.Branch(marketo.UpsertCompanyBranchSynced, value, nil)
+}
+
+// UpsertCompanyDefault is the manifest default, syncedDefault, which New installs.
+func UpsertCompanyDefault() connectormock.Case[marketo.CompanyWriteResult] {
+	return UpsertCompanySyncedDefault()
+}
+
+// DeleteCompanyDeleted selects the deleted branch: The company is absent after the call.
+func DeleteCompanyDeleted(value marketo.DeletedCompany, failure *sdkgo.Failure) connectormock.Case[marketo.DeletedCompany] {
+	return connectormock.Branch(marketo.DeleteCompanyBranchDeleted, value, failure)
+}
+
+// DeleteCompanyProviderRejected selects the providerRejected branch: Marketo rejected the deletion.
+func DeleteCompanyProviderRejected(value marketo.DeletedCompany, failure *sdkgo.Failure) connectormock.Case[marketo.DeletedCompany] {
+	return connectormock.Branch(marketo.DeleteCompanyBranchProviderRejected, value, failure)
+}
+
+// DeleteCompanyInvalidResponse selects the invalidResponse branch: Marketo returned malformed deletion JSON.
+func DeleteCompanyInvalidResponse(value marketo.DeletedCompany, failure *sdkgo.Failure) connectormock.Case[marketo.DeletedCompany] {
+	return connectormock.Branch(marketo.DeleteCompanyBranchInvalidResponse, value, failure)
+}
+
+// DeleteCompanyDefect selects the defect branch: The external company ID is invalid.
+func DeleteCompanyDefect(value marketo.DeletedCompany, failure *sdkgo.Failure) connectormock.Case[marketo.DeletedCompany] {
+	return connectormock.Branch(marketo.DeleteCompanyBranchDefect, value, failure)
+}
+
+// DeleteCompanyRetry asks Dex to retry the deleteCompany Step, after the delay when it is positive.
+func DeleteCompanyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[marketo.DeletedCompany] {
+	return connectormock.Retry[marketo.DeletedCompany](failure, after)
+}
+
+// DeleteCompanyDeletedDefault is the manifest mock deletedDefault: A sample company was deleted.
+func DeleteCompanyDeletedDefault() connectormock.Case[marketo.DeletedCompany] {
+	value := connectormock.MustDecodeOutput[marketo.DeletedCompany](`{"deleted":true}`)
+	return connectormock.Branch(marketo.DeleteCompanyBranchDeleted, value, nil)
+}
+
+// DeleteCompanyDefault is the manifest default, deletedDefault, which New installs.
+func DeleteCompanyDefault() connectormock.Case[marketo.DeletedCompany] {
+	return DeleteCompanyDeletedDefault()
 }
 
 // GetActivityPagingTokenFound selects the found branch: Marketo returned an activity cursor.

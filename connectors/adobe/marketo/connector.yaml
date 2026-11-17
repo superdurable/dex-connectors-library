@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: adobe-marketo
   displayName: Adobe Marketo Engage
-  description: Read activity metadata and read, find, create, upsert, and update selected lead profile fields in a Marketo Engage subscription.
+  description: Read activity metadata and create, read, update, and delete selected lead and company fields in a Marketo Engage subscription.
   company: Adobe
   categories: [marketing]
   version: v0.2.0
@@ -67,7 +67,7 @@ spec:
     guide:
       startURL: https://app.marketo.com/
       steps:
-        - Sign in to Marketo, open Admin > Users & Roles > Roles, and create an API role with Access API > Read-Only Lead. Grant Read-Write Lead for createLead, upsertLeadByEmail, or updateLead, and Read-Only Activity for activity queries. Add an API-Only user assigned this role in Admin > Users & Roles > Users. No browser redirect URI or consent screen is needed for this client credentials grant.
+        - Sign in to Marketo, open Admin > Users & Roles > Roles, and create an API role with Access API > Read-Only Lead. Grant Read-Write Lead for lead writes, Read-Only Activity for activity queries, Read-Only Company for company reads, and Read-Write Company for company writes. Add an API-Only user assigned this role in Admin > Users & Roles > Users. No browser redirect URI or consent screen is needed for this client credentials grant.
         - Open Admin > Integration > LaunchPoint > New Service, choose Custom, select the API-Only user, and create the service. Open View Details to copy its Client ID and Client Secret; keep the secret in Dex Web only.
         - Open Admin > Integration > Web Services. Copy REST API > Endpoint into restEndpoint. Copy REST API > Identity and append /oauth/token into tokenEndpoint. Both HTTPS URLs must use the same subscription host ending in .mktorest.com.
         - Save the connection; Dex mints and refreshes the access token. Leave access_token, timeout, and maxResponseBytes blank. Revoke the Custom service in LaunchPoint to stop this connection.
@@ -83,6 +83,72 @@ spec:
         - {credential: access_token, source: access_token}
       terminalErrorCodes: [invalid_client, unauthorized_client, invalid_scope]
   operations:
+    - name: getCompanyByExternalID
+      goName: GetCompanyByExternalID
+      inputType: GetCompanyByExternalIDInput
+      outputType: CompanyProfile
+      kind: query
+      idempotency: none
+      authorization: required
+      description: Read one company ID and name by its external company ID.
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Marketo returned the company.}
+        - {id: notFound, goName: NotFound, description: Marketo found no matching company., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Marketo rejected the company lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Marketo returned malformed company JSON., optional: true}
+        - {id: defect, goName: Defect, description: The external company ID is invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: A sample company is returned., output: {id: 3433, company: Sample Company}}
+    - name: createCompany
+      goName: CreateCompany
+      inputType: CreateCompanyInput
+      outputType: CompanyWriteResult
+      kind: mutation
+      idempotency: required
+      authorization: required
+      description: Create one company by external ID with bounded sends and read-back.
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Marketo created the company.}
+        - {id: alreadyExists, goName: AlreadyExists, description: A company already uses the external ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Marketo conclusively rejected the create., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A prior create may have succeeded but cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: The external company ID or name is invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: A sample company was created., output: {id: 3433, status: created}}
+    - name: upsertCompany
+      goName: UpsertCompany
+      inputType: UpsertCompanyInput
+      outputType: CompanyWriteResult
+      kind: mutation
+      idempotency: required
+      authorization: required
+      description: Create or replace a company's name using its external ID.
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: synced, goName: Synced, description: Marketo created or updated the company.}
+        - {id: providerRejected, goName: ProviderRejected, description: Marketo rejected the upsert., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Marketo returned malformed company JSON., optional: true}
+        - {id: defect, goName: Defect, description: The external company ID or name is invalid., optional: true}
+      mocks:
+        - {name: syncedDefault, branch: synced, default: true, description: A sample company was updated., output: {id: 3433, status: updated}}
+    - name: deleteCompany
+      goName: DeleteCompany
+      inputType: DeleteCompanyInput
+      outputType: DeletedCompany
+      kind: mutation
+      idempotency: required
+      authorization: required
+      description: Delete a company by external ID; an already-absent company converges to deleted.
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The company is absent after the call.}
+        - {id: providerRejected, goName: ProviderRejected, description: Marketo rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Marketo returned malformed deletion JSON., optional: true}
+        - {id: defect, goName: Defect, description: The external company ID is invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: A sample company was deleted., output: {deleted: true}}
     - name: getActivityPagingToken
       goName: GetActivityPagingToken
       inputType: GetActivityPagingTokenInput

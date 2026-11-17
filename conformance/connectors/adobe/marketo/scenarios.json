@@ -2900,6 +2900,1457 @@
       },
       "name": "listActivities-transportFailure",
       "operation": "listActivities"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":3433,\"company\":\"Sample Company\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies.json",
+          "query": {
+            "fields": [
+              "id,company"
+            ],
+            "filterType": [
+              "externalCompanyId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "company": "Sample Company",
+          "id": 3433
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "getCompanyByExternalID-found",
+      "operation": "getCompanyByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies.json",
+          "query": {
+            "fields": [
+              "id,company"
+            ],
+            "filterType": [
+              "externalCompanyId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "",
+        "output": {
+          "company": "",
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "getCompanyByExternalID-notFound",
+      "operation": "getCompanyByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies.json",
+          "query": {
+            "fields": [
+              "id,company"
+            ],
+            "filterType": [
+              "externalCompanyId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "company": "",
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "getCompanyByExternalID-providerRejected",
+      "operation": "getCompanyByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies.json",
+          "query": {
+            "fields": [
+              "id,company"
+            ],
+            "filterType": [
+              "externalCompanyId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "company": "",
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "getCompanyByExternalID-invalidResponse",
+      "operation": "getCompanyByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "company": "",
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalCompanyId": ""
+      },
+      "name": "getCompanyByExternalID-defect",
+      "operation": "getCompanyByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies.json",
+          "query": {
+            "fields": [
+              "id,company"
+            ],
+            "filterType": [
+              "externalCompanyId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "getCompanyByExternalID-rateLimit",
+      "operation": "getCompanyByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies.json",
+          "query": {
+            "fields": [
+              "id,company"
+            ],
+            "filterType": [
+              "externalCompanyId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "getCompanyByExternalID-unavailable",
+      "operation": "getCompanyByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies.json",
+          "query": {
+            "fields": [
+              "id,company"
+            ],
+            "filterType": [
+              "externalCompanyId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "getCompanyByExternalID-transportFailure",
+      "operation": "getCompanyByExternalID"
+    },
+    {
+      "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":3433,\"status\":\"created\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+          "providerId": "3433",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 3433,
+          "status": "created"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "createCompany-created",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"status\":\"skipped\",\"reasons\":[{\"code\":\"1005\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "alreadyExists",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "createCompany-alreadyExists",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "createCompany-providerRejected",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "createCompany-uncertain",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": ""
+      },
+      "name": "createCompany-defect",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "createCompany-rateLimit",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "createCompany-unavailable",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "createCompany-transportFailure",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":3433,\"status\":\"updated\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "synced",
+        "failureKind": "",
+        "output": {
+          "id": 3433,
+          "status": "updated"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "upsertCompany-synced",
+      "operation": "upsertCompany"
+    },
+    {
+      "callId": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "upsertCompany-providerRejected",
+      "operation": "upsertCompany"
+    },
+    {
+      "callId": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "upsertCompany-invalidResponse",
+      "operation": "upsertCompany"
+    },
+    {
+      "callId": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": ""
+      },
+      "name": "upsertCompany-defect",
+      "operation": "upsertCompany"
+    },
+    {
+      "callId": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "upsertCompany-rateLimit",
+      "operation": "upsertCompany"
+    },
+    {
+      "callId": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "upsertCompany-unavailable",
+      "operation": "upsertCompany"
+    },
+    {
+      "callId": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "upsertCompany-transportFailure",
+      "operation": "upsertCompany"
+    },
+    {
+      "callId": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":3433,\"status\":\"deleted\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "deleteCompany-deleted",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"status\":\"skipped\",\"reasons\":[{\"code\":\"1013\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "deleteCompany-alreadyAbsent",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "deleteCompany-providerRejected",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "deleteCompany-invalidResponse",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "input": {
+        "externalCompanyId": ""
+      },
+      "name": "deleteCompany-defect",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "deleteCompany-rateLimit",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "deleteCompany-unavailable",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "deleteCompany-transportFailure",
+      "operation": "deleteCompany"
     }
   ],
   "schemaVersion": 1

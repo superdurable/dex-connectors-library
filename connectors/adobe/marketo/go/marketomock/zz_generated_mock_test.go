@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getCompanyByExternalID/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.CompanyProfile](`{"id":3433,"company":"Sample Company"}`)
+			return err
+		}},
+		{name: "createCompany/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.CompanyWriteResult](`{"id":3433,"status":"created"}`)
+			return err
+		}},
+		{name: "upsertCompany/syncedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.CompanyWriteResult](`{"id":3433,"status":"updated"}`)
+			return err
+		}},
+		{name: "deleteCompany/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.DeletedCompany](`{"deleted":true}`)
+			return err
+		}},
 		{name: "getActivityPagingToken/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[marketo.ActivityPagingToken](`{"nextPageToken":"SAMPLE_ACTIVITY_CURSOR"}`)
 			return err
@@ -58,6 +74,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetCompanyByExternalID().Definition().Operation.OperationID != "getCompanyByExternalID" {
+		t.Errorf("getCompanyByExternalID mock has another definition")
+	}
+	if mock.CreateCompany().Definition().Operation.OperationID != "createCompany" {
+		t.Errorf("createCompany mock has another definition")
+	}
+	if mock.UpsertCompany().Definition().Operation.OperationID != "upsertCompany" {
+		t.Errorf("upsertCompany mock has another definition")
+	}
+	if mock.DeleteCompany().Definition().Operation.OperationID != "deleteCompany" {
+		t.Errorf("deleteCompany mock has another definition")
+	}
 	if mock.GetActivityPagingToken().Definition().Operation.OperationID != "getActivityPagingToken" {
 		t.Errorf("getActivityPagingToken mock has another definition")
 	}

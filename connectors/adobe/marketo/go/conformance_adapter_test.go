@@ -37,5 +37,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"getActivityPagingToken": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetActivityPagingToken(), reference),
 		"listActivityTypes":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListActivityTypes(), reference),
 		"listActivities":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListActivities(), reference),
+		"getCompanyByExternalID": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCompanyByExternalID(), reference),
+		"createCompany":          newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateCompany(), reference, scenario.CallID),
+		"upsertCompany":          newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpsertCompany(), reference, scenario.CallID),
+		"deleteCompany":          newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteCompany(), reference, scenario.CallID),
 	}}
 }

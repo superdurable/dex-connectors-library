@@ -43,6 +43,10 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetCompanyByExternalID() sdkgo.Query[GetCompanyByExternalIDInput, CompanyProfile]
+	CreateCompany() sdkgo.Mutation[CreateCompanyInput, CompanyWriteResult]
+	UpsertCompany() sdkgo.Mutation[UpsertCompanyInput, CompanyWriteResult]
+	DeleteCompany() sdkgo.Mutation[DeleteCompanyInput, DeletedCompany]
 	GetActivityPagingToken() sdkgo.Query[GetActivityPagingTokenInput, ActivityPagingToken]
 	ListActivityTypes() sdkgo.Query[ListActivityTypesInput, ActivityTypes]
 	ListActivities() sdkgo.Query[ListActivitiesInput, ActivityPage]
@@ -55,6 +59,18 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetCompanyByExternalID() sdkgo.Query[GetCompanyByExternalIDInput, CompanyProfile] {
+	return operations.client.GetCompanyByExternalID()
+}
+func (operations clientOperations) CreateCompany() sdkgo.Mutation[CreateCompanyInput, CompanyWriteResult] {
+	return operations.client.CreateCompany()
+}
+func (operations clientOperations) UpsertCompany() sdkgo.Mutation[UpsertCompanyInput, CompanyWriteResult] {
+	return operations.client.UpsertCompany()
+}
+func (operations clientOperations) DeleteCompany() sdkgo.Mutation[DeleteCompanyInput, DeletedCompany] {
+	return operations.client.DeleteCompany()
+}
 func (operations clientOperations) GetActivityPagingToken() sdkgo.Query[GetActivityPagingTokenInput, ActivityPagingToken] {
 	return operations.client.GetActivityPagingToken()
 }
@@ -276,6 +292,309 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const GetCompanyByExternalIDBranchFound sdkgo.BranchID = "found"
+const GetCompanyByExternalIDBranchNotFound sdkgo.BranchID = "notFound"
+const GetCompanyByExternalIDBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCompanyByExternalIDBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCompanyByExternalIDBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCompanyByExternalIDDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCompanyByExternalID"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCompanyByExternalIDBranchFound, Description: "Marketo returned the company."},
+		{ID: GetCompanyByExternalIDBranchNotFound, Description: "Marketo found no matching company.", Optional: true},
+		{ID: GetCompanyByExternalIDBranchProviderRejected, Description: "Marketo rejected the company lookup.", Optional: true},
+		{ID: GetCompanyByExternalIDBranchInvalidResponse, Description: "Marketo returned malformed company JSON.", Optional: true},
+		{ID: GetCompanyByExternalIDBranchDefect, Description: "The external company ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCompanyByExternalIDResult = sdkgo.QueryResult[CompanyProfile]
+
+type GetCompanyByExternalIDStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=adobe-marketo"`
+	operationID                    struct{}                                          `connector:"operationId=getCompanyByExternalID"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCompanyByExternalIDInput              `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCompanyByExternalIDResult]        `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCompanyByExternalIDResult]        `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCompanyByExternalIDResult]        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCompanyByExternalIDResult]        `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCompanyByExternalIDResult]        `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CompanyProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewGetCompanyByExternalIDStep[IN any](config GetCompanyByExternalIDStepConfig[IN]) sdkgo.QueryStep[IN, GetCompanyByExternalIDInput, CompanyProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adobe-marketo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCompanyByExternalIDInput, CompanyProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCompanyByExternalID(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCompanyByExternalIDResult] {
+			branches := make([]sdkgo.BranchTarget[GetCompanyByExternalIDResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCompanyByExternalIDBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCompanyByExternalIDBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCompanyByExternalIDBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCompanyByExternalIDBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCompanyByExternalIDBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateCompanyBranchCreated sdkgo.BranchID = "created"
+const CreateCompanyBranchAlreadyExists sdkgo.BranchID = "alreadyExists"
+const CreateCompanyBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateCompanyBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateCompanyBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateCompanyDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createCompany"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateCompanyBranchCreated, Description: "Marketo created the company."},
+		{ID: CreateCompanyBranchAlreadyExists, Description: "A company already uses the external ID.", Optional: true},
+		{ID: CreateCompanyBranchProviderRejected, Description: "Marketo conclusively rejected the create.", Optional: true},
+		{ID: CreateCompanyBranchUncertain, Description: "A prior create may have succeeded but cannot be confirmed.", Optional: true},
+		{ID: CreateCompanyBranchDefect, Description: "The external company ID or name is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateCompanyResult = sdkgo.MutationResult[CompanyWriteResult]
+
+type CreateCompanyStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=adobe-marketo"`
+	operationID                       struct{}                                                 `connector:"operationId=createCompany"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateCompanyInput                              `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateCompanyResult]                        `connector:"branch=created"`
+	AlreadyExists                     sdkgo.Target[CreateCompanyResult]                        `connector:"branch=alreadyExists,optional"`
+	ProviderRejected                  sdkgo.Target[CreateCompanyResult]                        `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateCompanyResult]                        `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateCompanyResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CompanyWriteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateCompanyStep[IN any](config CreateCompanyStepConfig[IN]) sdkgo.MutationStep[IN, CreateCompanyInput, CompanyWriteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adobe-marketo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateCompanyInput, CompanyWriteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateCompany(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateCompanyResult] {
+			branches := make([]sdkgo.BranchTarget[CreateCompanyResult], 0, 5)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateCompanyBranchCreated))
+			}
+			if config.AlreadyExists.HasStep() {
+				branches = append(branches, config.AlreadyExists.BranchTarget(CreateCompanyBranchAlreadyExists))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateCompanyBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateCompanyBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateCompanyBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpsertCompanyBranchSynced sdkgo.BranchID = "synced"
+const UpsertCompanyBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpsertCompanyBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpsertCompanyBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpsertCompanyDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "upsertCompany"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpsertCompanyBranchSynced, Description: "Marketo created or updated the company."},
+		{ID: UpsertCompanyBranchProviderRejected, Description: "Marketo rejected the upsert.", Optional: true},
+		{ID: UpsertCompanyBranchInvalidResponse, Description: "Marketo returned malformed company JSON.", Optional: true},
+		{ID: UpsertCompanyBranchDefect, Description: "The external company ID or name is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpsertCompanyResult = sdkgo.MutationResult[CompanyWriteResult]
+
+type UpsertCompanyStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=adobe-marketo"`
+	operationID                       struct{}                                                 `connector:"operationId=upsertCompany"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpsertCompanyInput                              `connector:"mapToOperationInput"`
+	Synced                            sdkgo.Target[UpsertCompanyResult]                        `connector:"branch=synced"`
+	ProviderRejected                  sdkgo.Target[UpsertCompanyResult]                        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpsertCompanyResult]                        `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpsertCompanyResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CompanyWriteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewUpsertCompanyStep[IN any](config UpsertCompanyStepConfig[IN]) sdkgo.MutationStep[IN, UpsertCompanyInput, CompanyWriteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adobe-marketo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpsertCompanyInput, CompanyWriteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpsertCompany(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpsertCompanyResult] {
+			branches := make([]sdkgo.BranchTarget[UpsertCompanyResult], 0, 4)
+			if config.Synced.HasStep() {
+				branches = append(branches, config.Synced.BranchTarget(UpsertCompanyBranchSynced))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpsertCompanyBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpsertCompanyBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpsertCompanyBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteCompanyBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteCompanyBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteCompanyBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteCompanyBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteCompanyDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteCompany"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteCompanyBranchDeleted, Description: "The company is absent after the call."},
+		{ID: DeleteCompanyBranchProviderRejected, Description: "Marketo rejected the deletion.", Optional: true},
+		{ID: DeleteCompanyBranchInvalidResponse, Description: "Marketo returned malformed deletion JSON.", Optional: true},
+		{ID: DeleteCompanyBranchDefect, Description: "The external company ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteCompanyResult = sdkgo.MutationResult[DeletedCompany]
+
+type DeleteCompanyStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=adobe-marketo"`
+	operationID                       struct{}                                             `connector:"operationId=deleteCompany"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteCompanyInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteCompanyResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteCompanyResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteCompanyResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteCompanyResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedCompany]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteCompanyStep[IN any](config DeleteCompanyStepConfig[IN]) sdkgo.MutationStep[IN, DeleteCompanyInput, DeletedCompany] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adobe-marketo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteCompanyInput, DeletedCompany]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteCompany(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteCompanyResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteCompanyResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteCompanyBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteCompanyBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteCompanyBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteCompanyBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetActivityPagingTokenBranchFound sdkgo.BranchID = "found"
