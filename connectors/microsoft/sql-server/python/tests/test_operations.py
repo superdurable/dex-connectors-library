@@ -25,9 +25,12 @@ from dex_connectors.sdk import (
     ConnectionRef,
     FailureKind,
     IdempotencyKey,
+    MutationAttempt,
     OperationRef,
+    RepeatOnUnknown,
     SecretString,
 )
+from dex_connectors.sdk.singledispatch import Marker, State
 from OpenSSL import SSL, crypto
 from pytds import tds_base  # type: ignore[import-untyped]
 
@@ -37,6 +40,11 @@ from dex_connectors.microsoft_sql_server import (
     Credentials,
     ExecuteStatementInput,
     QueryRowsInput,
+    StatementExecution,
+)
+from dex_connectors.microsoft_sql_server._generated.definitions import (
+    EXECUTE_DEFINITION,
+    EXECUTE_NON_IDEMPOTENT_DEFINITION,
 )
 from dex_connectors.microsoft_sql_server.client import _verify_server_hostname
 from dex_connectors.microsoft_sql_server.operations import (
@@ -121,11 +129,65 @@ def call(operation: str) -> Call:
 def client(connection: FakeConnection, *, max_rows: int = 1000, max_response_bytes: int = 1 << 20) -> Client:
     return Client(
         Config(
-            "localhost", "master", "sa", encrypt="disable", max_rows=max_rows,
+            "localhost",
+            "master",
+            "sa",
+            encrypt="disable",
+            max_rows=max_rows,
             max_response_bytes=max_response_bytes,
         ),
         CredentialsSource(),
         connection_factory=lambda **_kwargs: connection,
+    )
+
+
+class AttemptContext:
+    """Keep the last heartbeat across Execute attempts like Dex does."""
+
+    def __init__(self) -> None:
+        self.attempt = 1
+        self.run_id = "run"
+        self.call_id = str(uuid4())
+        self.deadline = datetime.now(UTC) + timedelta(seconds=30)
+        self.marker: Marker | None = None
+        self.read_error: Exception | None = None
+
+    def has_last_heartbeat_value(self) -> bool:
+        if self.read_error is not None:
+            raise self.read_error
+        return self.marker is not None
+
+    def get_last_heartbeat_value(self, value_type: type[object]) -> object:
+        return self.marker
+
+    async def heartbeat(self, value: object = None) -> None:
+        self.marker = value if isinstance(value, Marker) else None
+
+
+def fenced_call(context: AttemptContext) -> Call:
+    """Return the Step execution's Call; every attempt shares one Call ID, as in Dex."""
+    call_id = CallID(context.call_id)
+    return Call(
+        call_id,
+        ConnectionRef("microsoft-sql-server", "test"),
+        OperationRef("microsoft-sql-server", "executeNonIdempotent"),
+        IdempotencyKey(str(call_id)),
+        context=context,  # type: ignore[arg-type]
+    )
+
+
+def run_write(
+    connection: FakeConnection,
+    input: ExecuteStatementInput,
+    operation: str,
+    context: AttemptContext | None = None,
+) -> MutationAttempt[StatementExecution]:
+    """Invoke execute, or executeNonIdempotent with a fresh or given heartbeat context."""
+    native_client = client(connection)
+    if operation == "execute":
+        return asyncio.run(native_client.execute().invoke(call("execute"), input))
+    return asyncio.run(
+        native_client.execute_non_idempotent().invoke(fenced_call(context or AttemptContext()), input)
     )
 
 
@@ -469,24 +531,31 @@ def test_read_budget_truncates_rows_and_poisons_transport() -> None:
     assert not mutation_connection.rolled_back
 
 
-def test_commit_read_budget_failure_is_uncertain() -> None:
+@pytest.mark.parametrize(
+    ("operation", "expected_kind"), [("execute", "retry"), ("executeNonIdempotent", "uncertain")]
+)
+def test_commit_read_budget_failure_is_unknown(operation: str, expected_kind: str) -> None:
     connection = FakeConnection(FakeCursor(description=()), _ReadBudgetExceeded("commit reply too large"))
-    outcome = asyncio.run(
-        client(connection)
-        .execute()
-        .invoke(call("execute"), ExecuteStatementInput("UPDATE dbo.t SET x = @p1", (1,)))
-    )
-    assert outcome.kind == "uncertain"
+    outcome = run_write(connection, ExecuteStatementInput("UPDATE dbo.t SET x = @p1", (1,)), operation)
+    # execute is repeat-safe, so an unknown COMMIT runs again; executeNonIdempotent never does.
+    assert outcome.kind == expected_kind
     assert not connection.rolled_back
 
 
 @pytest.mark.parametrize(
-    ("bytes_accepted", "expected_kind"),
-    [(0, "retry"), (1, "uncertain"), (6, "uncertain")],
+    ("bytes_accepted", "operation", "expected_kind"),
+    [
+        (0, "execute", "retry"),
+        (1, "execute", "retry"),
+        (6, "execute", "retry"),
+        (0, "executeNonIdempotent", "retry"),
+        (1, "executeNonIdempotent", "uncertain"),
+        (6, "executeNonIdempotent", "uncertain"),
+    ],
 )
 @pytest.mark.parametrize("is_tls_wrapped", [False, True])
 def test_commit_send_failure_uses_actual_bytes_accepted(
-    bytes_accepted: int, expected_kind: str, is_tls_wrapped: bool
+    bytes_accepted: int, operation: str, expected_kind: str, is_tls_wrapped: bool
 ) -> None:
     class CountedSocket:
         def __init__(self) -> None:
@@ -502,6 +571,7 @@ def test_commit_send_failure_uses_actual_bytes_accepted(
             super().__init__(FakeCursor(description=()))
             raw_transport = CountedSocket()
             if is_tls_wrapped:
+
                 class EncryptedTransport:
                     def __init__(self, transport: CountedSocket) -> None:
                         self._transport = transport
@@ -520,11 +590,7 @@ def test_commit_send_failure_uses_actual_bytes_accepted(
             raise EOFError("commit response was lost")
 
     connection = SendConnection()
-    outcome = asyncio.run(
-        client(connection)
-        .execute()
-        .invoke(call("execute"), ExecuteStatementInput("UPDATE dbo.t SET x = @p1", (1,)))
-    )
+    outcome = run_write(connection, ExecuteStatementInput("UPDATE dbo.t SET x = @p1", (1,)), operation)
     assert outcome.kind == expected_kind
     if bytes_accepted == 0:
         assert outcome.failure.kind == FailureKind.TRANSPORT
@@ -841,7 +907,7 @@ def test_query_completed_and_truncated() -> None:
     assert truncated.value.truncated
 
 
-def test_execute_limit_rolls_back_and_commit_loss_is_uncertain() -> None:
+def test_execute_limit_rolls_back_and_commit_loss_retries() -> None:
     limited_connection = FakeConnection(FakeCursor(description=(), rowcount=2))
     limited = asyncio.run(
         client(limited_connection)
@@ -850,13 +916,112 @@ def test_execute_limit_rolls_back_and_commit_loss_is_uncertain() -> None:
     )
     assert limited.branch == "limitExceeded"
     assert not limited_connection.committed
-    uncertain_connection = FakeConnection(FakeCursor(description=()), EOFError())
-    uncertain = asyncio.run(
-        client(uncertain_connection)
+    unknown_connection = FakeConnection(FakeCursor(description=()), EOFError())
+    unknown = asyncio.run(
+        client(unknown_connection)
         .execute()
         .invoke(call("execute"), ExecuteStatementInput("UPDATE dbo.t SET x = @p1", (1,)))
     )
-    assert uncertain.kind == "uncertain"
+    # execute is repeat-safe, so an unknown COMMIT runs again instead of selecting uncertain.
+    assert unknown.kind == "retry"
+
+
+_BALANCE_INPUT = ExecuteStatementInput(
+    "UPDATE dbo.balances SET amount = amount + @p1 WHERE id = @p2", ("25.00", 7)
+)
+
+
+def test_execute_tiers_are_declared() -> None:
+    assert EXECUTE_DEFINITION.repeat_on_unknown == RepeatOnUnknown.SAFE
+    assert EXECUTE_NON_IDEMPOTENT_DEFINITION.repeat_on_unknown == RepeatOnUnknown.UNSAFE
+
+
+def test_non_idempotent_claims_before_commit_and_commits_once() -> None:
+    connection = FakeConnection(FakeCursor(description=()))
+    context = AttemptContext()
+    outcome = run_write(connection, _BALANCE_INPUT, "executeNonIdempotent", context)
+    assert outcome.kind == "branch" and outcome.branch == "completed" and connection.committed
+    assert context.marker is not None and context.marker.state == State.CLAIMED
+
+
+def test_non_idempotent_never_runs_again_after_an_unknown_commit() -> None:
+    connection = FakeConnection(FakeCursor(description=()), EOFError())
+    context = AttemptContext()
+    first = run_write(connection, _BALANCE_INPUT, "executeNonIdempotent", context)
+    assert first.kind == "uncertain" and first.failure is not None
+    assert first.failure.operation == "executeNonIdempotent"
+    fresh = FakeConnection(FakeCursor(description=()))
+    context.attempt = 2
+    again = run_write(fresh, _BALANCE_INPUT, "executeNonIdempotent", context)
+    assert again.kind == "uncertain"
+    assert not fresh.committed and not fresh.closed, "a later attempt never connects"
+
+
+def test_non_idempotent_resends_only_after_a_proven_rollback() -> None:
+    deadlock = tds_base.DatabaseError("deadlock victim")
+    deadlock.number = 1205
+    deadlock.state = 51
+    deadlock.severity = 13
+    context = AttemptContext()
+    first = run_write(
+        FakeConnection(FakeCursor(description=()), deadlock), _BALANCE_INPUT, "executeNonIdempotent", context
+    )
+    assert first.kind == "retry"
+    assert context.marker is not None and context.marker.state == State.CAN_RESEND
+    healthy = FakeConnection(FakeCursor(description=()))
+    context.attempt = 2
+    second = run_write(healthy, _BALANCE_INPUT, "executeNonIdempotent", context)
+    assert second.branch == "completed" and healthy.committed
+
+
+def test_non_idempotent_lost_worker_and_unreadable_checkpoint() -> None:
+    connection = FakeConnection(FakeCursor(description=()))
+    after_lost_worker = AttemptContext()
+    after_lost_worker.attempt = 2
+    assert (
+        run_write(connection, _BALANCE_INPUT, "executeNonIdempotent", after_lost_worker).kind == "uncertain"
+    )
+    unreadable = AttemptContext()
+    unreadable.read_error = OSError("heartbeat store unavailable")
+    retried = run_write(connection, _BALANCE_INPUT, "executeNonIdempotent", unreadable)
+    assert retried.kind == "retry" and retried.failure is not None
+    assert retried.failure.kind == FailureKind.AVAILABILITY
+    assert not connection.closed, "neither attempt connected"
+
+
+def test_non_idempotent_rejects_a_definite_refusal_without_committing() -> None:
+    violation = tds_base.DatabaseError("secret value")
+    violation.number = 547
+    violation.state = 0
+    violation.severity = 16
+    rejected = FakeConnection(FakeCursor(failure=violation, fail_on="UPDATE"))
+    context = AttemptContext()
+    outcome = run_write(rejected, _BALANCE_INPUT, "executeNonIdempotent", context)
+    assert outcome.branch == "providerRejected" and not rejected.committed
+    assert outcome.failure is not None and "secret" not in outcome.failure.message
+    assert context.marker is not None and context.marker.state == State.NOT_SENT
+
+    no_transaction = tds_base.DatabaseError("no transaction")
+    no_transaction.number = 3902
+    no_transaction.state = 1
+    no_transaction.severity = 16
+    deferred_context = AttemptContext()
+    at_commit = run_write(
+        FakeConnection(FakeCursor(description=()), no_transaction),
+        _BALANCE_INPUT,
+        "executeNonIdempotent",
+        deferred_context,
+    )
+    assert at_commit.branch == "providerRejected"
+    assert deferred_context.marker is not None and deferred_context.marker.state == State.CAN_RESEND
+
+    limited = FakeConnection(FakeCursor(description=(), rowcount=3))
+    limit = run_write(
+        limited,
+        ExecuteStatementInput(_BALANCE_INPUT.statement, _BALANCE_INPUT.parameters, max_rows_affected=1),
+        "executeNonIdempotent",
+    )
+    assert limit.branch == "limitExceeded" and not limited.committed
 
 
 def test_native_query_and_execute_failure_branches() -> None:

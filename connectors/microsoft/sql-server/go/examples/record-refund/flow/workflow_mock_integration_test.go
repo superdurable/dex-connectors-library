@@ -57,6 +57,7 @@ func TestRecordRefundHandlesMockRaceLostWithRealDex(t *testing.T) {
 		IdempotencyKeyPlaceholder: 4, MaxRowsAffected: &maxRowsAffected, ReturnsOutputRows: true,
 	}, executions[0].Input)
 	require.Equal(t, sqlserver.ExecuteStatementBranchCompleted, executions[0].Branch)
+	require.Empty(t, mock.ExecuteStatementNonIdempotent().Calls(), "another Flow's refund is never added to the daily total again")
 }
 
 func TestRecordRefundUsesMockInsertDefaultWithRealDex(t *testing.T) {
@@ -75,4 +76,8 @@ func TestRecordRefundUsesMockInsertDefaultWithRealDex(t *testing.T) {
 	require.False(t, outcome.WasReconciled)
 	require.Len(t, mock.QueryRows().Calls(), 1)
 	require.Len(t, mock.ExecuteStatement().Calls(), 1)
+	require.True(t, outcome.IsAddedToDailyTotal)
+	dailyTotalCalls := mock.ExecuteStatementNonIdempotent().Calls()
+	require.Len(t, dailyTotalCalls, 1)
+	require.Equal(t, []any{"250.00"}, dailyTotalCalls[0].Input.Parameters)
 }

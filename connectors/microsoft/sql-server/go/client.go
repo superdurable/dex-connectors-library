@@ -4,10 +4,12 @@
 // Package sqlserver connects Dex applications to Microsoft SQL Server, Azure SQL Database, and
 // Azure SQL Managed Instance.
 //
-// The connector exposes two operations. QueryRows runs one parameterized SELECT inside a
+// The connector exposes three operations. QueryRows runs one parameterized SELECT inside a
 // transaction that it always rolls back and returns bounded rows. ExecuteStatement runs one
-// parameterized INSERT, UPDATE, DELETE, or MERGE in its own transaction, commits it, and reports
-// the rows it affected and any OUTPUT rows. Both bind values only through the positional
+// parameterized, repeat-safe INSERT, UPDATE, DELETE, or MERGE in its own transaction, commits it,
+// and reports the rows it affected and any OUTPUT rows; an unknown COMMIT outcome runs it again.
+// ExecuteStatementNonIdempotent runs a write that must not run twice, commits it at most once, and
+// selects uncertain when a COMMIT outcome is unknown. All bind values only through the positional
 // parameters @p1 through @pN, which SQL Server receives as typed sp_executesql parameters, and map
 // every result column to a JSON value without losing precision.
 //
@@ -183,9 +185,15 @@ func (client *Client) QueryRows() QueryRowsOperation {
 	return QueryRowsOperation{client: client}
 }
 
-// ExecuteStatement returns the transactional write operation bound to this client.
+// ExecuteStatement returns the repeat-safe transactional write operation bound to this client.
 func (client *Client) ExecuteStatement() ExecuteStatementOperation {
 	return ExecuteStatementOperation{client: client}
+}
+
+// ExecuteStatementNonIdempotent returns the fenced transactional write operation, which never
+// runs its statement twice, bound to this client.
+func (client *Client) ExecuteStatementNonIdempotent() ExecuteStatementNonIdempotentOperation {
+	return ExecuteStatementNonIdempotentOperation{client: client}
 }
 
 // newCallContext bounds the whole call so it returns a classified attempt before Dex's Execute timeout.
