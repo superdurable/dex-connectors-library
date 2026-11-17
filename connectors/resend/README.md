@@ -40,6 +40,8 @@ unverified.
 | `cancelScheduledEmail` | mutation | EmailReference |
 | `createContact` | mutation | ContactReference |
 | `createDomain` | mutation | DomainReference |
+| `updateDomain` | mutation | DomainReference |
+| `verifyDomain` | mutation | DomainReference |
 
 The five new Go queries use the `safe` repeat tier and bounded HTTP responses.
 List inputs accept a 1–100 item `limit`; zero uses Resend's default for emails
@@ -62,6 +64,20 @@ reads back by unique email or domain name after an unknown outcome, then
 resends only while the Dex Fence permits. A reached cap with no confirmation
 selects optional `uncertain`. Enter a contact email from **Contacts** or a DNS
 domain name in **Domains**; blank or invalid identities are rejected locally.
+
+`updateDomain` sets selected absolute tracking, TLS, and sending/receiving
+capability fields with the `safe` tier. Omitted pointers preserve current
+settings, while `false` disables tracking. `tls` is `opportunistic` or
+`enforced`; capabilities are `enabled` or `disabled`, and at least one must
+remain enabled. `verifyDomain` starts Resend's asynchronous DNS verification
+cycle; repeating it is harmless and uses the `safe` tier. Its successful
+branch confirms only that verification started, not that DNS is verified.
+Find the domain ID under [Resend Domains](https://resend.com/domains), then
+consult [update](https://resend.com/docs/api-reference/domains/update-domain)
+and [verify](https://resend.com/docs/api-reference/domains/verify-domain)
+for settings and DNS setup. The [`verify-domain` Flow](go/examples/verify-domain/README.md)
+exercises the generated factory through real Dex with a provider mock. Domain
+claim is dashboard-only; Resend has not published a claim API.
 
 `sendEmail` sends the stable Dex call idempotency key in `Idempotency-Key`. Resend documents 24-hour key retention; the connector's default one-hour retry budget stays within that window. Keep any per-Step retry override shorter than 24 hours. A 409 `concurrent_idempotent_requests` retries with the same key, while `invalid_idempotent_request` selects `providerRejected`.
 

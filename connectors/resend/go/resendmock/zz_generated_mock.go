@@ -23,6 +23,8 @@ type Mock struct {
 	updateContact        *connectormock.Mutation[resend.UpdateContactInput, resend.ContactReference]
 	deleteContact        *connectormock.Mutation[resend.DeleteContactInput, resend.DeletedContact]
 	deleteDomain         *connectormock.Mutation[resend.DeleteDomainInput, resend.DeletedDomain]
+	updateDomain         *connectormock.Mutation[resend.UpdateDomainInput, resend.DomainReference]
+	verifyDomain         *connectormock.Mutation[resend.VerifyDomainInput, resend.DomainReference]
 	updateScheduledEmail *connectormock.Mutation[resend.UpdateScheduledEmailInput, resend.EmailReference]
 	cancelScheduledEmail *connectormock.Mutation[resend.CancelScheduledEmailInput, resend.EmailReference]
 	sendEmail            *connectormock.Mutation[resend.SendEmailInput, resend.SentEmail]
@@ -44,6 +46,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		updateContact:        connectormock.NewMutation[resend.UpdateContactInput, resend.ContactReference](t, resend.UpdateContactDefinition),
 		deleteContact:        connectormock.NewMutation[resend.DeleteContactInput, resend.DeletedContact](t, resend.DeleteContactDefinition),
 		deleteDomain:         connectormock.NewMutation[resend.DeleteDomainInput, resend.DeletedDomain](t, resend.DeleteDomainDefinition),
+		updateDomain:         connectormock.NewMutation[resend.UpdateDomainInput, resend.DomainReference](t, resend.UpdateDomainDefinition),
+		verifyDomain:         connectormock.NewMutation[resend.VerifyDomainInput, resend.DomainReference](t, resend.VerifyDomainDefinition),
 		updateScheduledEmail: connectormock.NewMutation[resend.UpdateScheduledEmailInput, resend.EmailReference](t, resend.UpdateScheduledEmailDefinition),
 		cancelScheduledEmail: connectormock.NewMutation[resend.CancelScheduledEmailInput, resend.EmailReference](t, resend.CancelScheduledEmailDefinition),
 		sendEmail:            connectormock.NewMutation[resend.SendEmailInput, resend.SentEmail](t, resend.SendEmailDefinition),
@@ -59,6 +63,8 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.updateContact.Default(UpdateContactDefault())
 	mock.deleteContact.Default(DeleteContactDefault())
 	mock.deleteDomain.Default(DeleteDomainDefault())
+	mock.updateDomain.Default(UpdateDomainDefault())
+	mock.verifyDomain.Default(VerifyDomainDefault())
 	mock.updateScheduledEmail.Default(UpdateScheduledEmailDefault())
 	mock.cancelScheduledEmail.Default(CancelScheduledEmailDefault())
 	mock.sendEmail.Default(SendEmailDefault())
@@ -102,6 +108,16 @@ func (mock *Mock) DeleteContact() *connectormock.Mutation[resend.DeleteContactIn
 // DeleteDomain returns the deleteDomain script.
 func (mock *Mock) DeleteDomain() *connectormock.Mutation[resend.DeleteDomainInput, resend.DeletedDomain] {
 	return mock.deleteDomain
+}
+
+// UpdateDomain returns the updateDomain script.
+func (mock *Mock) UpdateDomain() *connectormock.Mutation[resend.UpdateDomainInput, resend.DomainReference] {
+	return mock.updateDomain
+}
+
+// VerifyDomain returns the verifyDomain script.
+func (mock *Mock) VerifyDomain() *connectormock.Mutation[resend.VerifyDomainInput, resend.DomainReference] {
+	return mock.verifyDomain
 }
 
 // UpdateScheduledEmail returns the updateScheduledEmail script.
@@ -165,6 +181,12 @@ func (operations mockOperations) DeleteContact() sdkgo.Mutation[resend.DeleteCon
 }
 func (operations mockOperations) DeleteDomain() sdkgo.Mutation[resend.DeleteDomainInput, resend.DeletedDomain] {
 	return operations.mock.deleteDomain
+}
+func (operations mockOperations) UpdateDomain() sdkgo.Mutation[resend.UpdateDomainInput, resend.DomainReference] {
+	return operations.mock.updateDomain
+}
+func (operations mockOperations) VerifyDomain() sdkgo.Mutation[resend.VerifyDomainInput, resend.DomainReference] {
+	return operations.mock.verifyDomain
 }
 func (operations mockOperations) UpdateScheduledEmail() sdkgo.Mutation[resend.UpdateScheduledEmailInput, resend.EmailReference] {
 	return operations.mock.updateScheduledEmail
@@ -387,6 +409,88 @@ func DeleteDomainDeleteDomainDefault() connectormock.Case[resend.DeletedDomain] 
 // DeleteDomainDefault is the manifest default, deleteDomainDefault, which New installs.
 func DeleteDomainDefault() connectormock.Case[resend.DeletedDomain] {
 	return DeleteDomainDeleteDomainDefault()
+}
+
+// UpdateDomainUpdated selects the updated branch: Resend updated the domain.
+func UpdateDomainUpdated(value resend.DomainReference, failure *sdkgo.Failure) connectormock.Case[resend.DomainReference] {
+	return connectormock.Branch(resend.UpdateDomainBranchUpdated, value, failure)
+}
+
+// UpdateDomainNotFound selects the notFound branch: The domain does not exist.
+func UpdateDomainNotFound(value resend.DomainReference, failure *sdkgo.Failure) connectormock.Case[resend.DomainReference] {
+	return connectormock.Branch(resend.UpdateDomainBranchNotFound, value, failure)
+}
+
+// UpdateDomainProviderRejected selects the providerRejected branch: Resend definitively rejected the update.
+func UpdateDomainProviderRejected(value resend.DomainReference, failure *sdkgo.Failure) connectormock.Case[resend.DomainReference] {
+	return connectormock.Branch(resend.UpdateDomainBranchProviderRejected, value, failure)
+}
+
+// UpdateDomainInvalidResponse selects the invalidResponse branch: Resend returned malformed or oversized JSON.
+func UpdateDomainInvalidResponse(value resend.DomainReference, failure *sdkgo.Failure) connectormock.Case[resend.DomainReference] {
+	return connectormock.Branch(resend.UpdateDomainBranchInvalidResponse, value, failure)
+}
+
+// UpdateDomainDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateDomainDefect(value resend.DomainReference, failure *sdkgo.Failure) connectormock.Case[resend.DomainReference] {
+	return connectormock.Branch(resend.UpdateDomainBranchDefect, value, failure)
+}
+
+// UpdateDomainRetry asks Dex to retry the updateDomain Step, after the delay when it is positive.
+func UpdateDomainRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.DomainReference] {
+	return connectormock.Retry[resend.DomainReference](failure, after)
+}
+
+// UpdateDomainUpdateDomainDefault is the manifest mock updateDomainDefault: One domain was updated.
+func UpdateDomainUpdateDomainDefault() connectormock.Case[resend.DomainReference] {
+	value := connectormock.MustDecodeOutput[resend.DomainReference](`{"id":"domain-1"}`)
+	return connectormock.Branch(resend.UpdateDomainBranchUpdated, value, nil)
+}
+
+// UpdateDomainDefault is the manifest default, updateDomainDefault, which New installs.
+func UpdateDomainDefault() connectormock.Case[resend.DomainReference] {
+	return UpdateDomainUpdateDomainDefault()
+}
+
+// VerifyDomainVerificationStarted selects the verificationStarted branch: Resend started or confirmed verification.
+func VerifyDomainVerificationStarted(value resend.DomainReference, failure *sdkgo.Failure) connectormock.Case[resend.DomainReference] {
+	return connectormock.Branch(resend.VerifyDomainBranchVerificationStarted, value, failure)
+}
+
+// VerifyDomainNotFound selects the notFound branch: The domain does not exist.
+func VerifyDomainNotFound(value resend.DomainReference, failure *sdkgo.Failure) connectormock.Case[resend.DomainReference] {
+	return connectormock.Branch(resend.VerifyDomainBranchNotFound, value, failure)
+}
+
+// VerifyDomainProviderRejected selects the providerRejected branch: Resend definitively rejected verification.
+func VerifyDomainProviderRejected(value resend.DomainReference, failure *sdkgo.Failure) connectormock.Case[resend.DomainReference] {
+	return connectormock.Branch(resend.VerifyDomainBranchProviderRejected, value, failure)
+}
+
+// VerifyDomainInvalidResponse selects the invalidResponse branch: Resend returned malformed or oversized JSON.
+func VerifyDomainInvalidResponse(value resend.DomainReference, failure *sdkgo.Failure) connectormock.Case[resend.DomainReference] {
+	return connectormock.Branch(resend.VerifyDomainBranchInvalidResponse, value, failure)
+}
+
+// VerifyDomainDefect selects the defect branch: Local input or credentials are invalid.
+func VerifyDomainDefect(value resend.DomainReference, failure *sdkgo.Failure) connectormock.Case[resend.DomainReference] {
+	return connectormock.Branch(resend.VerifyDomainBranchDefect, value, failure)
+}
+
+// VerifyDomainRetry asks Dex to retry the verifyDomain Step, after the delay when it is positive.
+func VerifyDomainRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.DomainReference] {
+	return connectormock.Retry[resend.DomainReference](failure, after)
+}
+
+// VerifyDomainVerifyDomainDefault is the manifest mock verifyDomainDefault: Verification was started.
+func VerifyDomainVerifyDomainDefault() connectormock.Case[resend.DomainReference] {
+	value := connectormock.MustDecodeOutput[resend.DomainReference](`{"id":"domain-1"}`)
+	return connectormock.Branch(resend.VerifyDomainBranchVerificationStarted, value, nil)
+}
+
+// VerifyDomainDefault is the manifest default, verifyDomainDefault, which New installs.
+func VerifyDomainDefault() connectormock.Case[resend.DomainReference] {
+	return VerifyDomainVerifyDomainDefault()
 }
 
 // UpdateScheduledEmailUpdated selects the updated branch: Resend updated the scheduled email.

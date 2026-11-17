@@ -147,6 +147,40 @@ spec:
     execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: deleteDomainDefault, branch: deleted, default: true, description: One domain was deleted., output: {id: domain-1, deleted: true}}
+  - name: updateDomain
+    goName: UpdateDomain
+    inputType: UpdateDomainInput
+    outputType: DomainReference
+    kind: mutation
+    description: Set absolute tracking, TLS, or capability settings on a domain.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated the domain.}
+    - {id: notFound, goName: NotFound, description: The domain does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the update., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateDomainDefault, branch: updated, default: true, description: One domain was updated., output: {id: domain-1}}
+  - name: verifyDomain
+    goName: VerifyDomain
+    inputType: VerifyDomainInput
+    outputType: DomainReference
+    kind: mutation
+    description: Start or restart Resend's asynchronous DNS verification cycle.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: verificationStarted, goName: VerificationStarted, description: Resend started or confirmed verification.}
+    - {id: notFound, goName: NotFound, description: The domain does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected verification., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: verifyDomainDefault, branch: verificationStarted, default: true, description: Verification was started., output: {id: domain-1}}
   - name: updateScheduledEmail
     goName: UpdateScheduledEmail
     inputType: UpdateScheduledEmailInput

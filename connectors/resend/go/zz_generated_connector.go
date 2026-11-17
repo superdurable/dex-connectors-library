@@ -45,6 +45,8 @@ type Operations interface {
 	UpdateContact() sdkgo.Mutation[UpdateContactInput, ContactReference]
 	DeleteContact() sdkgo.Mutation[DeleteContactInput, DeletedContact]
 	DeleteDomain() sdkgo.Mutation[DeleteDomainInput, DeletedDomain]
+	UpdateDomain() sdkgo.Mutation[UpdateDomainInput, DomainReference]
+	VerifyDomain() sdkgo.Mutation[VerifyDomainInput, DomainReference]
 	UpdateScheduledEmail() sdkgo.Mutation[UpdateScheduledEmailInput, EmailReference]
 	CancelScheduledEmail() sdkgo.Mutation[CancelScheduledEmailInput, EmailReference]
 	SendEmail() sdkgo.Mutation[SendEmailInput, SentEmail]
@@ -72,6 +74,12 @@ func (operations clientOperations) DeleteContact() sdkgo.Mutation[DeleteContactI
 }
 func (operations clientOperations) DeleteDomain() sdkgo.Mutation[DeleteDomainInput, DeletedDomain] {
 	return operations.client.DeleteDomain()
+}
+func (operations clientOperations) UpdateDomain() sdkgo.Mutation[UpdateDomainInput, DomainReference] {
+	return operations.client.UpdateDomain()
+}
+func (operations clientOperations) VerifyDomain() sdkgo.Mutation[VerifyDomainInput, DomainReference] {
+	return operations.client.VerifyDomain()
 }
 func (operations clientOperations) UpdateScheduledEmail() sdkgo.Mutation[UpdateScheduledEmailInput, EmailReference] {
 	return operations.client.UpdateScheduledEmail()
@@ -616,6 +624,162 @@ func NewDeleteDomainStep[IN any](config DeleteDomainStepConfig[IN]) sdkgo.Mutati
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteDomainBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateDomainBranchUpdated sdkgo.BranchID = "updated"
+const UpdateDomainBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateDomainBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateDomainBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateDomainBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateDomainDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateDomain"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateDomainBranchUpdated, Description: "Resend updated the domain."},
+		{ID: UpdateDomainBranchNotFound, Description: "The domain does not exist.", Optional: true},
+		{ID: UpdateDomainBranchProviderRejected, Description: "Resend definitively rejected the update.", Optional: true},
+		{ID: UpdateDomainBranchInvalidResponse, Description: "Resend returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateDomainBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateDomainResult = sdkgo.MutationResult[DomainReference]
+
+type UpdateDomainStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=resend"`
+	operationID                       struct{}                                              `connector:"operationId=updateDomain"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateDomainInput                            `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateDomainResult]                      `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateDomainResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateDomainResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateDomainResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateDomainResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DomainReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateDomainStep[IN any](config UpdateDomainStepConfig[IN]) sdkgo.MutationStep[IN, UpdateDomainInput, DomainReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateDomainInput, DomainReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateDomain(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateDomainResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateDomainResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateDomainBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateDomainBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateDomainBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateDomainBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateDomainBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const VerifyDomainBranchVerificationStarted sdkgo.BranchID = "verificationStarted"
+const VerifyDomainBranchNotFound sdkgo.BranchID = "notFound"
+const VerifyDomainBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const VerifyDomainBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const VerifyDomainBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var VerifyDomainDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "verifyDomain"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: VerifyDomainBranchVerificationStarted, Description: "Resend started or confirmed verification."},
+		{ID: VerifyDomainBranchNotFound, Description: "The domain does not exist.", Optional: true},
+		{ID: VerifyDomainBranchProviderRejected, Description: "Resend definitively rejected verification.", Optional: true},
+		{ID: VerifyDomainBranchInvalidResponse, Description: "Resend returned malformed or oversized JSON.", Optional: true},
+		{ID: VerifyDomainBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type VerifyDomainResult = sdkgo.MutationResult[DomainReference]
+
+type VerifyDomainStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=resend"`
+	operationID                       struct{}                                              `connector:"operationId=verifyDomain"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) VerifyDomainInput                            `connector:"mapToOperationInput"`
+	VerificationStarted               sdkgo.Target[VerifyDomainResult]                      `connector:"branch=verificationStarted"`
+	NotFound                          sdkgo.Target[VerifyDomainResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[VerifyDomainResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[VerifyDomainResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[VerifyDomainResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DomainReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewVerifyDomainStep[IN any](config VerifyDomainStepConfig[IN]) sdkgo.MutationStep[IN, VerifyDomainInput, DomainReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, VerifyDomainInput, DomainReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.VerifyDomain(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[VerifyDomainResult] {
+			branches := make([]sdkgo.BranchTarget[VerifyDomainResult], 0, 5)
+			if config.VerificationStarted.HasStep() {
+				branches = append(branches, config.VerificationStarted.BranchTarget(VerifyDomainBranchVerificationStarted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(VerifyDomainBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(VerifyDomainBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(VerifyDomainBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(VerifyDomainBranchDefect))
 			}
 			return branches
 		}(),

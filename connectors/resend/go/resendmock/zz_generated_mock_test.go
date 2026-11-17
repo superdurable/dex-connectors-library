@@ -36,6 +36,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[resend.DeletedDomain](`{"id":"domain-1","deleted":true}`)
 			return err
 		}},
+		{name: "updateDomain/updateDomainDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DomainReference](`{"id":"domain-1"}`)
+			return err
+		}},
+		{name: "verifyDomain/verifyDomainDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DomainReference](`{"id":"domain-1"}`)
+			return err
+		}},
 		{name: "updateScheduledEmail/updateScheduledEmailDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[resend.EmailReference](`{"id":"email-1"}`)
 			return err
@@ -96,6 +104,12 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteDomain().Definition().Operation.OperationID != "deleteDomain" {
 		t.Errorf("deleteDomain mock has another definition")
+	}
+	if mock.UpdateDomain().Definition().Operation.OperationID != "updateDomain" {
+		t.Errorf("updateDomain mock has another definition")
+	}
+	if mock.VerifyDomain().Definition().Operation.OperationID != "verifyDomain" {
+		t.Errorf("verifyDomain mock has another definition")
 	}
 	if mock.UpdateScheduledEmail().Definition().Operation.OperationID != "updateScheduledEmail" {
 		t.Errorf("updateScheduledEmail mock has another definition")

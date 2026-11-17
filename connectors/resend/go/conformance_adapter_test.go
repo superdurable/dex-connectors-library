@@ -42,6 +42,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"cancelScheduledEmail": newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.CancelScheduledEmail(), connection, scenario.CallID),
 		"createContact":        newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateContact(), connection, scenario.CallID),
 		"createDomain":         newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateDomain(), connection, scenario.CallID),
+		"updateDomain":         newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateDomain(), connection, scenario.CallID),
+		"verifyDomain":         newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.VerifyDomain(), connection, scenario.CallID),
 	}}
 }
 

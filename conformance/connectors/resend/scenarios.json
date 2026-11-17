@@ -5198,6 +5198,739 @@
       ],
       "name": "createDomain-send-cap",
       "operation": "createDomain"
+    },
+    {
+      "callId": "1a0f3816-783e-501a-8e4c-32c63fa1e467",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"domain\",\"id\":\"domain-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/domains/domain-1",
+          "requestBody": {
+            "capabilities": {
+              "receiving": "enabled",
+              "sending": "enabled"
+            },
+            "click_tracking": true,
+            "open_tracking": true,
+            "tls": "enforced",
+            "tracking_subdomain": "links"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "domain-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a0f3816-783e-501a-8e4c-32c63fa1e467",
+      "input": {
+        "clickTracking": true,
+        "id": "domain-1",
+        "openTracking": true,
+        "receiving": "enabled",
+        "sending": "enabled",
+        "tls": "enforced",
+        "trackingSubdomain": "links"
+      },
+      "name": "updateDomain-success",
+      "operation": "updateDomain"
+    },
+    {
+      "callId": "1a0f3816-783e-501a-8e4c-32c63fa1e467",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/domains/domain-1",
+          "requestBody": {
+            "capabilities": {
+              "receiving": "enabled",
+              "sending": "enabled"
+            },
+            "click_tracking": true,
+            "open_tracking": true,
+            "tls": "enforced",
+            "tracking_subdomain": "links"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a0f3816-783e-501a-8e4c-32c63fa1e467",
+      "input": {
+        "clickTracking": true,
+        "id": "domain-1",
+        "openTracking": true,
+        "receiving": "enabled",
+        "sending": "enabled",
+        "tls": "enforced",
+        "trackingSubdomain": "links"
+      },
+      "name": "updateDomain-notFound",
+      "operation": "updateDomain"
+    },
+    {
+      "callId": "1a0f3816-783e-501a-8e4c-32c63fa1e467",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/domains/domain-1",
+          "requestBody": {
+            "capabilities": {
+              "receiving": "enabled",
+              "sending": "enabled"
+            },
+            "click_tracking": true,
+            "open_tracking": true,
+            "tls": "enforced",
+            "tracking_subdomain": "links"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a0f3816-783e-501a-8e4c-32c63fa1e467",
+      "input": {
+        "clickTracking": true,
+        "id": "domain-1",
+        "openTracking": true,
+        "receiving": "enabled",
+        "sending": "enabled",
+        "tls": "enforced",
+        "trackingSubdomain": "links"
+      },
+      "name": "updateDomain-providerRejected",
+      "operation": "updateDomain"
+    },
+    {
+      "callId": "1a0f3816-783e-501a-8e4c-32c63fa1e467",
+      "exchanges": [
+        {
+          "body": "bad-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/domains/domain-1",
+          "requestBody": {
+            "capabilities": {
+              "receiving": "enabled",
+              "sending": "enabled"
+            },
+            "click_tracking": true,
+            "open_tracking": true,
+            "tls": "enforced",
+            "tracking_subdomain": "links"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a0f3816-783e-501a-8e4c-32c63fa1e467",
+      "input": {
+        "clickTracking": true,
+        "id": "domain-1",
+        "openTracking": true,
+        "receiving": "enabled",
+        "sending": "enabled",
+        "tls": "enforced",
+        "trackingSubdomain": "links"
+      },
+      "name": "updateDomain-invalidResponse",
+      "operation": "updateDomain"
+    },
+    {
+      "callId": "1a0f3816-783e-501a-8e4c-32c63fa1e467",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a0f3816-783e-501a-8e4c-32c63fa1e467",
+      "input": {
+        "clickTracking": true,
+        "id": "",
+        "openTracking": true,
+        "receiving": "enabled",
+        "sending": "enabled",
+        "tls": "enforced",
+        "trackingSubdomain": "links"
+      },
+      "name": "updateDomain-defect",
+      "operation": "updateDomain"
+    },
+    {
+      "callId": "1a0f3816-783e-501a-8e4c-32c63fa1e467",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/domains/domain-1",
+          "requestBody": {
+            "capabilities": {
+              "receiving": "enabled",
+              "sending": "enabled"
+            },
+            "click_tracking": true,
+            "open_tracking": true,
+            "tls": "enforced",
+            "tracking_subdomain": "links"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a0f3816-783e-501a-8e4c-32c63fa1e467",
+      "input": {
+        "clickTracking": true,
+        "id": "domain-1",
+        "openTracking": true,
+        "receiving": "enabled",
+        "sending": "enabled",
+        "tls": "enforced",
+        "trackingSubdomain": "links"
+      },
+      "name": "updateDomain-429",
+      "operation": "updateDomain"
+    },
+    {
+      "callId": "1a0f3816-783e-501a-8e4c-32c63fa1e467",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/domains/domain-1",
+          "requestBody": {
+            "capabilities": {
+              "receiving": "enabled",
+              "sending": "enabled"
+            },
+            "click_tracking": true,
+            "open_tracking": true,
+            "tls": "enforced",
+            "tracking_subdomain": "links"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a0f3816-783e-501a-8e4c-32c63fa1e467",
+      "input": {
+        "clickTracking": true,
+        "id": "domain-1",
+        "openTracking": true,
+        "receiving": "enabled",
+        "sending": "enabled",
+        "tls": "enforced",
+        "trackingSubdomain": "links"
+      },
+      "name": "updateDomain-5xx",
+      "operation": "updateDomain"
+    },
+    {
+      "callId": "1a0f3816-783e-501a-8e4c-32c63fa1e467",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/domains/domain-1",
+          "requestBody": {
+            "capabilities": {
+              "receiving": "enabled",
+              "sending": "enabled"
+            },
+            "click_tracking": true,
+            "open_tracking": true,
+            "tls": "enforced",
+            "tracking_subdomain": "links"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a0f3816-783e-501a-8e4c-32c63fa1e467",
+      "input": {
+        "clickTracking": true,
+        "id": "domain-1",
+        "openTracking": true,
+        "receiving": "enabled",
+        "sending": "enabled",
+        "tls": "enforced",
+        "trackingSubdomain": "links"
+      },
+      "name": "updateDomain-transport",
+      "operation": "updateDomain"
+    },
+    {
+      "callId": "3539b9d1-c4cf-520a-8ca2-d281fc3346c8",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"domain\",\"id\":\"domain-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/domain-1/verify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "verificationStarted",
+        "failureKind": "",
+        "output": {
+          "id": "domain-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3539b9d1-c4cf-520a-8ca2-d281fc3346c8",
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "verifyDomain-success",
+      "operation": "verifyDomain"
+    },
+    {
+      "callId": "3539b9d1-c4cf-520a-8ca2-d281fc3346c8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/domain-1/verify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3539b9d1-c4cf-520a-8ca2-d281fc3346c8",
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "verifyDomain-notFound",
+      "operation": "verifyDomain"
+    },
+    {
+      "callId": "3539b9d1-c4cf-520a-8ca2-d281fc3346c8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/domain-1/verify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3539b9d1-c4cf-520a-8ca2-d281fc3346c8",
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "verifyDomain-providerRejected",
+      "operation": "verifyDomain"
+    },
+    {
+      "callId": "3539b9d1-c4cf-520a-8ca2-d281fc3346c8",
+      "exchanges": [
+        {
+          "body": "bad-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/domain-1/verify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3539b9d1-c4cf-520a-8ca2-d281fc3346c8",
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "verifyDomain-invalidResponse",
+      "operation": "verifyDomain"
+    },
+    {
+      "callId": "3539b9d1-c4cf-520a-8ca2-d281fc3346c8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3539b9d1-c4cf-520a-8ca2-d281fc3346c8",
+      "input": {
+        "id": ""
+      },
+      "name": "verifyDomain-defect",
+      "operation": "verifyDomain"
+    },
+    {
+      "callId": "3539b9d1-c4cf-520a-8ca2-d281fc3346c8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/domain-1/verify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3539b9d1-c4cf-520a-8ca2-d281fc3346c8",
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "verifyDomain-429",
+      "operation": "verifyDomain"
+    },
+    {
+      "callId": "3539b9d1-c4cf-520a-8ca2-d281fc3346c8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/domain-1/verify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3539b9d1-c4cf-520a-8ca2-d281fc3346c8",
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "verifyDomain-5xx",
+      "operation": "verifyDomain"
+    },
+    {
+      "callId": "3539b9d1-c4cf-520a-8ca2-d281fc3346c8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/domain-1/verify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3539b9d1-c4cf-520a-8ca2-d281fc3346c8",
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "verifyDomain-transport",
+      "operation": "verifyDomain"
     }
   ],
   "schemaVersion": 1
