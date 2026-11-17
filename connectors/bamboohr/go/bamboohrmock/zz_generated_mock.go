@@ -346,7 +346,7 @@ func UpdateEmployeeNotFound(value bamboohr.UpdateEmployeeOutput, failure *sdkgo.
 	return connectormock.Branch(bamboohr.UpdateEmployeeBranchNotFound, value, failure)
 }
 
-// UpdateEmployeeProviderRejected selects the providerRejected branch: BambooHR conclusively rejected the change, such as a duplicate email, an invalid list value, or a field the connection cannot edit.
+// UpdateEmployeeProviderRejected selects the providerRejected branch: BambooHR conclusively rejected the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as an invalid list value or a field the connection cannot edit.
 func UpdateEmployeeProviderRejected(value bamboohr.UpdateEmployeeOutput, failure *sdkgo.Failure) connectormock.Case[bamboohr.UpdateEmployeeOutput] {
 	return connectormock.Branch(bamboohr.UpdateEmployeeBranchProviderRejected, value, failure)
 }
@@ -378,10 +378,10 @@ func UpdateEmployeeNotFoundFailure() connectormock.Case[bamboohr.UpdateEmployeeO
 	return connectormock.Branch(bamboohr.UpdateEmployeeBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "No employee has this internal ID."})
 }
 
-// UpdateEmployeeProviderRejectedFailure is the manifest mock providerRejectedFailure: BambooHR rejected a duplicate email (HTTP 409).
+// UpdateEmployeeProviderRejectedFailure is the manifest mock providerRejectedFailure: BambooHR rejected an invalid field value (HTTP 400).
 func UpdateEmployeeProviderRejectedFailure() connectormock.Case[bamboohr.UpdateEmployeeOutput] {
 	var value bamboohr.UpdateEmployeeOutput
-	return connectormock.Branch(bamboohr.UpdateEmployeeBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureConflict, Message: "BambooHR rejected the duplicate email."})
+	return connectormock.Branch(bamboohr.UpdateEmployeeBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "BambooHR rejected the field value."})
 }
 
 // UpdateEmployeeInvalidResponseFailure is the manifest mock invalidResponseFailure: BambooHR returned a malformed employee record, so the change may have been applied.
@@ -400,7 +400,7 @@ func AddEmployeeCreated(value bamboohr.AddEmployeeOutput, failure *sdkgo.Failure
 	return connectormock.Branch(bamboohr.AddEmployeeBranchCreated, value, failure)
 }
 
-// AddEmployeeProviderRejected selects the providerRejected branch: BambooHR conclusively rejected the employee, such as a duplicate email or invalid field value; no employee was added.
+// AddEmployeeProviderRejected selects the providerRejected branch: BambooHR conclusively rejected the first send with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid field value; no employee was added.
 func AddEmployeeProviderRejected(value bamboohr.AddEmployeeOutput, failure *sdkgo.Failure) connectormock.Case[bamboohr.AddEmployeeOutput] {
 	return connectormock.Branch(bamboohr.AddEmployeeBranchProviderRejected, value, failure)
 }
@@ -426,10 +426,10 @@ func AddEmployeeCreatedDefaultAnswer() connectormock.Case[bamboohr.AddEmployeeOu
 	return connectormock.Branch(bamboohr.AddEmployeeBranchCreated, value, nil)
 }
 
-// AddEmployeeProviderRejectedFailure is the manifest mock providerRejectedFailure: Adding an employee with ava.nguyen@example.com as work email is rejected as a duplicate (HTTP 409).
+// AddEmployeeProviderRejectedFailure is the manifest mock providerRejectedFailure: Adding an employee with an invalid field value is rejected (HTTP 400).
 func AddEmployeeProviderRejectedFailure() connectormock.Case[bamboohr.AddEmployeeOutput] {
 	var value bamboohr.AddEmployeeOutput
-	return connectormock.Branch(bamboohr.AddEmployeeBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureConflict, Message: "BambooHR rejected the duplicate email."})
+	return connectormock.Branch(bamboohr.AddEmployeeBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "BambooHR rejected the field value."})
 }
 
 // AddEmployeeDefault is the manifest default, createdDefaultAnswer, which New installs.

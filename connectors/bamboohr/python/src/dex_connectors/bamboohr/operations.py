@@ -12,6 +12,7 @@ from typing import Any
 from dex_connectors.sdk import (
     Call,
     CallID,
+    Failure,
     FailureKind,
     IdempotencyKey,
     MutationAttempt,
@@ -28,7 +29,7 @@ from dex_connectors.sdk.singledispatch import (
 )
 
 from ._generated import definitions
-from .client import Client, Exchange, bamboohr_failure
+from .client import DEFINITE_REFUSAL_STATUSES, Client, Exchange, bamboohr_failure
 from .models import (
     AddEmployeeInput,
     AddEmployeeOutput,
@@ -624,6 +625,20 @@ def _mutation_exchange(
     return MutationAttempt.branch_result(branch, value, receipt, exchange.failure)
 
 
+def _mutation_write_exchange(
+    exchange: Exchange, value: UpdateEmployeeOutput, receipt: Receipt
+) -> MutationAttempt[UpdateEmployeeOutput] | None:
+    # A write without a definite refusal may have applied; the next attempt reads first.
+    is_unknown_outcome = exchange.outcome == "invalid" or (
+        exchange.outcome in ("rejected", "not_found")
+        and exchange.status_code not in DEFINITE_REFUSAL_STATUSES
+    )
+    if is_unknown_outcome:
+        assert exchange.failure is not None
+        return MutationAttempt.retry(exchange.failure, exchange.retry_after)
+    return _mutation_exchange(exchange, value, receipt)
+
+
 class UpdateEmployeeOperation:
     """Set absolute plain employee fields and read them back."""
 
@@ -693,7 +708,7 @@ class UpdateEmployeeOperation:
         write_exchange = await self.client.exchange(
             call, credentials, "updateEmployee", "POST", f"/employees/{input.employee_id}", payload=writes
         )
-        terminal = _mutation_exchange(write_exchange, UpdateEmployeeOutput(employee=current), receipt)
+        terminal = _mutation_write_exchange(write_exchange, UpdateEmployeeOutput(employee=current), receipt)
         if terminal is not None:
             return terminal
         output = UpdateEmployeeOutput(
@@ -775,7 +790,11 @@ class AddEmployeeOperation:
             )
         receipt = self.client.receipt(call)
         try:
-            fence = Fence(call, definitions.ADD_EMPLOYEE_DEFINITION.step_defaults.execute_method_timeout)
+            fence = Fence(
+                call,
+                definitions.ADD_EMPLOYEE_DEFINITION.step_defaults.execute_method_timeout,
+                max_sends=call.max_sends,
+            )
             decision = await fence.decide()
         except ValueError as error:
             return MutationAttempt.branch_result(
@@ -785,21 +804,38 @@ class AddEmployeeOperation:
                 bamboohr_failure("addEmployee", FailureKind.LOCAL_DEFECT, str(error)),
             )
         if decision.kind == DecisionKind.FAIL_CLOSED:
-            return _add_uncertain(
-                receipt,
-                FailureKind.TRANSPORT,
-                "the dispatch checkpoint is unavailable or untrusted; the request is not sent again",
+            return MutationAttempt.retry(
+                bamboohr_failure(
+                    "addEmployee",
+                    FailureKind.AVAILABILITY,
+                    "the dispatch checkpoint could not be read; nothing was sent",
+                )
             )
+        saved_identifier = decision.marker.provider_id if decision.marker else ""
         if decision.kind == DecisionKind.READ_BACK_REQUIRED:
-            identifier = decision.marker.provider_id if decision.marker else ""
-            if not _valid_employee_id(identifier):
+            if not _valid_employee_id(saved_identifier):
                 return _add_uncertain(
                     receipt,
                     FailureKind.TRANSPORT,
-                    "an earlier attempt may have sent the request; no employee ID is available for read-back",
+                    "earlier attempts may have added the employee up to the send cap; "
+                    "no employee ID is available for read-back",
                 )
-            return await self._read_back(call, identifier)
+            return await self._read_back(call, saved_identifier)
+        is_earlier_send_unresolved = decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
+        # BambooHR returns an ID only for an employee it added, so a saved ID is read back, never resent.
+        if is_earlier_send_unresolved and saved_identifier:
+            return await self._read_back(call, saved_identifier)
+        can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
+        has_possible_earlier_send = decision.prior_send_upper_bound > 0
         credentials, failure = await self.client.resolve_credentials(call, "addEmployee")
+        if failure is not None and is_earlier_send_unresolved:
+            # notSent would hide the earlier possible send, so nothing is recorded.
+            return _add_uncertain(
+                receipt,
+                FailureKind.AUTHENTICATION,
+                "an earlier attempt may have added the employee, and the connection credentials "
+                "are unavailable to resend it; reconnect the connection",
+            )
         if failure is not None:
             try:
                 await fence.record_not_sent()
@@ -840,7 +876,11 @@ class AddEmployeeOperation:
                 )
             )
         except Exception:
-            return _add_uncertain(receipt, FailureKind.TRANSPORT, "the dispatch outcome is unavailable")
+            return _resend_or_select_add_uncertain(
+                can_resend_unknown_outcome,
+                receipt,
+                bamboohr_failure("addEmployee", FailureKind.TRANSPORT, "the dispatch outcome is unavailable"),
+            )
         if 200 <= exchange.status_code < 300:
             try:
                 identifier = _employee_id(_read_json(exchange.body)["id"])
@@ -848,6 +888,7 @@ class AddEmployeeOperation:
                 match = _LOCATION_ID.search(exchange.headers.get("Location", ""))
                 identifier = match.group(1) if match else ""
             if not identifier:
+                # BambooHR accepted this POST, so a resend would duplicate the employee.
                 return _add_uncertain(
                     receipt,
                     FailureKind.PROTOCOL,
@@ -874,12 +915,31 @@ class AddEmployeeOperation:
                 )
             assert exchange.failure is not None
             return MutationAttempt.retry(exchange.failure, exchange.retry_after)
-        if exchange.outcome in ("unavailable", "invalid"):
-            assert exchange.failure is not None
-            return MutationAttempt.uncertain(empty, exchange.failure, receipt)
-        if exchange.outcome == "defect":
+        assert exchange.failure is not None
+        if exchange.outcome == "defect" and not has_possible_earlier_send:
             return MutationAttempt.branch_result("defect", empty, receipt, exchange.failure)
-        return MutationAttempt.branch_result("providerRejected", empty, receipt, exchange.failure)
+        if (
+            exchange.outcome in ("rejected", "not_found")
+            and exchange.status_code in DEFINITE_REFUSAL_STATUSES
+        ):
+            # An earlier send may have added the employee, so a refusal of this resend proves nothing.
+            if has_possible_earlier_send:
+                return MutationAttempt.uncertain(empty, exchange.failure, receipt)
+            try:
+                await fence.record_can_resend()
+            except Exception:
+                return MutationAttempt.retry(
+                    bamboohr_failure(
+                        "addEmployee",
+                        FailureKind.AVAILABILITY,
+                        "BambooHR refused the request, but the refusal checkpoint failed",
+                    )
+                )
+            return MutationAttempt.branch_result("providerRejected", empty, receipt, exchange.failure)
+        # A timeout, 5xx, 408, 409, redirect, or other status leaves the outcome unknown.
+        return _resend_or_select_add_uncertain(
+            can_resend_unknown_outcome, receipt, exchange.failure, exchange.retry_after
+        )
 
     async def _read_back(self, call: Call, identifier: str) -> MutationAttempt[AddEmployeeOutput]:
         receipt = self.client.receipt(call, identifier)
@@ -906,6 +966,15 @@ class AddEmployeeOperation:
             )
         assert exchange.failure is not None
         return MutationAttempt.retry(exchange.failure, exchange.retry_after)
+
+
+def _resend_or_select_add_uncertain(
+    can_resend_unknown_outcome: bool, receipt: Receipt, failure: Failure, retry_after: float = 0
+) -> MutationAttempt[AddEmployeeOutput]:
+    if can_resend_unknown_outcome:
+        # The claim stays the last marker, so the next attempt counts this send.
+        return MutationAttempt.retry(failure, retry_after)
+    return MutationAttempt.uncertain(AddEmployeeOutput(), failure, receipt)
 
 
 def _add_uncertain(receipt: Receipt, kind: FailureKind, message: str) -> MutationAttempt[AddEmployeeOutput]:

@@ -6,16 +6,16 @@ metadata:
   description: Read BambooHR employee records, find an employee by email, poll employee changes, start Flows when employees are added, updated, or deleted, list time off requests, update employee fields, and add employees, keeping BambooHR's own field names and status values.
   company: BambooHR
   categories: [hr-recruiting]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: bamboohr
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       operations: [getEmployee, findEmployeeByEmail, listEmployeeChanges, listTimeOffRequests, updateEmployee, addEmployee]
       triggers: [employeeChanged]
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       operations: [getEmployee, findEmployeeByEmail, listEmployeeChanges, listTimeOffRequests, updateEmployee, addEmployee]
       triggers: [employeeChanged]
   codegen:
@@ -223,7 +223,7 @@ spec:
       branches:
         - {id: updated, goName: Updated, description: "The employee holds the requested values, written now or by an earlier attempt, as read back from BambooHR."}
         - {id: notFound, goName: NotFound, description: No employee has this internal ID., optional: true}
-        - {id: providerRejected, goName: ProviderRejected, description: "BambooHR conclusively rejected the change, such as a duplicate email, an invalid list value, or a field the connection cannot edit.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "BambooHR conclusively rejected the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as an invalid list value or a field the connection cannot edit.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "BambooHR returned an invalid or oversized employee record, so the change may have been applied.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
@@ -243,8 +243,8 @@ spec:
           failure: {kind: NOT_FOUND, message: "No employee has this internal ID."}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "BambooHR rejected a duplicate email (HTTP 409)."
-          failure: {kind: CONFLICT, message: "BambooHR rejected the duplicate email."}
+          description: "BambooHR rejected an invalid field value (HTTP 400)."
+          failure: {kind: VALIDATION, message: "BambooHR rejected the field value."}
         - name: invalidResponseFailure
           branch: invalidResponse
           description: "BambooHR returned a malformed employee record, so the change may have been applied."
@@ -254,18 +254,18 @@ spec:
       inputType: AddEmployeeInput
       outputType: AddEmployeeOutput
       kind: mutation
-      description: Add one employee. BambooHR has no idempotency key, so the shared single-dispatch fence requires sync durability to persist heartbeat checkpoints across retries; 429, 503, and proven unsent requests may be retried.
+      description: Add one employee. BambooHR has no idempotency key, so the shared single-dispatch fence requires sync durability to persist heartbeat checkpoints across retries; 429, 503, and proven unsent requests are retried, and an unknown outcome is resent while possible sends stay below the send cap.
       idempotency: required
       branches:
         - {id: created, goName: Created, description: BambooHR added the employee and returned its internal ID.}
-        - {id: providerRejected, goName: ProviderRejected, description: "BambooHR conclusively rejected the employee, such as a duplicate email or invalid field value; no employee was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed, so the employee may exist; the connector never resends it.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "BambooHR conclusively rejected the first send with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid field value; no employee was added.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Sends up to the send cap may have added the employee, or BambooHR accepted it without a usable ID, and read-back cannot confirm it; the employee may exist.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "BambooHR does not document whether a 503 means no employee was added, so a fenced resend after 503 could duplicate an employee."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "BambooHR does not document whether a 503 means no employee was added, so each resend after a 503 could duplicate an employee; five attempts bound those resends."}}
       mocks:
         - name: createdDefaultAnswer
           branch: created
@@ -274,5 +274,5 @@ spec:
           output: {employeeId: "142"}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "Adding an employee with ava.nguyen@example.com as work email is rejected as a duplicate (HTTP 409)."
-          failure: {kind: CONFLICT, message: "BambooHR rejected the duplicate email."}
+          description: "Adding an employee with an invalid field value is rejected (HTTP 400)."
+          failure: {kind: VALIDATION, message: "BambooHR rejected the field value."}

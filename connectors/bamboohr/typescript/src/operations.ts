@@ -1,9 +1,9 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { newFence, CheckpointError, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
-import type { BambooHRClient, BambooHRExchange } from './client.js';
+import { DefiniteRefusalStatuses, type BambooHRClient, type BambooHRExchange } from './client.js';
 import { AddEmployeeDefinition, FindEmployeeByEmailDefinition, GetEmployeeDefinition, ListEmployeeChangesDefinition, ListTimeOffRequestsDefinition, UpdateEmployeeDefinition } from './generated/definitions.js';
 import type { AddEmployeeInput, AddEmployeeOutput, EmployeeChange, EmployeeRecord, EmployeeSummary, FindEmployeeByEmailInput, FindEmployeeByEmailOutput, GetEmployeeInput, ListEmployeeChangesInput, ListEmployeeChangesOutput, ListTimeOffRequestsInput, ListTimeOffRequestsOutput, TimeOffRequest, UpdateEmployeeInput, UpdateEmployeeOutput } from './generated/models.js';
 
@@ -176,6 +176,8 @@ export class UpdateEmployeeOperation implements Mutation<UpdateEmployeeInput, Up
     for (const [field, text] of Object.entries(input.fields!)) if (current.fields?.[field] !== text) changed[field] = text;
     if (Object.keys(changed).length === 0) return newMutationBranch('updated', { employee: current, wasAlreadyApplied: true }, receipt);
     const write = await this.client.exchange(call, 'updateEmployee', key, 'POST', `/employees/${input.employeeId}`, undefined, changed);
+    // A write without a definite refusal may have applied; the next attempt reads first.
+    if (write.kind === 'invalid' || ((write.kind === 'rejected' || write.kind === 'notFound') && !DefiniteRefusalStatuses.has(write.status ?? 0))) return newMutationRetry(write.failure, write.retryAfterMs);
     const writeTerminal = exchangeMutation(this.client, call, write, { employee: current }, input.employeeId, true);
     if (writeTerminal) return writeTerminal;
     const writtenFields = Object.keys(changed).sort();
@@ -198,12 +200,15 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
     try { validateWrittenFields(input.fields ?? {}, 0, new Set([...ignoredFields, 'firstName', 'lastName', 'preferredName', 'workEmail', 'homeEmail', 'hireDate'])); }
     catch { return defectMutation('addEmployee', zeroAdd); }
     const receipt = this.client.receipt(call);
-    const fence = newFence(call, AddEmployeeDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000);
+    const operationMaxSends = definitionMaxSends(AddEmployeeDefinition);
+    const fence = newFence(call, AddEmployeeDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { maxSends: operationMaxSends });
     const decision = fence.decide();
-    if (decision.kind === 'failClosed') return newMutationUncertain(zeroAdd, failure('addEmployee', 'TRANSPORT', 'the dispatch checkpoint is unavailable or untrusted; the request is not sent again'), receipt);
-    if (decision.kind === 'readBackRequired') {
-      const employeeId = decision.marker?.providerId;
-      if (!employeeId || decision.marker?.callId !== call.id || !employeeIdPattern.test(employeeId)) return newMutationUncertain(zeroAdd, failure('addEmployee', 'TRANSPORT', 'an earlier attempt may have sent the request; no employee ID is available for read-back'), receipt);
+    if (decision.kind === 'failClosed') return newMutationRetry(failure('addEmployee', 'AVAILABILITY', 'the dispatch checkpoint could not be read; nothing was sent'));
+    const savedEmployeeId = decision.marker?.callId === call.id ? decision.marker.providerId : undefined;
+    // BambooHR returns an ID only for an employee it added, so a saved ID is read back, never resent.
+    if (decision.kind === 'readBackRequired' || (decision.kind === 'readBackThenResendAllowed' && savedEmployeeId)) {
+      const employeeId = savedEmployeeId;
+      if (!employeeId || !employeeIdPattern.test(employeeId)) return newMutationUncertain(zeroAdd, failure('addEmployee', 'TRANSPORT', 'earlier attempts may have added the employee up to the send cap; no employee ID is available for read-back'), receipt);
       const credential = await this.client.resolveKey(call);
       if (credential.kind !== 'resolved') return newMutationRetry(failure('addEmployee', 'AUTHENTICATION', 'connection credentials are unavailable'));
       const key = credential.key;
@@ -216,7 +221,15 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
       if (result.kind === 'notFound' || result.kind === 'rejected') return newMutationUncertain(zeroAdd, result.failure, this.client.receipt(call, employeeId));
       return newMutationRetry(result.failure, result.retryAfterMs);
     }
+    const priorSendUpperBound = decision.priorSendUpperBound ?? 0;
+    const canResendUnknownOutcome = priorSendUpperBound + 1 < (operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1);
+    const hasPossibleEarlierSend = priorSendUpperBound > 0;
     const credential = await this.client.resolveKey(call);
+    if (credential.kind !== 'resolved' && decision.kind === 'readBackThenResendAllowed') {
+      // notSent would hide the earlier possible send, so nothing is recorded.
+      if (credential.kind === 'terminal') return newMutationUncertain(zeroAdd, failure('addEmployee', 'AUTHENTICATION', 'an earlier attempt may have added the employee, and the connection credentials are unavailable to resend it; reconnect the connection'), receipt);
+      return newMutationRetry(failure('addEmployee', 'AVAILABILITY', 'connection credentials could not be read; nothing was sent in this attempt'));
+    }
     if (credential.kind !== 'resolved') {
       try { await fence.recordNotSent(); }
       catch { return newMutationRetry(failure('addEmployee', 'AVAILABILITY', 'credentials and not-sent checkpoint are unavailable')); }
@@ -229,7 +242,7 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
     try { result = await fence.dispatch(signal => this.client.exchange(call, 'addEmployee', key, 'POST', '/employees', undefined, payload, signal)); }
     catch (error) {
       if (error instanceof CheckpointError || error instanceof InsufficientTimeError) return newMutationRetry(failure('addEmployee', 'AVAILABILITY', 'dispatch checkpoint or attempt time is unavailable; nothing was sent'));
-      return newMutationUncertain(zeroAdd, failure('addEmployee', 'TRANSPORT', 'the dispatch outcome is unavailable'), receipt);
+      return resendOrSelectAddEmployeeUncertain(canResendUnknownOutcome, receipt, failure('addEmployee', 'TRANSPORT', 'the dispatch outcome is unavailable'));
     }
     if (result.kind === 'success') {
       let employeeId = '';
@@ -239,6 +252,7 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
         const match = typeof location === 'string' ? /(?:\/employees\/|[?&]id=)([1-9][0-9]{0,18})(?:[/?&#]|$)/.exec(location) : null;
         employeeId = match?.[1] ?? '';
       }
+      // BambooHR accepted this POST, so a resend would duplicate the employee.
       if (!employeeId) return newMutationUncertain(zeroAdd, failure('addEmployee', 'PROTOCOL', 'BambooHR accepted the employee but returned no usable employee ID'), receipt);
       try { await fence.recordProviderId(employeeId); }
       catch { /* A failed identity checkpoint cannot authorize another POST. */ }
@@ -249,10 +263,24 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
       catch { return newMutationRetry(failure('addEmployee', 'AVAILABILITY', 'BambooHR did not process the request, but the resend checkpoint failed'), result.retryAfterMs); }
       return newMutationRetry(result.failure, result.retryAfterMs);
     }
-    if (result.kind === 'unavailable' || result.kind === 'invalid') return newMutationUncertain(zeroAdd, result.failure, receipt);
-    if (result.kind === 'defect') return newMutationBranch('defect', zeroAdd, receipt, result.failure);
-    return newMutationBranch('providerRejected', zeroAdd, receipt, result.failure);
+    // An invalid result is an unreadable 2xx: BambooHR accepted this POST, so a resend would duplicate it.
+    if (result.kind === 'invalid') return newMutationUncertain(zeroAdd, result.failure, receipt);
+    if (result.kind === 'defect' && !hasPossibleEarlierSend) return newMutationBranch('defect', zeroAdd, receipt, result.failure);
+    if ((result.kind === 'rejected' || result.kind === 'notFound') && DefiniteRefusalStatuses.has(result.status ?? 0)) {
+      // An earlier send may have added the employee, so a refusal of this resend proves nothing.
+      if (hasPossibleEarlierSend) return newMutationUncertain(zeroAdd, result.failure, receipt);
+      try { await fence.recordCanResend(); }
+      catch { return newMutationRetry(failure('addEmployee', 'AVAILABILITY', 'BambooHR refused the request, but the refusal checkpoint failed')); }
+      return newMutationBranch('providerRejected', zeroAdd, receipt, result.failure);
+    }
+    // A timeout, 5xx, 408, 409, redirect, or other status leaves the outcome unknown.
+    return resendOrSelectAddEmployeeUncertain(canResendUnknownOutcome, receipt, result.failure, result.retryAfterMs);
   }
+}
+
+/** Retry a possibly sent POST while the send cap allows another send; the claim counts this send. */
+function resendOrSelectAddEmployeeUncertain(canResendUnknownOutcome: boolean, receipt: ReceiptDraft, unknownFailure: Failure, retryAfterMs?: number): MutationAttempt<AddEmployeeOutput> {
+  return canResendUnknownOutcome ? newMutationRetry(unknownFailure, retryAfterMs) : newMutationUncertain(zeroAdd, unknownFailure, receipt);
 }
 
 function failure(operation: string, kind: Failure['kind'], message: string): Failure { return { kind, provider: 'bamboohr', operation, message }; }

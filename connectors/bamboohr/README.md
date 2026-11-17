@@ -31,18 +31,18 @@ The `employeeChanged` Trigger starts a Flow for each employee BambooHR lists
 as inserted, updated, or deleted, polled with a durable cursor; see
 [employeeChanged Trigger](#employeechanged-trigger).
 
-Install this connector release with `go get github.com/superdurable/dex-connectors-library/connectors/bamboohr/go@v0.24.0`.
+Install this connector release with `go get github.com/superdurable/dex-connectors-library/connectors/bamboohr/go@v0.24.1`.
 The module requires Connector Go SDK v0.38.0 for the durable poll Trigger kit
 (`sdkgo/pollingtrigger`) and the shared single-dispatch fence.
 
 ## Python package
 
-The independent `dex-connector-bamboohr` Python package `v0.2.0` implements all
+The independent `dex-connector-bamboohr` Python package `v0.2.1` implements all
 six operations above with the same branch IDs and provider request behavior as
 the Go connector. It includes generated typed inputs, outputs,
 operation-specific Step factories, named project connections, and mock
 outcomes. `addEmployee` uses the Python Connector SDK's single-dispatch fence
-and sync Execute durability. Install it with `dex-connector-bamboohr==0.2.0`;
+and sync Execute durability. Install it with `dex-connector-bamboohr==0.2.1`;
 it requires `dex-connectors-sdk` 0.12.0 or newer.
 
 The package also implements the `employeeChanged` Trigger on the Python poll
@@ -65,9 +65,9 @@ OAuth; see [Not in this release](#not-in-this-release).
 
 ## TypeScript package
 
-The [TypeScript package](typescript/README.md) v0.2.0 implements all six
+The [TypeScript package](typescript/README.md) v0.2.1 implements all six
 operations with generated Step factories and a hand-written provider client.
-Install it with `@superdurable/connector-bamboohr@0.2.0`; it requires
+Install it with `@superdurable/connector-bamboohr@0.2.1`; it requires
 `@superdurable/connectors-sdk` 0.12.0.
 Its [runnable getEmployee Flow](typescript/examples/get-employee/) uses the
 static `bamboohr-employees` connection name. Go-recorded conformance scenarios
@@ -255,8 +255,11 @@ compensation, or employment status history tables (`jobTitle`, `department`,
 `terminationDate`), numeric field IDs, `id`, and photo keys. BambooHR
 documents that writing `jobTitle` creates a position-history row and writing
 `employmentHistoryStatus` appends an employment status record, so a repeated
-attempt could append a second row. A duplicate email or an invalid value
-returns 409, which selects `providerRejected`.
+attempt could append a second row. A write answered with 400, 401, 403, 404,
+411, 413, 414, 415, or 422 is a definite refusal and selects its branch. Any
+other write status, including the 409 BambooHR returns for a duplicate email,
+does not prove the write was refused, so the attempt is retried; a duplicate
+email therefore retries until the Step retry policy is exhausted.
 
 ### addEmployee
 
@@ -376,23 +379,31 @@ take these positions:
   second dispatch sends the same values or finds them applied. It keeps async
   durability, and every unconfirmed outcome, including a 5xx or a lost
   response, is retried; its manifest declares `repeatOnUnknown: safe`.
-- **addEmployee** uses the shared single-dispatch fence with sync durability.
-  Its attempt-numbered heartbeat allows another send only after the immediately
-  prior attempt recorded `notSent` or `canResend`. A missing, stale, or legacy
-  checkpoint fails closed. An accepted 2xx with an employee ID saves that ID;
-  a later attempt reads `GET /employees/{id}` instead of posting again.
+- **addEmployee** is `limited` with `maxSends: 3`, and uses the shared
+  single-dispatch fence with sync durability, passing the Step's send cap. Its
+  attempt-numbered heartbeat counts every send that may have taken effect. An
+  accepted 2xx with an employee ID saves that ID; a later attempt reads
+  `GET /employees/{id}` instead of posting again. A checkpoint that cannot be
+  read returns Retry without sending.
 - A 429, 503, or connection failure proven to occur before a connection opened
   records `canResend` and returns Retry. BambooHR's
   [technical overview](https://documentation.bamboohr.com/docs/api-details)
   describes 429 as throttling and 503 as endpoint unavailability. A 429 without
   `Retry-After` also retries; the provider says the header should be present,
   so the missing-header case has not been verified live.
-- After a 503 resend, a 409 may come from the first request; `providerRejected`
-  cannot rule out that the employee already exists.
-- A 500, 408, ambiguous transport failure, or accepted 2xx without a usable
-  employee ID selects `uncertain`. The connector cannot associate an email or
-  name lookup with its specific POST. The onboarding example looks up the hire
-  by personal email; a missing or ambiguous result fails the Flow.
+- An unknown outcome, such as a 500, 408, 409, redirect, unlisted 4xx, or
+  ambiguous transport failure, returns Retry, and the next attempt posts again
+  while the possible sends stay below the cap; at the cap it selects
+  `uncertain`. A resend can therefore add a second employee when the work email
+  is blank; with a work email, BambooHR answers the resend with 409.
+- A definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422) of the
+  first send records `canResend` and selects `providerRejected`. After an
+  earlier possible send, a refusal cannot prove nothing was added, so it
+  selects `uncertain`. An accepted 2xx without a usable employee ID also selects
+  `uncertain`, because a resend would add a second employee. The connector
+  cannot associate an email or name lookup with its specific POST. The
+  onboarding example looks up the hire by personal email; a missing or
+  ambiguous result fails the Flow.
 
 Keep `addEmployee` sync. Async local-phase heartbeats are not visible to later
 attempts. A checkpoint lost before Dex stored it, or a crash before the
@@ -410,19 +421,20 @@ from `error.code` first, then `code` if the first value is unusable, such as
 `BambooHR rejected the request (HTTP 422) [BadRequest]`. A code that contains
 the API key is dropped. An oversized error body contributes no code.
 
-| Response | Reads and updateEmployee | addEmployee |
-| --- | --- | --- |
-| 400, 406, 422 | `providerRejected`, `VALIDATION` | `providerRejected`, `VALIDATION` |
-| 401, 403 | `providerRejected`, `AUTHENTICATION` or `AUTHORIZATION` | same |
-| 404 | `notFound` where declared, otherwise `providerRejected` | `providerRejected` |
-| 409, other 4xx | `providerRejected` | `providerRejected` |
-| 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed | same |
-| 429 with `Retry-After` | Retry after `Retry-After` | Retry after `Retry-After` |
-| 429 without `Retry-After` | Retry | Retry |
-| connection refused before sending | Retry | Retry |
-| 503 | Retry, after `Retry-After` when present | Retry |
-| 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | `uncertain` |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | `uncertain` |
+| Response | Reads | updateEmployee write | addEmployee |
+| --- | --- | --- | --- |
+| 400, 422 | `providerRejected`, `VALIDATION` | same | `providerRejected`, `VALIDATION`; `uncertain` after an earlier possible send |
+| 401, 403 | `providerRejected`, `AUTHENTICATION` or `AUTHORIZATION` | same | as 400 |
+| 404 | `notFound` where declared, otherwise `providerRejected` | `notFound` | as 400 |
+| 411, 413, 414, 415 | `providerRejected` | `providerRejected` | as 400 |
+| 406, 409, other 4xx | `providerRejected` | Retry | Retry below the send cap, then `uncertain` |
+| 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed | Retry | Retry below the send cap, then `uncertain` |
+| 429 with `Retry-After` | Retry after `Retry-After` | same | Retry after `Retry-After` |
+| 429 without `Retry-After` | Retry | Retry | Retry |
+| connection refused before sending | Retry | Retry | Retry |
+| 503 | Retry, after `Retry-After` when present | same | Retry |
+| 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | same | Retry below the send cap, then `uncertain` |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | Retry | `uncertain` |
 | invalid input | `defect`, with no request | `defect`, with no request |
 | reauthorization required or unusable connection credentials | `defect`, with no request | `defect` after a `notSent` checkpoint, with no request; Retry while reading back an earlier attempt's write |
 | transient credential resolution failure | `defect`, with no request | Retry after a `notSent` checkpoint, with no request |

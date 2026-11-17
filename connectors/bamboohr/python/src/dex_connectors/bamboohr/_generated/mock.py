@@ -242,7 +242,7 @@ def update_employee_not_found_failure() -> Case[UpdateEmployeeOutput]:
 setattr(update_employee_not_found_failure, '__module__', "dex_connectors.bamboohr.bamboohrmock")
 
 def update_employee_provider_rejected_failure() -> Case[UpdateEmployeeOutput]:
-    return Case.branch_result(PROVIDER_REJECTED, UpdateEmployeeOutput(employee=EmployeeRecord()), Failure(FailureKind.CONFLICT, CONNECTOR_ID, "updateEmployee", "BambooHR rejected the duplicate email."))
+    return Case.branch_result(PROVIDER_REJECTED, UpdateEmployeeOutput(employee=EmployeeRecord()), Failure(FailureKind.VALIDATION, CONNECTOR_ID, "updateEmployee", "BambooHR rejected the field value."))
 
 setattr(update_employee_provider_rejected_failure, '__module__', "dex_connectors.bamboohr.bamboohrmock")
 
@@ -282,7 +282,7 @@ def add_employee_created_default_answer() -> Case[AddEmployeeOutput]:
 setattr(add_employee_created_default_answer, '__module__', "dex_connectors.bamboohr.bamboohrmock")
 
 def add_employee_provider_rejected_failure() -> Case[AddEmployeeOutput]:
-    return Case.branch_result(PROVIDER_REJECTED, AddEmployeeOutput(), Failure(FailureKind.CONFLICT, CONNECTOR_ID, "addEmployee", "BambooHR rejected the duplicate email."))
+    return Case.branch_result(PROVIDER_REJECTED, AddEmployeeOutput(), Failure(FailureKind.VALIDATION, CONNECTOR_ID, "addEmployee", "BambooHR rejected the field value."))
 
 setattr(add_employee_provider_rejected_failure, '__module__', "dex_connectors.bamboohr.bamboohrmock")
 

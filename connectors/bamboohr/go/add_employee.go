@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -91,22 +92,37 @@ func (operation AddEmployeeOperation) Invoke(call sdkgo.Call, input AddEmployeeI
 	if err := validateAddEmployeeInput(input); err != nil {
 		return sdkgo.NewMutationBranch(AddEmployeeBranchDefect, AddEmployeeOutput{}, bambooHRFailurePointer(sdkgo.FailureValidation, addEmployeeOperation, err.Error()), sdkgo.Receipt{})
 	}
-	fence, err := singledispatch.NewFence(call, AddEmployeeDefinition.StepDefaults.ExecuteMethodTimeout)
+	fence, err := singledispatch.NewFence(call, AddEmployeeDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
 	if err != nil {
 		return sdkgo.NewMutationBranch(AddEmployeeBranchDefect, AddEmployeeOutput{}, bambooHRFailurePointer(sdkgo.FailureLocalDefect, addEmployeeOperation, err.Error()), sdkgo.Receipt{})
 	}
 	receipt := operation.client.receipt(call, "")
-	switch decision := fence.Decide(); decision.Kind {
+	decision := fence.Decide()
+	switch decision.Kind {
 	case singledispatch.FailClosed:
-		return addEmployeeUncertain(receipt, sdkgo.FailureTransport, "the dispatch checkpoint is unavailable or untrusted; the request is not sent again")
+		return sdkgo.NewMutationRetry[AddEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, addEmployeeOperation, "the dispatch checkpoint could not be read; nothing was sent"), 0)
 	case singledispatch.ReadBackRequired:
 		if decision.Marker.CallID != call.ID || decision.Marker.ProviderID == "" {
-			return addEmployeeUncertain(receipt, sdkgo.FailureTransport, "an earlier attempt may have sent the request; no employee ID is available for read-back")
+			return addEmployeeUncertain(receipt, sdkgo.FailureTransport, "earlier attempts may have added the employee up to the send cap; no employee ID is available for read-back")
 		}
 		return operation.readBackAddedEmployee(call, decision.Marker.ProviderID)
+	case singledispatch.ReadBackThenResendAllowed:
+		// BambooHR returns an ID only for an employee it added, so a saved ID is read back, never resent.
+		if decision.Marker.ProviderID != "" {
+			return operation.readBackAddedEmployee(call, decision.Marker.ProviderID)
+		}
 	}
+	canResendUnknownOutcome := decision.MaximumPriorSends+1 < call.MaxSends()
+	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
 	credentials, credentialErr := operation.client.credentials.Resolve(call)
 	isUnusableCredentials := credentialErr == nil && validateResolvedCredentials(credentials) != nil
+	if (credentialErr != nil || isUnusableCredentials) && decision.Kind == singledispatch.ReadBackThenResendAllowed {
+		// notSent would hide the earlier possible send, so nothing is recorded.
+		if isTerminalAddEmployeeCredentialError(credentialErr) || isUnusableCredentials {
+			return addEmployeeUncertain(receipt, sdkgo.FailureAuthentication, "an earlier attempt may have added the employee, and the connection credentials are unavailable to resend it; reconnect the connection")
+		}
+		return sdkgo.NewMutationRetry[AddEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, addEmployeeOperation, "connection credentials could not be read; nothing was sent in this attempt"), 0)
+	}
 	if credentialErr != nil || isUnusableCredentials {
 		if err := fence.RecordNotSent(); err != nil {
 			return sdkgo.NewMutationRetry[AddEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, addEmployeeOperation, "credentials and not-sent checkpoint are unavailable"), 0)
@@ -122,12 +138,13 @@ func (operation AddEmployeeOperation) Invoke(call sdkgo.Call, input AddEmployeeI
 		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
 			return sdkgo.NewMutationRetry[AddEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, addEmployeeOperation, "dispatch checkpoint or attempt time is unavailable; nothing was sent"), 0)
 		}
-		return addEmployeeUncertain(receipt, sdkgo.FailureTransport, "the dispatch outcome is unavailable")
+		return resendOrSelectAddEmployeeUncertain(canResendUnknownOutcome, receipt, bambooHRFailure(sdkgo.FailureTransport, addEmployeeOperation, "the dispatch outcome is unavailable"), 0)
 	}
 	result := attempt.result
 	if result.response.statusCode >= 200 && result.response.statusCode < 300 {
 		employeeID, err := addedEmployeeID(result.response)
 		if err != nil {
+			// BambooHR accepted this POST, so a resend would duplicate the employee.
 			return addEmployeeUncertain(receipt, sdkgo.FailureProtocol, "BambooHR accepted the employee but returned no usable employee ID")
 		}
 		// A failed identity checkpoint cannot authorize another POST.
@@ -140,19 +157,36 @@ func (operation AddEmployeeOperation) Invoke(call sdkgo.Call, input AddEmployeeI
 		}
 		return sdkgo.NewMutationRetry[AddEmployeeOutput](result.failure, result.retryAfter)
 	}
-	switch result.outcome {
-	case exchangeNotSent:
+	switch {
+	case result.outcome == exchangeNotSent:
 		if err := fence.RecordCanResend(); err != nil {
 			return sdkgo.NewMutationRetry[AddEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, addEmployeeOperation, "BambooHR did not process the request, but the resend checkpoint failed"), result.retryAfter)
 		}
 		return sdkgo.NewMutationRetry[AddEmployeeOutput](result.failure, result.retryAfter)
-	case exchangeUnavailable, exchangeInvalid:
-		return sdkgo.NewMutationUncertain(AddEmployeeOutput{}, result.failure, receipt)
-	case exchangeDefect:
+	case result.outcome == exchangeDefect && !hasPossibleEarlierSend:
 		return sdkgo.NewMutationBranch(AddEmployeeBranchDefect, AddEmployeeOutput{}, &result.failure, receipt)
-	default:
+	case (result.outcome == exchangeRejected || result.outcome == exchangeNotFound) && isDefiniteRefusalStatus(result.response.statusCode):
+		// An earlier send may have added the employee, so a refusal of this resend proves nothing.
+		if hasPossibleEarlierSend {
+			return sdkgo.NewMutationUncertain(AddEmployeeOutput{}, result.failure, receipt)
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[AddEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, addEmployeeOperation, "BambooHR refused the request, but the refusal checkpoint failed"), 0)
+		}
 		return sdkgo.NewMutationBranch(AddEmployeeBranchProviderRejected, AddEmployeeOutput{}, &result.failure, receipt)
+	default:
+		// A timeout, 5xx, 408, 409, redirect, or other status leaves the outcome unknown.
+		return resendOrSelectAddEmployeeUncertain(canResendUnknownOutcome, receipt, result.failure, result.retryAfter)
 	}
+}
+
+// resendOrSelectAddEmployeeUncertain retries a possibly sent POST while the send cap allows another send.
+func resendOrSelectAddEmployeeUncertain(canResendUnknownOutcome bool, receipt sdkgo.Receipt, failure sdkgo.Failure, retryAfter time.Duration) sdkgo.MutationAttempt[AddEmployeeOutput] {
+	if canResendUnknownOutcome {
+		// The claim stays the last marker, so the next attempt counts this send.
+		return sdkgo.NewMutationRetry[AddEmployeeOutput](failure, retryAfter)
+	}
+	return sdkgo.NewMutationUncertain(AddEmployeeOutput{}, failure, receipt)
 }
 
 func (operation AddEmployeeOperation) readBackAddedEmployee(call sdkgo.Call, employeeID string) sdkgo.MutationAttempt[AddEmployeeOutput] {

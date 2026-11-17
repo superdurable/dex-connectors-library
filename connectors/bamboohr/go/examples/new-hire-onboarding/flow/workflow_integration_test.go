@@ -164,9 +164,9 @@ func TestSlowUpdateIsSafeToRepeatWithRealDex(t *testing.T) {
 	require.Equal(t, outcome.HandoffValue, provider.field(hire, integrationHandoffField), "the repeated write stored the same text")
 }
 
-// TestLostWorkerDuringAddIsReconciledWithoutResendingWithRealDex replaces the Worker while BambooHR
-// holds the add; the next attempt finds the dispatch marker, sends nothing, and finds the hire.
-func TestLostWorkerDuringAddIsReconciledWithoutResendingWithRealDex(t *testing.T) {
+// TestLostWorkerDuringAddIsResentBelowTheSendCapWithRealDex replaces the Worker while BambooHR
+// holds the add; the next attempt counts the claimed send and, below the cap, posts again.
+func TestLostWorkerDuringAddIsResentBelowTheSendCapWithRealDex(t *testing.T) {
 	provider := newFakeBambooHR(t)
 	provider.holdsFirstAdd = make(chan struct{})
 	harness := newOnboardingHarness(t, provider, slowRequestTimeout)
@@ -181,39 +181,37 @@ func TestLostWorkerDuringAddIsReconciledWithoutResendingWithRealDex(t *testing.T
 	var outcome OnboardingOutcome
 	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Equal(t, OnboardingHeld, outcome.Action)
-	require.True(t, outcome.WasAdditionReconciled, "the new Worker's attempt found the dispatch marker and looked the hire up")
-	require.Equal(t, "an earlier attempt may have sent the request; no employee ID is available for read-back", outcome.ReviewDetail)
+	require.True(t, outcome.WasEmployeeAdded)
 	provider.waitForDelayedRequests(t)
-	require.Equal(t, 1, provider.count("add"), "the attempt on the new Worker did not resend the add")
-	require.Equal(t, 1, provider.employeeCount())
+	require.Equal(t, 2, provider.count("add"), "the attempt on the new Worker resent the add below the send cap")
+	// BambooHR has no idempotency key, so the held first add and the resend each added an employee.
+	require.Equal(t, 2, provider.employeeCount())
 }
 
-func TestLostAddResponseIsReconciledByPersonalEmailWithRealDex(t *testing.T) {
+func TestLostAddResponseIsResentBelowTheSendCapWithRealDex(t *testing.T) {
 	provider := newFakeBambooHR(t)
 	provider.losesFirstAddResponse = true
 	harness := newOnboardingHarness(t, provider, defaultRequestTimeout)
 
 	outcome := harness.runOnboarding(t, "lost-add", integrationInput())
 	require.Equal(t, OnboardingHeld, outcome.Action)
-	require.True(t, outcome.WasAdditionReconciled)
-	require.Equal(t, "BambooHR request failed before a response arrived", outcome.ReviewDetail)
-	require.Equal(t, 1, provider.count("add"), "an unconfirmed add is never resent")
-	require.Equal(t, 1, provider.employeeCount())
-	require.Equal(t, 2, provider.count("find"), "the hire was looked up before and after the add")
+	require.True(t, outcome.WasEmployeeAdded)
+	require.False(t, outcome.WasAdditionReconciled)
+	require.Equal(t, 2, provider.count("add"), "an unconfirmed add is resent below the send cap")
+	// The lost first add was applied, so the resend added a second employee.
+	require.Equal(t, 2, provider.employeeCount())
 }
 
-func TestUnappliedAddWithUnknownOutcomeFailsWithoutResendingWithRealDex(t *testing.T) {
+func TestUnappliedAddWithUnknownOutcomeIsResentWithRealDex(t *testing.T) {
 	provider := newFakeBambooHR(t)
 	provider.failsFirstAddWithoutApplying = true
 	harness := newOnboardingHarness(t, provider, defaultRequestTimeout)
 
-	flowID := harness.startOnboarding(t, "unknown-add", integrationInput())
-	result := harness.waitForFlow(t, flowID)
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "notFound")
-	require.Contains(t, result.ErrorMessage, "no target")
-	require.Equal(t, 1, provider.count("add"), "a 500 might have been applied, so the add is never resent")
-	require.Zero(t, provider.employeeCount())
+	outcome := harness.runOnboarding(t, "unknown-add", integrationInput())
+	require.Equal(t, OnboardingHeld, outcome.Action)
+	require.True(t, outcome.WasEmployeeAdded)
+	require.Equal(t, 2, provider.count("add"), "a 500 leaves the outcome unknown, so the add is resent below the send cap")
+	require.Equal(t, 1, provider.employeeCount())
 }
 
 func TestRateLimitedAddWaitsAndAddsOneEmployeeWithRealDex(t *testing.T) {
@@ -434,8 +432,8 @@ func (provider *fakeBambooHR) addEmployee(response http.ResponseWriter, request 
 	}
 	switch {
 	case provider.rejectsAdd:
-		response.Header().Set("X-BambooHR-Error-Message", "SENTINEL duplicate email")
-		response.WriteHeader(http.StatusConflict)
+		response.Header().Set("X-BambooHR-Error-Message", "SENTINEL invalid field value")
+		response.WriteHeader(http.StatusBadRequest)
 		return
 	case provider.rateLimitsFirstAdd && attempt == 1:
 		response.Header().Set("Retry-After", "1")

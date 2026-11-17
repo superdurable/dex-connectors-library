@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dex-connector-bamboohr"
-version = "0.2.0"
+version = "0.2.1"
 description = "BambooHR connector for Dex Flows"
 readme = "README.md"
 requires-python = ">=3.11"

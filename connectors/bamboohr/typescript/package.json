@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-bamboohr",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "BambooHR employee and time off operations for Dex Flows",
   "repository": {
     "type": "git",

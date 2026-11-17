@@ -81,7 +81,7 @@ func (operation UpdateEmployeeOperation) Invoke(call sdkgo.Call, input UpdateEmp
 	writeResult := operation.client.exchange(call, credentials, updateEmployeeOperation, bambooHRRequest{
 		method: http.MethodPost, path: "/employees/" + input.EmployeeID, payload: writes,
 	})
-	if attempt, isTerminal := updateEmployeeAttemptForExchange(writeResult, receipt, currentOutput); isTerminal {
+	if attempt, isTerminal := updateEmployeeAttemptForWrite(writeResult, receipt, currentOutput); isTerminal {
 		return attempt
 	}
 	output := UpdateEmployeeOutput{WrittenFields: sortedFieldNames(writes)}
@@ -124,6 +124,20 @@ func updateEmployeeAttemptForExchange(result bambooHRExchange, receipt sdkgo.Rec
 	default:
 		return sdkgo.NewMutationBranch(UpdateEmployeeBranchProviderRejected, value, &result.failure, receipt), true
 	}
+}
+
+// updateEmployeeAttemptForWrite retries a write whose outcome is unknown, such as an unreadable
+// 2xx, a 409, or another status that does not prove a refusal; the next attempt reads first.
+func updateEmployeeAttemptForWrite(result bambooHRExchange, receipt sdkgo.Receipt, value UpdateEmployeeOutput) (sdkgo.MutationAttempt[UpdateEmployeeOutput], bool) {
+	switch result.outcome {
+	case exchangeInvalid:
+		return sdkgo.NewMutationRetry[UpdateEmployeeOutput](result.failure, result.retryAfter), true
+	case exchangeRejected, exchangeNotFound:
+		if !isDefiniteRefusalStatus(result.response.statusCode) {
+			return sdkgo.NewMutationRetry[UpdateEmployeeOutput](result.failure, result.retryAfter), true
+		}
+	}
+	return updateEmployeeAttemptForExchange(result, receipt, value)
 }
 
 func validateUpdateEmployeeInput(input UpdateEmployeeInput) error {

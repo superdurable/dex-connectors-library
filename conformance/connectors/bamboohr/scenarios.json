@@ -2050,6 +2050,7 @@
           "attempt": 1,
           "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
           "providerId": "140",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -2113,6 +2114,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -2228,7 +2230,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "employeeId": ""
@@ -2462,20 +2464,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
           "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "employeeId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "6c9e932e-fe09-5f01-8889-39650948771e",
       "input": {
@@ -2702,6 +2702,7 @@
           "attempt": 2,
           "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
           "providerId": "141",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -2807,6 +2808,7 @@
           "attempt": 2,
           "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
           "providerId": "141",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -2922,13 +2924,121 @@
         "preferredName": "Samuel",
         "workEmail": "sam@example.com"
       },
-      "name": "addEmployee-no-resend",
+      "name": "addEmployee-uncertain-at-send-cap",
       "operation": "addEmployee",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+        "sendCount": 3,
         "state": "claimed"
       }
+    },
+    {
+      "attempts": 2,
+      "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"internal\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/employees",
+          "requestBody": {
+            "customITProvisioning": "Pending",
+            "firstName": "Sam",
+            "hireDate": "2026-10-01",
+            "homeEmail": "sam@home.example.com",
+            "lastName": "Park",
+            "preferredName": "Samuel",
+            "workEmail": "sam@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"id\":\"142\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/employees",
+          "requestBody": {
+            "customITProvisioning": "Pending",
+            "firstName": "Sam",
+            "hireDate": "2026-10-01",
+            "homeEmail": "sam@home.example.com",
+            "lastName": "Park",
+            "preferredName": "Samuel",
+            "workEmail": "sam@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+          "providerId": "142",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "employeeId": "142"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "input": {
+        "fields": {
+          "customITProvisioning": "Pending"
+        },
+        "firstName": "Sam",
+        "hireDate": "2026-10-01",
+        "homeEmail": "sam@home.example.com",
+        "lastName": "Park",
+        "preferredName": "Samuel",
+        "workEmail": "sam@example.com"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addEmployee-resend-below-send-cap",
+      "operation": "addEmployee"
     },
     {
       "attempts": 2,

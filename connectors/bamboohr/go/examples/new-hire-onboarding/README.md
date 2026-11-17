@@ -33,8 +33,10 @@ the hire's accounts:
 The `uncertain` branch of the add is wired: `RecordUncertainHire` records why
 the outcome is unknown, `ReconcileUncertainHire` looks the hire up by personal
 email, and `AdoptReconciledEmployee` continues with the one employee it finds.
-When it finds none or several, the unwired branch fails the Flow; the Flow
-never adds the hire a second time. Every other optional branch is unwired and
+When it finds none or several, the unwired branch fails the Flow. The
+connector selects `uncertain` only after the Step's send cap of possible sends,
+so earlier unknown outcomes are resent and can add a second employee; the
+Flow itself never adds the hire a second time. Every other optional branch is unwired and
 fails the Flow, such as a rejected add, a missing employee, an invalid
 response, or a local defect.
 
@@ -88,7 +90,7 @@ go run ./cmd/connectorctl ui-artifact --manifest connectors/bamboohr/connector.y
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/bamboohr/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/bamboohr/go \
-  --version v0.24.0 --tag connectors/bamboohr/go/v0.24.0 \
+  --version v0.24.1 --tag connectors/bamboohr/go/v0.24.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/bamboohr-release/connector-ui.tgz --ui-digest /tmp/bamboohr-release/connector-ui.tgz.sha256 \
   --output /tmp/bamboohr-release/connector-release.json \
@@ -162,11 +164,11 @@ BambooHR, has no idempotency key and matches emails by substring:
 - an update interrupted by Worker loss is read by the replacement Worker,
   which sends no second write;
 - a Worker lost while BambooHR holds the add is replaced, and the new attempt
-  finds the dispatch checkpoint, sends nothing, and adopts the hire it finds
-  by personal email;
-- a lost add response is reconciled the same way and never resent;
-- an add that fails with 500 without being applied fails the Flow and is never
-  resent;
+  counts the claimed send and posts again below the send cap, so the fake
+  holds two employees;
+- a lost add response is resent the same way below the send cap;
+- an add that fails with 500 without being applied is resent and adds one
+  employee;
 - a rate-limited add waits for `Retry-After` and adds one employee;
 - a rejected add fails the Flow through the unwired `providerRejected` branch
   without BambooHR's message text;

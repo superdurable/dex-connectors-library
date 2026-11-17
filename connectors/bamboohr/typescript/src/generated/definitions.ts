@@ -149,7 +149,7 @@ export const UpdateEmployeeBranch = {
 export const UpdateEmployeeBranchUpdated = UpdateEmployeeBranch.Updated;
 /** No employee has this internal ID. */
 export const UpdateEmployeeBranchNotFound = UpdateEmployeeBranch.NotFound;
-/** BambooHR conclusively rejected the change, such as a duplicate email, an invalid list value, or a field the connection cannot edit. */
+/** BambooHR conclusively rejected the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as an invalid list value or a field the connection cannot edit. */
 export const UpdateEmployeeBranchProviderRejected = UpdateEmployeeBranch.ProviderRejected;
 /** BambooHR returned an invalid or oversized employee record, so the change may have been applied. */
 export const UpdateEmployeeBranchInvalidResponse = UpdateEmployeeBranch.InvalidResponse;
@@ -161,7 +161,7 @@ export const UpdateEmployeeDefinition: MutationDefinition = {
   branches: [
     { id: "updated", description: "The employee holds the requested values, written now or by an earlier attempt, as read back from BambooHR." },
     { id: "notFound", description: "No employee has this internal ID.", optional: true },
-    { id: "providerRejected", description: "BambooHR conclusively rejected the change, such as a duplicate email, an invalid list value, or a field the connection cannot edit.", optional: true },
+    { id: "providerRejected", description: "BambooHR conclusively rejected the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as an invalid list value or a field the connection cannot edit.", optional: true },
     { id: "invalidResponse", description: "BambooHR returned an invalid or oversized employee record, so the change may have been applied.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
@@ -180,9 +180,9 @@ export const AddEmployeeBranch = {
 } as const;
 /** BambooHR added the employee and returned its internal ID. */
 export const AddEmployeeBranchCreated = AddEmployeeBranch.Created;
-/** BambooHR conclusively rejected the employee, such as a duplicate email or invalid field value; no employee was added. */
+/** BambooHR conclusively rejected the first send with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid field value; no employee was added. */
 export const AddEmployeeBranchProviderRejected = AddEmployeeBranch.ProviderRejected;
-/** The request was sent but its outcome cannot be confirmed, so the employee may exist; the connector never resends it. */
+/** Sends up to the send cap may have added the employee, or BambooHR accepted it without a usable ID, and read-back cannot confirm it; the employee may exist. */
 export const AddEmployeeBranchUncertain = AddEmployeeBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const AddEmployeeBranchDefect = AddEmployeeBranch.Defect;
@@ -191,8 +191,8 @@ export const AddEmployeeDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "addEmployee" },
   branches: [
     { id: "created", description: "BambooHR added the employee and returned its internal ID." },
-    { id: "providerRejected", description: "BambooHR conclusively rejected the employee, such as a duplicate email or invalid field value; no employee was added.", optional: true },
-    { id: "uncertain", description: "The request was sent but its outcome cannot be confirmed, so the employee may exist; the connector never resends it.", optional: true },
+    { id: "providerRejected", description: "BambooHR conclusively rejected the first send with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid field value; no employee was added.", optional: true },
+    { id: "uncertain", description: "Sends up to the send cap may have added the employee, or BambooHR accepted it without a usable ID, and read-back cannot confirm it; the employee may exist.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },

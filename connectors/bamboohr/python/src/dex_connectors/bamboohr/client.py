@@ -38,6 +38,9 @@ if TYPE_CHECKING:
 _COMPANY_DOMAIN = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 _ERROR_CODE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,63}$")
 
+DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+"""Statuses that prove BambooHR refused a write; any other failure leaves its outcome unknown."""
+
 MINIMUM_POLL_INTERVAL = timedelta(seconds=10)
 """Keeps employeeChanged polling from tripping BambooHR's unpublished throttling."""
 

@@ -41,7 +41,7 @@ func TestAddEmployeeSendsOneRequestAfterRecordingTheDispatchMarker(t *testing.T)
 	require.Empty(t, request.header.Get("Idempotency-Key"), "BambooHR documents no key, and Go would retry a keyed POST on its own")
 	require.JSONEq(t, `{"firstName":"Ava","lastName":"Nguyen","homeEmail":"ava@personal.example.com","hireDate":"2026-10-13",
 		"department":"Engineering","employmentHistoryStatus":"Full-Time"}`, request.body)
-	require.JSONEq(t, `{"callId":"`+string(result.Receipt.CallID)+`","attempt":1,"state":"claimed","providerId":"140"}`, string(ctx.recordedHeartbeat))
+	require.JSONEq(t, `{"callId":"`+string(result.Receipt.CallID)+`","attempt":1,"state":"claimed","providerId":"140","sendCount":1}`, string(ctx.recordedHeartbeat))
 }
 
 func TestAddEmployeeReadsTheIDFromTheLocationHeaderWhenTheBodyLacksIt(t *testing.T) {
@@ -71,43 +71,97 @@ func TestAddEmployeeRejectsAnInvalidSavedEmployeeIDBeforeReadBack(t *testing.T) 
 	require.Equal(t, 1, provider.requestCount(), "an invalid saved ID must not be used in a GET path or another POST")
 }
 
-func TestAddEmployeeNeverResendsARequestWhoseOutcomeIsUnknown(t *testing.T) {
+func TestAddEmployeeResendsAnUnknownOutcomeOnlyBelowTheSendCap(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		reply func(http.ResponseWriter)
+		kind  sdkgo.FailureKind
+	}{
+		{name: "server error", reply: func(response http.ResponseWriter) {
+			writeBambooHRError(t, response, http.StatusInternalServerError, `SENTINEL`)
+		}, kind: sdkgo.FailureAvailability},
+		{name: "lost response", reply: func(response http.ResponseWriter) { dropConnection(t, response) }, kind: sdkgo.FailureTransport},
+		{name: "duplicate email conflict", reply: func(response http.ResponseWriter) {
+			writeBambooHRError(t, response, http.StatusConflict, ``)
+		}, kind: sdkgo.FailureConflict},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) { test.reply(response) })
+			ctx := newBambooHRDexContext("add-" + test.name)
+			for attempt := 1; attempt < 3; attempt++ {
+				_, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry, "attempt %d is below the send cap of 3", attempt)
+				require.Equal(t, test.kind, retry.Failure.Kind)
+				require.Contains(t, string(ctx.recordedHeartbeat), `"state":"claimed"`, "the claim counts the possible send")
+				require.Equal(t, attempt, provider.requestCount())
+				ctx = ctx.nextAttempt()
+			}
+			result, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+			require.NoError(t, err, "the third send reaches the cap")
+			require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch)
+			requireNoLeak(t, result)
+			require.Equal(t, 3, provider.requestCount())
+
+			replay := newRecordingBambooHR(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected at the cap") })
+			result, err = sdkgo.RunMutation(ctx.nextAttempt(), newBambooHRClient(t, replay.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+			require.NoError(t, err)
+			require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch)
+		})
+	}
+}
+
+func TestAddEmployeeNeverResendsAnAcceptedOrDefinitelyRefusedRequest(t *testing.T) {
 	for _, test := range []struct {
 		name   string
 		reply  func(http.ResponseWriter)
 		branch sdkgo.BranchID
 		kind   sdkgo.FailureKind
+		state  string
 	}{
-		{name: "server error", reply: func(response http.ResponseWriter) {
-			writeBambooHRError(t, response, http.StatusInternalServerError, `SENTINEL`)
-		}, branch: bamboohr.AddEmployeeBranchUncertain, kind: sdkgo.FailureAvailability},
-		{name: "lost response", reply: func(response http.ResponseWriter) { dropConnection(t, response) },
-			branch: bamboohr.AddEmployeeBranchUncertain, kind: sdkgo.FailureTransport},
 		{name: "no employee id", reply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusCreated, `{"firstName":"SENTINEL"}`)
-		}, branch: bamboohr.AddEmployeeBranchUncertain, kind: sdkgo.FailureProtocol},
+		}, branch: bamboohr.AddEmployeeBranchUncertain, kind: sdkgo.FailureProtocol, state: "claimed"},
 		{name: "reflected key", reply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusCreated, `{"id":"140","firstName":"`+testAPIKey+`"}`)
-		}, branch: bamboohr.AddEmployeeBranchUncertain, kind: sdkgo.FailureProtocol},
-		{name: "duplicate email", reply: func(response http.ResponseWriter) {
-			writeBambooHRError(t, response, http.StatusConflict, ``)
-		}, branch: bamboohr.AddEmployeeBranchProviderRejected, kind: sdkgo.FailureConflict},
+		}, branch: bamboohr.AddEmployeeBranchUncertain, kind: sdkgo.FailureProtocol, state: "claimed"},
+		{name: "invalid value", reply: func(response http.ResponseWriter) {
+			writeBambooHRError(t, response, http.StatusBadRequest, ``)
+		}, branch: bamboohr.AddEmployeeBranchProviderRejected, kind: sdkgo.FailureValidation, state: "canResend"},
 		{name: "not permitted", reply: func(response http.ResponseWriter) {
 			writeBambooHRError(t, response, http.StatusForbidden, ``)
-		}, branch: bamboohr.AddEmployeeBranchProviderRejected, kind: sdkgo.FailureAuthorization},
+		}, branch: bamboohr.AddEmployeeBranchProviderRejected, kind: sdkgo.FailureAuthorization, state: "canResend"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) { test.reply(response) })
 			ctx := newBambooHRDexContext("add-" + test.name)
 			result, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
-			require.NoError(t, err, "only a provable non-application is retried")
+			require.NoError(t, err)
 			require.Equal(t, test.branch, result.Branch)
 			require.Equal(t, test.kind, result.Failure.Kind)
 			requireNoLeak(t, result)
-			require.NotEmpty(t, ctx.recordedHeartbeat, "the marker stays, so a replayed attempt sends nothing")
+			require.Contains(t, string(ctx.recordedHeartbeat), `"state":"`+test.state+`"`)
 			require.Equal(t, 1, provider.requestCount())
 		})
 	}
+}
+
+func TestAddEmployeeSelectsUncertainForARefusalAfterAPossibleSend(t *testing.T) {
+	provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		if index == 0 {
+			writeBambooHRError(t, response, http.StatusBadGateway, ``)
+			return
+		}
+		writeBambooHRError(t, response, http.StatusBadRequest, ``)
+	})
+	ctx := newBambooHRDexContext("add-refused-after-send")
+	_, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	result, err := sdkgo.RunMutation(ctx.nextAttempt(), newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	require.NoError(t, err)
+	require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch, "the first send may have added the employee")
+	require.Equal(t, 2, provider.requestCount())
 }
 
 func TestAddEmployeeRetriesOnlyWhatBambooHRProvablyDidNotApply(t *testing.T) {
@@ -149,19 +203,18 @@ func TestAddEmployeeRetriesOnlyWhatBambooHRProvablyDidNotApply(t *testing.T) {
 	require.Equal(t, bamboohr.AddEmployeeBranchCreated, result.Branch)
 }
 
-func TestAddEmployeeAfterAnEarlierDispatchSendsNothing(t *testing.T) {
+func TestAddEmployeeRetriesAnUntrustedCheckpointWithoutSending(t *testing.T) {
 	provider := newRecordingBambooHR(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
 	first := newBambooHRDexContext("add-replay")
 	first.recordedHeartbeat = json.RawMessage(`{"bamboohrDispatchedCallId":"earlier"}`)
-	result, err := sdkgo.RunMutation(first.nextAttempt(), newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
-	require.NoError(t, err)
-	require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch)
-	require.Equal(t, "the dispatch checkpoint is unavailable or untrusted; the request is not sent again", result.Failure.Message)
+	_, err := sdkgo.RunMutation(first.nextAttempt(), newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "a FailClosed decision is never a terminal branch")
+	require.Equal(t, "the dispatch checkpoint could not be read; nothing was sent", retry.Failure.Message)
 
 	rejecting := newBambooHRDexContext("add-heartbeat-closed")
 	rejecting.rejectsHeartbeat = true
 	_, err = sdkgo.RunMutation(rejecting, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
-	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry, "nothing is sent until Dex records the marker")
 	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
 }

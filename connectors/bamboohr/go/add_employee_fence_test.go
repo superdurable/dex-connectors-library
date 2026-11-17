@@ -55,9 +55,9 @@ func TestAddEmployeeFenceRetriesOnlyConfirmedNonApplications(t *testing.T) {
 	}
 }
 
-func TestAddEmployeeFenceFailsClosedWithoutCurrentPermission(t *testing.T) {
+func TestAddEmployeeFenceRetriesAnUntrustedCheckpointWithoutSending(t *testing.T) {
 	provider := newRecordingBambooHR(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no provider request is permitted") })
-	for _, scenario := range []string{"missing", "legacy", "foreign"} {
+	for _, scenario := range []string{"legacy", "foreign"} {
 		t.Run(scenario, func(t *testing.T) {
 			ctx := singledispatchtest.NewContext("bamboohr-flow", "add-fail-closed")
 			switch scenario {
@@ -67,15 +67,28 @@ func TestAddEmployeeFenceFailsClosedWithoutCurrentPermission(t *testing.T) {
 				require.NoError(t, ctx.SetPersistedCheckpoint(map[string]any{"callId": "foreign", "attempt": 1, "state": "canResend"}))
 			}
 			ctx.AdvanceAttempt()
-			result, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
-			require.NoError(t, err)
-			require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch)
+			_, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "FailClosed never selects a terminal branch")
 			require.Zero(t, provider.requestCount())
 		})
 	}
 }
 
-func TestAddEmployeeFenceRejectsAStaleResendCheckpoint(t *testing.T) {
+func TestAddEmployeeFenceCountsAMissingCheckpointAsAPossibleSend(t *testing.T) {
+	provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeBambooHRError(t, response, http.StatusInternalServerError, ``)
+	})
+	ctx := singledispatchtest.NewContext("bamboohr-flow", "add-missing-checkpoint")
+	ctx.AdvanceAttempt()
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	require.NoError(t, err)
+	require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch, "two earlier attempts may have sent, so this third send reaches the cap")
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestAddEmployeeFenceCountsAStaleResendCheckpointAsAPossibleSend(t *testing.T) {
 	provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		response.WriteHeader(http.StatusServiceUnavailable)
 	})
@@ -86,13 +99,12 @@ func TestAddEmployeeFenceRejectsAStaleResendCheckpoint(t *testing.T) {
 	require.ErrorAs(t, err, &retry)
 	ctx.AdvanceAttempt()
 	ctx.AdvanceAttempt()
-	result, err := sdkgo.RunMutation(ctx, client.AddEmployee(), bambooHRConnection, validAddEmployeeInput())
-	require.NoError(t, err)
-	require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch)
-	require.Equal(t, 1, provider.requestCount())
+	_, err = sdkgo.RunMutation(ctx, client.AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	require.ErrorAs(t, err, &retry, "the skipped attempt counts as one possible send, which is below the cap")
+	require.Equal(t, 2, provider.requestCount())
 }
 
-func TestAddEmployeeFenceDoesNotResendWhenCanResendCheckpointFails(t *testing.T) {
+func TestAddEmployeeFenceCountsTheSendWhenCanResendCheckpointFails(t *testing.T) {
 	ctx := singledispatchtest.NewContext("bamboohr-flow", "add-checkpoint-failure")
 	provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		ctx.SetWriteError(errors.New("heartbeat unavailable"))
@@ -104,10 +116,10 @@ func TestAddEmployeeFenceDoesNotResendWhenCanResendCheckpointFails(t *testing.T)
 	require.ErrorAs(t, err, &retry)
 	ctx.SetWriteError(nil)
 	ctx.AdvanceAttempt()
-	result, err := sdkgo.RunMutation(ctx, client.AddEmployee(), bambooHRConnection, validAddEmployeeInput())
-	require.NoError(t, err)
-	require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch)
-	require.Equal(t, 1, provider.requestCount())
+	_, err = sdkgo.RunMutation(ctx, client.AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	require.ErrorAs(t, err, &retry)
+	require.Contains(t, string(ctx.Heartbeats()[len(ctx.Heartbeats())-1]), `"sendCount":2`, "the unrecorded canResend leaves the first send counted")
+	require.Equal(t, 2, provider.requestCount())
 }
 
 func TestAddEmployeeFenceRejectsTerminalOrUnusableCredentialsBeforeSending(t *testing.T) {
@@ -216,11 +228,7 @@ func TestAddEmployeeFenceTreatsUnusableAcceptedBodyAsAccepted(t *testing.T) {
 			require.NoError(t, err)
 			ctx := singledispatchtest.NewContext("bamboohr-flow", "add-unusable")
 			result, err := sdkgo.RunMutation(ctx, client.AddEmployee(), bambooHRConnection, validAddEmployeeInput())
-			require.NoError(t, err)
-			require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch)
-			ctx.AdvanceAttempt()
-			result, err = sdkgo.RunMutation(ctx, client.AddEmployee(), bambooHRConnection, validAddEmployeeInput())
-			require.NoError(t, err)
+			require.NoError(t, err, "an accepted POST is never resent by this attempt")
 			require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch)
 			require.Equal(t, 1, provider.requestCount())
 		})
@@ -235,9 +243,9 @@ func TestAddEmployeeFenceCutsOffSlowWriteInsideAttempt(t *testing.T) {
 	cancel := ctx.SetDeadline(time.Now().Add(time.Second))
 	defer cancel()
 	started := time.Now()
-	result, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
-	require.NoError(t, err)
-	require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch)
+	_, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "a timed-out POST is resent below the send cap")
 	require.Less(t, time.Since(started), time.Second)
 	require.Equal(t, 1, provider.requestCount())
 }
@@ -257,9 +265,9 @@ func TestAddEmployeeFenceDoesNotReplayOnReusedConnection(t *testing.T) {
 		bamboohr.GetEmployeeInput{EmployeeID: "140", Fields: []string{"firstName"}})
 	require.NoError(t, err)
 	ctx := singledispatchtest.NewContext("bamboohr-flow", "add-reused")
-	result, err := sdkgo.RunMutation(ctx, client.AddEmployee(), bambooHRConnection, validAddEmployeeInput())
-	require.NoError(t, err)
-	require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch)
+	_, err = sdkgo.RunMutation(ctx, client.AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "the attempt returns Retry instead of net/http replaying the POST")
 	require.Equal(t, 2, provider.requestCount())
 	require.Equal(t, http.MethodPost, provider.request(1).method)
 }
@@ -277,17 +285,19 @@ func (probe *keyedReplayProbe) RoundTrip(request *http.Request) (*http.Response,
 	return probe.base.RoundTrip(request)
 }
 
-func TestAddEmployeeFenceLostClaimNeverPermitsAnotherPost(t *testing.T) {
+func TestAddEmployeeFenceLostClaimStillCountsTheSend(t *testing.T) {
 	provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) { dropConnection(t, response) })
 	ctx := singledispatchtest.NewContext("bamboohr-flow", "add-lost-claim")
 	ctx.LoseNextHeartbeat()
 	client := newBambooHRClient(t, provider.URL)
+	var retry *sdkgo.RetryError
+	for attempt := 1; attempt < 3; attempt++ {
+		_, err := sdkgo.RunMutation(ctx, client.AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+		require.ErrorAs(t, err, &retry)
+		ctx.AdvanceAttempt()
+	}
 	result, err := sdkgo.RunMutation(ctx, client.AddEmployee(), bambooHRConnection, validAddEmployeeInput())
 	require.NoError(t, err)
-	require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch)
-	ctx.AdvanceAttempt()
-	result, err = sdkgo.RunMutation(ctx, client.AddEmployee(), bambooHRConnection, validAddEmployeeInput())
-	require.NoError(t, err)
-	require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch)
-	require.Equal(t, 1, provider.requestCount())
+	require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch, "the lost claim's attempt still counts toward the cap")
+	require.Equal(t, 3, provider.requestCount())
 }

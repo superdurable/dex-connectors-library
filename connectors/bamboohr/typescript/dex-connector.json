@@ -1,10 +1,10 @@
 {
   "connectorId": "bamboohr",
-  "releaseTag": "connectors/bamboohr/go/v0.24.0",
+  "releaseTag": "connectors/bamboohr/go/v0.24.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-bamboohr",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -374,7 +374,7 @@
       "kind": "mutation",
       "operationId": "addEmployee",
       "inputType": "AddEmployeeInput",
-      "description": "Add one employee. BambooHR has no idempotency key, so the shared single-dispatch fence requires sync durability to persist heartbeat checkpoints across retries; 429, 503, and proven unsent requests may be retried.",
+      "description": "Add one employee. BambooHR has no idempotency key, so the shared single-dispatch fence requires sync durability to persist heartbeat checkpoints across retries; 429, 503, and proven unsent requests are retried, and an unknown outcome is resent while possible sends stay below the send cap.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

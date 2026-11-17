@@ -28,6 +28,8 @@ export type BambooHRExchange =
   | { kind: 'notFound' | 'rateLimited' | 'notSent' | 'unavailable' | 'rejected' | 'invalid' | 'defect'; failure: Failure; retryAfterMs: number; status?: number };
 
 /** Credential outcome before any provider request. */
+/** Statuses that prove BambooHR refused a write; any other failure leaves its outcome unknown. */
+export const DefiniteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 export type BambooHRCredentialResult = { kind: 'resolved'; key: string } | { kind: 'terminal' | 'transient' };
 
 /** Authenticated BambooHR API v1 client. */

@@ -104,7 +104,7 @@ UPDATE_EMPLOYEE_DEFINITION = MutationDefinition(
     (
         BranchDefinition(UPDATED, "The employee holds the requested values, written now or by an earlier attempt, as read back from BambooHR.", False),
         BranchDefinition(NOT_FOUND, "No employee has this internal ID.", True),
-        BranchDefinition(PROVIDER_REJECTED, "BambooHR conclusively rejected the change, such as a duplicate email, an invalid list value, or a field the connection cannot edit.", True),
+        BranchDefinition(PROVIDER_REJECTED, "BambooHR conclusively rejected the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as an invalid list value or a field the connection cannot edit.", True),
         BranchDefinition(INVALID_RESPONSE, "BambooHR returned an invalid or oversized employee record, so the change may have been applied.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
@@ -120,8 +120,8 @@ ADD_EMPLOYEE_DEFINITION = MutationDefinition(
     OperationRef(CONNECTOR_ID, ADD_EMPLOYEE_OPERATION_ID),
     (
         BranchDefinition(CREATED, "BambooHR added the employee and returned its internal ID.", False),
-        BranchDefinition(PROVIDER_REJECTED, "BambooHR conclusively rejected the employee, such as a duplicate email or invalid field value; no employee was added.", True),
-        BranchDefinition(UNCERTAIN, "The request was sent but its outcome cannot be confirmed, so the employee may exist; the connector never resends it.", True),
+        BranchDefinition(PROVIDER_REJECTED, "BambooHR conclusively rejected the first send with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid field value; no employee was added.", True),
+        BranchDefinition(UNCERTAIN, "Sends up to the send cap may have added the employee, or BambooHR accepted it without a usable ID, and read-back cannot confirm it; the employee may exist.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
