@@ -1,0 +1,60 @@
+{
+  "connectorId": "doc2x",
+  "releaseTag": "connectors/doc2x/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-doc2x",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_parse_status_step",
+      "kind": "query",
+      "operationId": "getParseStatus",
+      "inputType": "GetParseStatusInput",
+      "description": "Read the status and progress of an existing PDF parse task.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetParseStatusInput names a PDF parsing task created by Doc2X preupload.",
+        "properties": {
+          "uid": {
+            "description": "UID is the opaque task identifier returned by preupload.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uid"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
