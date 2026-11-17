@@ -16,6 +16,9 @@ from ._generated.models import Member as Member
 from ._generated.models import SearchTasksInput as SearchTasksInput
 from ._generated.models import SearchTasksOutput as SearchTasksOutput
 from ._generated.models import Task as Task
+from ._generated.models import TaskEvent as TaskEvent
+from ._generated.models import TaskEventTriggerConfiguration as TaskEventTriggerConfiguration
+from ._generated.models import TaskHistoryItem as TaskHistoryItem
 from ._generated.models import TaskStatus as TaskStatus
 from ._generated.models import UpdateTaskInput as UpdateTaskInput
 from ._generated.models import UpdateTaskOutput as UpdateTaskOutput

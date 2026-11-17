@@ -88,6 +88,7 @@ class Client:
             raise ValueError("ClickUp response and webhook body limits must be positive")
         self.base_url = validate_base_url(api_base_url)
         self.max_response_bytes = config.max_response_bytes
+        self.webhook_max_body_bytes = config.webhook_max_body_bytes
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(
             9, address_policy="publicHTTPS" if self.base_url == API_BASE_URL else "privateNetworkHTTP"

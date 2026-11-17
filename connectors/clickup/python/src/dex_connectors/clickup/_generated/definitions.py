@@ -9,8 +9,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -80,6 +83,8 @@ CREATE_TASK_DEFINITION = MutationDefinition(
         1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 5, timedelta(seconds=300)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 UPDATE_TASK_DEFINITION = MutationDefinition(
@@ -96,6 +101,8 @@ UPDATE_TASK_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 UPDATE_TASK_TAGS_DEFINITION = MutationDefinition(
@@ -112,6 +119,8 @@ UPDATE_TASK_TAGS_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 ADD_COMMENT_DEFINITION = MutationDefinition(
@@ -128,6 +137,8 @@ ADD_COMMENT_DEFINITION = MutationDefinition(
         1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 5, timedelta(seconds=300)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 FIND_MEMBER_BY_EMAIL_DEFINITION = QueryDefinition(
@@ -144,4 +155,9 @@ FIND_MEMBER_BY_EMAIL_DEFINITION = QueryDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+)
+
+TASK_EVENT_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="taskEvent"),
+    description="Receive one ClickUp task webhook event, verified with its X-Signature, such as a created task or a status change, filtered by event name.",
 )

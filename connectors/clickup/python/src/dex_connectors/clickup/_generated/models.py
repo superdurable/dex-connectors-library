@@ -423,3 +423,75 @@ class Member:
 
 
 setattr(Member, '__module__', 'dex_connectors.clickup.models')
+
+
+# TaskHistoryItem is one change in a task event, without the changed values except a status name.
+@dataclass(frozen=True, slots=True)
+class TaskHistoryItem:
+    # ID is ClickUp's history item ID.
+    id: str = ''
+    # Field is the changed field, such as status, assignee_add, tag, content, or task_creation.
+    field: str = ''
+    # OccurredAt is when the change happened.
+    occurred_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'occurredAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+    # UserID is the user who made the change, or zero when ClickUp reports none.
+    user_id: int = _dataclass_field(default=0, metadata={'dex_json_name': 'userId', 'dex_json_omit_default': True})
+    # ParentID is the history item's parent, such as the task's List for taskCreated.
+    parent_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'parentId', 'dex_json_omit_default': True})
+    # StatusBefore is the previous status name of a status change.
+    status_before: str = _dataclass_field(default='', metadata={'dex_json_name': 'statusBefore', 'dex_json_omit_default': True})
+    # StatusAfter is the new status name of a status change.
+    status_after: str = _dataclass_field(default='', metadata={'dex_json_name': 'statusAfter', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.occurred_at, str):
+            object.__setattr__(self, 'occurred_at', parse_go_datetime(self.occurred_at, 'occurred_at'))
+        elif self.occurred_at is not None:
+            validate_go_datetime(self.occurred_at, 'occurred_at')
+
+
+setattr(TaskHistoryItem, '__module__', 'dex_connectors.clickup.models')
+
+
+# TaskEvent is one verified ClickUp task webhook event. The Trigger event's ID is
+# "{webhook_id}:{event}:{history_item_id}", or "{webhook_id}:{event}:{task_id}" for an event without
+# history items, so ClickUp's retry of the same event reuses it.
+@dataclass(frozen=True, slots=True)
+class TaskEvent:
+    # EventID is the Trigger event ID described above.
+    event_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'eventId'})
+    # WebhookID is the ClickUp webhook that delivered the event.
+    webhook_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'webhookId'})
+    # Event is the event name, such as taskStatusUpdated.
+    event: str = ''
+    # TaskID is the task the event is about.
+    task_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'taskId'})
+    # HistoryItems describe the change, newest information first as ClickUp sends it; empty for taskDeleted.
+    history_items: tuple[TaskHistoryItem, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'historyItems'})
+    # OccurredAt is the first history item's time, or when the endpoint received an event without one.
+    occurred_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'occurredAt', 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.occurred_at, str):
+            object.__setattr__(self, 'occurred_at', parse_go_datetime(self.occurred_at, 'occurred_at'))
+        elif self.occurred_at is not None:
+            validate_go_datetime(self.occurred_at, 'occurred_at')
+        object.__setattr__(self, 'history_items', _replace_nil_slices(self.history_items, 1))
+
+
+TaskEvent.__annotations__['history_items'] = tuple[TaskHistoryItem, ...] | None
+TaskEvent.__dataclass_fields__['history_items'].type = tuple[TaskHistoryItem, ...] | None
+setattr(TaskEvent, '__module__', 'dex_connectors.clickup.models')
+
+
+# TaskEventTriggerConfiguration selects the events one taskEvent binding accepts. An empty list accepts
+# every event TaskEvents returns. An event the binding rejects is still answered 200. The events a
+# binding can receive are those its ClickUp webhook subscribes to. NewTaskEventTrigger panics for an
+# invalid configuration, so call Validate on untrusted values.
+@dataclass(frozen=True, slots=True)
+class TaskEventTriggerConfiguration:
+    # Events lists accepted event names, such as taskStatusUpdated; empty accepts every task event.
+    events: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_omit_default': True})
+
+
+setattr(TaskEventTriggerConfiguration, '__module__', 'dex_connectors.clickup.models')

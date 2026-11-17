@@ -21,6 +21,9 @@ from .models import Member as Member
 from .models import SearchTasksInput as SearchTasksInput
 from .models import SearchTasksOutput as SearchTasksOutput
 from .models import Task as Task
+from .models import TaskEvent as TaskEvent
+from .models import TaskEventTriggerConfiguration as TaskEventTriggerConfiguration
+from .models import TaskHistoryItem as TaskHistoryItem
 from .models import TaskStatus as TaskStatus
 from .models import UpdateTaskInput as UpdateTaskInput
 from .models import UpdateTaskOutput as UpdateTaskOutput
@@ -34,8 +37,47 @@ from .steps import new_get_task_step as new_get_task_step
 from .steps import new_search_tasks_step as new_search_tasks_step
 from .steps import new_update_task_step as new_update_task_step
 from .steps import new_update_task_tags_step as new_update_task_tags_step
+from .triggers import (
+    ProjectTaskEventTriggerRoute as ProjectTaskEventTriggerRoute,
+)
+from .triggers import (
+    TaskEventEndpointRunner as TaskEventEndpointRunner,
+)
+from .triggers import (
+    decode_task_event_trigger_configuration as decode_task_event_trigger_configuration,
+)
+from .triggers import (
+    define_task_event_trigger_binding as define_task_event_trigger_binding,
+)
+from .triggers import (
+    new_project_task_event_endpoint_runner as new_project_task_event_endpoint_runner,
+)
+from .triggers import (
+    new_task_event_trigger as new_task_event_trigger,
+)
+from .triggers import (
+    task_event_webhook_endpoint as task_event_webhook_endpoint,
+)
+from .triggers import (
+    task_events as task_events,
+)
+from .triggers import (
+    validate_task_event_trigger_configuration as validate_task_event_trigger_configuration,
+)
 
 __all__ = [
+    "validate_task_event_trigger_configuration",
+    "task_events",
+    "task_event_webhook_endpoint",
+    "new_task_event_trigger",
+    "new_project_task_event_endpoint_runner",
+    "decode_task_event_trigger_configuration",
+    "define_task_event_trigger_binding",
+    "TaskEventEndpointRunner",
+    "ProjectTaskEventTriggerRoute",
+    "TaskHistoryItem",
+    "TaskEventTriggerConfiguration",
+    "TaskEvent",
     "AddCommentInput",
     "AddCommentOutput",
     "Client",

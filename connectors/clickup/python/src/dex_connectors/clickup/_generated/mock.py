@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import AddCommentInput, AddCommentOutput, CreateTaskInput, CreateTaskOutput, CustomFieldInput, CustomFieldValue, FindMemberByEmailInput, GetTaskInput, Member, SearchTasksInput, SearchTasksOutput, Task, TaskStatus, UpdateTaskInput, UpdateTaskOutput, UpdateTaskTagsInput, UpdateTaskTagsOutput, User
+from ..models import AddCommentInput, AddCommentOutput, CreateTaskInput, CreateTaskOutput, CustomFieldInput, CustomFieldValue, FindMemberByEmailInput, GetTaskInput, Member, SearchTasksInput, SearchTasksOutput, Task, TaskEvent, TaskEventTriggerConfiguration, TaskHistoryItem, TaskStatus, UpdateTaskInput, UpdateTaskOutput, UpdateTaskTagsInput, UpdateTaskTagsOutput, User
 from .definitions import CONNECTOR_ID, ADDED, ADD_COMMENT_DEFINITION, CREATED, CREATE_TASK_DEFINITION, DEFECT, FIND_MEMBER_BY_EMAIL_DEFINITION, FOUND, GET_TASK_DEFINITION, INVALID_RESPONSE, NOT_FOUND, PROVIDER_REJECTED, SEARCHED, SEARCH_TASKS_DEFINITION, UNCERTAIN, UPDATED, UPDATE_TASK_DEFINITION, UPDATE_TASK_TAGS_DEFINITION
 
 def search_tasks_searched(value: SearchTasksOutput, failure: Failure | None = None) -> Case[SearchTasksOutput]:
