@@ -20,6 +20,7 @@ type Mock struct {
 	connection         reddit.Connection
 	getUser            *connectormock.Query[reddit.GetUserInput, reddit.UserProfile]
 	getSubreddit       *connectormock.Query[reddit.GetSubredditInput, reddit.Subreddit]
+	getSubredditRules  *connectormock.Query[reddit.GetSubredditRulesInput, reddit.SubredditRules]
 	searchSubreddits   *connectormock.Query[reddit.SearchSubredditsInput, reddit.SubredditPage]
 	listSubreddits     *connectormock.Query[reddit.ListSubredditsInput, reddit.SubredditPage]
 	listPostComments   *connectormock.Query[reddit.ListPostCommentsInput, reddit.CommentPage]
@@ -35,6 +36,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock := &Mock{
 		getUser:            connectormock.NewQuery[reddit.GetUserInput, reddit.UserProfile](t, reddit.GetUserDefinition),
 		getSubreddit:       connectormock.NewQuery[reddit.GetSubredditInput, reddit.Subreddit](t, reddit.GetSubredditDefinition),
+		getSubredditRules:  connectormock.NewQuery[reddit.GetSubredditRulesInput, reddit.SubredditRules](t, reddit.GetSubredditRulesDefinition),
 		searchSubreddits:   connectormock.NewQuery[reddit.SearchSubredditsInput, reddit.SubredditPage](t, reddit.SearchSubredditsDefinition),
 		listSubreddits:     connectormock.NewQuery[reddit.ListSubredditsInput, reddit.SubredditPage](t, reddit.ListSubredditsDefinition),
 		listPostComments:   connectormock.NewQuery[reddit.ListPostCommentsInput, reddit.CommentPage](t, reddit.ListPostCommentsDefinition),
@@ -44,6 +46,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	}
 	mock.getUser.Default(GetUserDefault())
 	mock.getSubreddit.Default(GetSubredditDefault())
+	mock.getSubredditRules.Default(GetSubredditRulesDefault())
 	mock.searchSubreddits.Default(SearchSubredditsDefault())
 	mock.listSubreddits.Default(ListSubredditsDefault())
 	mock.listPostComments.Default(ListPostCommentsDefault())
@@ -69,6 +72,11 @@ func (mock *Mock) GetUser() *connectormock.Query[reddit.GetUserInput, reddit.Use
 // GetSubreddit returns the getSubreddit script.
 func (mock *Mock) GetSubreddit() *connectormock.Query[reddit.GetSubredditInput, reddit.Subreddit] {
 	return mock.getSubreddit
+}
+
+// GetSubredditRules returns the getSubredditRules script.
+func (mock *Mock) GetSubredditRules() *connectormock.Query[reddit.GetSubredditRulesInput, reddit.SubredditRules] {
+	return mock.getSubredditRules
 }
 
 // SearchSubreddits returns the searchSubreddits script.
@@ -108,6 +116,9 @@ func (operations mockOperations) GetUser() sdkgo.Query[reddit.GetUserInput, redd
 }
 func (operations mockOperations) GetSubreddit() sdkgo.Query[reddit.GetSubredditInput, reddit.Subreddit] {
 	return operations.mock.getSubreddit
+}
+func (operations mockOperations) GetSubredditRules() sdkgo.Query[reddit.GetSubredditRulesInput, reddit.SubredditRules] {
+	return operations.mock.getSubredditRules
 }
 func (operations mockOperations) SearchSubreddits() sdkgo.Query[reddit.SearchSubredditsInput, reddit.SubredditPage] {
 	return operations.mock.searchSubreddits
@@ -205,6 +216,47 @@ func GetSubredditPublicSubreddit() connectormock.Case[reddit.Subreddit] {
 
 // GetSubredditDefault is the manifest default, publicSubreddit, which New installs.
 func GetSubredditDefault() connectormock.Case[reddit.Subreddit] { return GetSubredditPublicSubreddit() }
+
+// GetSubredditRulesFound selects the found branch: Reddit returned the community rules; the list can be empty.
+func GetSubredditRulesFound(value reddit.SubredditRules, failure *sdkgo.Failure) connectormock.Case[reddit.SubredditRules] {
+	return connectormock.Branch(reddit.GetSubredditRulesBranchFound, value, failure)
+}
+
+// GetSubredditRulesUnavailable selects the unavailable branch: The subreddit is missing, private, banned, or restricted.
+func GetSubredditRulesUnavailable(value reddit.SubredditRules, failure *sdkgo.Failure) connectormock.Case[reddit.SubredditRules] {
+	return connectormock.Branch(reddit.GetSubredditRulesBranchUnavailable, value, failure)
+}
+
+// GetSubredditRulesProviderRejected selects the providerRejected branch: Reddit rejected the rules read.
+func GetSubredditRulesProviderRejected(value reddit.SubredditRules, failure *sdkgo.Failure) connectormock.Case[reddit.SubredditRules] {
+	return connectormock.Branch(reddit.GetSubredditRulesBranchProviderRejected, value, failure)
+}
+
+// GetSubredditRulesInvalidResponse selects the invalidResponse branch: Reddit returned malformed or oversized rules.
+func GetSubredditRulesInvalidResponse(value reddit.SubredditRules, failure *sdkgo.Failure) connectormock.Case[reddit.SubredditRules] {
+	return connectormock.Branch(reddit.GetSubredditRulesBranchInvalidResponse, value, failure)
+}
+
+// GetSubredditRulesDefect selects the defect branch: The subreddit name or OAuth connection is invalid.
+func GetSubredditRulesDefect(value reddit.SubredditRules, failure *sdkgo.Failure) connectormock.Case[reddit.SubredditRules] {
+	return connectormock.Branch(reddit.GetSubredditRulesBranchDefect, value, failure)
+}
+
+// GetSubredditRulesRetry asks Dex to retry the getSubredditRules Step, after the delay when it is positive.
+func GetSubredditRulesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[reddit.SubredditRules] {
+	return connectormock.Retry[reddit.SubredditRules](failure, after)
+}
+
+// GetSubredditRulesCommunityRules is the manifest mock communityRules: One public community rule is returned.
+func GetSubredditRulesCommunityRules() connectormock.Case[reddit.SubredditRules] {
+	value := connectormock.MustDecodeOutput[reddit.SubredditRules](`{"rules":[{"shortName":"Be respectful","description":"Keep discussion civil.","kind":"all","violationReason":"Uncivil behavior"}]}`)
+	return connectormock.Branch(reddit.GetSubredditRulesBranchFound, value, nil)
+}
+
+// GetSubredditRulesDefault is the manifest default, communityRules, which New installs.
+func GetSubredditRulesDefault() connectormock.Case[reddit.SubredditRules] {
+	return GetSubredditRulesCommunityRules()
+}
 
 // SearchSubredditsSearched selects the searched branch: Reddit returned a page of subreddits; it can be empty.
 func SearchSubredditsSearched(value reddit.SubredditPage, failure *sdkgo.Failure) connectormock.Case[reddit.SubredditPage] {

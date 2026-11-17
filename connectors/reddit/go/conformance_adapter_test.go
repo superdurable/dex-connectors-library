@@ -32,5 +32,6 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"searchSubreddits":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.SearchSubreddits(), reference),
 		"listPostComments":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPostComments(), reference),
 		"listSubreddits":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSubreddits(), reference),
+		"getSubredditRules":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetSubredditRules(), reference),
 	}}
 }

@@ -12,6 +12,8 @@ Set `readCommunity` to `true` in the start request to run `reddit.NewGetSubreddi
 after the post search. The Flow then adds the community description and subscriber
 count to `TopicPostsOutput.community` before completing. The mock-backed Dex test
 exercises this path.
+Set `readRules` to `true` with `readCommunity` to add the community's public
+posting and commenting rules to `TopicPostsOutput.rules`.
 
 The summary and display RPCs show the three Attributes in Dex Web. Optional branches are unwired, so `subredditUnavailable`, for example after a misspelled subreddit, fails the Flow with the connector's safe failure reason instead of reading as no posts.
 

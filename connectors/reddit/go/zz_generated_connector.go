@@ -46,6 +46,7 @@ type Connection struct {
 type Operations interface {
 	GetUser() sdkgo.Query[GetUserInput, UserProfile]
 	GetSubreddit() sdkgo.Query[GetSubredditInput, Subreddit]
+	GetSubredditRules() sdkgo.Query[GetSubredditRulesInput, SubredditRules]
 	SearchSubreddits() sdkgo.Query[SearchSubredditsInput, SubredditPage]
 	ListSubreddits() sdkgo.Query[ListSubredditsInput, SubredditPage]
 	ListPostComments() sdkgo.Query[ListPostCommentsInput, CommentPage]
@@ -61,6 +62,9 @@ func (operations clientOperations) GetUser() sdkgo.Query[GetUserInput, UserProfi
 }
 func (operations clientOperations) GetSubreddit() sdkgo.Query[GetSubredditInput, Subreddit] {
 	return operations.client.GetSubreddit()
+}
+func (operations clientOperations) GetSubredditRules() sdkgo.Query[GetSubredditRulesInput, SubredditRules] {
+	return operations.client.GetSubredditRules()
 }
 func (operations clientOperations) SearchSubreddits() sdkgo.Query[SearchSubredditsInput, SubredditPage] {
 	return operations.client.SearchSubreddits()
@@ -430,6 +434,83 @@ func NewGetSubredditStep[IN any](config GetSubredditStepConfig[IN]) sdkgo.QueryS
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetSubredditBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetSubredditRulesBranchFound sdkgo.BranchID = "found"
+const GetSubredditRulesBranchUnavailable sdkgo.BranchID = "unavailable"
+const GetSubredditRulesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetSubredditRulesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetSubredditRulesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetSubredditRulesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getSubredditRules"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetSubredditRulesBranchFound, Description: "Reddit returned the community rules; the list can be empty."},
+		{ID: GetSubredditRulesBranchUnavailable, Description: "The subreddit is missing, private, banned, or restricted.", Optional: true},
+		{ID: GetSubredditRulesBranchProviderRejected, Description: "Reddit rejected the rules read.", Optional: true},
+		{ID: GetSubredditRulesBranchInvalidResponse, Description: "Reddit returned malformed or oversized rules.", Optional: true},
+		{ID: GetSubredditRulesBranchDefect, Description: "The subreddit name or OAuth connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetSubredditRulesResult = sdkgo.QueryResult[SubredditRules]
+
+type GetSubredditRulesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=reddit"`
+	operationID                    struct{}                                          `connector:"operationId=getSubredditRules"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetSubredditRulesInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetSubredditRulesResult]             `connector:"branch=found"`
+	Unavailable                    sdkgo.Target[GetSubredditRulesResult]             `connector:"branch=unavailable,optional"`
+	ProviderRejected               sdkgo.Target[GetSubredditRulesResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetSubredditRulesResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetSubredditRulesResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SubredditRules]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewGetSubredditRulesStep[IN any](config GetSubredditRulesStepConfig[IN]) sdkgo.QueryStep[IN, GetSubredditRulesInput, SubredditRules] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("reddit connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetSubredditRulesInput, SubredditRules]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetSubredditRules(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetSubredditRulesResult] {
+			branches := make([]sdkgo.BranchTarget[GetSubredditRulesResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetSubredditRulesBranchFound))
+			}
+			if config.Unavailable.HasStep() {
+				branches = append(branches, config.Unavailable.BranchTarget(GetSubredditRulesBranchUnavailable))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetSubredditRulesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetSubredditRulesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetSubredditRulesBranchDefect))
 			}
 			return branches
 		}(),

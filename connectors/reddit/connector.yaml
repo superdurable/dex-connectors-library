@@ -147,6 +147,31 @@ spec:
           default: true
           description: A public community with its subscriber count.
           output: {name: golang, id: t5_abc123, title: Go, subscribers: 100, url: "https://www.reddit.com/r/golang/"}
+    - name: getSubredditRules
+      goName: GetSubredditRules
+      inputType: GetSubredditRulesInput
+      outputType: SubredditRules
+      kind: query
+      description: Read one public community's posting and commenting rules.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Reddit returned the community rules; the list can be empty.}
+        - {id: unavailable, goName: Unavailable, description: "The subreddit is missing, private, banned, or restricted.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Reddit rejected the rules read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Reddit returned malformed or oversized rules., optional: true}
+        - {id: defect, goName: Defect, description: The subreddit name or OAuth connection is invalid., optional: true}
+      agent:
+        exposed: true
+        branches: {unavailable: rejected, providerRejected: rejected, defect: rejected}
+        description: Read the public rules of one Reddit community by subreddit name without r/, including each rule's title, description, and whether it applies to posts or comments.
+      mocks:
+        - name: communityRules
+          branch: found
+          default: true
+          description: One public community rule is returned.
+          output: {rules: [{shortName: Be respectful, description: Keep discussion civil., kind: all, violationReason: Uncivil behavior}]}
     - name: searchSubreddits
       goName: SearchSubreddits
       inputType: SearchSubredditsInput

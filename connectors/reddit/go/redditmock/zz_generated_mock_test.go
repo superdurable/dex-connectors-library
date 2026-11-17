@@ -24,6 +24,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[reddit.Subreddit](`{"name":"golang","id":"t5_abc123","title":"Go","subscribers":100,"url":"https://www.reddit.com/r/golang/"}`)
 			return err
 		}},
+		{name: "getSubredditRules/communityRules/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[reddit.SubredditRules](`{"rules":[{"shortName":"Be respectful","description":"Keep discussion civil.","kind":"all","violationReason":"Uncivil behavior"}]}`)
+			return err
+		}},
 		{name: "searchSubreddits/foundSubreddits/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[reddit.SubredditPage](`{"subreddits":[{"name":"example","id":"t5_abc123","title":"Example","subscribers":100,"url":"https://www.reddit.com/r/example/"}],"after":"t5_abc123"}`)
 			return err
@@ -95,6 +99,9 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetSubreddit().Definition().Operation.OperationID != "getSubreddit" {
 		t.Errorf("getSubreddit mock has another definition")
+	}
+	if mock.GetSubredditRules().Definition().Operation.OperationID != "getSubredditRules" {
+		t.Errorf("getSubredditRules mock has another definition")
 	}
 	if mock.SearchSubreddits().Definition().Operation.OperationID != "searchSubreddits" {
 		t.Errorf("searchSubreddits mock has another definition")

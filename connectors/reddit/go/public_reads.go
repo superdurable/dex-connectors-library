@@ -42,6 +42,30 @@ type GetSubredditInput struct {
 	Subreddit string `json:"subreddit"`
 }
 
+// GetSubredditRulesInput identifies a community whose public rules to read.
+type GetSubredditRulesInput struct {
+	// Subreddit is the community name without r/.
+	Subreddit string `json:"subreddit"`
+}
+
+// SubredditRules contains one community's public rules in provider order.
+type SubredditRules struct {
+	// Rules can be empty when moderators have not configured public rules.
+	Rules []SubredditRule `json:"rules"`
+}
+
+// SubredditRule describes a community posting or commenting rule.
+type SubredditRule struct {
+	// ShortName is the rule's displayed title.
+	ShortName string `json:"shortName"`
+	// Description is the public rule explanation.
+	Description string `json:"description,omitempty"`
+	// Kind is all, link, or comment, identifying where the rule applies.
+	Kind string `json:"kind"`
+	// ViolationReason is the public report reason when provided.
+	ViolationReason string `json:"violationReason,omitempty"`
+}
+
 // Subreddit contains public community details.
 type Subreddit struct {
 	// Name is the provider's community spelling without r/.
@@ -122,6 +146,9 @@ type GetUserOperation struct{ client *Client }
 // GetSubredditOperation reads one public community.
 type GetSubredditOperation struct{ client *Client }
 
+// GetSubredditRulesOperation reads one community's public rules.
+type GetSubredditRulesOperation struct{ client *Client }
+
 // SearchSubredditsOperation searches public communities.
 type SearchSubredditsOperation struct{ client *Client }
 
@@ -136,6 +163,11 @@ func (client *Client) GetUser() GetUserOperation { return GetUserOperation{clien
 
 // GetSubreddit binds the community Query to this client.
 func (client *Client) GetSubreddit() GetSubredditOperation { return GetSubredditOperation{client} }
+
+// GetSubredditRules binds the public rules Query to this client.
+func (client *Client) GetSubredditRules() GetSubredditRulesOperation {
+	return GetSubredditRulesOperation{client}
+}
 
 // SearchSubreddits binds the community search Query to this client.
 func (client *Client) SearchSubreddits() SearchSubredditsOperation {
@@ -157,6 +189,11 @@ func (GetUserOperation) Definition() sdkgo.QueryDefinition { return GetUserDefin
 
 // Definition returns the generated community Query contract.
 func (GetSubredditOperation) Definition() sdkgo.QueryDefinition { return GetSubredditDefinition }
+
+// Definition returns the generated community rules Query contract.
+func (GetSubredditRulesOperation) Definition() sdkgo.QueryDefinition {
+	return GetSubredditRulesDefinition
+}
 
 // Definition returns the generated community search Query contract.
 func (SearchSubredditsOperation) Definition() sdkgo.QueryDefinition {
@@ -215,6 +252,38 @@ func (operation GetSubredditOperation) Invoke(call sdkgo.Call, input GetSubreddi
 			return Subreddit{}, errors.New("Reddit subreddit fields are invalid")
 		}
 		return envelope.Data.convert()
+	})
+}
+
+// Invoke reads GET /r/{subreddit}/about/rules with the existing read scope.
+func (operation GetSubredditRulesOperation) Invoke(call sdkgo.Call, input GetSubredditRulesInput) sdkgo.QueryAttempt[SubredditRules] {
+	branches := readBranches{operation: "getSubredditRules", success: GetSubredditRulesBranchFound, missing: GetSubredditRulesBranchUnavailable, rejected: GetSubredditRulesBranchProviderRejected, invalid: GetSubredditRulesBranchInvalidResponse, defect: GetSubredditRulesBranchDefect}
+	if !subredditNamePattern.MatchString(input.Subreddit) {
+		return failedRead[SubredditRules](branches, branches.defect, sdkgo.FailureValidation, "Reddit subreddit name is invalid")
+	}
+	return readPublic(operation.client, call, branches, "/r/"+input.Subreddit+"/about/rules?raw_json=1", true, func(body []byte) (SubredditRules, error) {
+		var response struct {
+			Rules []struct {
+				ShortName       string `json:"short_name"`
+				Description     string `json:"description"`
+				Kind            string `json:"kind"`
+				ViolationReason string `json:"violation_reason"`
+			} `json:"rules"`
+		}
+		if err := json.Unmarshal(body, &response); err != nil {
+			return SubredditRules{}, err
+		}
+		if response.Rules == nil {
+			return SubredditRules{}, errors.New("Reddit rules are missing")
+		}
+		rules := SubredditRules{Rules: make([]SubredditRule, 0, len(response.Rules))}
+		for _, rule := range response.Rules {
+			if rule.ShortName == "" || (rule.Kind != "all" && rule.Kind != "link" && rule.Kind != "comment") {
+				return SubredditRules{}, errors.New("Reddit rule fields are invalid")
+			}
+			rules.Rules = append(rules.Rules, SubredditRule{ShortName: rule.ShortName, Description: rule.Description, Kind: rule.Kind, ViolationReason: rule.ViolationReason})
+		}
+		return rules, nil
 	})
 }
 

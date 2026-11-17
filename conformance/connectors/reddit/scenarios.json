@@ -3240,6 +3240,337 @@
       },
       "name": "listSubreddits-transport",
       "operation": "listSubreddits"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000901",
+      "exchanges": [
+        {
+          "body": "{\"rules\":[{\"short_name\":\"Be respectful\",\"description\":\"Keep discussion civil.\",\"kind\":\"all\",\"violation_reason\":\"Uncivil behavior\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/about/rules",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "rules": [
+            {
+              "description": "Keep discussion civil.",
+              "kind": "all",
+              "shortName": "Be respectful",
+              "violationReason": "Uncivil behavior"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "getSubredditRules-found",
+      "operation": "getSubredditRules"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000902",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/about/rules",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "unavailable",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "rules": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "getSubredditRules-unavailable",
+      "operation": "getSubredditRules"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000903",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/about/rules",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "rules": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "getSubredditRules-rejected",
+      "operation": "getSubredditRules"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000904",
+      "exchanges": [
+        {
+          "body": "{\"rules\":[{\"short_name\":\"Broken rule\",\"kind\":\"unknown\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/about/rules",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "rules": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "getSubredditRules-invalid",
+      "operation": "getSubredditRules"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000905",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "rules": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "bad/name"
+      },
+      "name": "getSubredditRules-defect",
+      "operation": "getSubredditRules"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000906",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/about/rules",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "getSubredditRules-rateLimit429",
+      "operation": "getSubredditRules"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000907",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/about/rules",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "getSubredditRules-unavailable503",
+      "operation": "getSubredditRules"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000908",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/about/rules",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "getSubredditRules-transport",
+      "operation": "getSubredditRules"
     }
   ],
   "schemaVersion": 1
