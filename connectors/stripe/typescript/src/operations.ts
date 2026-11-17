@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 import {
-  newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry,
+  newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry,
   zeroReceipt,
   type Call, type Failure, type FailureKind, type Mutation, type MutationAttempt, type Query, type QueryAttempt,
 } from '@superdurable/connectors-sdk';
 import { CreateACHCheckoutSessionDefinition, CreateCardCheckoutSessionDefinition, CreateRefundDefinition, GetCheckoutSessionDefinition, GetPaymentIntentDefinition } from './definitions.js';
-import { decodeCheckoutSession, decodePaymentIntent, decodeRefund, describeStripeRejection, parseStripeAPIError, shouldRetryKeyedConflict, shouldRetryKeyedServerFailure, stripeRetryAfter, type StripeClient, type StripeResponse } from './client.js';
+import { decodeCheckoutSession, decodePaymentIntent, decodeRefund, describeStripeRejection, parseStripeAPIError, shouldRetryKeyedConflict, shouldRetryKeyedServerFailure, stripeResponseHeader, stripeRetryAfter, type StripeClient, type StripeResponse } from './client.js';
 import { CreateCheckoutSessionInputSchema, CreateRefundInputSchema, GetCheckoutSessionInputSchema, GetPaymentIntentInputSchema, type CheckoutSession, type CreateACHCheckoutSessionInput, type CreateCardCheckoutSessionInput, type CreateRefundInput, type GetCheckoutSessionInput, type GetPaymentIntentInput, type PaymentIntent, type Refund } from './models.js';
 
 const zeroSession: CheckoutSession = { id: '' };
@@ -136,21 +136,26 @@ export class CreateRefundOperation implements Mutation<CreateRefundInput, Refund
     if (response.status >= 500 && shouldRetryKeyedServerFailure(response)) return newMutationRetry(stripeFailure(operation, 'AVAILABILITY', 'Stripe refund is temporarily unavailable'), stripeRetryAfter(response));
     if (isDefiniteStripeWriteRefusal(response, isRefundBody)) return newMutationBranch('providerRejected', zeroRefund, this.client.receipt(call, response, ''), classifyRefundRejection(response));
     if (response.status >= 200 && response.status < 300) {
-      if (response.isTooLarge) return this.readBackRefund(call, secretKey, input.paymentIntentId, stripeFailure(operation, 'RESPONSE_TOO_LARGE', 'Stripe response exceeds configured size limit'));
-      let refund: Refund;
-      try { refund = decodeRefund(response.body); } catch (error) {
-        return this.readBackRefund(call, secretKey, input.paymentIntentId, stripeFailure(operation, 'PROTOCOL', errorMessage(error)));
+      // Stripe replays the same 2xx body for every resend under the key, so a retry cannot repair it.
+      if (response.isTooLarge) return newMutationBranch('invalidResponse', zeroRefund, this.client.receipt(call, response, ''), stripeFailure(operation, 'RESPONSE_TOO_LARGE', 'Stripe response exceeds configured size limit'));
+      try {
+        const refund = decodeRefund(response.body);
+        return newMutationBranch('refunded', refund, this.client.receipt(call, response, refund.refundId));
+      } catch (error) {
+        return newMutationBranch('invalidResponse', zeroRefund, this.client.receipt(call, response, ''), stripeFailure(operation, 'PROTOCOL', errorMessage(error)));
       }
-      return newMutationBranch('refunded', refund, this.client.receipt(call, response, refund.refundId));
     }
-    const unknownFailure = response.status >= 500
+    const isServerError = response.status >= 500;
+    const unknownFailure = isServerError
       ? stripeFailure(operation, 'AVAILABILITY', 'Stripe refund outcome cannot be confirmed after a server error')
       : unknownStripeWriteFailure(operation, 'refund', response);
-    return this.readBackRefund(call, secretKey, input.paymentIntentId, unknownFailure);
+    return this.readBackRefund(call, secretKey, input.paymentIntentId, unknownFailure, response, isServerError && isReplayedStripeResponse(response));
   }
 
-  /** Find this call's refund by dex_call_id; a miss retries under the same idempotency key. */
-  private async readBackRefund(call: Call, secretKey: string, paymentIntentId: string, unknownFailure: Failure): Promise<MutationAttempt<Refund>> {
+  /** Find this call's refund by dex_call_id; a miss resends under the key, or is uncertain after a replay. */
+  private async readBackRefund(call: Call, secretKey: string, paymentIntentId: string, unknownFailure: Failure, original: StripeResponse, isReplayed: boolean): Promise<MutationAttempt<Refund>> {
+    // A replayed 5xx comes back unchanged for every resend, so only uncertainty remains.
+    const unconfirmed = (failure: Failure): MutationAttempt<Refund> => isReplayed ? newMutationUncertain(zeroRefund, failure, this.client.receipt(call, original, '')) : newMutationRetry(failure);
     const values = new URLSearchParams({ payment_intent: paymentIntentId, limit: '100' });
     for (let page = 0; page < 3; page++) {
       let response: StripeResponse;
@@ -161,7 +166,7 @@ export class CreateRefundOperation implements Mutation<CreateRefundInput, Refund
         const message = response.status === 401
           ? 'Stripe refund outcome cannot be confirmed after a server error because Stripe rejected the API key for the refund read-back; check that the key is still valid'
           : 'Stripe refund outcome cannot be confirmed after a server error because the API key lacks permission for the refund read-back; grant it Refund read permission';
-        return newMutationRetry(stripeFailure('createRefund', response.status === 401 ? 'AUTHENTICATION' : 'AUTHORIZATION', message));
+        return unconfirmed(stripeFailure('createRefund', response.status === 401 ? 'AUTHENTICATION' : 'AUTHORIZATION', message));
       }
       if (response.status < 200 || response.status >= 300 || response.isTooLarge) break;
       let parsed: unknown;
@@ -169,19 +174,19 @@ export class CreateRefundOperation implements Mutation<CreateRefundInput, Refund
       if (!isRefundList(parsed)) break;
       let lastRefundId = '';
       for (const candidate of parsed.data) {
-        if (!candidate || typeof candidate !== 'object' || typeof candidate.id !== 'string' || !candidate.id.startsWith('re_')) return newMutationRetry(unknownFailure);
+        if (!candidate || typeof candidate !== 'object' || typeof candidate.id !== 'string' || !candidate.id.startsWith('re_')) return unconfirmed(unknownFailure);
         lastRefundId = candidate.id;
         if (candidate.metadata && typeof candidate.metadata === 'object' && candidate.metadata[refundCallIDMetadataKey] === call.id) {
           try {
             const refund = decodeRefund(Buffer.from(JSON.stringify(candidate)));
             return newMutationBranch('refunded', refund, this.client.receipt(call, response, refund.refundId));
-          } catch { return newMutationRetry(unknownFailure); }
+          } catch { return unconfirmed(unknownFailure); }
         }
       }
       if (!parsed.has_more || !lastRefundId) break;
       values.set('starting_after', lastRefundId);
     }
-    return newMutationRetry(unknownFailure);
+    return unconfirmed(unknownFailure);
   }
 }
 
@@ -209,14 +214,22 @@ async function invokeCheckout(client: StripeClient, call: Call, input: CreateACH
   if (response.status === 429) return newMutationRetry(stripeFailure(operation, 'RATE_LIMIT', 'Stripe rate limited the Checkout Session request'), stripeRetryAfter(response));
   // Stripe's idempotency key returns the original session on a resend, so every unknown retries.
   if (isDefiniteStripeWriteRefusal(response, isCheckoutSessionBody)) return newMutationBranch('providerRejected', zeroSession, client.receipt(call, response, ''), classifyStripeRejection(operation, response));
+  // Stripe replays this cached failure for every resend under the key, so no retry can confirm the Session.
+  if (response.status >= 500 && isReplayedStripeResponse(response)) return newMutationUncertain(zeroSession, stripeFailure(operation, 'AVAILABILITY', 'Stripe Checkout Session outcome cannot be confirmed after a replayed server error'), client.receipt(call, response, ''));
   if (response.status < 200 || response.status >= 300) return newMutationRetry(unknownStripeWriteFailure(operation, 'Checkout Session', response), stripeRetryAfter(response));
-  if (response.isTooLarge) return newMutationRetry(stripeFailure(operation, 'RESPONSE_TOO_LARGE', 'Stripe response exceeds configured size limit'));
+  // Stripe replays the same 2xx body for every resend under the key, so a retry cannot repair it.
+  if (response.isTooLarge) return newMutationBranch('invalidResponse', zeroSession, client.receipt(call, response, ''), stripeFailure(operation, 'RESPONSE_TOO_LARGE', 'Stripe response exceeds configured size limit'));
   try {
     const session = decodeCheckoutSession(response.body);
     return newMutationBranch('created', session, client.receipt(call, response, session.id));
   } catch (error) {
-    return newMutationRetry(stripeFailure(operation, 'PROTOCOL', errorMessage(error)));
+    return newMutationBranch('invalidResponse', zeroSession, client.receipt(call, response, ''), stripeFailure(operation, 'PROTOCOL', errorMessage(error)));
   }
+}
+
+/** Report Stripe replaying a cached result of an earlier request under the same key. */
+function isReplayedStripeResponse(response: StripeResponse): boolean {
+  return stripeResponseHeader(response, 'idempotent-replayed').toLowerCase() === 'true';
 }
 
 const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);

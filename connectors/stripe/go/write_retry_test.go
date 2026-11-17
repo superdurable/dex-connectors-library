@@ -148,13 +148,31 @@ func TestStripeCheckoutServerFailuresRetryUnderSameKey(t *testing.T) {
 	}{
 		{name: "500", status: 500},
 		{name: "500 with retry hint", status: 500, headers: http.Header{"Stripe-Should-Retry": {"true"}}},
-		{name: "500 replayed with retry hint", status: 500, headers: http.Header{"Stripe-Should-Retry": {"true"}, "Idempotent-Replayed": {"true"}}},
 		{name: "503", status: 503},
 		{name: "503 with retry hint", status: 503, headers: http.Header{"Stripe-Should-Retry": {"true"}}},
 		{name: "503 with no retry hint", status: 503, headers: http.Header{"Stripe-Should-Retry": {"false"}}},
-		{name: "503 replayed", status: 503, headers: http.Header{"Idempotent-Replayed": {"true"}}},
 	}
 	for _, write := range stripeWriteCases()[:2] {
+		// Stripe replays a cached failure unchanged for every resend under the key, so it is uncertain at once.
+		for _, replayed := range []http.Header{
+			{"Stripe-Should-Retry": {"true"}, "Idempotent-Replayed": {"true"}}, {"Idempotent-Replayed": {"true"}},
+		} {
+			t.Run(write.name+" replayed", func(t *testing.T) {
+				posts := 0
+				server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+					posts++
+					for name, values := range replayed {
+						response.Header().Set(name, values[0])
+					}
+					response.WriteHeader(http.StatusInternalServerError)
+				}))
+				defer server.Close()
+				outcome, err := write.invoke(newStripeClient(t, server.URL, stripe.Config{}), newStripeDexContext("replayed"))
+				require.NoError(t, err)
+				require.Equal(t, sdkgo.UncertainBranchID, outcome.branch)
+				require.Equal(t, 1, posts)
+			})
+		}
 		for _, testCase := range testCases {
 			t.Run(write.name+" "+testCase.name, func(t *testing.T) {
 				var keys []string
@@ -270,6 +288,7 @@ func TestCreateRefundReadsBackIndeterminateServerFailure(t *testing.T) {
 		{name: "503 explicit retry", status: 503, headerName: "Stripe-Should-Retry", headerValue: "true", isRetry: true},
 		{name: "503 no retry", status: 503, headerName: "Stripe-Should-Retry", headerValue: "false", found: true},
 		{name: "503 replayed", status: 503, headerName: "Idempotent-Replayed", headerValue: "true", found: true},
+		{name: "500 replayed absent", status: 500, replayed: true},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			var callID string
@@ -315,6 +334,10 @@ func TestCreateRefundReadsBackIndeterminateServerFailure(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, stripe.CreateRefundBranchRefunded, outcome.branch)
 				require.Equal(t, "re_found", outcome.objectID)
+			} else if testCase.replayed {
+				// Stripe replays the cached failure for every resend, so a miss cannot be retried away.
+				require.NoError(t, err)
+				require.Equal(t, sdkgo.UncertainBranchID, outcome.branch)
 			} else {
 				requireStripeRetry(t, err, sdkgo.FailureAvailability)
 			}
@@ -455,7 +478,8 @@ func TestStripeKeyedWritesClassifyOversizedFailuresByStatus(t *testing.T) {
 	}
 }
 
-func TestStripeKeyedWritesRetryOversizedAndMalformedResponses(t *testing.T) {
+// Stripe replays an unusable 2xx body unchanged under the key, so it selects invalidResponse instead of a futile retry.
+func TestStripeKeyedWritesSelectInvalidResponseForUnusableSuccessBodies(t *testing.T) {
 	for _, write := range stripeWriteCases() {
 		for _, testCase := range []struct {
 			name     string
@@ -473,8 +497,10 @@ func TestStripeKeyedWritesRetryOversizedAndMalformedResponses(t *testing.T) {
 				}))
 				defer server.Close()
 				client := newStripeClient(t, server.URL, stripe.Config{MaxResponseBytes: 64})
-				_, err := write.invoke(client, newStripeDexContext("oversized-response"))
-				requireStripeRetry(t, err, testCase.wantKind)
+				outcome, err := write.invoke(client, newStripeDexContext("oversized-response"))
+				require.NoError(t, err)
+				require.Equal(t, write.invalidResponseBranch, outcome.branch)
+				require.Equal(t, testCase.wantKind, outcome.failure.Kind)
 			})
 		}
 	}

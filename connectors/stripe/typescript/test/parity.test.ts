@@ -112,10 +112,11 @@ for (const write of writes) {
       });
     }
 
-    it('retries a hinted 500 and a replayed 500 under the same key', async () => {
+    it('retries a hinted 500 and treats a replayed 500 as unconfirmed', async () => {
       expect(await write.invoke(client([response(500, {}, { 'stripe-should-retry': 'true' })]))).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+      // Stripe replays the cached failure for every resend under the key.
       const replayed = client(withReadback(write, response(500, {}, { 'stripe-should-retry': 'true', 'idempotent-replayed': 'true' })));
-      expect(await write.invoke(replayed)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+      expect(await write.invoke(replayed)).toMatchObject({ kind: 'uncertain', failure: { kind: 'AVAILABILITY' } });
     });
 
     it('retries 503 with an explicit no-retry hint under the same key', async () => {
@@ -124,7 +125,7 @@ for (const write of writes) {
     });
 
     for (const [status, expected] of [
-      [200, { kind: 'retry', failure: { kind: 'RESPONSE_TOO_LARGE' } }],
+      [200, { kind: 'branch', branch: 'invalidResponse', failure: { kind: 'RESPONSE_TOO_LARGE' } }],
       [400, { kind: 'branch', branch: 'providerRejected', failure: { kind: 'PROVIDER_REJECTION' } }],
       [429, { kind: 'retry', failure: { kind: 'RATE_LIMIT' } }],
       [409, { kind: 'retry', failure: { kind: 'CONFLICT' } }],
@@ -142,8 +143,8 @@ for (const write of writes) {
         .toMatchObject({ kind: 'retry', failure: { kind: 'CONFLICT' } });
     });
 
-    it('retries malformed success JSON under the same key', async () => {
-      expect(await write.invoke(client(withReadback(write, { status: 200, headers: {}, body: Buffer.from('{bad') })))).toMatchObject({ kind: 'retry', failure: { kind: 'PROTOCOL' } });
+    it('selects invalidResponse for malformed success JSON that a resend would only replay', async () => {
+      expect(await write.invoke(client([{ status: 200, headers: {}, body: Buffer.from('{bad') }]))).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'PROTOCOL' } });
     });
   });
 }

@@ -255,7 +255,7 @@ async def test_refund_success_request_and_reserved_marker() -> None:
     ],
 )
 async def test_malformed_provider_field_is_invalid_response(operation: str, body: dict[str, object]) -> None:
-    """Wrong field types select invalidResponse for reads and retry keyed writes, matching Go."""
+    """Wrong provider field types select invalidResponse, which a keyed resend would only replay."""
     result: Any
     client = client_for(httpx.MockTransport(lambda request: httpx.Response(200, json=body)))
     if operation == "createCardCheckoutSession":
@@ -278,10 +278,7 @@ async def test_malformed_provider_field_is_invalid_response(operation: str, body
         result = await client.create_refund().invoke(
             make_call(operation, True), CreateRefundInput("pi_test_123", 2500)
         )
-    if operation.startswith("create"):
-        assert result.kind == "retry"
-    else:
-        assert result.branch == "invalidResponse"
+    assert result.branch == "invalidResponse"
     assert result.failure.kind == FailureKind.PROTOCOL
 
 
@@ -463,10 +460,7 @@ async def test_terminal_branches(operation: str, status: int, branch: str, kind:
         result = await client.create_refund().invoke(
             make_call(operation, True), CreateRefundInput("pi_test_123", 2500)
         )
-    if status == 200 and operation.startswith("create"):
-        assert result.kind == "retry"
-    else:
-        assert result.branch == branch
+    assert result.branch == branch
     assert result.failure.kind == kind
 
 
@@ -522,7 +516,7 @@ async def test_retry_after_and_availability(operation: str, status: int, kind: F
     ],
 )
 async def test_oversized_success_is_invalid_response(operation: str) -> None:
-    """Oversized successful responses are never decoded; keyed writes retry them."""
+    """Oversized successful responses are never decoded or persisted."""
     result: Any
     client = client_for(httpx.MockTransport(lambda request: httpx.Response(200, content=b"x" * 65)), 64)
     if operation == "createCardCheckoutSession":
@@ -545,10 +539,7 @@ async def test_oversized_success_is_invalid_response(operation: str) -> None:
         result = await client.create_refund().invoke(
             make_call(operation, True), CreateRefundInput("pi_test_123", 2500)
         )
-    if operation.startswith("create"):
-        assert result.kind == "retry"
-    else:
-        assert result.branch == "invalidResponse"
+    assert result.branch == "invalidResponse"
     assert result.failure.kind == FailureKind.RESPONSE_TOO_LARGE
 
 
@@ -605,7 +596,7 @@ async def test_invalid_input_is_defect_without_provider_call(operation: str) -> 
         (409, {"Stripe-Should-Retry": "false"}, {}, "retry"),
         (500, {}, {}, "retry"),
         (500, {"Stripe-Should-Retry": "true"}, {}, "retry"),
-        (503, {"Idempotent-Replayed": "true"}, {}, "retry"),
+        (503, {"Idempotent-Replayed": "true"}, {}, "uncertain"),
         (503, {"Stripe-Should-Retry": "false"}, {}, "retry"),
         (400, {}, {"error": {"type": "invalid_request_error"}}, "providerRejected"),
     ],
@@ -697,6 +688,21 @@ async def test_refund_unconfirmed_and_readback_denial(readback_status: int, kind
     assert result.kind == "retry"
     assert result.failure is not None
     assert result.failure.kind == kind
+
+
+async def test_refund_replayed_server_error_without_readback_match_is_uncertain() -> None:
+    """Stripe replays a cached 5xx for every resend, so a read-back miss cannot be retried away."""
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(500, headers={"Idempotent-Replayed": "true"})
+        return httpx.Response(200, json={"object": "list", "data": [], "has_more": False})
+
+    client = client_for(httpx.MockTransport(answer))
+    result = await client.create_refund().invoke(
+        make_call("createRefund", True), CreateRefundInput("pi_test_123", 2500)
+    )
+    assert result.kind == "uncertain"
 
 
 async def test_refund_readback_rejects_malformed_candidate_metadata() -> None:

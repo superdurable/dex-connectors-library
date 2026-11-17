@@ -231,6 +231,11 @@ def unknown_stripe_write_failure(operation: str, subject: str, response: Provide
     )
 
 
+def is_replayed_stripe_response(response: ProviderResponse) -> bool:
+    """Report Stripe replaying a cached result of an earlier request under the same key."""
+    return str(response.headers.get("Idempotent-Replayed", "")).lower() == "true"
+
+
 def is_later_attempt(call: Call) -> bool:
     """Report an attempt after the first, which may follow an earlier send."""
     return call.context is not None and call.context.attempt > 1

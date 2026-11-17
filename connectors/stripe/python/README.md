@@ -55,11 +55,12 @@ Checkout mutations return `created`, `providerRejected`, `uncertain`,
 All writes send the stable Call ID as Stripe's `Idempotency-Key` and are
 `repeatOnUnknown: safe`. Only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or
 422, or a 402 with a Stripe error, selects `providerRejected`; every unknown
-outcome (any 409, any 5xx, any other status, or an oversized or malformed
-success) requests a Dex retry with the same key, so writes never select
-`uncertain` or `invalidResponse`. Refunds also write the Call ID to
-`metadata[dex_call_id]` and search at most three refund pages before that
-retry. Keep any application retry override at most 23 hours because Stripe
+outcome (any 409, any 5xx, or any other status) requests a Dex retry with the
+same key. A 5xx that Stripe marks `Idempotent-Replayed: true` selects
+`uncertain`, and an oversized or malformed success selects `invalidResponse`,
+because a resend under the same key would only replay them. Refunds also write
+the Call ID to `metadata[dex_call_id]` and search at most three refund pages
+before retrying or, after a replayed 5xx, selecting `uncertain`. Keep any application retry override at most 23 hours because Stripe
 retains idempotency keys for at least 24 hours.
 
 `stripemock.Mock` exposes all five operations with the happy path scenario

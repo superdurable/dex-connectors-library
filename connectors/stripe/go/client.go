@@ -230,7 +230,8 @@ func (CreateACHCheckoutSessionOperation) IdempotencyKey(callID sdkgo.CallID, _ C
 func (operation CreateACHCheckoutSessionOperation) Invoke(call sdkgo.Call, input CreateACHCheckoutSessionInput) sdkgo.MutationAttempt[CheckoutSession] {
 	return operation.client.createCheckoutSession(call, checkoutSessionWrite{
 		operation: "createACHCheckoutSession", created: CreateACHCheckoutSessionBranchCreated,
-		providerRejected: CreateACHCheckoutSessionBranchProviderRejected, defect: CreateACHCheckoutSessionBranchDefect,
+		providerRejected: CreateACHCheckoutSessionBranchProviderRejected, invalidResponse: CreateACHCheckoutSessionBranchInvalidResponse,
+		defect: CreateACHCheckoutSessionBranchDefect,
 	}, input.validate(), input.formValues)
 }
 
@@ -239,6 +240,7 @@ type checkoutSessionWrite struct {
 	operation        string
 	created          sdkgo.BranchID
 	providerRejected sdkgo.BranchID
+	invalidResponse  sdkgo.BranchID
 	defect           sdkgo.BranchID
 }
 
@@ -266,15 +268,20 @@ func (client *Client) createCheckoutSession(call sdkgo.Call, write checkoutSessi
 	if isDefiniteStripeWriteRefusal(response, isCheckoutSessionBody) {
 		return sdkgo.NewMutationBranch(write.providerRejected, CheckoutSession{}, classifyStripeRejection(write.operation, response), client.receipt(call, response, ""))
 	}
+	if response.statusCode >= 500 && isReplayedStripeResponse(response) {
+		// Stripe replays this cached failure for every resend under the key, so no retry can confirm the Session.
+		return sdkgo.NewMutationUncertain(CheckoutSession{}, stripeFailure(write.operation, sdkgo.FailureAvailability, "Stripe Checkout Session outcome cannot be confirmed after a replayed server error"), client.receipt(call, response, ""))
+	}
 	if response.statusCode < 200 || response.statusCode >= 300 {
 		return sdkgo.NewMutationRetry[CheckoutSession](unknownStripeWriteFailure(write.operation, "Checkout Session", response), retryAfter(response.header))
 	}
+	// Stripe replays the same 2xx body for every resend under the key, so an unusable one cannot be repaired by a retry.
 	if isResponseTooLarge {
-		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure(write.operation, sdkgo.FailureResponseTooLarge, err.Error()), 0)
+		return sdkgo.NewMutationBranch(write.invalidResponse, CheckoutSession{}, stripeFailurePointer(write.operation, sdkgo.FailureResponseTooLarge, err.Error()), client.receipt(call, response, ""))
 	}
 	session, err := decodeCheckoutSession(response.body)
 	if err != nil {
-		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure(write.operation, sdkgo.FailureProtocol, err.Error()), 0)
+		return sdkgo.NewMutationBranch(write.invalidResponse, CheckoutSession{}, stripeFailurePointer(write.operation, sdkgo.FailureProtocol, err.Error()), client.receipt(call, response, ""))
 	}
 	return sdkgo.NewMutationBranch(write.created, session, nil, client.receipt(call, response, session.ID))
 }
@@ -442,6 +449,11 @@ func (client *Client) request(call sdkgo.Call, secretKey string, method string, 
 		return result, errStripeResponseTooLarge
 	}
 	return result, nil
+}
+
+// isReplayedStripeResponse reports Stripe replaying a cached result of an earlier request under the same key.
+func isReplayedStripeResponse(response providerResponse) bool {
+	return strings.EqualFold(response.header.Get("Idempotent-Replayed"), "true")
 }
 
 // shouldRetryKeyedServerFailure reports whether a refund 5xx can be resent before reading back.

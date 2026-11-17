@@ -21,9 +21,9 @@ export const CreateCardCheckoutSessionBranch = {
 export const CreateCardCheckoutSessionBranchCreated = CreateCardCheckoutSessionBranch.Created;
 /** Stripe conclusively rejected the Checkout Session request. */
 export const CreateCardCheckoutSessionBranchProviderRejected = CreateCardCheckoutSessionBranch.ProviderRejected;
-/** Kept for stable identity; not selected, because every unknown outcome is resent under the same Stripe idempotency key. */
+/** Stripe replayed a cached server error for this idempotency key, so no resend can confirm the Checkout Session; every other unknown outcome is resent under the same key. */
 export const CreateCardCheckoutSessionBranchUncertain = CreateCardCheckoutSessionBranch.Uncertain;
-/** Kept for stable identity; not selected, because an invalid or oversized response is resent under the same Stripe idempotency key. */
+/** Stripe accepted the request but returned an invalid or oversized Checkout Session, which a resend under the same key would only replay. */
 export const CreateCardCheckoutSessionBranchInvalidResponse = CreateCardCheckoutSessionBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateCardCheckoutSessionBranchDefect = CreateCardCheckoutSessionBranch.Defect;
@@ -33,8 +33,8 @@ export const CreateCardCheckoutSessionDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "Stripe created the Checkout Session." },
     { id: "providerRejected", description: "Stripe conclusively rejected the Checkout Session request.", optional: true },
-    { id: "uncertain", description: "Kept for stable identity; not selected, because every unknown outcome is resent under the same Stripe idempotency key.", optional: true },
-    { id: "invalidResponse", description: "Kept for stable identity; not selected, because an invalid or oversized response is resent under the same Stripe idempotency key.", optional: true },
+    { id: "uncertain", description: "Stripe replayed a cached server error for this idempotency key, so no resend can confirm the Checkout Session; every other unknown outcome is resent under the same key.", optional: true },
+    { id: "invalidResponse", description: "Stripe accepted the request but returned an invalid or oversized Checkout Session, which a resend under the same key would only replay.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
@@ -54,9 +54,9 @@ export const CreateACHCheckoutSessionBranch = {
 export const CreateACHCheckoutSessionBranchCreated = CreateACHCheckoutSessionBranch.Created;
 /** Stripe conclusively rejected the Checkout Session request. */
 export const CreateACHCheckoutSessionBranchProviderRejected = CreateACHCheckoutSessionBranch.ProviderRejected;
-/** Kept for stable identity; not selected, because every unknown outcome is resent under the same Stripe idempotency key. */
+/** Stripe replayed a cached server error for this idempotency key, so no resend can confirm the Checkout Session; every other unknown outcome is resent under the same key. */
 export const CreateACHCheckoutSessionBranchUncertain = CreateACHCheckoutSessionBranch.Uncertain;
-/** Kept for stable identity; not selected, because an invalid or oversized response is resent under the same Stripe idempotency key. */
+/** Stripe accepted the request but returned an invalid or oversized Checkout Session, which a resend under the same key would only replay. */
 export const CreateACHCheckoutSessionBranchInvalidResponse = CreateACHCheckoutSessionBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateACHCheckoutSessionBranchDefect = CreateACHCheckoutSessionBranch.Defect;
@@ -66,8 +66,8 @@ export const CreateACHCheckoutSessionDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "Stripe created the Checkout Session." },
     { id: "providerRejected", description: "Stripe conclusively rejected the Checkout Session request.", optional: true },
-    { id: "uncertain", description: "Kept for stable identity; not selected, because every unknown outcome is resent under the same Stripe idempotency key.", optional: true },
-    { id: "invalidResponse", description: "Kept for stable identity; not selected, because an invalid or oversized response is resent under the same Stripe idempotency key.", optional: true },
+    { id: "uncertain", description: "Stripe replayed a cached server error for this idempotency key, so no resend can confirm the Checkout Session; every other unknown outcome is resent under the same key.", optional: true },
+    { id: "invalidResponse", description: "Stripe accepted the request but returned an invalid or oversized Checkout Session, which a resend under the same key would only replay.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
@@ -153,9 +153,9 @@ export const CreateRefundBranch = {
 export const CreateRefundBranchRefunded = CreateRefundBranch.Refunded;
 /** Stripe conclusively rejected the refund with a 4xx error such as charge_already_refunded or an amount that is too large. */
 export const CreateRefundBranchProviderRejected = CreateRefundBranch.ProviderRejected;
-/** Kept for stable identity; not selected, because an unknown outcome that read-back cannot confirm is resent under the same Stripe idempotency key. */
+/** Stripe replayed a cached server error for this idempotency key and bounded read-back found no refund with this call ID; every other unknown outcome is resent under the same key. */
 export const CreateRefundBranchUncertain = CreateRefundBranch.Uncertain;
-/** Kept for stable identity; not selected, because an invalid or oversized response is read back and then resent under the same Stripe idempotency key. */
+/** Stripe accepted the refund request but returned an invalid or oversized refund, which a resend under the same key would only replay. */
 export const CreateRefundBranchInvalidResponse = CreateRefundBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateRefundBranchDefect = CreateRefundBranch.Defect;
@@ -165,8 +165,8 @@ export const CreateRefundDefinition: MutationDefinition = {
   branches: [
     { id: "refunded", description: "Stripe accepted the refund; read its status to tell succeeded from pending." },
     { id: "providerRejected", description: "Stripe conclusively rejected the refund with a 4xx error such as charge_already_refunded or an amount that is too large.", optional: true },
-    { id: "uncertain", description: "Kept for stable identity; not selected, because an unknown outcome that read-back cannot confirm is resent under the same Stripe idempotency key.", optional: true },
-    { id: "invalidResponse", description: "Kept for stable identity; not selected, because an invalid or oversized response is read back and then resent under the same Stripe idempotency key.", optional: true },
+    { id: "uncertain", description: "Stripe replayed a cached server error for this idempotency key and bounded read-back found no refund with this call ID; every other unknown outcome is resent under the same key.", optional: true },
+    { id: "invalidResponse", description: "Stripe accepted the refund request but returned an invalid or oversized refund, which a resend under the same key would only replay.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

@@ -144,17 +144,19 @@ Do not put personal, bank, card, or other sensitive data in Stripe metadata.
 Create branches are `created`, `providerRejected`, `uncertain`,
 `invalidResponse`, and `defect`. Both Checkout creates declare
 `repeatOnUnknown: safe`: Stripe returns the original Session for a resend with
-the same idempotency key, so every unknown outcome retries with that key and
-`uncertain` and `invalidResponse` are kept only for stable branch identity and
-are never selected. Only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422
-without a Checkout Session body, or a 402 carrying a Stripe error object,
-selects `providerRejected`. Transport failures, unreadable responses, rate
-limits, any 409 (including `idempotency_key_in_use`, `idempotency_error`, or
-`Stripe-Should-Retry: false`), every 5xx (including an unhinted or replayed
-500, which Stripe may replay until the retry budget runs out), any other
-status, and an oversized or malformed successful response retry with the same
-idempotency key. An oversized error response is classified by its status and
-headers alone. Unavailable credentials select `defect` only on the first
+the same idempotency key, so unknown outcomes retry with that key. Only HTTP
+400, 401, 403, 404, 411, 413, 414, 415, or 422 without a Checkout Session body,
+or a 402 carrying a Stripe error object, selects `providerRejected`. Transport
+failures, unreadable responses, rate limits, any 409 (including
+`idempotency_key_in_use`, `idempotency_error`, or `Stripe-Should-Retry:
+false`), every 5xx that Stripe does not mark `Idempotent-Replayed: true`
+(including an unhinted 500, which Stripe may replay until the retry budget
+runs out), and any other status retry with the same idempotency key. Two
+outcomes a resend under the same key would only replay end the Step instead:
+a 5xx with `Idempotent-Replayed: true` selects `uncertain`, and an oversized or
+malformed successful response selects `invalidResponse`; increase
+`maxResponseBytes` if the expected provider response exceeds the limit. An
+oversized error response is classified by its status and headers alone. Unavailable credentials select `defect` only on the first
 attempt; a later attempt retries because an earlier attempt may have sent.
 
 Every retry of one Step execution reuses its idempotency key. Stripe keeps a
@@ -203,18 +205,19 @@ Stripe's error code and message (never for 401 or 403, whose messages can echo
 part of the key). Only the listed definite statuses (400, 401, 403, 404, 411,
 413, 414, 415, 422 without a refund body, or a 402 with a Stripe error) select
 `providerRejected`. `CreateRefund` resolves to `repeatOnUnknown: safe` through
-its `agent.retry: safe`, so it never selects `uncertain` or `invalidResponse`;
-both stay declared for stable identity. Network losses, unreadable responses,
-timeouts, rate limits, an in-flight 409, 502/503/504 without a no-retry hint,
-and any 5xx with `Stripe-Should-Retry: true` retry with the same key. Every
+its `agent.retry: safe`. Network losses, unreadable responses, timeouts, rate
+limits, an in-flight 409, 502/503/504 without a no-retry hint, and any 5xx with
+`Stripe-Should-Retry: true` that is not replayed retry with the same key. Every
 other unknown outcome (an unhinted or replayed 5xx, a 5xx with
-`Stripe-Should-Retry: false`, an `idempotency_error` or no-retry 409, any other
-status, or an oversized or malformed successful response) first runs a
-bounded refund list lookup filtered by PaymentIntent and matched on
-`dex_call_id`. A match returns `refunded`; no match, an inconclusive lookup, or
-a lookup Stripe rejects with 401 (the key is no longer valid) or 403 (the key
-lacks Refund read permission) retries with the same key, with a message naming
-the cause. Transient read-back failures retry. Unavailable credentials select
+`Stripe-Should-Retry: false`, an `idempotency_error` or no-retry 409, or any
+other status) first runs a bounded refund list lookup filtered by PaymentIntent
+and matched on `dex_call_id`. A match returns `refunded`; no match, an
+inconclusive lookup, or a lookup Stripe rejects with 401 (the key is no longer
+valid) or 403 (the key lacks Refund read permission) retries with the same key,
+with a message naming the cause, except after a 5xx with `Idempotent-Replayed:
+true`, which Stripe replays for every resend, so it selects `uncertain`. An
+oversized or malformed successful response selects `invalidResponse`, because
+a resend under the same key would only replay it. Transient read-back failures retry. Unavailable credentials select
 `defect` only on the first attempt and retry on later attempts.
 
 The key needs PaymentIntent and Charge read access plus Refund read and write

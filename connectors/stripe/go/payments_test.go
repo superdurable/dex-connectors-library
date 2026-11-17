@@ -157,8 +157,10 @@ func TestCreateRefundRejectsInvalidInputAndResponses(t *testing.T) {
 	}))
 	defer server.Close()
 	client = newStripeClient(t, server.URL, stripe.Config{})
-	_, err := sdkgo.RunMutation(newStripeDexContext("refund-malformed"), client.CreateRefund(), stripeConnection, validRefundInput())
-	requireStripeRetry(t, err, sdkgo.FailureProtocol)
+	result, err := sdkgo.RunMutation(newStripeDexContext("refund-malformed"), client.CreateRefund(), stripeConnection, validRefundInput())
+	require.NoError(t, err)
+	require.Equal(t, stripe.CreateRefundBranchInvalidResponse, result.Branch)
+	require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
 }
 
 func validRefundInput() stripe.CreateRefundInput {

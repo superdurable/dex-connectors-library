@@ -193,26 +193,45 @@ func (operation CreateRefundOperation) Invoke(call sdkgo.Call, input CreateRefun
 	if isDefiniteStripeWriteRefusal(response, isRefundBody) {
 		return sdkgo.NewMutationBranch(CreateRefundBranchProviderRejected, Refund{}, classifyRefundRejection(response), operation.client.receipt(call, response, ""))
 	}
-	unknownFailure := unknownStripeWriteFailure("createRefund", "refund", response)
 	if response.statusCode >= 200 && response.statusCode < 300 {
+		// Stripe replays the same 2xx body for every resend under the key, so an unusable one cannot be repaired by a retry.
 		if isResponseTooLarge {
-			return operation.readBackRefund(call, credentials.SecretKey.Reveal(), input.PaymentIntentID, stripeFailure("createRefund", sdkgo.FailureResponseTooLarge, err.Error()))
+			return sdkgo.NewMutationBranch(CreateRefundBranchInvalidResponse, Refund{}, stripeFailurePointer("createRefund", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
 		}
 		refund, decodeErr := decodeRefund(response.body)
 		if decodeErr != nil {
-			return operation.readBackRefund(call, credentials.SecretKey.Reveal(), input.PaymentIntentID, stripeFailure("createRefund", sdkgo.FailureProtocol, decodeErr.Error()))
+			return sdkgo.NewMutationBranch(CreateRefundBranchInvalidResponse, Refund{}, stripeFailurePointer("createRefund", sdkgo.FailureProtocol, decodeErr.Error()), operation.client.receipt(call, response, ""))
 		}
 		return sdkgo.NewMutationBranch(CreateRefundBranchRefunded, refund, nil, operation.client.receipt(call, response, refund.RefundID))
 	}
+	unconfirmed := unconfirmedRefund{original: response, failure: unknownStripeWriteFailure("createRefund", "refund", response)}
 	if response.statusCode >= 500 {
-		unknownFailure = stripeFailure("createRefund", sdkgo.FailureAvailability, "Stripe refund outcome cannot be confirmed after a server error")
+		unconfirmed.failure = stripeFailure("createRefund", sdkgo.FailureAvailability, "Stripe refund outcome cannot be confirmed after a server error")
+		unconfirmed.isReplayed = isReplayedStripeResponse(response)
 	}
-	return operation.readBackRefund(call, credentials.SecretKey.Reveal(), input.PaymentIntentID, unknownFailure)
+	return operation.readBackRefund(call, credentials.SecretKey.Reveal(), input.PaymentIntentID, unconfirmed)
 }
 
-// readBackRefund looks for this call's refund by its dex_call_id metadata. A miss returns Retry with
-// unknownFailure, which resends under the same idempotency key.
-func (operation CreateRefundOperation) readBackRefund(call sdkgo.Call, secretKey string, paymentIntentID string, unknownFailure sdkgo.Failure) sdkgo.MutationAttempt[Refund] {
+// unconfirmedRefund is an unknown refund outcome that read-back could not confirm.
+type unconfirmedRefund struct {
+	original providerResponse
+	failure  sdkgo.Failure
+	// isReplayed marks a cached Stripe 5xx that every resend under the key replays unchanged.
+	isReplayed bool
+}
+
+// attempt returns Retry, which resends under the same idempotency key, or uncertain for a replayed
+// failure that no resend can resolve.
+func (unconfirmed unconfirmedRefund) attempt(client *Client, call sdkgo.Call, failure sdkgo.Failure) sdkgo.MutationAttempt[Refund] {
+	if unconfirmed.isReplayed {
+		return sdkgo.NewMutationUncertain(Refund{}, failure, client.receipt(call, unconfirmed.original, ""))
+	}
+	return sdkgo.NewMutationRetry[Refund](failure, 0)
+}
+
+// readBackRefund looks for this call's refund by its dex_call_id metadata. A miss resends under the same
+// idempotency key, except after a replayed failure, which selects uncertain.
+func (operation CreateRefundOperation) readBackRefund(call sdkgo.Call, secretKey string, paymentIntentID string, unconfirmed unconfirmedRefund) sdkgo.MutationAttempt[Refund] {
 	query := url.Values{"payment_intent": {paymentIntentID}, "limit": {strconv.Itoa(refundReadbackPageSize)}}
 	for page := 0; page < maximumRefundReadbackPages; page++ {
 		response, err := operation.client.request(call, secretKey, http.MethodGet, "refunds", query)
@@ -221,7 +240,7 @@ func (operation CreateRefundOperation) readBackRefund(call sdkgo.Call, secretKey
 			return sdkgo.NewMutationRetry[Refund](stripeFailure("createRefund", sdkgo.FailureAvailability, "Stripe refund read-back is temporarily unavailable"), retryAfter(response.header))
 		}
 		if response.statusCode == http.StatusUnauthorized || response.statusCode == http.StatusForbidden {
-			return deniedRefundReadback(response.statusCode)
+			return unconfirmed.attempt(operation.client, call, deniedRefundReadbackFailure(response.statusCode))
 		}
 		if response.statusCode < 200 || response.statusCode >= 300 || isResponseTooLarge {
 			break
@@ -241,13 +260,13 @@ func (operation CreateRefundOperation) readBackRefund(call sdkgo.Call, secretKey
 				Metadata map[string]string `json:"metadata"`
 			}
 			if json.Unmarshal(contents, &candidate) != nil || !strings.HasPrefix(candidate.ID, "re_") {
-				return sdkgo.NewMutationRetry[Refund](unknownFailure, 0)
+				return unconfirmed.attempt(operation.client, call, unconfirmed.failure)
 			}
 			lastRefundID = candidate.ID
 			if candidate.Metadata[refundCallIDMetadataKey] == string(call.ID) {
 				refund, decodeErr := decodeRefund(contents)
 				if decodeErr != nil {
-					return sdkgo.NewMutationRetry[Refund](unknownFailure, 0)
+					return unconfirmed.attempt(operation.client, call, unconfirmed.failure)
 				}
 				return sdkgo.NewMutationBranch(CreateRefundBranchRefunded, refund, nil, operation.client.receipt(call, response, refund.RefundID))
 			}
@@ -257,15 +276,14 @@ func (operation CreateRefundOperation) readBackRefund(call sdkgo.Call, secretKey
 		}
 		query.Set("starting_after", lastRefundID)
 	}
-	return sdkgo.NewMutationRetry[Refund](unknownFailure, 0)
+	return unconfirmed.attempt(operation.client, call, unconfirmed.failure)
 }
 
-func deniedRefundReadback(readbackStatusCode int) sdkgo.MutationAttempt[Refund] {
-	failure := stripeFailure("createRefund", sdkgo.FailureAuthorization, "Stripe refund outcome cannot be confirmed after a server error because the API key lacks permission for the refund read-back; grant it Refund read permission")
+func deniedRefundReadbackFailure(readbackStatusCode int) sdkgo.Failure {
 	if readbackStatusCode == http.StatusUnauthorized {
-		failure = stripeFailure("createRefund", sdkgo.FailureAuthentication, "Stripe refund outcome cannot be confirmed after a server error because Stripe rejected the API key for the refund read-back; check that the key is still valid")
+		return stripeFailure("createRefund", sdkgo.FailureAuthentication, "Stripe refund outcome cannot be confirmed after a server error because Stripe rejected the API key for the refund read-back; check that the key is still valid")
 	}
-	return sdkgo.NewMutationRetry[Refund](failure, 0)
+	return stripeFailure("createRefund", sdkgo.FailureAuthorization, "Stripe refund outcome cannot be confirmed after a server error because the API key lacks permission for the refund read-back; grant it Refund read permission")
 }
 
 func isRefundBody(contents []byte) bool {

@@ -60,13 +60,13 @@ it('classifies an oversized error from status and headers without retaining its 
   expect(result).toMatchObject({ kind: 'retry', failure: { kind: 'RATE_LIMIT' }, retryAfterMs: 2000 });
 });
 
-it('retries an oversized successful body under the same key', async () => {
+it('selects invalidResponse for an oversized successful body', async () => {
   const stripe = await localClient((_request, response) => {
     response.writeHead(200, { 'Content-Type': 'application/json' });
     response.end('x'.repeat(100));
   }, 16);
   const result = await stripe.createRefund().invoke(call, { paymentIntentId: 'pi_123', amount: 1 });
-  expect(result).toMatchObject({ kind: 'retry', failure: { kind: 'RESPONSE_TOO_LARGE' } });
+  expect(result).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'RESPONSE_TOO_LARGE' } });
 });
 
 it('does not forward ACH Checkout credentials across a temporary redirect', async () => {

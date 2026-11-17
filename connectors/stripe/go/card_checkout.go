@@ -45,6 +45,7 @@ func (CreateCardCheckoutSessionOperation) IdempotencyKey(callID sdkgo.CallID, _ 
 func (operation CreateCardCheckoutSessionOperation) Invoke(call sdkgo.Call, input CreateCardCheckoutSessionInput) sdkgo.MutationAttempt[CheckoutSession] {
 	return operation.client.createCheckoutSession(call, checkoutSessionWrite{
 		operation: "createCardCheckoutSession", created: CreateCardCheckoutSessionBranchCreated,
-		providerRejected: CreateCardCheckoutSessionBranchProviderRejected, defect: CreateCardCheckoutSessionBranchDefect,
+		providerRejected: CreateCardCheckoutSessionBranchProviderRejected, invalidResponse: CreateCardCheckoutSessionBranchInvalidResponse,
+		defect: CreateCardCheckoutSessionBranchDefect,
 	}, input.validate(), input.formValues)
 }

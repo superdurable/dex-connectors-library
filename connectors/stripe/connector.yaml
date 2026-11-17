@@ -107,8 +107,8 @@ spec:
       branches:
         - {id: created, goName: Created, description: Stripe created the Checkout Session.}
         - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the Checkout Session request., optional: true}
-        - {id: uncertain, goName: Uncertain, description: "Kept for stable identity; not selected, because every unknown outcome is resent under the same Stripe idempotency key.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for stable identity; not selected, because an invalid or oversized response is resent under the same Stripe idempotency key.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Stripe replayed a cached server error for this idempotency key, so no resend can confirm the Checkout Session; every other unknown outcome is resent under the same key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Stripe accepted the request but returned an invalid or oversized Checkout Session, which a resend under the same key would only replay.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -146,8 +146,8 @@ spec:
       branches:
         - {id: created, goName: Created, description: Stripe created the Checkout Session.}
         - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the Checkout Session request., optional: true}
-        - {id: uncertain, goName: Uncertain, description: "Kept for stable identity; not selected, because every unknown outcome is resent under the same Stripe idempotency key.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for stable identity; not selected, because an invalid or oversized response is resent under the same Stripe idempotency key.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Stripe replayed a cached server error for this idempotency key, so no resend can confirm the Checkout Session; every other unknown outcome is resent under the same key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Stripe accepted the request but returned an invalid or oversized Checkout Session, which a resend under the same key would only replay.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -268,8 +268,8 @@ spec:
       branches:
         - {id: refunded, goName: Refunded, description: Stripe accepted the refund; read its status to tell succeeded from pending.}
         - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the refund with a 4xx error such as charge_already_refunded or an amount that is too large., optional: true}
-        - {id: uncertain, goName: Uncertain, description: "Kept for stable identity; not selected, because an unknown outcome that read-back cannot confirm is resent under the same Stripe idempotency key.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for stable identity; not selected, because an invalid or oversized response is read back and then resent under the same Stripe idempotency key.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Stripe replayed a cached server error for this idempotency key and bounded read-back found no refund with this call ID; every other unknown outcome is resent under the same key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Stripe accepted the refund request but returned an invalid or oversized refund, which a resend under the same key would only replay.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
