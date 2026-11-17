@@ -24,6 +24,7 @@ type Mock struct {
 	listIndices     *connectormock.Query[elasticsearch.ListIndicesInput, elasticsearch.IndexList]
 	getDocument     *connectormock.Query[elasticsearch.GetDocumentInput, elasticsearch.RetrievedDocument]
 	indexDocument   *connectormock.Mutation[elasticsearch.IndexDocumentInput, elasticsearch.IndexedDocument]
+	createDocument  *connectormock.Mutation[elasticsearch.CreateDocumentInput, elasticsearch.IndexedDocument]
 	updateDocument  *connectormock.Mutation[elasticsearch.UpdateDocumentInput, elasticsearch.IndexedDocument]
 	deleteDocument  *connectormock.Mutation[elasticsearch.DeleteDocumentInput, elasticsearch.DeletedDocument]
 	searchDocuments *connectormock.Query[elasticsearch.SearchDocumentsInput, elasticsearch.SearchPage]
@@ -40,6 +41,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		listIndices:     connectormock.NewQuery[elasticsearch.ListIndicesInput, elasticsearch.IndexList](t, elasticsearch.ListIndicesDefinition),
 		getDocument:     connectormock.NewQuery[elasticsearch.GetDocumentInput, elasticsearch.RetrievedDocument](t, elasticsearch.GetDocumentDefinition),
 		indexDocument:   connectormock.NewMutation[elasticsearch.IndexDocumentInput, elasticsearch.IndexedDocument](t, elasticsearch.IndexDocumentDefinition),
+		createDocument:  connectormock.NewMutation[elasticsearch.CreateDocumentInput, elasticsearch.IndexedDocument](t, elasticsearch.CreateDocumentDefinition),
 		updateDocument:  connectormock.NewMutation[elasticsearch.UpdateDocumentInput, elasticsearch.IndexedDocument](t, elasticsearch.UpdateDocumentDefinition),
 		deleteDocument:  connectormock.NewMutation[elasticsearch.DeleteDocumentInput, elasticsearch.DeletedDocument](t, elasticsearch.DeleteDocumentDefinition),
 		searchDocuments: connectormock.NewQuery[elasticsearch.SearchDocumentsInput, elasticsearch.SearchPage](t, elasticsearch.SearchDocumentsDefinition),
@@ -50,6 +52,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listIndices.Default(ListIndicesDefault())
 	mock.getDocument.Default(GetDocumentDefault())
 	mock.indexDocument.Default(IndexDocumentDefault())
+	mock.createDocument.Default(CreateDocumentDefault())
 	mock.updateDocument.Default(UpdateDocumentDefault())
 	mock.deleteDocument.Default(DeleteDocumentDefault())
 	mock.searchDocuments.Default(SearchDocumentsDefault())
@@ -94,6 +97,11 @@ func (mock *Mock) IndexDocument() *connectormock.Mutation[elasticsearch.IndexDoc
 	return mock.indexDocument
 }
 
+// CreateDocument returns the createDocument script.
+func (mock *Mock) CreateDocument() *connectormock.Mutation[elasticsearch.CreateDocumentInput, elasticsearch.IndexedDocument] {
+	return mock.createDocument
+}
+
 // UpdateDocument returns the updateDocument script.
 func (mock *Mock) UpdateDocument() *connectormock.Mutation[elasticsearch.UpdateDocumentInput, elasticsearch.IndexedDocument] {
 	return mock.updateDocument
@@ -128,6 +136,9 @@ func (operations mockOperations) GetDocument() sdkgo.Query[elasticsearch.GetDocu
 }
 func (operations mockOperations) IndexDocument() sdkgo.Mutation[elasticsearch.IndexDocumentInput, elasticsearch.IndexedDocument] {
 	return operations.mock.indexDocument
+}
+func (operations mockOperations) CreateDocument() sdkgo.Mutation[elasticsearch.CreateDocumentInput, elasticsearch.IndexedDocument] {
+	return operations.mock.createDocument
 }
 func (operations mockOperations) UpdateDocument() sdkgo.Mutation[elasticsearch.UpdateDocumentInput, elasticsearch.IndexedDocument] {
 	return operations.mock.updateDocument
@@ -346,6 +357,42 @@ func IndexDocumentIndexedProduct() connectormock.Case[elasticsearch.IndexedDocum
 // IndexDocumentDefault is the manifest default, indexedProduct, which New installs.
 func IndexDocumentDefault() connectormock.Case[elasticsearch.IndexedDocument] {
 	return IndexDocumentIndexedProduct()
+}
+
+// CreateDocumentCreated selects the created branch: Elasticsearch confirmed the generated document ID.
+func CreateDocumentCreated(value elasticsearch.IndexedDocument, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexedDocument] {
+	return connectormock.Branch(elasticsearch.CreateDocumentBranchCreated, value, failure)
+}
+
+// CreateDocumentProviderRejected selects the providerRejected branch: Elasticsearch conclusively rejected document creation.
+func CreateDocumentProviderRejected(value elasticsearch.IndexedDocument, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexedDocument] {
+	return connectormock.Branch(elasticsearch.CreateDocumentBranchProviderRejected, value, failure)
+}
+
+// CreateDocumentUncertain returns an uncertain createDocument outcome.
+func CreateDocumentUncertain(value elasticsearch.IndexedDocument, failure sdkgo.Failure) connectormock.Case[elasticsearch.IndexedDocument] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateDocumentDefect selects the defect branch: Local document input or credentials are invalid.
+func CreateDocumentDefect(value elasticsearch.IndexedDocument, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexedDocument] {
+	return connectormock.Branch(elasticsearch.CreateDocumentBranchDefect, value, failure)
+}
+
+// CreateDocumentRetry asks Dex to retry the createDocument Step, after the delay when it is positive.
+func CreateDocumentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[elasticsearch.IndexedDocument] {
+	return connectormock.Retry[elasticsearch.IndexedDocument](failure, after)
+}
+
+// CreateDocumentCreatedProduct is the manifest mock createdProduct: A product document received a generated ID.
+func CreateDocumentCreatedProduct() connectormock.Case[elasticsearch.IndexedDocument] {
+	value := connectormock.MustDecodeOutput[elasticsearch.IndexedDocument](`{"index":"products","id":"generated-42"}`)
+	return connectormock.Branch(elasticsearch.CreateDocumentBranchCreated, value, nil)
+}
+
+// CreateDocumentDefault is the manifest default, createdProduct, which New installs.
+func CreateDocumentDefault() connectormock.Case[elasticsearch.IndexedDocument] {
+	return CreateDocumentCreatedProduct()
 }
 
 // UpdateDocumentUpdated selects the updated branch: Elasticsearch merged the document fields.

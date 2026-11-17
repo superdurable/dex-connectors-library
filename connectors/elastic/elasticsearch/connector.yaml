@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: elasticsearch
   displayName: Elasticsearch
-  description: Get, search, replace, and delete documents and manage Elasticsearch indices.
+  description: Create, get, search, update, and delete documents and manage Elasticsearch indices.
   company: Elastic
   categories: [databases-storage, data-search]
   version: v0.2.0
@@ -63,7 +63,7 @@ spec:
       startURL: https://cloud.elastic.co/
       steps:
         - Open https://cloud.elastic.co/, choose the Elastic Stack deployment, and open Kibana. For a self-managed Stack cluster, open its Kibana URL directly. This Basic-auth connection does not support Elastic Cloud Serverless.
-        - In Kibana choose Stack Management > Security > Roles > Create role and grant read for searches, index for document replacement, delete for document deletion, view_index_metadata for index reads, create_index for index creation, and delete_index for index deletion on the target index pattern. Save the role.
+        - In Kibana choose Stack Management > Security > Roles > Create role and grant read for searches, index or write for document replacement and partial update, create_doc or write for generated-ID creation, delete for document deletion, view_index_metadata for index reads, create_index for index creation, and delete_index for index deletion on the target index pattern. Save the role.
         - Choose Stack Management > Security > Users > Create user, set a username and password, assign the new role, and save username plus secret password in Dex. Rotate the password on the same Users page.
         - In https://cloud.elastic.co/ choose deployment > Manage > Application endpoints > Elasticsearch > Direct endpoint, then save its HTTPS URL as clusterUrl without an index path. For self-managed clusters use the HTTPS HTTP endpoint. Leave timeout, maxResponseBytes, and maxDocumentBytes blank for their displayed defaults.
   operations:
@@ -175,6 +175,22 @@ spec:
           description: A sample product document was stored under its SKU.
           default: true
           output: {index: products, id: sku-42}
+    - name: createDocument
+      goName: CreateDocument
+      inputType: CreateDocumentInput
+      outputType: IndexedDocument
+      kind: mutation
+      description: Create a document with an Elasticsearch-generated ID; repeat at most three possible sends after an unknown result.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Elasticsearch confirmed the generated document ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Elasticsearch conclusively rejected document creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A document may have been created but its generated ID is unavailable., optional: true}
+        - {id: defect, goName: Defect, description: Local document input or credentials are invalid., optional: true}
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
+      mocks:
+        - {name: createdProduct, branch: created, description: A product document received a generated ID., default: true, output: {index: products, id: generated-42}}
     - name: updateDocument
       goName: UpdateDocument
       inputType: UpdateDocumentInput

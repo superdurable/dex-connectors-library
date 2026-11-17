@@ -4,6 +4,8 @@ This runnable Flow calls `indexDocument` with the static `elasticsearch` connect
 
 The same Worker registers `ElasticsearchUpdateDocument`. Start it with `{"index":"products","documentId":"dex-example-sku-42","fields":{"title":"Meridian revised"}}` to merge absolute field values into an existing document. `TestDocumentUpdateUsesDefaultMockWithRealDex` exercises this Go-only operation with real Dex and the connector mock. Grant `write` or `index` on the target index under Kibana **Stack Management > Security > Roles**.
 
+The Worker also registers `ElasticsearchCreateDocument`. Start it with `{"index":"products","source":{"title":"Meridian"}}` to create a document with a provider-generated ID. `TestDocumentCreateUsesDefaultMockWithRealDex` exercises the new operation against real Dex and the mock provider. Grant `create_doc` or `write` for the target index; choose this Flow only when a duplicate after an unknown outcome is acceptable.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/elastic/elasticsearch/go`, run:
@@ -12,6 +14,7 @@ From `connectors/elastic/elasticsearch/go`, run:
 mkdir -p build
 dexcli visualize ./examples/document-index/flow/workflow.go --schema-version 2.0 --json --out ./build/document-index
 dexcli visualize ./examples/document-index/flow/update_flow.go --schema-version 2.0 --json --out ./build/document-update
+dexcli visualize ./examples/document-index/flow/create_flow.go --schema-version 2.0 --json --out ./build/document-create
 ```
 
 The command must report `valid: true`. An unpublished connector can report `connector_release_required` until its release artifact exists.

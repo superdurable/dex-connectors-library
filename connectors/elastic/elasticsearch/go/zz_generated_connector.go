@@ -48,6 +48,7 @@ type Operations interface {
 	ListIndices() sdkgo.Query[ListIndicesInput, IndexList]
 	GetDocument() sdkgo.Query[GetDocumentInput, RetrievedDocument]
 	IndexDocument() sdkgo.Mutation[IndexDocumentInput, IndexedDocument]
+	CreateDocument() sdkgo.Mutation[CreateDocumentInput, IndexedDocument]
 	UpdateDocument() sdkgo.Mutation[UpdateDocumentInput, IndexedDocument]
 	DeleteDocument() sdkgo.Mutation[DeleteDocumentInput, DeletedDocument]
 	SearchDocuments() sdkgo.Query[SearchDocumentsInput, SearchPage]
@@ -72,6 +73,9 @@ func (operations clientOperations) GetDocument() sdkgo.Query[GetDocumentInput, R
 }
 func (operations clientOperations) IndexDocument() sdkgo.Mutation[IndexDocumentInput, IndexedDocument] {
 	return operations.client.IndexDocument()
+}
+func (operations clientOperations) CreateDocument() sdkgo.Mutation[CreateDocumentInput, IndexedDocument] {
+	return operations.client.CreateDocument()
 }
 func (operations clientOperations) UpdateDocument() sdkgo.Mutation[UpdateDocumentInput, IndexedDocument] {
 	return operations.client.UpdateDocument()
@@ -247,6 +251,7 @@ var CreateIndexDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type CreateIndexResult = sdkgo.MutationResult[IndexResult]
@@ -312,6 +317,7 @@ var DeleteIndexDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type DeleteIndexResult = sdkgo.MutationResult[IndexResult]
@@ -602,6 +608,8 @@ var IndexDocumentDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type IndexDocumentResult = sdkgo.MutationResult[IndexedDocument]
@@ -620,6 +628,8 @@ type IndexDocumentStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[IndexDocumentResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[IndexedDocument]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewIndexDocumentStep[IN any](config IndexDocumentStepConfig[IN]) sdkgo.MutationStep[IN, IndexDocumentInput, IndexedDocument] {
@@ -648,6 +658,83 @@ func NewIndexDocumentStep[IN any](config IndexDocumentStepConfig[IN]) sdkgo.Muta
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const CreateDocumentBranchCreated sdkgo.BranchID = "created"
+const CreateDocumentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateDocumentBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateDocumentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateDocumentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createDocument"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateDocumentBranchCreated, Description: "Elasticsearch confirmed the generated document ID."},
+		{ID: CreateDocumentBranchProviderRejected, Description: "Elasticsearch conclusively rejected document creation.", Optional: true},
+		{ID: CreateDocumentBranchUncertain, Description: "A document may have been created but its generated ID is unavailable.", Optional: true},
+		{ID: CreateDocumentBranchDefect, Description: "Local document input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateDocumentResult = sdkgo.MutationResult[IndexedDocument]
+
+type CreateDocumentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=elasticsearch"`
+	operationID                       struct{}                                              `connector:"operationId=createDocument"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateDocumentInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateDocumentResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateDocumentResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateDocumentResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateDocumentResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[IndexedDocument]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateDocumentStep[IN any](config CreateDocumentStepConfig[IN]) sdkgo.MutationStep[IN, CreateDocumentInput, IndexedDocument] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("elasticsearch connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateDocumentInput, IndexedDocument]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateDocument(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateDocumentResult] {
+			branches := make([]sdkgo.BranchTarget[CreateDocumentResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateDocumentBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateDocumentBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateDocumentBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateDocumentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -669,6 +756,7 @@ var UpdateDocumentDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateDocumentResult = sdkgo.MutationResult[IndexedDocument]
@@ -740,6 +828,8 @@ var DeleteDocumentDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type DeleteDocumentResult = sdkgo.MutationResult[DeletedDocument]
@@ -759,6 +849,8 @@ type DeleteDocumentStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[DeleteDocumentResult]                    `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedDocument]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewDeleteDocumentStep[IN any](config DeleteDocumentStepConfig[IN]) sdkgo.MutationStep[IN, DeleteDocumentInput, DeletedDocument] {
@@ -790,6 +882,7 @@ func NewDeleteDocumentStep[IN any](config DeleteDocumentStepConfig[IN]) sdkgo.Mu
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 

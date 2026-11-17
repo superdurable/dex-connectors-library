@@ -3076,6 +3076,470 @@
       },
       "name": "updateDocument-transport",
       "operation": "updateDocument"
+    },
+    {
+      "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "exchanges": [
+        {
+          "body": "{\"_index\":\"products\",\"_id\":\"generated-42\",\"result\":\"created\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products/_doc",
+          "requestBody": {
+            "title": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+          "providerId": "generated-42",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "generated-42",
+          "index": "products"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "input": {
+        "index": "products",
+        "source": {
+          "title": "Meridian"
+        }
+      },
+      "name": "createDocument-created",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products/_doc",
+          "requestBody": {
+            "title": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "index": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "input": {
+        "index": "products",
+        "source": {
+          "title": "Meridian"
+        }
+      },
+      "name": "createDocument-rejected",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "index": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "input": {
+        "index": "products",
+        "source": []
+      },
+      "name": "createDocument-defect",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products/_doc",
+          "requestBody": {
+            "title": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "input": {
+        "index": "products",
+        "source": {
+          "title": "Meridian"
+        }
+      },
+      "name": "createDocument-rate-limit",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products/_doc",
+          "requestBody": {
+            "title": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "input": {
+        "index": "products",
+        "source": {
+          "title": "Meridian"
+        }
+      },
+      "name": "createDocument-unavailable",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products/_doc",
+          "requestBody": {
+            "title": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "input": {
+        "index": "products",
+        "source": {
+          "title": "Meridian"
+        }
+      },
+      "name": "createDocument-server-error",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products/_doc",
+          "requestBody": {
+            "title": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "input": {
+        "index": "products",
+        "source": {
+          "title": "Meridian"
+        }
+      },
+      "name": "createDocument-transport",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products/_doc",
+          "requestBody": {
+            "title": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "input": {
+        "index": "products",
+        "source": {
+          "title": "Meridian"
+        }
+      },
+      "name": "createDocument-malformed-confirmation",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "id": "",
+          "index": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "input": {
+        "index": "products",
+        "source": {
+          "title": "Meridian"
+        }
+      },
+      "name": "createDocument-uncertain-cap",
+      "operation": "createDocument",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "exchanges": [
+        {
+          "body": "{\"_index\":\"products\",\"_id\":\"generated-42\",\"found\":true,\"_source\":{\"title\":\"Meridian\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/_doc/generated-42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "generated-42",
+          "index": "products"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+      "input": {
+        "index": "products",
+        "source": {
+          "title": "Meridian"
+        }
+      },
+      "name": "createDocument-read-back",
+      "operation": "createDocument",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
+          "providerId": "generated-42",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

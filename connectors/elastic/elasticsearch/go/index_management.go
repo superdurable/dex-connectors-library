@@ -5,6 +5,7 @@ package elasticsearch
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -188,11 +189,15 @@ func (operation ListIndicesOperation) Invoke(call sdkgo.Call, _ ListIndicesInput
 }
 
 func exchangeIndex(client *Client, call sdkgo.Call, method, path string, body []byte) documentExchange {
+	return exchangeIndexWithContext(client, call, call.Context, method, path, body)
+}
+
+func exchangeIndexWithContext(client *Client, call sdkgo.Call, requestContext context.Context, method, path string, body []byte) documentExchange {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !validUsername(credentials.Username) || !providerhttp.IsHeaderSafeCredential(credentials.Password.Reveal()) {
 		return documentExchange{requestFailure: &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Provider: "elasticsearch", Message: "Elasticsearch credentials are unavailable or invalid"}}
 	}
-	request, err := http.NewRequestWithContext(call.Context, method, client.clusterURL+path, bytes.NewReader(body))
+	request, err := http.NewRequestWithContext(requestContext, method, client.clusterURL+path, bytes.NewReader(body))
 	if err != nil {
 		return documentExchange{requestFailure: &sdkgo.Failure{Kind: sdkgo.FailureLocalDefect, Provider: "elasticsearch", Message: "index request could not be built"}}
 	}
@@ -211,7 +216,7 @@ func exchangeIndex(client *Client, call sdkgo.Call, method, path string, body []
 		if response.StatusCode == http.StatusTooManyRequests {
 			kind = sdkgo.FailureRateLimit
 		}
-		return documentExchange{shouldRetry: true, retryKind: kind, retryMessage: "Elasticsearch index operation is temporarily unavailable", retryAfter: providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())}
+		return documentExchange{status: response.StatusCode, shouldRetry: true, retryKind: kind, retryMessage: "Elasticsearch index operation is temporarily unavailable", retryAfter: providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())}
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
