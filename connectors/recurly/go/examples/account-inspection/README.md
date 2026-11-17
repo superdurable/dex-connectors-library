@@ -1,6 +1,6 @@
 # Recurly account inspection Flow
 
-This runnable Flow calls `getAccount` through the static `recurly` connection. It persists the selected account identity in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+This runnable Worker registers `RecurlyAccountInspection` and `RecurlyCreateAccount` through the static `recurly` connection. Each Flow persists only account identity in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -23,5 +23,7 @@ GOWORK=off go run ./examples/account-inspection
 ```
 
 Start `RecurlyAccountInspection` with a unique Flow ID and input `{"accountId":"e28zov4fw0v2"}`. Replace the sample with an account ID returned by Recurly. The Worker connects to Dex Server without an inbound listener.
+
+Start `RecurlyCreateAccount` with a unique Flow ID and input `{"codePrefix":"demo"}`. The connector appends a unique Dex Call marker to the prefix and returns the resulting account ID and code.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`. Real Recurly authorization and retrieval remain unverified.

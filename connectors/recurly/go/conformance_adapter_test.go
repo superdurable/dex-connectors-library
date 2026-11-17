@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 const conformanceEndpointPath = "/api"
@@ -21,7 +22,14 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		reference: {APIKey: sdkgo.NewSecretString("sample-recurly-api-key")},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"getAccount": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetAccount(), reference),
+	mutationContext := singledispatchtest.NewContext("recurly-conformance", "create-account")
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			mutationContext.AdvanceAttempt()
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"getAccount":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetAccount(), reference),
+		"listAccounts":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListAccounts(), reference),
+		"createAccount": newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CreateAccount(), reference, scenario.CallID),
 	}}
 }

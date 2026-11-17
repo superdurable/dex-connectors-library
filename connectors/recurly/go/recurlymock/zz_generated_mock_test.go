@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listAccounts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.AccountPage](`{"accounts":[{"id":"e28zov4fw0v2","code":"acme-corp"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "createAccount/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.AccountIdentity](`{"id":"e28zov4fw0v2","code":"dex_0123456789abcdef0123456789abcdef"}`)
+			return err
+		}},
 		{name: "getAccount/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[recurly.AccountIdentity](`{"id":"e28zov4fw0v2","code":"acme-corp"}`)
 			return err
@@ -30,6 +38,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListAccounts().Definition().Operation.OperationID != "listAccounts" {
+		t.Errorf("listAccounts mock has another definition")
+	}
+	if mock.CreateAccount().Definition().Operation.OperationID != "createAccount" {
+		t.Errorf("createAccount mock has another definition")
+	}
 	if mock.GetAccount().Definition().Operation.OperationID != "getAccount" {
 		t.Errorf("getAccount mock has another definition")
 	}

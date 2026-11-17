@@ -17,8 +17,10 @@ import (
 
 // Mock is a scripted recurly connection. Script each operation through its accessor.
 type Mock struct {
-	connection recurly.Connection
-	getAccount *connectormock.Query[recurly.GetAccountInput, recurly.AccountIdentity]
+	connection    recurly.Connection
+	listAccounts  *connectormock.Query[recurly.ListAccountsInput, recurly.AccountPage]
+	createAccount *connectormock.Mutation[recurly.CreateAccountInput, recurly.AccountIdentity]
+	getAccount    *connectormock.Query[recurly.GetAccountInput, recurly.AccountIdentity]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +28,12 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getAccount: connectormock.NewQuery[recurly.GetAccountInput, recurly.AccountIdentity](t, recurly.GetAccountDefinition),
+		listAccounts:  connectormock.NewQuery[recurly.ListAccountsInput, recurly.AccountPage](t, recurly.ListAccountsDefinition),
+		createAccount: connectormock.NewMutation[recurly.CreateAccountInput, recurly.AccountIdentity](t, recurly.CreateAccountDefinition),
+		getAccount:    connectormock.NewQuery[recurly.GetAccountInput, recurly.AccountIdentity](t, recurly.GetAccountDefinition),
 	}
+	mock.listAccounts.Default(ListAccountsDefault())
+	mock.createAccount.Default(CreateAccountDefault())
 	mock.getAccount.Default(GetAccountDefault())
 	connection, err := recurly.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "recurly", Name: connectionName})
 	if err != nil {
@@ -40,6 +46,16 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() recurly.Connection { return mock.connection }
 
+// ListAccounts returns the listAccounts script.
+func (mock *Mock) ListAccounts() *connectormock.Query[recurly.ListAccountsInput, recurly.AccountPage] {
+	return mock.listAccounts
+}
+
+// CreateAccount returns the createAccount script.
+func (mock *Mock) CreateAccount() *connectormock.Mutation[recurly.CreateAccountInput, recurly.AccountIdentity] {
+	return mock.createAccount
+}
+
 // GetAccount returns the getAccount script.
 func (mock *Mock) GetAccount() *connectormock.Query[recurly.GetAccountInput, recurly.AccountIdentity] {
 	return mock.getAccount
@@ -47,8 +63,81 @@ func (mock *Mock) GetAccount() *connectormock.Query[recurly.GetAccountInput, rec
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListAccounts() sdkgo.Query[recurly.ListAccountsInput, recurly.AccountPage] {
+	return operations.mock.listAccounts
+}
+func (operations mockOperations) CreateAccount() sdkgo.Mutation[recurly.CreateAccountInput, recurly.AccountIdentity] {
+	return operations.mock.createAccount
+}
 func (operations mockOperations) GetAccount() sdkgo.Query[recurly.GetAccountInput, recurly.AccountIdentity] {
 	return operations.mock.getAccount
+}
+
+// ListAccountsListed selects the listed branch: Recurly returned a page of accounts.
+func ListAccountsListed(value recurly.AccountPage, failure *sdkgo.Failure) connectormock.Case[recurly.AccountPage] {
+	return connectormock.Branch(recurly.ListAccountsBranchListed, value, failure)
+}
+
+// ListAccountsProviderRejected selects the providerRejected branch: Recurly rejected account listing.
+func ListAccountsProviderRejected(value recurly.AccountPage, failure *sdkgo.Failure) connectormock.Case[recurly.AccountPage] {
+	return connectormock.Branch(recurly.ListAccountsBranchProviderRejected, value, failure)
+}
+
+// ListAccountsInvalidResponse selects the invalidResponse branch: Recurly returned unusable account list data.
+func ListAccountsInvalidResponse(value recurly.AccountPage, failure *sdkgo.Failure) connectormock.Case[recurly.AccountPage] {
+	return connectormock.Branch(recurly.ListAccountsBranchInvalidResponse, value, failure)
+}
+
+// ListAccountsDefect selects the defect branch: Invalid account page size or credentials.
+func ListAccountsDefect(value recurly.AccountPage, failure *sdkgo.Failure) connectormock.Case[recurly.AccountPage] {
+	return connectormock.Branch(recurly.ListAccountsBranchDefect, value, failure)
+}
+
+// ListAccountsRetry asks Dex to retry the listAccounts Step, after the delay when it is positive.
+func ListAccountsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.AccountPage] {
+	return connectormock.Retry[recurly.AccountPage](failure, after)
+}
+
+// ListAccountsListedDefault is the manifest mock listedDefault: A sample account page is returned.
+func ListAccountsListedDefault() connectormock.Case[recurly.AccountPage] {
+	value := connectormock.MustDecodeOutput[recurly.AccountPage](`{"accounts":[{"id":"e28zov4fw0v2","code":"acme-corp"}],"hasMore":false}`)
+	return connectormock.Branch(recurly.ListAccountsBranchListed, value, nil)
+}
+
+// ListAccountsDefault is the manifest default, listedDefault, which New installs.
+func ListAccountsDefault() connectormock.Case[recurly.AccountPage] {
+	return ListAccountsListedDefault()
+}
+
+// CreateAccountCreated selects the created branch: Recurly created or confirmed the account.
+func CreateAccountCreated(value recurly.AccountIdentity, failure *sdkgo.Failure) connectormock.Case[recurly.AccountIdentity] {
+	return connectormock.Branch(recurly.CreateAccountBranchCreated, value, failure)
+}
+
+// CreateAccountProviderRejected selects the providerRejected branch: Recurly rejected account creation.
+func CreateAccountProviderRejected(value recurly.AccountIdentity, failure *sdkgo.Failure) connectormock.Case[recurly.AccountIdentity] {
+	return connectormock.Branch(recurly.CreateAccountBranchProviderRejected, value, failure)
+}
+
+// CreateAccountDefect selects the defect branch: Invalid code prefix or credentials.
+func CreateAccountDefect(value recurly.AccountIdentity, failure *sdkgo.Failure) connectormock.Case[recurly.AccountIdentity] {
+	return connectormock.Branch(recurly.CreateAccountBranchDefect, value, failure)
+}
+
+// CreateAccountRetry asks Dex to retry the createAccount Step, after the delay when it is positive.
+func CreateAccountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.AccountIdentity] {
+	return connectormock.Retry[recurly.AccountIdentity](failure, after)
+}
+
+// CreateAccountCreatedDefault is the manifest mock createdDefault: A sample account is created.
+func CreateAccountCreatedDefault() connectormock.Case[recurly.AccountIdentity] {
+	value := connectormock.MustDecodeOutput[recurly.AccountIdentity](`{"id":"e28zov4fw0v2","code":"dex_0123456789abcdef0123456789abcdef"}`)
+	return connectormock.Branch(recurly.CreateAccountBranchCreated, value, nil)
+}
+
+// CreateAccountDefault is the manifest default, createdDefault, which New installs.
+func CreateAccountDefault() connectormock.Case[recurly.AccountIdentity] {
+	return CreateAccountCreatedDefault()
 }
 
 // GetAccountFound selects the found branch: Recurly returned the account.

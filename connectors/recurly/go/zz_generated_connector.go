@@ -40,11 +40,19 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListAccounts() sdkgo.Query[ListAccountsInput, AccountPage]
+	CreateAccount() sdkgo.Mutation[CreateAccountInput, AccountIdentity]
 	GetAccount() sdkgo.Query[GetAccountInput, AccountIdentity]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListAccounts() sdkgo.Query[ListAccountsInput, AccountPage] {
+	return operations.client.ListAccounts()
+}
+func (operations clientOperations) CreateAccount() sdkgo.Mutation[CreateAccountInput, AccountIdentity] {
+	return operations.client.CreateAccount()
+}
 func (operations clientOperations) GetAccount() sdkgo.Query[GetAccountInput, AccountIdentity] {
 	return operations.client.GetAccount()
 }
@@ -184,6 +192,142 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ListAccountsBranchListed sdkgo.BranchID = "listed"
+const ListAccountsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListAccountsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListAccountsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListAccountsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listAccounts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListAccountsBranchListed, Description: "Recurly returned a page of accounts."},
+		{ID: ListAccountsBranchProviderRejected, Description: "Recurly rejected account listing.", Optional: true},
+		{ID: ListAccountsBranchInvalidResponse, Description: "Recurly returned unusable account list data.", Optional: true},
+		{ID: ListAccountsBranchDefect, Description: "Invalid account page size or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListAccountsResult = sdkgo.QueryResult[AccountPage]
+
+type ListAccountsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=recurly"`
+	operationID                    struct{}                                       `connector:"operationId=listAccounts"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListAccountsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListAccountsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListAccountsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListAccountsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListAccountsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AccountPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListAccountsStep[IN any](config ListAccountsStepConfig[IN]) sdkgo.QueryStep[IN, ListAccountsInput, AccountPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("recurly connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListAccountsInput, AccountPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListAccounts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListAccountsResult] {
+			branches := make([]sdkgo.BranchTarget[ListAccountsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListAccountsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListAccountsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListAccountsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListAccountsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateAccountBranchCreated sdkgo.BranchID = "created"
+const CreateAccountBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateAccountBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateAccountDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createAccount"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateAccountBranchCreated, Description: "Recurly created or confirmed the account."},
+		{ID: CreateAccountBranchProviderRejected, Description: "Recurly rejected account creation.", Optional: true},
+		{ID: CreateAccountBranchDefect, Description: "Invalid code prefix or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CreateAccountResult = sdkgo.MutationResult[AccountIdentity]
+
+type CreateAccountStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=recurly"`
+	operationID                       struct{}                                              `connector:"operationId=createAccount"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateAccountInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateAccountResult]                     `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateAccountResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateAccountResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AccountIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewCreateAccountStep[IN any](config CreateAccountStepConfig[IN]) sdkgo.MutationStep[IN, CreateAccountInput, AccountIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("recurly connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateAccountInput, AccountIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateAccount(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateAccountResult] {
+			branches := make([]sdkgo.BranchTarget[CreateAccountResult], 0, 3)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateAccountBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateAccountBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateAccountBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetAccountBranchFound sdkgo.BranchID = "found"

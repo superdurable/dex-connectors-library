@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: recurly
   displayName: Recurly
-  description: Read selected Recurly account identity through the Subscriptions API.
+  description: Read and create Recurly accounts through the Subscriptions API.
   company: Recurly
   categories: [finance-payments]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: recurly
   languages:
@@ -55,6 +55,45 @@ spec:
         - Sign in to the Recurly site with Integration permission. Open Integrations > API Credentials, scroll to Add Private API Key, name the integration and click Save Changes. Copy the complete unencoded secret key into Dex Web secret api_key; blank is invalid. Regenerate or revoke it later under Developers > API Keys. Do not paste the Base64 example shown under Need help using the API Key.
         - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret account ID in Recurly account details or the API account response and enter it as accountId; blank is invalid. Account codes require a code- prefix, for example code-acme. IDs and codes each have at most 50 characters.
   operations:
+    - name: listAccounts
+      goName: ListAccounts
+      inputType: ListAccountsInput
+      outputType: AccountPage
+      kind: query
+      description: List one bounded page of account identities.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Recurly returned a page of accounts.}
+        - {id: providerRejected, goName: ProviderRejected, description: Recurly rejected account listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Recurly returned unusable account list data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid account page size or credentials., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample account page is returned.
+          output: {accounts: [{id: e28zov4fw0v2, code: acme-corp}], hasMore: false}
+    - name: createAccount
+      goName: CreateAccount
+      inputType: CreateAccountInput
+      outputType: AccountIdentity
+      kind: mutation
+      description: Create an account with a call-derived unique code.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Recurly created or confirmed the account.}
+        - {id: providerRejected, goName: ProviderRejected, description: Recurly rejected account creation., optional: true}
+        - {id: defect, goName: Defect, description: Invalid code prefix or credentials., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample account is created.
+          output: {id: e28zov4fw0v2, code: dex_0123456789abcdef0123456789abcdef}
     - name: getAccount
       goName: GetAccount
       inputType: GetAccountInput

@@ -2,6 +2,8 @@
 
 The Go, Python, and TypeScript `getAccount` Queries read one Recurly account's ID and stable code. Contact, billing, and payment details are excluded from Dex Results.
 
+Go `listAccounts` reads a bounded page of 1 to 200 account identities from [Recurly's account list](https://docs.recurly.com/recurly-subscriptions/v2021-02-25/reference/list_accounts); its `hasMore` value indicates another page. Go `createAccount` uses the [account creation API](https://docs.recurly.com/recurly-subscriptions/v2021-02-25/reference/create_account) and takes a 1 to 12 character `codePrefix` containing letters, digits, `_`, or `-`. It appends a Dex Call marker to form a unique account code, then confirms any duplicate-code response by reading that exact code. The result contains only ID and code. Recurly account creation may require additional account settings on some sites; live provider setup remains unverified.
+
 ## Connect
 
 Sign in to the [Recurly admin console](https://app.recurly.com) with Integration permission. Open **Integrations > API Credentials**, scroll to **Add Private API Key**, name the integration, and save. Copy the complete unencoded secret key into Dex Web `api_key`. Recurly Private API Keys grant full account access. Revoke or regenerate a key under **Developers > API Keys**. The connector uses HTTP Basic with the key as username and an empty password. See [Recurly's REST API key guide](https://docs.recurly.com/recurly-subscriptions/docs/api-keys).
