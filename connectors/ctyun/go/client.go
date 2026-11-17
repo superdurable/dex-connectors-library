@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
@@ -30,6 +31,8 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	now              func() time.Time
+	requestID        func() (string, error)
 }
 
 // New validates configuration without contacting CTYun.
@@ -52,12 +55,18 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil || parsed.Host != "kqa-global.ctapi.ctyun.cn" || (parsed.Path != "" && parsed.Path != "/") || parsed.RawQuery != "" || parsed.Fragment != "" {
 		return nil, errors.New("CTYun base URL must be the documented HTTPS production origin")
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{
+		baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials,
+		now: time.Now, requestID: newRequestID,
+	}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("client option is required")
 		}
 		option.applyClientOption(client)
+	}
+	if client.now == nil || client.requestID == nil {
+		return nil, errors.New("CTYun request clock and ID generator are required")
 	}
 	client.httpClient = providerhttp.NewProviderHTTPClient(client.httpClient, config.Timeout)
 	return client, nil
