@@ -34,6 +34,16 @@ type ListTagsInput struct {
 	After string `json:"after,omitempty"`
 }
 
+// ListTagSubscribersInput selects a cursor page of subscribers with a tag.
+type ListTagSubscribersInput struct {
+	// TagID is the numeric Kit tag ID.
+	TagID int64 `json:"tagId"`
+	// PerPage bounds the page size; zero uses 20.
+	PerPage int `json:"perPage,omitempty"`
+	// After is the prior page's opaque end cursor.
+	After string `json:"after,omitempty"`
+}
+
 // TagMetadata is a Kit tag's ID and non-secret name.
 type TagMetadata struct {
 	// ID is the stable numeric tag ID.
@@ -80,6 +90,9 @@ type UpsertSubscriberOperation struct{ client *Client }
 // ListTagsOperation lists tag metadata.
 type ListTagsOperation struct{ client *Client }
 
+// ListTagSubscribersOperation lists subscribers with one tag.
+type ListTagSubscribersOperation struct{ client *Client }
+
 // CreateTagOperation creates or reuses a tag by name.
 type CreateTagOperation struct{ client *Client }
 
@@ -96,6 +109,11 @@ func (client *Client) UpsertSubscriber() UpsertSubscriberOperation {
 
 // ListTags binds the query to this client.
 func (client *Client) ListTags() ListTagsOperation { return ListTagsOperation{client} }
+
+// ListTagSubscribers binds tagged-subscriber listing to this client.
+func (client *Client) ListTagSubscribers() ListTagSubscribersOperation {
+	return ListTagSubscribersOperation{client}
+}
 
 // CreateTag binds the mutation to this client.
 func (client *Client) CreateTag() CreateTagOperation { return CreateTagOperation{client} }
@@ -115,6 +133,11 @@ func (UpsertSubscriberOperation) Definition() sdkgo.MutationDefinition {
 
 // Definition returns the generated query contract.
 func (ListTagsOperation) Definition() sdkgo.QueryDefinition { return ListTagsDefinition }
+
+// Definition returns the generated query contract.
+func (ListTagSubscribersOperation) Definition() sdkgo.QueryDefinition {
+	return ListTagSubscribersDefinition
+}
 
 // Definition returns the generated mutation contract.
 func (CreateTagOperation) Definition() sdkgo.MutationDefinition { return CreateTagDefinition }
@@ -176,6 +199,25 @@ func (operation ListTagsOperation) Invoke(call sdkgo.Call, input ListTagsInput) 
 		query.Set("after", input.After)
 	}
 	return invokeQuery(call, operation.client, "listTags", "/tags?"+query.Encode(), branches, decodeTagsPage)
+}
+
+// Invoke reads one cursor page of subscribers who have a tag.
+func (operation ListTagSubscribersOperation) Invoke(call sdkgo.Call, input ListTagSubscribersInput) sdkgo.QueryAttempt[SubscribersPage] {
+	branches := queryBranches{found: ListTagSubscribersBranchListed, notFound: ListTagSubscribersBranchNotFound, rejected: ListTagSubscribersBranchProviderRejected, invalid: ListTagSubscribersBranchInvalidResponse, defect: ListTagSubscribersBranchDefect}
+	if input.TagID <= 0 || input.PerPage < 0 || input.PerPage > 1000 || len(input.After) > 2048 {
+		return queryBranch("listTagSubscribers", branches.defect, SubscribersPage{}, sdkgo.FailureValidation, "tag ID, cursor, or perPage is invalid")
+	}
+	if input.PerPage == 0 {
+		input.PerPage = 20
+	}
+	query := url.Values{"per_page": {strconv.Itoa(input.PerPage)}, "slim": {"true"}}
+	if input.After != "" {
+		query.Set("after", input.After)
+	}
+	path := "/tags/" + strconv.FormatInt(input.TagID, 10) + "/subscribers?" + query.Encode()
+	return invokeQuery(call, operation.client, "listTagSubscribers", path, branches, func(body []byte) (SubscribersPage, error) {
+		return decodeSubscribersPage(body, ListSubscribersInput{After: input.After, PerPage: input.PerPage})
+	})
 }
 
 // Invoke creates or reuses a tag under Kit's case-insensitive name identity.

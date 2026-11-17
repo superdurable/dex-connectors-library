@@ -84,6 +84,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[kit.SubscriberMetadata](`{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}`)
 			return err
 		}},
+		{name: "listTagSubscribers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.SubscribersPage](`{"subscribers":[{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}],"hasNextPage":false,"nextCursor":"","perPage":20}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -144,5 +148,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.AddSubscriberToSequence().Definition().Operation.OperationID != "addSubscriberToSequence" {
 		t.Errorf("addSubscriberToSequence mock has another definition")
+	}
+	if mock.ListTagSubscribers().Definition().Operation.OperationID != "listTagSubscribers" {
+		t.Errorf("listTagSubscribers mock has another definition")
 	}
 }

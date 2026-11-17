@@ -35,6 +35,7 @@ type Mock struct {
 	listSequences           *connectormock.Query[kit.ListSequencesInput, kit.SequencesPage]
 	listSequenceSubscribers *connectormock.Query[kit.ListSequenceSubscribersInput, kit.SubscribersPage]
 	addSubscriberToSequence *connectormock.Mutation[kit.AddSubscriberToSequenceInput, kit.SubscriberMetadata]
+	listTagSubscribers      *connectormock.Query[kit.ListTagSubscribersInput, kit.SubscribersPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -59,6 +60,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		listSequences:           connectormock.NewQuery[kit.ListSequencesInput, kit.SequencesPage](t, kit.ListSequencesDefinition),
 		listSequenceSubscribers: connectormock.NewQuery[kit.ListSequenceSubscribersInput, kit.SubscribersPage](t, kit.ListSequenceSubscribersDefinition),
 		addSubscriberToSequence: connectormock.NewMutation[kit.AddSubscriberToSequenceInput, kit.SubscriberMetadata](t, kit.AddSubscriberToSequenceDefinition),
+		listTagSubscribers:      connectormock.NewQuery[kit.ListTagSubscribersInput, kit.SubscribersPage](t, kit.ListTagSubscribersDefinition),
 	}
 	mock.listSubscribers.Default(ListSubscribersDefault())
 	mock.getSubscriber.Default(GetSubscriberDefault())
@@ -77,6 +79,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listSequences.Default(ListSequencesDefault())
 	mock.listSequenceSubscribers.Default(ListSequenceSubscribersDefault())
 	mock.addSubscriberToSequence.Default(AddSubscriberToSequenceDefault())
+	mock.listTagSubscribers.Default(ListTagSubscribersDefault())
 	connection, err := kit.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "kit", Name: connectionName})
 	if err != nil {
 		t.Fatalf("kit mock connection: %v", err)
@@ -173,6 +176,11 @@ func (mock *Mock) AddSubscriberToSequence() *connectormock.Mutation[kit.AddSubsc
 	return mock.addSubscriberToSequence
 }
 
+// ListTagSubscribers returns the listTagSubscribers script.
+func (mock *Mock) ListTagSubscribers() *connectormock.Query[kit.ListTagSubscribersInput, kit.SubscribersPage] {
+	return mock.listTagSubscribers
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListSubscribers() sdkgo.Query[kit.ListSubscribersInput, kit.SubscribersPage] {
@@ -225,6 +233,9 @@ func (operations mockOperations) ListSequenceSubscribers() sdkgo.Query[kit.ListS
 }
 func (operations mockOperations) AddSubscriberToSequence() sdkgo.Mutation[kit.AddSubscriberToSequenceInput, kit.SubscriberMetadata] {
 	return operations.mock.addSubscriberToSequence
+}
+func (operations mockOperations) ListTagSubscribers() sdkgo.Query[kit.ListTagSubscribersInput, kit.SubscribersPage] {
+	return operations.mock.listTagSubscribers
 }
 
 // ListSubscribersListed selects the listed branch: Kit returned the selected subscriber page.
@@ -876,4 +887,45 @@ func AddSubscriberToSequenceAddedDefault() connectormock.Case[kit.SubscriberMeta
 // AddSubscriberToSequenceDefault is the manifest default, addedDefault, which New installs.
 func AddSubscriberToSequenceDefault() connectormock.Case[kit.SubscriberMetadata] {
 	return AddSubscriberToSequenceAddedDefault()
+}
+
+// ListTagSubscribersListed selects the listed branch: Kit returned a subscriber page.
+func ListTagSubscribersListed(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListTagSubscribersBranchListed, value, failure)
+}
+
+// ListTagSubscribersNotFound selects the notFound branch: Kit did not find the tag.
+func ListTagSubscribersNotFound(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListTagSubscribersBranchNotFound, value, failure)
+}
+
+// ListTagSubscribersProviderRejected selects the providerRejected branch: Kit rejected the list request.
+func ListTagSubscribersProviderRejected(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListTagSubscribersBranchProviderRejected, value, failure)
+}
+
+// ListTagSubscribersInvalidResponse selects the invalidResponse branch: Kit returned invalid subscriber JSON.
+func ListTagSubscribersInvalidResponse(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListTagSubscribersBranchInvalidResponse, value, failure)
+}
+
+// ListTagSubscribersDefect selects the defect branch: Input or credentials are invalid.
+func ListTagSubscribersDefect(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListTagSubscribersBranchDefect, value, failure)
+}
+
+// ListTagSubscribersRetry asks Dex to retry the listTagSubscribers Step, after the delay when it is positive.
+func ListTagSubscribersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Retry[kit.SubscribersPage](failure, after)
+}
+
+// ListTagSubscribersListedDefault is the manifest mock listedDefault: A sample tagged-subscriber page is returned.
+func ListTagSubscribersListedDefault() connectormock.Case[kit.SubscribersPage] {
+	value := connectormock.MustDecodeOutput[kit.SubscribersPage](`{"subscribers":[{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}],"hasNextPage":false,"nextCursor":"","perPage":20}`)
+	return connectormock.Branch(kit.ListTagSubscribersBranchListed, value, nil)
+}
+
+// ListTagSubscribersDefault is the manifest default, listedDefault, which New installs.
+func ListTagSubscribersDefault() connectormock.Case[kit.SubscribersPage] {
+	return ListTagSubscribersListedDefault()
 }

@@ -24,7 +24,7 @@ import (
 func TestSubscriberInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := kitmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, NewTagsFlow(mock.Connection()), NewCustomFieldsFlow(mock.Connection()), NewFormsFlow(mock.Connection()), NewSequencesFlow(mock.Connection())})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, NewTagsFlow(mock.Connection()), NewCustomFieldsFlow(mock.Connection()), NewFormsFlow(mock.Connection()), NewSequencesFlow(mock.Connection()), NewTagSubscribersFlow(mock.Connection())})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -103,4 +103,16 @@ func TestSubscriberInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Len(t, sequences.Sequences, 1)
 	require.Equal(t, int64(61), sequences.Sequences[0].ID)
 	require.Len(t, mock.ListSequences().Calls(), 1)
+	tagSubscribersFlow := NewTagSubscribersFlow(mock.Connection())
+	tagSubscribersID := "kit-tag-subscribers-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, tagSubscribersFlow, tagSubscribersID, kit.ListTagSubscribersInput{TagID: 12, PerPage: 20}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	tagSubscribersResult, err := client.WaitForFlow(ctx, tagSubscribersID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, tagSubscribersResult.Status, tagSubscribersResult.ErrorMessage)
+	var taggedSubscribers kit.SubscribersPage
+	require.NoError(t, tagSubscribersResult.DecodeSingleOutput(&taggedSubscribers))
+	require.Len(t, taggedSubscribers.Subscribers, 1)
+	require.Equal(t, int64(204), taggedSubscribers.Subscribers[0].ID)
+	require.Len(t, mock.ListTagSubscribers().Calls(), 1)
 }

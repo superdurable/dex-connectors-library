@@ -63,5 +63,6 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"listSequences":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSequences(), reference),
 		"listSequenceSubscribers": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSequenceSubscribers(), reference),
 		"addSubscriberToSequence": newConformanceMutationInvocation(t, scenario.Input, context, client.AddSubscriberToSequence(), reference, scenario.CallID),
+		"listTagSubscribers":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTagSubscribers(), reference),
 	}}
 }

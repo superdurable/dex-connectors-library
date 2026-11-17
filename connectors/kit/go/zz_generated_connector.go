@@ -57,6 +57,7 @@ type Operations interface {
 	ListSequences() sdkgo.Query[ListSequencesInput, SequencesPage]
 	ListSequenceSubscribers() sdkgo.Query[ListSequenceSubscribersInput, SubscribersPage]
 	AddSubscriberToSequence() sdkgo.Mutation[AddSubscriberToSequenceInput, SubscriberMetadata]
+	ListTagSubscribers() sdkgo.Query[ListTagSubscribersInput, SubscribersPage]
 }
 
 type clientOperations struct{ client *Client }
@@ -111,6 +112,9 @@ func (operations clientOperations) ListSequenceSubscribers() sdkgo.Query[ListSeq
 }
 func (operations clientOperations) AddSubscriberToSequence() sdkgo.Mutation[AddSubscriberToSequenceInput, SubscriberMetadata] {
 	return operations.client.AddSubscriberToSequence()
+}
+func (operations clientOperations) ListTagSubscribers() sdkgo.Query[ListTagSubscribersInput, SubscribersPage] {
+	return operations.client.ListTagSubscribers()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -1521,5 +1525,82 @@ func NewAddSubscriberToSequenceStep[IN any](config AddSubscriberToSequenceStepCo
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 		MaxSends:            config.MaxSends,
+	})
+}
+
+const ListTagSubscribersBranchListed sdkgo.BranchID = "listed"
+const ListTagSubscribersBranchNotFound sdkgo.BranchID = "notFound"
+const ListTagSubscribersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTagSubscribersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTagSubscribersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTagSubscribersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTagSubscribers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTagSubscribersBranchListed, Description: "Kit returned a subscriber page."},
+		{ID: ListTagSubscribersBranchNotFound, Description: "Kit did not find the tag.", Optional: true},
+		{ID: ListTagSubscribersBranchProviderRejected, Description: "Kit rejected the list request.", Optional: true},
+		{ID: ListTagSubscribersBranchInvalidResponse, Description: "Kit returned invalid subscriber JSON.", Optional: true},
+		{ID: ListTagSubscribersBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTagSubscribersResult = sdkgo.QueryResult[SubscribersPage]
+
+type ListTagSubscribersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=kit"`
+	operationID                    struct{}                                           `connector:"operationId=listTagSubscribers"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTagSubscribersInput                   `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTagSubscribersResult]             `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListTagSubscribersResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListTagSubscribersResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTagSubscribersResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTagSubscribersResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SubscribersPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewListTagSubscribersStep[IN any](config ListTagSubscribersStepConfig[IN]) sdkgo.QueryStep[IN, ListTagSubscribersInput, SubscribersPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("kit connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTagSubscribersInput, SubscribersPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTagSubscribers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTagSubscribersResult] {
+			branches := make([]sdkgo.BranchTarget[ListTagSubscribersResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTagSubscribersBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListTagSubscribersBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTagSubscribersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTagSubscribersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTagSubscribersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
 	})
 }

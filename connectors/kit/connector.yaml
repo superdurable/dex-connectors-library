@@ -404,3 +404,24 @@ spec:
           default: true
           description: A sample sequence subscriber is returned.
           output: {id: 204, emailAddress: 'alice@example.com', firstName: Alice, state: active}
+    - name: listTagSubscribers
+      goName: ListTagSubscribers
+      inputType: ListTagSubscribersInput
+      outputType: SubscribersPage
+      kind: query
+      description: List one cursor page of subscribers who have a tag.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Kit returned a subscriber page.}
+        - {id: notFound, goName: NotFound, description: Kit did not find the tag., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned invalid subscriber JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample tagged-subscriber page is returned.
+          output: {subscribers: [{id: 204, emailAddress: 'alice@example.com', firstName: Alice, state: active}], hasNextPage: false, nextCursor: '', perPage: 20}
