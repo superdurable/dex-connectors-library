@@ -24,6 +24,10 @@ Response after recording its summary. The `DeleteStoredResponse` Step uses
 need no stored Response use the
 [llm connector](../../../../superdurable/llm/README.md) instead.
 
+Set `createConversation` to `true` to store the summary as a conversation's
+first assistant message. `CreateSummaryConversation` uses the limited-tier
+`createConversation` operation, and the completion output includes its ID.
+
 The Flow and every application Step declare stable types with `GetFlowType`
 and `GetStepType`, because Dex Web Start Flow sends the type names from the
 Flow Definition. The start Step implements a `WaitFor` that skips

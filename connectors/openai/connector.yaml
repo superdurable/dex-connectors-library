@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: openai
   displayName: OpenAI
-  description: "OpenAI Responses API stored responses: create, retrieve, and delete model responses with structured output, streamed text and progress, token usage, and explicit uncertainty. Text generation Steps use the llm connector."
+  description: "OpenAI Responses API stored responses and conversations: create, retrieve, update, and delete resources with structured output, streamed text and progress, token usage, and explicit uncertainty. Text generation Steps use the llm connector."
   company: OpenAI
   categories: [ai]
   version: v0.25.0
@@ -195,3 +195,82 @@ spec:
           branch: notFound
           description: The stored response is absent.
           failure: {kind: NOT_FOUND, message: The stored response was not found.}
+    - name: createConversation
+      goName: CreateConversation
+      inputType: CreateConversationRequest
+      outputType: Conversation
+      kind: mutation
+      description: Create a conversation with optional initial messages and metadata.
+      idempotency: required
+      branches:
+        - {id: created, goName: Created, description: OpenAI created the conversation.}
+        - {id: providerRejected, goName: ProviderRejected, description: OpenAI rejected the conversation request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A sent request may have created a conversation that cannot be found without its ID., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection is invalid., optional: true}
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      mocks:
+        - name: conversationCreated
+          branch: created
+          description: A conversation was created.
+          default: true
+          output: {id: conv_mock001, createdAt: 1741900000, metadata: {topic: demo}}
+    - name: retrieveConversation
+      goName: RetrieveConversation
+      inputType: ConversationIDRequest
+      outputType: Conversation
+      kind: query
+      description: Retrieve a conversation by ID.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: OpenAI returned the conversation.}
+        - {id: notFound, goName: NotFound, description: The conversation does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: OpenAI rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OpenAI returned invalid conversation data., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection is invalid., optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: conversationFound
+          branch: found
+          description: A conversation was found.
+          default: true
+          output: {id: conv_mock001, createdAt: 1741900000, metadata: {topic: demo}}
+    - name: updateConversation
+      goName: UpdateConversation
+      inputType: UpdateConversationRequest
+      outputType: Conversation
+      kind: mutation
+      description: Replace a conversation's metadata.
+      idempotency: required
+      branches:
+        - {id: updated, goName: Updated, description: OpenAI updated the conversation.}
+        - {id: notFound, goName: NotFound, description: The conversation does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: OpenAI rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OpenAI returned invalid conversation data., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection is invalid., optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: conversationUpdated
+          branch: updated
+          description: A conversation's metadata was updated.
+          default: true
+          output: {id: conv_mock001, createdAt: 1741900000, metadata: {topic: updated}}
+    - name: deleteConversation
+      goName: DeleteConversation
+      inputType: ConversationIDRequest
+      outputType: DeletedResponse
+      kind: mutation
+      description: Delete a conversation while retaining its items according to OpenAI's API.
+      idempotency: required
+      branches:
+        - {id: deleted, goName: Deleted, description: OpenAI deleted the conversation.}
+        - {id: notFound, goName: NotFound, description: The conversation no longer exists., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: OpenAI rejected deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OpenAI returned an invalid deletion receipt., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection is invalid., optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: conversationDeleted
+          branch: deleted
+          description: A conversation was deleted.
+          default: true
+          output: {id: conv_mock001, deleted: true}

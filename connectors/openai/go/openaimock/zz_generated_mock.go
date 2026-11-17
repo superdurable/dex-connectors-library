@@ -17,10 +17,14 @@ import (
 
 // Mock is a scripted openai connection. Script each operation through its accessor.
 type Mock struct {
-	connection       openai.Connection
-	createResponse   *connectormock.Mutation[openai.CreateRequest, openai.Response]
-	retrieveResponse *connectormock.Query[openai.RetrieveRequest, openai.Response]
-	deleteResponse   *connectormock.Mutation[openai.DeleteResponseRequest, openai.DeletedResponse]
+	connection           openai.Connection
+	createResponse       *connectormock.Mutation[openai.CreateRequest, openai.Response]
+	retrieveResponse     *connectormock.Query[openai.RetrieveRequest, openai.Response]
+	deleteResponse       *connectormock.Mutation[openai.DeleteResponseRequest, openai.DeletedResponse]
+	createConversation   *connectormock.Mutation[openai.CreateConversationRequest, openai.Conversation]
+	retrieveConversation *connectormock.Query[openai.ConversationIDRequest, openai.Conversation]
+	updateConversation   *connectormock.Mutation[openai.UpdateConversationRequest, openai.Conversation]
+	deleteConversation   *connectormock.Mutation[openai.ConversationIDRequest, openai.DeletedResponse]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -28,13 +32,21 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		createResponse:   connectormock.NewMutation[openai.CreateRequest, openai.Response](t, openai.CreateResponseDefinition, connectormock.WithRequestCheck[openai.CreateRequest, openai.Response](openai.ValidateCreateResponseRequest), connectormock.WithAnswerCheck[openai.CreateRequest, openai.Response](openai.CreateResponseBranchCompleted, openai.ValidateCreateResponseAnswer)),
-		retrieveResponse: connectormock.NewQuery[openai.RetrieveRequest, openai.Response](t, openai.RetrieveResponseDefinition),
-		deleteResponse:   connectormock.NewMutation[openai.DeleteResponseRequest, openai.DeletedResponse](t, openai.DeleteResponseDefinition),
+		createResponse:       connectormock.NewMutation[openai.CreateRequest, openai.Response](t, openai.CreateResponseDefinition, connectormock.WithRequestCheck[openai.CreateRequest, openai.Response](openai.ValidateCreateResponseRequest), connectormock.WithAnswerCheck[openai.CreateRequest, openai.Response](openai.CreateResponseBranchCompleted, openai.ValidateCreateResponseAnswer)),
+		retrieveResponse:     connectormock.NewQuery[openai.RetrieveRequest, openai.Response](t, openai.RetrieveResponseDefinition),
+		deleteResponse:       connectormock.NewMutation[openai.DeleteResponseRequest, openai.DeletedResponse](t, openai.DeleteResponseDefinition),
+		createConversation:   connectormock.NewMutation[openai.CreateConversationRequest, openai.Conversation](t, openai.CreateConversationDefinition),
+		retrieveConversation: connectormock.NewQuery[openai.ConversationIDRequest, openai.Conversation](t, openai.RetrieveConversationDefinition),
+		updateConversation:   connectormock.NewMutation[openai.UpdateConversationRequest, openai.Conversation](t, openai.UpdateConversationDefinition),
+		deleteConversation:   connectormock.NewMutation[openai.ConversationIDRequest, openai.DeletedResponse](t, openai.DeleteConversationDefinition),
 	}
 	mock.createResponse.Default(CreateResponseDefault())
 	mock.retrieveResponse.Default(RetrieveResponseDefault())
 	mock.deleteResponse.Default(DeleteResponseDefault())
+	mock.createConversation.Default(CreateConversationDefault())
+	mock.retrieveConversation.Default(RetrieveConversationDefault())
+	mock.updateConversation.Default(UpdateConversationDefault())
+	mock.deleteConversation.Default(DeleteConversationDefault())
 	connection, err := openai.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "openai", Name: connectionName})
 	if err != nil {
 		t.Fatalf("openai mock connection: %v", err)
@@ -61,6 +73,26 @@ func (mock *Mock) DeleteResponse() *connectormock.Mutation[openai.DeleteResponse
 	return mock.deleteResponse
 }
 
+// CreateConversation returns the createConversation script.
+func (mock *Mock) CreateConversation() *connectormock.Mutation[openai.CreateConversationRequest, openai.Conversation] {
+	return mock.createConversation
+}
+
+// RetrieveConversation returns the retrieveConversation script.
+func (mock *Mock) RetrieveConversation() *connectormock.Query[openai.ConversationIDRequest, openai.Conversation] {
+	return mock.retrieveConversation
+}
+
+// UpdateConversation returns the updateConversation script.
+func (mock *Mock) UpdateConversation() *connectormock.Mutation[openai.UpdateConversationRequest, openai.Conversation] {
+	return mock.updateConversation
+}
+
+// DeleteConversation returns the deleteConversation script.
+func (mock *Mock) DeleteConversation() *connectormock.Mutation[openai.ConversationIDRequest, openai.DeletedResponse] {
+	return mock.deleteConversation
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreateResponse() sdkgo.Mutation[openai.CreateRequest, openai.Response] {
@@ -71,6 +103,18 @@ func (operations mockOperations) RetrieveResponse() sdkgo.Query[openai.RetrieveR
 }
 func (operations mockOperations) DeleteResponse() sdkgo.Mutation[openai.DeleteResponseRequest, openai.DeletedResponse] {
 	return operations.mock.deleteResponse
+}
+func (operations mockOperations) CreateConversation() sdkgo.Mutation[openai.CreateConversationRequest, openai.Conversation] {
+	return operations.mock.createConversation
+}
+func (operations mockOperations) RetrieveConversation() sdkgo.Query[openai.ConversationIDRequest, openai.Conversation] {
+	return operations.mock.retrieveConversation
+}
+func (operations mockOperations) UpdateConversation() sdkgo.Mutation[openai.UpdateConversationRequest, openai.Conversation] {
+	return operations.mock.updateConversation
+}
+func (operations mockOperations) DeleteConversation() sdkgo.Mutation[openai.ConversationIDRequest, openai.DeletedResponse] {
+	return operations.mock.deleteConversation
 }
 
 // CreateResponseCompleted selects the completed branch: OpenAI completed the response.
@@ -224,4 +268,163 @@ func DeleteResponseResponseAlreadyAbsent() connectormock.Case[openai.DeletedResp
 // DeleteResponseDefault is the manifest default, responseDeleted, which New installs.
 func DeleteResponseDefault() connectormock.Case[openai.DeletedResponse] {
 	return DeleteResponseResponseDeleted()
+}
+
+// CreateConversationCreated selects the created branch: OpenAI created the conversation.
+func CreateConversationCreated(value openai.Conversation, failure *sdkgo.Failure) connectormock.Case[openai.Conversation] {
+	return connectormock.Branch(openai.CreateConversationBranchCreated, value, failure)
+}
+
+// CreateConversationProviderRejected selects the providerRejected branch: OpenAI rejected the conversation request.
+func CreateConversationProviderRejected(value openai.Conversation, failure *sdkgo.Failure) connectormock.Case[openai.Conversation] {
+	return connectormock.Branch(openai.CreateConversationBranchProviderRejected, value, failure)
+}
+
+// CreateConversationUncertain returns an uncertain createConversation outcome.
+func CreateConversationUncertain(value openai.Conversation, failure sdkgo.Failure) connectormock.Case[openai.Conversation] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateConversationDefect selects the defect branch: Input or connection is invalid.
+func CreateConversationDefect(value openai.Conversation, failure *sdkgo.Failure) connectormock.Case[openai.Conversation] {
+	return connectormock.Branch(openai.CreateConversationBranchDefect, value, failure)
+}
+
+// CreateConversationRetry asks Dex to retry the createConversation Step, after the delay when it is positive.
+func CreateConversationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[openai.Conversation] {
+	return connectormock.Retry[openai.Conversation](failure, after)
+}
+
+// CreateConversationConversationCreated is the manifest mock conversationCreated: A conversation was created.
+func CreateConversationConversationCreated() connectormock.Case[openai.Conversation] {
+	value := connectormock.MustDecodeOutput[openai.Conversation](`{"id":"conv_mock001","createdAt":1741900000,"metadata":{"topic":"demo"}}`)
+	return connectormock.Branch(openai.CreateConversationBranchCreated, value, nil)
+}
+
+// CreateConversationDefault is the manifest default, conversationCreated, which New installs.
+func CreateConversationDefault() connectormock.Case[openai.Conversation] {
+	return CreateConversationConversationCreated()
+}
+
+// RetrieveConversationFound selects the found branch: OpenAI returned the conversation.
+func RetrieveConversationFound(value openai.Conversation, failure *sdkgo.Failure) connectormock.Case[openai.Conversation] {
+	return connectormock.Branch(openai.RetrieveConversationBranchFound, value, failure)
+}
+
+// RetrieveConversationNotFound selects the notFound branch: The conversation does not exist.
+func RetrieveConversationNotFound(value openai.Conversation, failure *sdkgo.Failure) connectormock.Case[openai.Conversation] {
+	return connectormock.Branch(openai.RetrieveConversationBranchNotFound, value, failure)
+}
+
+// RetrieveConversationProviderRejected selects the providerRejected branch: OpenAI rejected the lookup.
+func RetrieveConversationProviderRejected(value openai.Conversation, failure *sdkgo.Failure) connectormock.Case[openai.Conversation] {
+	return connectormock.Branch(openai.RetrieveConversationBranchProviderRejected, value, failure)
+}
+
+// RetrieveConversationInvalidResponse selects the invalidResponse branch: OpenAI returned invalid conversation data.
+func RetrieveConversationInvalidResponse(value openai.Conversation, failure *sdkgo.Failure) connectormock.Case[openai.Conversation] {
+	return connectormock.Branch(openai.RetrieveConversationBranchInvalidResponse, value, failure)
+}
+
+// RetrieveConversationDefect selects the defect branch: Input or connection is invalid.
+func RetrieveConversationDefect(value openai.Conversation, failure *sdkgo.Failure) connectormock.Case[openai.Conversation] {
+	return connectormock.Branch(openai.RetrieveConversationBranchDefect, value, failure)
+}
+
+// RetrieveConversationRetry asks Dex to retry the retrieveConversation Step, after the delay when it is positive.
+func RetrieveConversationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[openai.Conversation] {
+	return connectormock.Retry[openai.Conversation](failure, after)
+}
+
+// RetrieveConversationConversationFound is the manifest mock conversationFound: A conversation was found.
+func RetrieveConversationConversationFound() connectormock.Case[openai.Conversation] {
+	value := connectormock.MustDecodeOutput[openai.Conversation](`{"id":"conv_mock001","createdAt":1741900000,"metadata":{"topic":"demo"}}`)
+	return connectormock.Branch(openai.RetrieveConversationBranchFound, value, nil)
+}
+
+// RetrieveConversationDefault is the manifest default, conversationFound, which New installs.
+func RetrieveConversationDefault() connectormock.Case[openai.Conversation] {
+	return RetrieveConversationConversationFound()
+}
+
+// UpdateConversationUpdated selects the updated branch: OpenAI updated the conversation.
+func UpdateConversationUpdated(value openai.Conversation, failure *sdkgo.Failure) connectormock.Case[openai.Conversation] {
+	return connectormock.Branch(openai.UpdateConversationBranchUpdated, value, failure)
+}
+
+// UpdateConversationNotFound selects the notFound branch: The conversation does not exist.
+func UpdateConversationNotFound(value openai.Conversation, failure *sdkgo.Failure) connectormock.Case[openai.Conversation] {
+	return connectormock.Branch(openai.UpdateConversationBranchNotFound, value, failure)
+}
+
+// UpdateConversationProviderRejected selects the providerRejected branch: OpenAI rejected the update.
+func UpdateConversationProviderRejected(value openai.Conversation, failure *sdkgo.Failure) connectormock.Case[openai.Conversation] {
+	return connectormock.Branch(openai.UpdateConversationBranchProviderRejected, value, failure)
+}
+
+// UpdateConversationInvalidResponse selects the invalidResponse branch: OpenAI returned invalid conversation data.
+func UpdateConversationInvalidResponse(value openai.Conversation, failure *sdkgo.Failure) connectormock.Case[openai.Conversation] {
+	return connectormock.Branch(openai.UpdateConversationBranchInvalidResponse, value, failure)
+}
+
+// UpdateConversationDefect selects the defect branch: Input or connection is invalid.
+func UpdateConversationDefect(value openai.Conversation, failure *sdkgo.Failure) connectormock.Case[openai.Conversation] {
+	return connectormock.Branch(openai.UpdateConversationBranchDefect, value, failure)
+}
+
+// UpdateConversationRetry asks Dex to retry the updateConversation Step, after the delay when it is positive.
+func UpdateConversationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[openai.Conversation] {
+	return connectormock.Retry[openai.Conversation](failure, after)
+}
+
+// UpdateConversationConversationUpdated is the manifest mock conversationUpdated: A conversation's metadata was updated.
+func UpdateConversationConversationUpdated() connectormock.Case[openai.Conversation] {
+	value := connectormock.MustDecodeOutput[openai.Conversation](`{"id":"conv_mock001","createdAt":1741900000,"metadata":{"topic":"updated"}}`)
+	return connectormock.Branch(openai.UpdateConversationBranchUpdated, value, nil)
+}
+
+// UpdateConversationDefault is the manifest default, conversationUpdated, which New installs.
+func UpdateConversationDefault() connectormock.Case[openai.Conversation] {
+	return UpdateConversationConversationUpdated()
+}
+
+// DeleteConversationDeleted selects the deleted branch: OpenAI deleted the conversation.
+func DeleteConversationDeleted(value openai.DeletedResponse, failure *sdkgo.Failure) connectormock.Case[openai.DeletedResponse] {
+	return connectormock.Branch(openai.DeleteConversationBranchDeleted, value, failure)
+}
+
+// DeleteConversationNotFound selects the notFound branch: The conversation no longer exists.
+func DeleteConversationNotFound(value openai.DeletedResponse, failure *sdkgo.Failure) connectormock.Case[openai.DeletedResponse] {
+	return connectormock.Branch(openai.DeleteConversationBranchNotFound, value, failure)
+}
+
+// DeleteConversationProviderRejected selects the providerRejected branch: OpenAI rejected deletion.
+func DeleteConversationProviderRejected(value openai.DeletedResponse, failure *sdkgo.Failure) connectormock.Case[openai.DeletedResponse] {
+	return connectormock.Branch(openai.DeleteConversationBranchProviderRejected, value, failure)
+}
+
+// DeleteConversationInvalidResponse selects the invalidResponse branch: OpenAI returned an invalid deletion receipt.
+func DeleteConversationInvalidResponse(value openai.DeletedResponse, failure *sdkgo.Failure) connectormock.Case[openai.DeletedResponse] {
+	return connectormock.Branch(openai.DeleteConversationBranchInvalidResponse, value, failure)
+}
+
+// DeleteConversationDefect selects the defect branch: Input or connection is invalid.
+func DeleteConversationDefect(value openai.DeletedResponse, failure *sdkgo.Failure) connectormock.Case[openai.DeletedResponse] {
+	return connectormock.Branch(openai.DeleteConversationBranchDefect, value, failure)
+}
+
+// DeleteConversationRetry asks Dex to retry the deleteConversation Step, after the delay when it is positive.
+func DeleteConversationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[openai.DeletedResponse] {
+	return connectormock.Retry[openai.DeletedResponse](failure, after)
+}
+
+// DeleteConversationConversationDeleted is the manifest mock conversationDeleted: A conversation was deleted.
+func DeleteConversationConversationDeleted() connectormock.Case[openai.DeletedResponse] {
+	value := connectormock.MustDecodeOutput[openai.DeletedResponse](`{"id":"conv_mock001","deleted":true}`)
+	return connectormock.Branch(openai.DeleteConversationBranchDeleted, value, nil)
+}
+
+// DeleteConversationDefault is the manifest default, conversationDeleted, which New installs.
+func DeleteConversationDefault() connectormock.Case[openai.DeletedResponse] {
+	return DeleteConversationConversationDeleted()
 }

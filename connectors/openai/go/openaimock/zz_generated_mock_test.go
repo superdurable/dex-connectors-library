@@ -32,6 +32,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[openai.DeletedResponse](`{"id":"resp_mocksummary001","deleted":true}`)
 			return err
 		}},
+		{name: "createConversation/conversationCreated/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[openai.Conversation](`{"id":"conv_mock001","createdAt":1741900000,"metadata":{"topic":"demo"}}`)
+			return err
+		}},
+		{name: "retrieveConversation/conversationFound/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[openai.Conversation](`{"id":"conv_mock001","createdAt":1741900000,"metadata":{"topic":"demo"}}`)
+			return err
+		}},
+		{name: "updateConversation/conversationUpdated/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[openai.Conversation](`{"id":"conv_mock001","createdAt":1741900000,"metadata":{"topic":"updated"}}`)
+			return err
+		}},
+		{name: "deleteConversation/conversationDeleted/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[openai.DeletedResponse](`{"id":"conv_mock001","deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -50,5 +66,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteResponse().Definition().Operation.OperationID != "deleteResponse" {
 		t.Errorf("deleteResponse mock has another definition")
+	}
+	if mock.CreateConversation().Definition().Operation.OperationID != "createConversation" {
+		t.Errorf("createConversation mock has another definition")
+	}
+	if mock.RetrieveConversation().Definition().Operation.OperationID != "retrieveConversation" {
+		t.Errorf("retrieveConversation mock has another definition")
+	}
+	if mock.UpdateConversation().Definition().Operation.OperationID != "updateConversation" {
+		t.Errorf("updateConversation mock has another definition")
+	}
+	if mock.DeleteConversation().Definition().Operation.OperationID != "deleteConversation" {
+		t.Errorf("deleteConversation mock has another definition")
 	}
 }

@@ -37,6 +37,8 @@ type SummaryRequest struct {
 	Text string `json:"text"`
 	// DeleteAfterSummary removes the stored response after its summary is recorded.
 	DeleteAfterSummary bool `json:"deleteAfterSummary,omitempty"`
+	// CreateConversation stores the summary as the first message in a new conversation.
+	CreateConversation bool `json:"createConversation,omitempty"`
 }
 
 // SummaryOutcome is the Flow completion output.
@@ -55,6 +57,8 @@ type SummaryOutcome struct {
 	Usage openai.Usage `json:"usage"`
 	// Deleted is true when the optional cleanup Step removed the stored response.
 	Deleted bool `json:"deleted,omitempty"`
+	// ConversationID is the conversation created to hold the summary, when requested.
+	ConversationID string `json:"conversationId,omitempty"`
 }
 
 // SummaryModelConfiguration is the SummarizeText Step's model pick from Dex Web.
@@ -110,6 +114,16 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Completed:           sdkgo.GoTo(recordSummaryOutcome{}),
 		})),
 		dex.DefineStep(recordSummaryOutcome{}),
+		dex.DefineStep(openai.NewCreateConversationStep(openai.CreateConversationStepConfig[SummaryOutcome]{
+			StepType: "CreateSummaryConversation", ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "summary", GroupLabel: "Summary", Explanation: "Store the summary as the first message in an OpenAI conversation."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(outcome SummaryOutcome) openai.CreateConversationRequest {
+				return openai.CreateConversationRequest{Items: []openai.ConversationMessage{{Type: "message", Role: "assistant", Content: outcome.Summary}}}
+			},
+			Created: sdkgo.GoTo(recordConversationOutcome{}),
+		})),
+		dex.DefineStep(recordConversationOutcome{}),
 		dex.DefineStep(openai.NewDeleteResponseStep(openai.DeleteResponseStepConfig[SummaryOutcome]{
 			StepType: "DeleteStoredResponse", ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "summary", GroupLabel: "Summary", Explanation: "Delete the stored OpenAI Response after its summary has been recorded."},
@@ -235,6 +249,39 @@ func (recordSummaryOutcome) Execute(ctx dex.Context, result openai.CreateRespons
 		Branch: result.Branch, Summary: result.Value.OutputText, ResponseID: result.Value.ID,
 		Model: result.Value.Model, Status: result.Value.Status, Usage: result.Value.Usage,
 	}
+	if err := summaryOutcomeAttribute.Set(ctx, outcome); err != nil {
+		return nil, err
+	}
+	request, err := summaryRequestAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if request.DeleteAfterSummary {
+		if request.CreateConversation {
+			return dex.GoTo(sdkgo.StepRef[SummaryOutcome]("CreateSummaryConversation"), outcome), nil
+		}
+		return dex.GoTo(sdkgo.StepRef[SummaryOutcome]("DeleteStoredResponse"), outcome), nil
+	}
+	if request.CreateConversation {
+		return dex.GoTo(sdkgo.StepRef[SummaryOutcome]("CreateSummaryConversation"), outcome), nil
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// dex:group group-id:summary group-label:"Summary"
+// dex:explanation text:"Record the conversation ID that holds the completed summary."
+type recordConversationOutcome struct {
+	dex.StepDefaultsNoWaitFor[openai.CreateConversationResult]
+}
+
+func (recordConversationOutcome) GetStepType() string { return "RecordConversationOutcome" }
+
+func (recordConversationOutcome) Execute(ctx dex.Context, result openai.CreateConversationResult) (*dex.StepDecision, error) {
+	outcome, err := summaryOutcomeAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	outcome.ConversationID = result.Value.ID
 	if err := summaryOutcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}
