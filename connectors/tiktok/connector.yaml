@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: tiktok-business
   displayName: TikTok for Business
-  description: Read paginated TikTok advertising campaigns.
+  description: Read paginated TikTok advertising campaigns, ad groups, and ads.
   company: TikTok
   categories: [marketing, social-media]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: tiktok-business
   languages:
@@ -52,10 +52,230 @@ spec:
     guide:
       startURL: https://business-api.tiktok.com/portal
       steps:
-        - Sign in to TikTok API for Business Portal, register as a developer, create an app, and request Marketing API campaign read access. Under My Apps > selected app > Basic Information, copy the Advertiser authorization URL and have the advertiser approve access.
+        - Sign in to TikTok API for Business Portal, register as a developer, create an app, and request Marketing API campaign, ad group, and ad read access. Request write permission only if using a status mutation. Under My Apps > selected app > Basic Information, copy the Advertiser authorization URL and have the advertiser approve access.
         - Exchange the returned auth_code with the app ID and secret at the documented /oauth2/access_token/ endpoint. Save only the returned access_token in Dex Web secret access_token; never put the app secret or token in Flow input. Renew or reauthorize when TikTok invalidates it.
         - Open https://ads.tiktok.com > Ads Manager > Account Name > ID and copy the decimal ad account ID into listCampaigns advertiserId. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: createAd
+      goName: CreateAd
+      inputType: CreateAdInput
+      outputType: AdWriteResult
+      kind: mutation
+      description: Create one regular single-video ad in an ad group.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: TikTok created the ad and returned its ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the create., optional: true}
+        - {id: uncertain, goName: Uncertain, description: TikTok may have created the ad but no ID was confirmed after the send cap., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, credentials, or checkpoint are invalid.", optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Example ad was created.
+          output: {id: '1845123456789012347'}
+    - name: updateAd
+      goName: UpdateAd
+      inputType: UpdateAdInput
+      outputType: AdWriteResult
+      kind: mutation
+      description: Patch a regular ad's name or text.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: TikTok confirmed the ad update.}
+        - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: TikTok returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Example ad was updated.
+          output: {id: '1845123456789012347'}
+    - name: createAdgroup
+      goName: CreateAdgroup
+      inputType: CreateAdgroupInput
+      outputType: AdgroupWriteResult
+      kind: mutation
+      description: Create a regular ad group in a campaign.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: TikTok created the ad group and returned its ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the create., optional: true}
+        - {id: uncertain, goName: Uncertain, description: TikTok may have created the ad group but no ID was confirmed after the send cap., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, credentials, or checkpoint are invalid.", optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Example ad group was created.
+          output: {id: '1845123456789012346'}
+    - name: updateAdgroup
+      goName: UpdateAdgroup
+      inputType: UpdateAdgroupInput
+      outputType: AdgroupWriteResult
+      kind: mutation
+      description: Replace an ad group name or budget.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: TikTok confirmed the ad group update.}
+        - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: TikTok returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Example ad group was updated.
+          output: {id: '1845123456789012346'}
+    - name: createCampaign
+      goName: CreateCampaign
+      inputType: CreateCampaignInput
+      outputType: CampaignWriteResult
+      kind: mutation
+      description: Create a regular campaign for an authorized advertiser.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: TikTok created the campaign and returned its ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the create., optional: true}
+        - {id: uncertain, goName: Uncertain, description: TikTok may have created the campaign but no ID was confirmed after the send cap., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, credentials, or checkpoint are invalid.", optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Example campaign was created.
+          output: {id: '1845123456789012345'}
+    - name: updateCampaign
+      goName: UpdateCampaign
+      inputType: UpdateCampaignInput
+      outputType: CampaignWriteResult
+      kind: mutation
+      description: Replace a campaign name or budget.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: TikTok confirmed the campaign update.}
+        - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: TikTok returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Example campaign was updated.
+          output: {id: '1845123456789012345'}
+    - name: updateCampaignStatus
+      goName: UpdateCampaignStatus
+      inputType: UpdateCampaignStatusInput
+      outputType: AdvertisingStatusResult
+      kind: mutation
+      description: Set one campaign's operation status to ENABLE, DISABLE, or DELETE.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: TikTok confirmed the campaign status.}
+        - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the status change., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: TikTok returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: "Advertiser ID, campaign ID, status, or credentials are invalid.", optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Example campaign status was updated.
+          output: {resourceId: '1845123456789012345', operationStatus: DISABLE}
+    - name: updateAdgroupStatus
+      goName: UpdateAdgroupStatus
+      inputType: UpdateAdgroupStatusInput
+      outputType: AdvertisingStatusResult
+      kind: mutation
+      description: Set one adgroup's operation status to ENABLE, DISABLE, or DELETE.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: TikTok confirmed the adgroup status.}
+        - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the status change., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: TikTok returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: "Advertiser ID, adgroup ID, status, or credentials are invalid.", optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Example adgroup status was updated.
+          output: {resourceId: '1845123456789012345', operationStatus: DISABLE}
+    - name: updateAdStatus
+      goName: UpdateAdStatus
+      inputType: UpdateAdStatusInput
+      outputType: AdvertisingStatusResult
+      kind: mutation
+      description: Set one ad's operation status to ENABLE, DISABLE, or DELETE.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: TikTok confirmed the ad status.}
+        - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the status change., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: TikTok returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: "Advertiser ID, ad ID, status, or credentials are invalid.", optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Example ad status was updated.
+          output: {resourceId: '1845123456789012345', operationStatus: DISABLE}
+    - name: listAdgroups
+      goName: ListAdgroups
+      inputType: ListAdgroupsInput
+      outputType: AdgroupsPage
+      kind: query
+      description: Read one page of ad group IDs and names for an authorized advertiser.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: TikTok returned an ad group page.}
+        - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the query or token., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: TikTok returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Advertiser ID or pagination is invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example ad group is visible.
+          output: {adgroups: [{id: '1845123456789012346', name: Example Ad Group}], page: 1, totalPages: 1}
+    - name: listAds
+      goName: ListAds
+      inputType: ListAdsInput
+      outputType: AdsPage
+      kind: query
+      description: Read one page of ad IDs and names for an authorized advertiser.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: TikTok returned an ad page.}
+        - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the query or token., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: TikTok returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Advertiser ID or pagination is invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example ad is visible.
+          output: {ads: [{id: '1845123456789012347', name: Example Ad}], page: 1, totalPages: 1}
     - name: listCampaigns
       goName: ListCampaigns
       inputType: ListCampaignsInput

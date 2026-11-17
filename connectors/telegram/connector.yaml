@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: telegram
   displayName: Telegram Bot
-  description: Read chat metadata and send text messages through a Telegram bot.
+  description: Read and manage chats, and send text, media, and locations through a Telegram bot.
   company: Telegram
   categories: [communication]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: telegram
   languages:
@@ -53,8 +53,430 @@ spec:
       steps:
         - Open https://t.me/BotFather in Telegram, send /newbot, choose a bot name and username ending in bot, and copy the full numeric-ID:secret token shown once.
         - For an existing bot, open BotFather > /mybots > your bot > API Token. Save the token only in bot_token, never in Flow input. Use BotFather to revoke and replace a leaked token.
-        - Add the bot to the target chat and grant access needed to read its metadata or send text. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+        - Add the bot to the target chat and grant access needed to read its metadata or send messages and media. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: editMessageText
+      goName: EditMessageText
+      inputType: EditMessageTextInput
+      outputType: MessageActionResult
+      kind: mutation
+      description: Replace the plain text of a bot-editable chat message.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: edited, goName: Edited, description: Telegram confirmed the message text.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the edit., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "Local message ID, chat ID, text, or credentials are invalid.", optional: true}
+      mocks:
+        - name: editedDefault
+          branch: edited
+          default: true
+          description: The message text was replaced.
+          output: {chatId: "-1001234567890", messageId: 52}
+    - name: deleteMessage
+      goName: DeleteMessage
+      inputType: MessageReferenceInput
+      outputType: MessageActionResult
+      kind: mutation
+      description: Delete a chat message within Telegram's deletion limits.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Telegram confirmed deletion or the message is already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the delete., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local chat or message ID or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: The message was deleted.
+          output: {chatId: "-1001234567890", messageId: 52}
+    - name: pinChatMessage
+      goName: PinChatMessage
+      inputType: MessageReferenceInput
+      outputType: MessageActionResult
+      kind: mutation
+      description: Add a message to the chat's pinned messages.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: pinned, goName: Pinned, description: Telegram confirmed the message is pinned.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the pin., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local chat or message ID or credentials are invalid., optional: true}
+      mocks:
+        - name: pinnedDefault
+          branch: pinned
+          default: true
+          description: The message was pinned.
+          output: {chatId: "-1001234567890", messageId: 52}
+    - name: unpinChatMessage
+      goName: UnpinChatMessage
+      inputType: MessageReferenceInput
+      outputType: MessageActionResult
+      kind: mutation
+      description: Remove one selected message from the chat's pinned messages.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: unpinned, goName: Unpinned, description: Telegram confirmed the message is unpinned.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the unpin., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local chat or message ID or credentials are invalid., optional: true}
+      mocks:
+        - name: unpinnedDefault
+          branch: unpinned
+          default: true
+          description: The message was unpinned.
+          output: {chatId: "-1001234567890", messageId: 52}
+    - name: sendChatAction
+      goName: SendChatAction
+      inputType: SendChatActionInput
+      outputType: ChatActionResult
+      kind: mutation
+      description: Show a transient typing or upload status in a chat.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: sent, goName: Sent, description: Telegram confirmed the transient status.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the action., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "Local chat ID, action, or credentials are invalid.", optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Typing status was shown.
+          output: {chatId: "-1001234567890"}
+    - name: answerCallbackQuery
+      goName: AnswerCallbackQuery
+      inputType: AnswerCallbackQueryInput
+      outputType: AnsweredQuery
+      kind: mutation
+      description: Acknowledge a callback query and optionally show a notification.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: answered, goName: Answered, description: Telegram confirmed the callback answer.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the answer., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "Local query ID, text, or credentials are invalid.", optional: true}
+      mocks:
+        - name: answeredDefault
+          branch: answered
+          default: true
+          description: The callback was acknowledged.
+          output: {answered: true}
+    - name: answerInlineQuery
+      goName: AnswerInlineQuery
+      inputType: AnswerInlineQueryInput
+      outputType: AnsweredQuery
+      kind: mutation
+      description: Send up to 50 JSON inline results for an inline query.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: answered, goName: Answered, description: Telegram confirmed the inline answer.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the answer., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "Local query ID, results JSON, or credentials are invalid.", optional: true}
+      mocks:
+        - name: answeredDefault
+          branch: answered
+          default: true
+          description: The inline query was answered.
+          output: {answered: true}
+    - name: getFile
+      goName: GetFile
+      inputType: GetFileInput
+      outputType: TelegramFile
+      kind: query
+      description: Read Telegram file metadata without constructing a token-bearing download URL.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Telegram returned file metadata.}
+        - {id: notFound, goName: NotFound, description: Telegram did not recognize the file ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local file ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Telegram returned one file's metadata.
+          output: {fileId: "ABC123", fileUniqueId: "UNIQUE123", fileSize: 1024, filePath: "documents/example.pdf"}
+    - name: getChatAdministrators
+      goName: GetChatAdministrators
+      inputType: GetChatInput
+      outputType: ChatAdministrators
+      kind: query
+      description: Read administrator user IDs and statuses without profile details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Telegram returned the administrators.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local chat ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One administrator is returned.
+          output: {administrators: [{userId: 42, status: administrator}]}
+    - name: getChatMember
+      goName: GetChatMember
+      inputType: GetChatMemberInput
+      outputType: ChatMemberSummary
+      kind: query
+      description: Read a member's numeric user ID and status.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Telegram returned the member.}
+        - {id: notFound, goName: NotFound, description: Telegram could not find the member., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local chat or member ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One member is returned.
+          output: {userId: 42, status: member}
+    - name: leaveChat
+      goName: LeaveChat
+      inputType: GetChatInput
+      outputType: ChatActionResult
+      kind: mutation
+      description: Leave a group, supergroup, or channel accessible to the bot.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: left, goName: Left, description: Telegram confirmed the bot left the chat.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the action., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local chat ID or credentials are invalid., optional: true}
+      mocks:
+        - name: leftDefault
+          branch: left
+          default: true
+          description: The bot left the chat.
+          output: {chatId: "-1001234567890"}
+    - name: setChatDescription
+      goName: SetChatDescription
+      inputType: SetChatDescriptionInput
+      outputType: ChatActionResult
+      kind: mutation
+      description: Replace a chat's description.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Telegram confirmed the description.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the action., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "Local chat ID, description, or credentials are invalid.", optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: The chat description was updated.
+          output: {chatId: "-1001234567890"}
+    - name: setChatTitle
+      goName: SetChatTitle
+      inputType: SetChatTitleInput
+      outputType: ChatActionResult
+      kind: mutation
+      description: Replace a chat's title.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Telegram confirmed the title.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the action., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "Local chat ID, title, or credentials are invalid.", optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: The chat title was updated.
+          output: {chatId: "-1001234567890"}
+    - name: sendAnimation
+      goName: SendAnimation
+      inputType: SendAnimationInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send animation to one bot-accessible chat with a bounded resend cap.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Telegram confirmed the sent message identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome remained unknown after the cap., optional: true}
+        - {id: defect, goName: Defect, description: "Input, bot token, or dispatch checkpoint is invalid.", optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Example animation was sent.
+          output: {chatId: -1001234567890, messageId: 53, date: 1794110000}
+    - name: sendAudio
+      goName: SendAudio
+      inputType: SendAudioInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send audio to one bot-accessible chat with a bounded resend cap.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Telegram confirmed the sent message identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome remained unknown after the cap., optional: true}
+        - {id: defect, goName: Defect, description: "Input, bot token, or dispatch checkpoint is invalid.", optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Example audio was sent.
+          output: {chatId: -1001234567890, messageId: 53, date: 1794110000}
+    - name: sendDocument
+      goName: SendDocument
+      inputType: SendDocumentInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send document to one bot-accessible chat with a bounded resend cap.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Telegram confirmed the sent message identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome remained unknown after the cap., optional: true}
+        - {id: defect, goName: Defect, description: "Input, bot token, or dispatch checkpoint is invalid.", optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Example document was sent.
+          output: {chatId: -1001234567890, messageId: 53, date: 1794110000}
+    - name: sendPhoto
+      goName: SendPhoto
+      inputType: SendPhotoInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send photo to one bot-accessible chat with a bounded resend cap.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Telegram confirmed the sent message identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome remained unknown after the cap., optional: true}
+        - {id: defect, goName: Defect, description: "Input, bot token, or dispatch checkpoint is invalid.", optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Example photo was sent.
+          output: {chatId: -1001234567890, messageId: 53, date: 1794110000}
+    - name: sendSticker
+      goName: SendSticker
+      inputType: SendStickerInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send sticker to one bot-accessible chat with a bounded resend cap.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Telegram confirmed the sent message identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome remained unknown after the cap., optional: true}
+        - {id: defect, goName: Defect, description: "Input, bot token, or dispatch checkpoint is invalid.", optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Example sticker was sent.
+          output: {chatId: -1001234567890, messageId: 53, date: 1794110000}
+    - name: sendVideo
+      goName: SendVideo
+      inputType: SendVideoInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send video to one bot-accessible chat with a bounded resend cap.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Telegram confirmed the sent message identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome remained unknown after the cap., optional: true}
+        - {id: defect, goName: Defect, description: "Input, bot token, or dispatch checkpoint is invalid.", optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Example video was sent.
+          output: {chatId: -1001234567890, messageId: 53, date: 1794110000}
+    - name: sendLocation
+      goName: SendLocation
+      inputType: SendLocationInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send location to one bot-accessible chat with a bounded resend cap.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Telegram confirmed the sent message identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome remained unknown after the cap., optional: true}
+        - {id: defect, goName: Defect, description: "Input, bot token, or dispatch checkpoint is invalid.", optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Example location was sent.
+          output: {chatId: -1001234567890, messageId: 53, date: 1794110000}
+    - name: sendMediaGroup
+      goName: SendMediaGroup
+      inputType: SendMediaGroupInput
+      outputType: SentMessages
+      kind: mutation
+      description: Send media group to one bot-accessible chat with a bounded resend cap.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Telegram confirmed the sent message identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome remained unknown after the cap., optional: true}
+        - {id: defect, goName: Defect, description: "Input, bot token, or dispatch checkpoint is invalid.", optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Example media group was sent.
+          output: {messages: [{chatId: -1001234567890, messageId: 53, date: 1794110000}, {chatId: -1001234567890, messageId: 54, date: 1794110000}]}
     - name: sendMessage
       goName: SendMessage
       inputType: SendMessageInput

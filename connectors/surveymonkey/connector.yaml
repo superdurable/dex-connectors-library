@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: surveymonkey
   displayName: SurveyMonkey
-  description: List surveys and inspect response metadata through the SurveyMonkey API.
+  description: Read and manage surveys and collectors and inspect or delete response metadata through the SurveyMonkey API.
   company: SurveyMonkey
   categories: [productivity, marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: surveymonkey
   languages:
@@ -47,12 +47,12 @@ spec:
         goName: AccessToken
         type: secretString
         required: true
-        description: Secret Access Token from https://developer.surveymonkey.com > My Apps > your private app > Settings. Copy the complete token into this secret field; blank makes calls select defect. Dex sends it only as a Bearer authorization header. Public apps need View Surveys and View Responses scopes.
+        description: Secret Access Token from https://developer.surveymonkey.com > My Apps > your private app > Settings. Copy the complete token into this secret field; blank makes calls select defect. Dex sends it only as a Bearer authorization header. Writes require the matching Create/Modify Surveys, Collectors, or Responses permission on the token.
     guide:
       startURL: https://developer.surveymonkey.com
       steps:
         - Sign in at https://developer.surveymonkey.com, open My Apps, create or select a private app, and open its Settings page.
-        - Copy the full Access Token into the secret access_token field. For a public app, configure View Surveys and View Responses scopes before obtaining a token. Revoke the token in the app settings when retired.
+        - Copy the full Access Token into the secret access_token field. For a public app, configure View Surveys and View Responses scopes for reads, Create/Modify Surveys for survey writes, View Collectors and Create/Modify Collectors for collector operations, and Create/Modify Responses for response deletion before obtaining a token; SurveyMonkey must approve survey and response write scopes on public apps. Revoke the token in app settings when retired.
         - Select the v3 API base URL matching the account region. Leave baseUrl, timeout, and maxResponseBytes blank only when their displayed defaults apply.
   operations:
     - name: listSurveys
@@ -63,7 +63,7 @@ spec:
       description: List one page of survey IDs and titles without questions or answers.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: SurveyMonkey returned the selected survey page.}
         - {id: providerRejected, goName: ProviderRejected, description: SurveyMonkey conclusively rejected the request., optional: true}
@@ -83,7 +83,7 @@ spec:
       description: Read one survey response's ID, survey ID, status, and timestamps; answers are excluded.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: SurveyMonkey returned response metadata.}
         - {id: notFound, goName: NotFound, description: The survey response does not exist or is inaccessible., optional: true}
@@ -96,3 +96,182 @@ spec:
           default: true
           description: Metadata for one example response.
           output: {id: '987654321', surveyId: '123456789', status: completed, createdAt: '2026-11-07T10:00:00+00:00', modifiedAt: '2026-11-07T10:01:00+00:00'}
+    - name: getSurvey
+      goName: GetSurvey
+      inputType: GetSurveyInput
+      outputType: SurveyMetadata
+      kind: query
+      description: Read one survey's ID and title.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: SurveyMonkey returned the survey.}
+        - {id: notFound, goName: NotFound, description: The survey does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: SurveyMonkey conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SurveyMonkey returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One survey., output: {id: '123456789', title: Customer feedback}}
+    - name: createSurvey
+      goName: CreateSurvey
+      inputType: CreateSurveyInput
+      outputType: SurveyMetadata
+      kind: mutation
+      description: Create an empty survey with a title.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: SurveyMonkey created the survey.}
+        - {id: providerRejected, goName: ProviderRejected, description: SurveyMonkey conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: 'The survey may exist, but the create response could not be confirmed.', optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: One created survey., output: {id: '123456789', title: Customer feedback}}
+    - name: updateSurvey
+      goName: UpdateSurvey
+      inputType: UpdateSurveyInput
+      outputType: SurveyMetadata
+      kind: mutation
+      description: Replace a survey title.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: SurveyMonkey updated the survey.}
+        - {id: notFound, goName: NotFound, description: The survey does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: SurveyMonkey conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SurveyMonkey returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: One updated survey., output: {id: '123456789', title: Customer feedback}}
+    - name: deleteSurvey
+      goName: DeleteSurvey
+      inputType: DeleteSurveyInput
+      outputType: DeleteSurveyOutput
+      kind: mutation
+      description: Delete one survey by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: SurveyMonkey deleted the survey or it was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: SurveyMonkey conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: One deleted survey ID., output: {id: '123456789'}}
+    - name: listCollectors
+      goName: ListCollectors
+      inputType: ListCollectorsInput
+      outputType: CollectorsPage
+      kind: query
+      description: List one page of collector IDs and names for a survey.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: SurveyMonkey returned a collector page.}
+        - {id: notFound, goName: NotFound, description: The survey does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: SurveyMonkey conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SurveyMonkey returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One collector page., output: {collectors: [{id: '2345', name: Customer link}], page: 1, perPage: 50, total: 1}}
+    - name: getCollector
+      goName: GetCollector
+      inputType: GetCollectorInput
+      outputType: CollectorMetadata
+      kind: query
+      description: Read one collector's identity and safe display metadata.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: SurveyMonkey returned the collector.}
+        - {id: notFound, goName: NotFound, description: The collector does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: SurveyMonkey conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SurveyMonkey returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One weblink collector., output: {id: '2345', surveyId: '123456789', type: weblink, name: Customer link, url: 'https://www.surveymonkey.com/r/example'}}
+    - name: createCollector
+      goName: CreateCollector
+      inputType: CreateCollectorInput
+      outputType: CollectorMetadata
+      kind: mutation
+      description: Create a named weblink collector for a survey.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: SurveyMonkey created the collector.}
+        - {id: providerRejected, goName: ProviderRejected, description: SurveyMonkey conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: 'The collector may exist, but the create response could not be confirmed.', optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: One created collector., output: {id: '2345', surveyId: '123456789', type: weblink, name: Customer link, url: 'https://www.surveymonkey.com/r/example'}}
+    - name: updateCollector
+      goName: UpdateCollector
+      inputType: UpdateCollectorInput
+      outputType: CollectorMetadata
+      kind: mutation
+      description: Replace a collector's name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: SurveyMonkey updated the collector.}
+        - {id: notFound, goName: NotFound, description: The collector does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: SurveyMonkey conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SurveyMonkey returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: One updated collector., output: {id: '2345', surveyId: '123456789', type: weblink, name: Customer link, url: 'https://www.surveymonkey.com/r/example'}}
+    - name: deleteCollector
+      goName: DeleteCollector
+      inputType: DeleteCollectorInput
+      outputType: DeleteCollectorOutput
+      kind: mutation
+      description: Delete one collector by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: SurveyMonkey deleted the collector or it was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: SurveyMonkey conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: One deleted collector ID., output: {id: '2345'}}
+    - name: listResponses
+      goName: ListResponses
+      inputType: ListResponsesInput
+      outputType: ResponseIDsPage
+      kind: query
+      description: List response IDs for one survey without answers or respondent data.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: SurveyMonkey returned a response ID page.}
+        - {id: notFound, goName: NotFound, description: The survey does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: SurveyMonkey conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SurveyMonkey returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One response ID page., output: {responseIds: ['987654321'], page: 1, perPage: 50, total: 1}}
+    - name: deleteResponse
+      goName: DeleteResponse
+      inputType: DeleteResponseInput
+      outputType: DeleteResponseOutput
+      kind: mutation
+      description: Delete one response through its collector and response IDs.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: SurveyMonkey deleted the response or it was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: SurveyMonkey conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: One deleted response ID., output: {id: '987654321'}}

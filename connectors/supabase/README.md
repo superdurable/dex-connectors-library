@@ -1,14 +1,16 @@
 # Supabase connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/supabase/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/supabase/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/supabase`.
 
-This Dex connector exposes `selectRows`, `upsertRows`. The runnable [sample Flow](go/examples/sample-supabase/flow/workflow.go) uses `selectRows` with the static `supabase` connection. Each operation uses the generated typed Step factory.
+This Dex connector exposes `selectRows`, `getRow`, `createRow`, `upsertRows`, `updateRow`, and `deleteRow`. The runnable [sample Flow](go/examples/sample-supabase/flow/workflow.go) uses `getRow` with the static `supabase` connection. Each operation uses the generated typed Step factory.
 
 ## Provider contract
 
 `upsertRows` uses `POST`, `Prefer: resolution=merge-duplicates,return=representation`, and `on_conflict`. The selected conflict columns must have a database-enforced primary key or unique constraint. Repeating the same rows merges the same values. Use a server-side secret API key in `apikey`; publishable keys remain subject to row-level security. Supply the project REST URL ending in `/rest/v1` as `baseUrl`; there is no shared project default.
+
+`getRow` reads one row by a required equality filter. `updateRow` sets literal replacement values with `PATCH`; `deleteRow` uses `DELETE`. Both write operations require a filter to prevent table-wide changes and return the affected rows. `createRow` inserts one row and requires a unique string marker already present in the row, backed by a database unique constraint. On an unknown insert outcome it reads that marker back and compares every supplied column before any bounded resend. The application must supply a marker unique to this request, not a reused display name.
 
 Official documentation used for the endpoint, authentication, and response contract:
 
@@ -31,7 +33,7 @@ Start at [https://supabase.com/dashboard/projects](https://supabase.com/dashboar
 | --- | --- |
 | Documented success response with valid JSON shape | Happy-path branch |
 | 400, 401, 403, 409 (constraint conflict), or another definite 4xx | Optional `providerRejected` branch |
-| 408, 429, 5xx, or transport interruption | Retry until the Step budget expires |
+| 408, 429, 5xx, or transport interruption | Safe operations retry; `createRow` reads back and resends within its three-send cap, then selects optional `uncertain` if unconfirmed |
 | Malformed, incomplete, or oversized success response | Optional `invalidResponse` branch |
 | Invalid input or credential | Optional `defect` branch |
 

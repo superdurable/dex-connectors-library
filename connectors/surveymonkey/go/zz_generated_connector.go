@@ -42,6 +42,17 @@ type Connection struct {
 type Operations interface {
 	ListSurveys() sdkgo.Query[ListSurveysInput, SurveysPage]
 	GetResponse() sdkgo.Query[GetResponseInput, ResponseMetadata]
+	GetSurvey() sdkgo.Query[GetSurveyInput, SurveyMetadata]
+	CreateSurvey() sdkgo.Mutation[CreateSurveyInput, SurveyMetadata]
+	UpdateSurvey() sdkgo.Mutation[UpdateSurveyInput, SurveyMetadata]
+	DeleteSurvey() sdkgo.Mutation[DeleteSurveyInput, DeleteSurveyOutput]
+	ListCollectors() sdkgo.Query[ListCollectorsInput, CollectorsPage]
+	GetCollector() sdkgo.Query[GetCollectorInput, CollectorMetadata]
+	CreateCollector() sdkgo.Mutation[CreateCollectorInput, CollectorMetadata]
+	UpdateCollector() sdkgo.Mutation[UpdateCollectorInput, CollectorMetadata]
+	DeleteCollector() sdkgo.Mutation[DeleteCollectorInput, DeleteCollectorOutput]
+	ListResponses() sdkgo.Query[ListResponsesInput, ResponseIDsPage]
+	DeleteResponse() sdkgo.Mutation[DeleteResponseInput, DeleteResponseOutput]
 }
 
 type clientOperations struct{ client *Client }
@@ -51,6 +62,39 @@ func (operations clientOperations) ListSurveys() sdkgo.Query[ListSurveysInput, S
 }
 func (operations clientOperations) GetResponse() sdkgo.Query[GetResponseInput, ResponseMetadata] {
 	return operations.client.GetResponse()
+}
+func (operations clientOperations) GetSurvey() sdkgo.Query[GetSurveyInput, SurveyMetadata] {
+	return operations.client.GetSurvey()
+}
+func (operations clientOperations) CreateSurvey() sdkgo.Mutation[CreateSurveyInput, SurveyMetadata] {
+	return operations.client.CreateSurvey()
+}
+func (operations clientOperations) UpdateSurvey() sdkgo.Mutation[UpdateSurveyInput, SurveyMetadata] {
+	return operations.client.UpdateSurvey()
+}
+func (operations clientOperations) DeleteSurvey() sdkgo.Mutation[DeleteSurveyInput, DeleteSurveyOutput] {
+	return operations.client.DeleteSurvey()
+}
+func (operations clientOperations) ListCollectors() sdkgo.Query[ListCollectorsInput, CollectorsPage] {
+	return operations.client.ListCollectors()
+}
+func (operations clientOperations) GetCollector() sdkgo.Query[GetCollectorInput, CollectorMetadata] {
+	return operations.client.GetCollector()
+}
+func (operations clientOperations) CreateCollector() sdkgo.Mutation[CreateCollectorInput, CollectorMetadata] {
+	return operations.client.CreateCollector()
+}
+func (operations clientOperations) UpdateCollector() sdkgo.Mutation[UpdateCollectorInput, CollectorMetadata] {
+	return operations.client.UpdateCollector()
+}
+func (operations clientOperations) DeleteCollector() sdkgo.Mutation[DeleteCollectorInput, DeleteCollectorOutput] {
+	return operations.client.DeleteCollector()
+}
+func (operations clientOperations) ListResponses() sdkgo.Query[ListResponsesInput, ResponseIDsPage] {
+	return operations.client.ListResponses()
+}
+func (operations clientOperations) DeleteResponse() sdkgo.Mutation[DeleteResponseInput, DeleteResponseOutput] {
+	return operations.client.DeleteResponse()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -330,6 +374,820 @@ func NewGetResponseStep[IN any](config GetResponseStepConfig[IN]) sdkgo.QuerySte
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetResponseBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetSurveyBranchFound sdkgo.BranchID = "found"
+const GetSurveyBranchNotFound sdkgo.BranchID = "notFound"
+const GetSurveyBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetSurveyBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetSurveyBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetSurveyDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getSurvey"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetSurveyBranchFound, Description: "SurveyMonkey returned the survey."},
+		{ID: GetSurveyBranchNotFound, Description: "The survey does not exist or is inaccessible.", Optional: true},
+		{ID: GetSurveyBranchProviderRejected, Description: "SurveyMonkey conclusively rejected the request.", Optional: true},
+		{ID: GetSurveyBranchInvalidResponse, Description: "SurveyMonkey returned invalid JSON.", Optional: true},
+		{ID: GetSurveyBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetSurveyResult = sdkgo.QueryResult[SurveyMetadata]
+
+type GetSurveyStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=surveymonkey"`
+	operationID                    struct{}                                          `connector:"operationId=getSurvey"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetSurveyInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetSurveyResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetSurveyResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetSurveyResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetSurveyResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetSurveyResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SurveyMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewGetSurveyStep[IN any](config GetSurveyStepConfig[IN]) sdkgo.QueryStep[IN, GetSurveyInput, SurveyMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("surveymonkey connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetSurveyInput, SurveyMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetSurvey(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetSurveyResult] {
+			branches := make([]sdkgo.BranchTarget[GetSurveyResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetSurveyBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetSurveyBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetSurveyBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetSurveyBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetSurveyBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateSurveyBranchCreated sdkgo.BranchID = "created"
+const CreateSurveyBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateSurveyBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateSurveyBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateSurveyDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createSurvey"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateSurveyBranchCreated, Description: "SurveyMonkey created the survey."},
+		{ID: CreateSurveyBranchProviderRejected, Description: "SurveyMonkey conclusively rejected the request.", Optional: true},
+		{ID: CreateSurveyBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+		{ID: CreateSurveyBranchUncertain, Description: "The survey may exist, but the create response could not be confirmed.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateSurveyResult = sdkgo.MutationResult[SurveyMetadata]
+
+type CreateSurveyStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=surveymonkey"`
+	operationID                       struct{}                                             `connector:"operationId=createSurvey"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateSurveyInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateSurveyResult]                     `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateSurveyResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateSurveyResult]                     `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateSurveyResult]                     `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SurveyMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateSurveyStep[IN any](config CreateSurveyStepConfig[IN]) sdkgo.MutationStep[IN, CreateSurveyInput, SurveyMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("surveymonkey connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateSurveyInput, SurveyMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateSurvey(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateSurveyResult] {
+			branches := make([]sdkgo.BranchTarget[CreateSurveyResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateSurveyBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateSurveyBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateSurveyBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateSurveyBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateSurveyBranchUpdated sdkgo.BranchID = "updated"
+const UpdateSurveyBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateSurveyBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateSurveyBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateSurveyBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateSurveyDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateSurvey"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateSurveyBranchUpdated, Description: "SurveyMonkey updated the survey."},
+		{ID: UpdateSurveyBranchNotFound, Description: "The survey does not exist or is inaccessible.", Optional: true},
+		{ID: UpdateSurveyBranchProviderRejected, Description: "SurveyMonkey conclusively rejected the request.", Optional: true},
+		{ID: UpdateSurveyBranchInvalidResponse, Description: "SurveyMonkey returned invalid JSON.", Optional: true},
+		{ID: UpdateSurveyBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateSurveyResult = sdkgo.MutationResult[SurveyMetadata]
+
+type UpdateSurveyStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=surveymonkey"`
+	operationID                       struct{}                                             `connector:"operationId=updateSurvey"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateSurveyInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateSurveyResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateSurveyResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateSurveyResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateSurveyResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateSurveyResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SurveyMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateSurveyStep[IN any](config UpdateSurveyStepConfig[IN]) sdkgo.MutationStep[IN, UpdateSurveyInput, SurveyMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("surveymonkey connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateSurveyInput, SurveyMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateSurvey(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateSurveyResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateSurveyResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateSurveyBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateSurveyBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateSurveyBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateSurveyBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateSurveyBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteSurveyBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteSurveyBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteSurveyBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteSurveyDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteSurvey"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteSurveyBranchDeleted, Description: "SurveyMonkey deleted the survey or it was already absent."},
+		{ID: DeleteSurveyBranchProviderRejected, Description: "SurveyMonkey conclusively rejected the request.", Optional: true},
+		{ID: DeleteSurveyBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteSurveyResult = sdkgo.MutationResult[DeleteSurveyOutput]
+
+type DeleteSurveyStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=surveymonkey"`
+	operationID                       struct{}                                                 `connector:"operationId=deleteSurvey"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteSurveyInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteSurveyResult]                         `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteSurveyResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteSurveyResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeleteSurveyOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteSurveyStep[IN any](config DeleteSurveyStepConfig[IN]) sdkgo.MutationStep[IN, DeleteSurveyInput, DeleteSurveyOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("surveymonkey connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteSurveyInput, DeleteSurveyOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteSurvey(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteSurveyResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteSurveyResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteSurveyBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteSurveyBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteSurveyBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListCollectorsBranchListed sdkgo.BranchID = "listed"
+const ListCollectorsBranchNotFound sdkgo.BranchID = "notFound"
+const ListCollectorsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCollectorsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCollectorsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCollectorsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCollectors"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCollectorsBranchListed, Description: "SurveyMonkey returned a collector page."},
+		{ID: ListCollectorsBranchNotFound, Description: "The survey does not exist or is inaccessible.", Optional: true},
+		{ID: ListCollectorsBranchProviderRejected, Description: "SurveyMonkey conclusively rejected the request.", Optional: true},
+		{ID: ListCollectorsBranchInvalidResponse, Description: "SurveyMonkey returned invalid JSON.", Optional: true},
+		{ID: ListCollectorsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCollectorsResult = sdkgo.QueryResult[CollectorsPage]
+
+type ListCollectorsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=surveymonkey"`
+	operationID                    struct{}                                          `connector:"operationId=listCollectors"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCollectorsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCollectorsResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListCollectorsResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListCollectorsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCollectorsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCollectorsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CollectorsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewListCollectorsStep[IN any](config ListCollectorsStepConfig[IN]) sdkgo.QueryStep[IN, ListCollectorsInput, CollectorsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("surveymonkey connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCollectorsInput, CollectorsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCollectors(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCollectorsResult] {
+			branches := make([]sdkgo.BranchTarget[ListCollectorsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCollectorsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListCollectorsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCollectorsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCollectorsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCollectorsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetCollectorBranchFound sdkgo.BranchID = "found"
+const GetCollectorBranchNotFound sdkgo.BranchID = "notFound"
+const GetCollectorBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCollectorBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCollectorBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCollectorDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCollector"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCollectorBranchFound, Description: "SurveyMonkey returned the collector."},
+		{ID: GetCollectorBranchNotFound, Description: "The collector does not exist or is inaccessible.", Optional: true},
+		{ID: GetCollectorBranchProviderRejected, Description: "SurveyMonkey conclusively rejected the request.", Optional: true},
+		{ID: GetCollectorBranchInvalidResponse, Description: "SurveyMonkey returned invalid JSON.", Optional: true},
+		{ID: GetCollectorBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCollectorResult = sdkgo.QueryResult[CollectorMetadata]
+
+type GetCollectorStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                             `connector:"connectorId=surveymonkey"`
+	operationID                    struct{}                                             `connector:"operationId=getCollector"`
+	StepType                       string                                               `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                     Connection                                           `connector:"connection"`
+	ConnectionName                 string                                               `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCollectorInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCollectorResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCollectorResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCollectorResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCollectorResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCollectorResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CollectorMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewGetCollectorStep[IN any](config GetCollectorStepConfig[IN]) sdkgo.QueryStep[IN, GetCollectorInput, CollectorMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("surveymonkey connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCollectorInput, CollectorMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCollector(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCollectorResult] {
+			branches := make([]sdkgo.BranchTarget[GetCollectorResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCollectorBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCollectorBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCollectorBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCollectorBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCollectorBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateCollectorBranchCreated sdkgo.BranchID = "created"
+const CreateCollectorBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateCollectorBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateCollectorBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateCollectorDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createCollector"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateCollectorBranchCreated, Description: "SurveyMonkey created the collector."},
+		{ID: CreateCollectorBranchProviderRejected, Description: "SurveyMonkey conclusively rejected the request.", Optional: true},
+		{ID: CreateCollectorBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+		{ID: CreateCollectorBranchUncertain, Description: "The collector may exist, but the create response could not be confirmed.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateCollectorResult = sdkgo.MutationResult[CollectorMetadata]
+
+type CreateCollectorStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=surveymonkey"`
+	operationID                       struct{}                                                `connector:"operationId=createCollector"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateCollectorInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateCollectorResult]                     `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateCollectorResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateCollectorResult]                     `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateCollectorResult]                     `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CollectorMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateCollectorStep[IN any](config CreateCollectorStepConfig[IN]) sdkgo.MutationStep[IN, CreateCollectorInput, CollectorMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("surveymonkey connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateCollectorInput, CollectorMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateCollector(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateCollectorResult] {
+			branches := make([]sdkgo.BranchTarget[CreateCollectorResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateCollectorBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateCollectorBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateCollectorBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateCollectorBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateCollectorBranchUpdated sdkgo.BranchID = "updated"
+const UpdateCollectorBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateCollectorBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateCollectorBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateCollectorBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateCollectorDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateCollector"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateCollectorBranchUpdated, Description: "SurveyMonkey updated the collector."},
+		{ID: UpdateCollectorBranchNotFound, Description: "The collector does not exist or is inaccessible.", Optional: true},
+		{ID: UpdateCollectorBranchProviderRejected, Description: "SurveyMonkey conclusively rejected the request.", Optional: true},
+		{ID: UpdateCollectorBranchInvalidResponse, Description: "SurveyMonkey returned invalid JSON.", Optional: true},
+		{ID: UpdateCollectorBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateCollectorResult = sdkgo.MutationResult[CollectorMetadata]
+
+type UpdateCollectorStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=surveymonkey"`
+	operationID                       struct{}                                                `connector:"operationId=updateCollector"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateCollectorInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateCollectorResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateCollectorResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateCollectorResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateCollectorResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateCollectorResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CollectorMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateCollectorStep[IN any](config UpdateCollectorStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCollectorInput, CollectorMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("surveymonkey connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateCollectorInput, CollectorMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateCollector(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateCollectorResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateCollectorResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateCollectorBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateCollectorBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateCollectorBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateCollectorBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateCollectorBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteCollectorBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteCollectorBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteCollectorBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteCollectorDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteCollector"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteCollectorBranchDeleted, Description: "SurveyMonkey deleted the collector or it was already absent."},
+		{ID: DeleteCollectorBranchProviderRejected, Description: "SurveyMonkey conclusively rejected the request.", Optional: true},
+		{ID: DeleteCollectorBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteCollectorResult = sdkgo.MutationResult[DeleteCollectorOutput]
+
+type DeleteCollectorStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=surveymonkey"`
+	operationID                       struct{}                                                    `connector:"operationId=deleteCollector"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteCollectorInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteCollectorResult]                         `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteCollectorResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteCollectorResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeleteCollectorOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteCollectorStep[IN any](config DeleteCollectorStepConfig[IN]) sdkgo.MutationStep[IN, DeleteCollectorInput, DeleteCollectorOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("surveymonkey connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteCollectorInput, DeleteCollectorOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteCollector(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteCollectorResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteCollectorResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteCollectorBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteCollectorBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteCollectorBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListResponsesBranchListed sdkgo.BranchID = "listed"
+const ListResponsesBranchNotFound sdkgo.BranchID = "notFound"
+const ListResponsesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListResponsesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListResponsesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListResponsesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listResponses"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListResponsesBranchListed, Description: "SurveyMonkey returned a response ID page."},
+		{ID: ListResponsesBranchNotFound, Description: "The survey does not exist or is inaccessible.", Optional: true},
+		{ID: ListResponsesBranchProviderRejected, Description: "SurveyMonkey conclusively rejected the request.", Optional: true},
+		{ID: ListResponsesBranchInvalidResponse, Description: "SurveyMonkey returned invalid JSON.", Optional: true},
+		{ID: ListResponsesBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListResponsesResult = sdkgo.QueryResult[ResponseIDsPage]
+
+type ListResponsesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=surveymonkey"`
+	operationID                    struct{}                                           `connector:"operationId=listResponses"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListResponsesInput                        `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListResponsesResult]                  `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListResponsesResult]                  `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListResponsesResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListResponsesResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListResponsesResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ResponseIDsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewListResponsesStep[IN any](config ListResponsesStepConfig[IN]) sdkgo.QueryStep[IN, ListResponsesInput, ResponseIDsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("surveymonkey connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListResponsesInput, ResponseIDsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListResponses(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListResponsesResult] {
+			branches := make([]sdkgo.BranchTarget[ListResponsesResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListResponsesBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListResponsesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListResponsesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListResponsesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListResponsesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteResponseBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteResponseBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteResponseBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteResponseDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteResponse"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteResponseBranchDeleted, Description: "SurveyMonkey deleted the response or it was already absent."},
+		{ID: DeleteResponseBranchProviderRejected, Description: "SurveyMonkey conclusively rejected the request.", Optional: true},
+		{ID: DeleteResponseBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteResponseResult = sdkgo.MutationResult[DeleteResponseOutput]
+
+type DeleteResponseStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=surveymonkey"`
+	operationID                       struct{}                                                   `connector:"operationId=deleteResponse"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteResponseInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteResponseResult]                         `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteResponseResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteResponseResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeleteResponseOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteResponseStep[IN any](config DeleteResponseStepConfig[IN]) sdkgo.MutationStep[IN, DeleteResponseInput, DeleteResponseOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("surveymonkey connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteResponseInput, DeleteResponseOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteResponse(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteResponseResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteResponseResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteResponseBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteResponseBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteResponseBranchDefect))
 			}
 			return branches
 		}(),
