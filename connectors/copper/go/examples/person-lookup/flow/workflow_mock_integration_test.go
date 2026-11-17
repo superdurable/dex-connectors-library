@@ -24,7 +24,8 @@ import (
 func TestPersonLookupUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := coppermock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	searchFlow := NewPeopleSearchFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, searchFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +57,14 @@ func TestPersonLookupUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, int64(26443553), output.ID)
 	require.Len(t, mock.GetPerson().Calls(), 1)
+	searchFlowID := "copper-people-search-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, searchFlow, searchFlowID, copper.ListPeopleInput{PageNumber: 1, PageSize: 25}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	searchResult, err := client.WaitForFlow(ctx, searchFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, searchResult.Status, searchResult.ErrorMessage)
+	var peoplePage copper.PeoplePage
+	require.NoError(t, searchResult.DecodeSingleOutput(&peoplePage))
+	require.Len(t, peoplePage.People, 1)
+	require.Len(t, mock.ListPeople().Calls(), 1)
 }

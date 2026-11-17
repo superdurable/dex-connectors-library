@@ -20,6 +20,7 @@ type Mock struct {
 	connection       copper.Connection
 	createPerson     *connectormock.Mutation[copper.CreatePersonInput, copper.PersonMetadata]
 	getPerson        *connectormock.Query[copper.GetPersonInput, copper.PersonMetadata]
+	listPeople       *connectormock.Query[copper.ListPeopleInput, copper.PeoplePage]
 	updatePerson     *connectormock.Mutation[copper.UpdatePersonInput, copper.PersonMetadata]
 	deletePerson     *connectormock.Mutation[copper.DeletePersonInput, copper.DeletePersonOutput]
 	listLeadStatuses *connectormock.Query[copper.ListLeadStatusesInput, copper.LeadStatusesList]
@@ -33,6 +34,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock := &Mock{
 		createPerson:     connectormock.NewMutation[copper.CreatePersonInput, copper.PersonMetadata](t, copper.CreatePersonDefinition),
 		getPerson:        connectormock.NewQuery[copper.GetPersonInput, copper.PersonMetadata](t, copper.GetPersonDefinition),
+		listPeople:       connectormock.NewQuery[copper.ListPeopleInput, copper.PeoplePage](t, copper.ListPeopleDefinition),
 		updatePerson:     connectormock.NewMutation[copper.UpdatePersonInput, copper.PersonMetadata](t, copper.UpdatePersonDefinition),
 		deletePerson:     connectormock.NewMutation[copper.DeletePersonInput, copper.DeletePersonOutput](t, copper.DeletePersonDefinition),
 		listLeadStatuses: connectormock.NewQuery[copper.ListLeadStatusesInput, copper.LeadStatusesList](t, copper.ListLeadStatusesDefinition),
@@ -40,6 +42,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	}
 	mock.createPerson.Default(CreatePersonDefault())
 	mock.getPerson.Default(GetPersonDefault())
+	mock.listPeople.Default(ListPeopleDefault())
 	mock.updatePerson.Default(UpdatePersonDefault())
 	mock.deletePerson.Default(DeletePersonDefault())
 	mock.listLeadStatuses.Default(ListLeadStatusesDefault())
@@ -63,6 +66,11 @@ func (mock *Mock) CreatePerson() *connectormock.Mutation[copper.CreatePersonInpu
 // GetPerson returns the getPerson script.
 func (mock *Mock) GetPerson() *connectormock.Query[copper.GetPersonInput, copper.PersonMetadata] {
 	return mock.getPerson
+}
+
+// ListPeople returns the listPeople script.
+func (mock *Mock) ListPeople() *connectormock.Query[copper.ListPeopleInput, copper.PeoplePage] {
+	return mock.listPeople
 }
 
 // UpdatePerson returns the updatePerson script.
@@ -92,6 +100,9 @@ func (operations mockOperations) CreatePerson() sdkgo.Mutation[copper.CreatePers
 }
 func (operations mockOperations) GetPerson() sdkgo.Query[copper.GetPersonInput, copper.PersonMetadata] {
 	return operations.mock.getPerson
+}
+func (operations mockOperations) ListPeople() sdkgo.Query[copper.ListPeopleInput, copper.PeoplePage] {
+	return operations.mock.listPeople
 }
 func (operations mockOperations) UpdatePerson() sdkgo.Mutation[copper.UpdatePersonInput, copper.PersonMetadata] {
 	return operations.mock.updatePerson
@@ -180,6 +191,40 @@ func GetPersonFoundDefault() connectormock.Case[copper.PersonMetadata] {
 
 // GetPersonDefault is the manifest default, foundDefault, which New installs.
 func GetPersonDefault() connectormock.Case[copper.PersonMetadata] { return GetPersonFoundDefault() }
+
+// ListPeopleListed selects the listed branch: Copper returned a page of people.
+func ListPeopleListed(value copper.PeoplePage, failure *sdkgo.Failure) connectormock.Case[copper.PeoplePage] {
+	return connectormock.Branch(copper.ListPeopleBranchListed, value, failure)
+}
+
+// ListPeopleProviderRejected selects the providerRejected branch: Copper rejected the search.
+func ListPeopleProviderRejected(value copper.PeoplePage, failure *sdkgo.Failure) connectormock.Case[copper.PeoplePage] {
+	return connectormock.Branch(copper.ListPeopleBranchProviderRejected, value, failure)
+}
+
+// ListPeopleInvalidResponse selects the invalidResponse branch: Copper returned malformed or oversized people JSON.
+func ListPeopleInvalidResponse(value copper.PeoplePage, failure *sdkgo.Failure) connectormock.Case[copper.PeoplePage] {
+	return connectormock.Branch(copper.ListPeopleBranchInvalidResponse, value, failure)
+}
+
+// ListPeopleDefect selects the defect branch: Input or credentials are invalid.
+func ListPeopleDefect(value copper.PeoplePage, failure *sdkgo.Failure) connectormock.Case[copper.PeoplePage] {
+	return connectormock.Branch(copper.ListPeopleBranchDefect, value, failure)
+}
+
+// ListPeopleRetry asks Dex to retry the listPeople Step, after the delay when it is positive.
+func ListPeopleRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.PeoplePage] {
+	return connectormock.Retry[copper.PeoplePage](failure, after)
+}
+
+// ListPeopleListedDefault is the manifest mock listedDefault: A sample people page is returned.
+func ListPeopleListedDefault() connectormock.Case[copper.PeoplePage] {
+	value := connectormock.MustDecodeOutput[copper.PeoplePage](`{"people":[{"id":26443553,"name":"Sample Person","email":"sample@example.com"}]}`)
+	return connectormock.Branch(copper.ListPeopleBranchListed, value, nil)
+}
+
+// ListPeopleDefault is the manifest default, listedDefault, which New installs.
+func ListPeopleDefault() connectormock.Case[copper.PeoplePage] { return ListPeopleListedDefault() }
 
 // UpdatePersonUpdated selects the updated branch: Copper updated the person.
 func UpdatePersonUpdated(value copper.PersonMetadata, failure *sdkgo.Failure) connectormock.Case[copper.PersonMetadata] {

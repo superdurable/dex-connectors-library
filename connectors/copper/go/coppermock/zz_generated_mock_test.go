@@ -24,6 +24,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[copper.PersonMetadata](`{"id":26443553,"name":"Sample Person","email":"sample@example.com"}`)
 			return err
 		}},
+		{name: "listPeople/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.PeoplePage](`{"people":[{"id":26443553,"name":"Sample Person","email":"sample@example.com"}]}`)
+			return err
+		}},
 		{name: "updatePerson/updatedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[copper.PersonMetadata](`{"id":26443553,"name":"Sample Person","details":"Updated"}`)
 			return err
@@ -55,6 +59,9 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetPerson().Definition().Operation.OperationID != "getPerson" {
 		t.Errorf("getPerson mock has another definition")
+	}
+	if mock.ListPeople().Definition().Operation.OperationID != "listPeople" {
+		t.Errorf("listPeople mock has another definition")
 	}
 	if mock.UpdatePerson().Definition().Operation.OperationID != "updatePerson" {
 		t.Errorf("updatePerson mock has another definition")

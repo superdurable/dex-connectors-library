@@ -101,6 +101,26 @@ spec:
           default: true
           description: One sample person is returned.
           output: {id: 26443553, name: Sample Person, email: sample@example.com}
+    - name: listPeople
+      goName: ListPeople
+      inputType: ListPeopleInput
+      outputType: PeoplePage
+      kind: query
+      description: Search one bounded page of people by name or work email.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Copper returned a page of people.}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Copper returned malformed or oversized people JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample people page is returned.
+          output: {people: [{id: 26443553, name: Sample Person, email: sample@example.com}]}
     - name: updatePerson
       goName: UpdatePerson
       inputType: UpdatePersonInput

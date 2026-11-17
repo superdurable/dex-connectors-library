@@ -43,6 +43,7 @@ type Connection struct {
 type Operations interface {
 	CreatePerson() sdkgo.Mutation[CreatePersonInput, PersonMetadata]
 	GetPerson() sdkgo.Query[GetPersonInput, PersonMetadata]
+	ListPeople() sdkgo.Query[ListPeopleInput, PeoplePage]
 	UpdatePerson() sdkgo.Mutation[UpdatePersonInput, PersonMetadata]
 	DeletePerson() sdkgo.Mutation[DeletePersonInput, DeletePersonOutput]
 	ListLeadStatuses() sdkgo.Query[ListLeadStatusesInput, LeadStatusesList]
@@ -56,6 +57,9 @@ func (operations clientOperations) CreatePerson() sdkgo.Mutation[CreatePersonInp
 }
 func (operations clientOperations) GetPerson() sdkgo.Query[GetPersonInput, PersonMetadata] {
 	return operations.client.GetPerson()
+}
+func (operations clientOperations) ListPeople() sdkgo.Query[ListPeopleInput, PeoplePage] {
+	return operations.client.ListPeople()
 }
 func (operations clientOperations) UpdatePerson() sdkgo.Mutation[UpdatePersonInput, PersonMetadata] {
 	return operations.client.UpdatePerson()
@@ -357,6 +361,77 @@ func NewGetPersonStep[IN any](config GetPersonStepConfig[IN]) sdkgo.QueryStep[IN
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetPersonBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListPeopleBranchListed sdkgo.BranchID = "listed"
+const ListPeopleBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListPeopleBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListPeopleBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListPeopleDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listPeople"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListPeopleBranchListed, Description: "Copper returned a page of people."},
+		{ID: ListPeopleBranchProviderRejected, Description: "Copper rejected the search.", Optional: true},
+		{ID: ListPeopleBranchInvalidResponse, Description: "Copper returned malformed or oversized people JSON.", Optional: true},
+		{ID: ListPeopleBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListPeopleResult = sdkgo.QueryResult[PeoplePage]
+
+type ListPeopleStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=copper"`
+	operationID                    struct{}                                      `connector:"operationId=listPeople"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListPeopleInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListPeopleResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListPeopleResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListPeopleResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListPeopleResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PeoplePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListPeopleStep[IN any](config ListPeopleStepConfig[IN]) sdkgo.QueryStep[IN, ListPeopleInput, PeoplePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("copper connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPeopleInput, PeoplePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListPeople(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListPeopleResult] {
+			branches := make([]sdkgo.BranchTarget[ListPeopleResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListPeopleBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListPeopleBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListPeopleBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListPeopleBranchDefect))
 			}
 			return branches
 		}(),

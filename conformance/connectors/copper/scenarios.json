@@ -2,6 +2,441 @@
   "connector": "copper",
   "scenarios": [
     {
+      "callId": "d01c15ac-7b66-5fb0-b04f-931443c1a079",
+      "exchanges": [
+        {
+          "body": "[{\"id\":26443553,\"name\":\"Sample Person\",\"emails\":[{\"email\":\"sample@example.com\",\"category\":\"work\"}]}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/people/search",
+          "requestBody": {
+            "emails": [
+              "sample@example.com"
+            ],
+            "name": "Sample Person",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "people": [
+            {
+              "email": "sample@example.com",
+              "id": 26443553,
+              "name": "Sample Person"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Person",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listPeople-success",
+      "operation": "listPeople"
+    },
+    {
+      "callId": "d01c15ac-7b66-5fb0-b04f-931443c1a079",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/people/search",
+          "requestBody": {
+            "emails": [
+              "sample@example.com"
+            ],
+            "name": "Sample Person",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "people": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Person",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listPeople-providerRejected",
+      "operation": "listPeople"
+    },
+    {
+      "callId": "d01c15ac-7b66-5fb0-b04f-931443c1a079",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/people/search",
+          "requestBody": {
+            "emails": [
+              "sample@example.com"
+            ],
+            "name": "Sample Person",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "people": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Person",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listPeople-invalidResponse",
+      "operation": "listPeople"
+    },
+    {
+      "callId": "d01c15ac-7b66-5fb0-b04f-931443c1a079",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "people": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Person",
+        "pageNumber": 2,
+        "pageSize": 300
+      },
+      "name": "listPeople-defect",
+      "operation": "listPeople"
+    },
+    {
+      "callId": "d01c15ac-7b66-5fb0-b04f-931443c1a079",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/people/search",
+          "requestBody": {
+            "emails": [
+              "sample@example.com"
+            ],
+            "name": "Sample Person",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Person",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listPeople-rateLimited",
+      "operation": "listPeople"
+    },
+    {
+      "callId": "d01c15ac-7b66-5fb0-b04f-931443c1a079",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/people/search",
+          "requestBody": {
+            "emails": [
+              "sample@example.com"
+            ],
+            "name": "Sample Person",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Person",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listPeople-serviceUnavailable",
+      "operation": "listPeople"
+    },
+    {
+      "callId": "d01c15ac-7b66-5fb0-b04f-931443c1a079",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unknown\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/people/search",
+          "requestBody": {
+            "emails": [
+              "sample@example.com"
+            ],
+            "name": "Sample Person",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Person",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listPeople-serverFailure",
+      "operation": "listPeople"
+    },
+    {
+      "callId": "d01c15ac-7b66-5fb0-b04f-931443c1a079",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/people/search",
+          "requestBody": {
+            "emails": [
+              "sample@example.com"
+            ],
+            "name": "Sample Person",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Person",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listPeople-transportFailure",
+      "operation": "listPeople"
+    },
+    {
       "callId": "4e110793-1aca-463d-83c6-c7b76bb6e3ac",
       "exchanges": [
         {
