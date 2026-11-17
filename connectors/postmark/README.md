@@ -73,6 +73,16 @@ Inbound search and lookup return message metadata without bodies or attachments.
 fence, check the same message's processing status after an unknown outcome, and
 allow at most three possible sends before selecting `uncertain`.
 
+## Webhook trigger coverage
+
+Postmark's modular webhooks can deliver bounce, click, delivery, open, spam
+complaint, and subscription change events. Postmark does not sign these
+requests. A Dex Trigger must authenticate inbound delivery before routing it
+to a Flow; Postmark recommends separate HTTP Basic Auth credentials and IP
+allowlisting. The existing server-token connection has no webhook credential,
+so this release does not register a webhook Trigger or accept unauthenticated
+events. Adding that credential requires a connection migration.
+
 ## Authorization
 
 Start at [https://account.postmarkapp.com/servers](https://account.postmarkapp.com/servers) and follow
@@ -118,6 +128,7 @@ flow := NewFlow(mock.Connection())
 - [https://postmarkapp.com/developer/api/templates-api](https://postmarkapp.com/developer/api/templates-api)
 - [https://postmarkapp.com/developer/api/bounce-api](https://postmarkapp.com/developer/api/bounce-api)
 - [https://postmarkapp.com/developer/api/suppressions-api](https://postmarkapp.com/developer/api/suppressions-api)
+- [https://postmarkapp.com/developer/webhooks/webhooks-overview](https://postmarkapp.com/developer/webhooks/webhooks-overview)
 - [https://postmarkapp.com/developer/api/overview](https://postmarkapp.com/developer/api/overview)
 
 The HTTP unit tests verify request shapes and local classification against
