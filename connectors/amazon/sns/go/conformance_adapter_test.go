@@ -22,10 +22,16 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	publishContext := &publishTestContext{attempt: 1}
 	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(checkpoint []byte) { publishContext.heartbeat = checkpoint })
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { publishContext.attempt = priorAttempt + int32(attempt) }, actions: map[string]conformanceOperationInvocation{
-		"listTopics":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTopics(), reference),
-		"createTopic":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateTopic(), reference, scenario.CallID),
-		"deleteTopic":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteTopic(), reference, scenario.CallID),
-		"setTopicAttribute": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.SetTopicAttribute(), reference, scenario.CallID),
-		"publishMessage":    newConformanceMutationInvocation(t, scenario.Input, publishContext, client.PublishMessage(), reference, scenario.CallID),
+		"listTopics":                newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTopics(), reference),
+		"createTopic":               newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateTopic(), reference, scenario.CallID),
+		"deleteTopic":               newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteTopic(), reference, scenario.CallID),
+		"setTopicAttribute":         newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.SetTopicAttribute(), reference, scenario.CallID),
+		"publishMessage":            newConformanceMutationInvocation(t, scenario.Input, publishContext, client.PublishMessage(), reference, scenario.CallID),
+		"subscribeEndpoint":         newConformanceMutationInvocation(t, scenario.Input, publishContext, client.SubscribeEndpoint(), reference, scenario.CallID),
+		"listSubscriptionsByTopic":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSubscriptionsByTopic(), reference),
+		"listSubscriptions":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSubscriptions(), reference),
+		"getSubscriptionAttributes": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetSubscriptionAttributes(), reference),
+		"setSubscriptionAttribute":  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.SetSubscriptionAttribute(), reference, scenario.CallID),
+		"unsubscribeEndpoint":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UnsubscribeEndpoint(), reference, scenario.CallID),
 	}}
 }

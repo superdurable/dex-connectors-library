@@ -25,7 +25,8 @@ func TestTopicListingUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := snsmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
 	publishFlow := NewPublishFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, publishFlow})
+	subscriptionFlow := NewSubscriptionListingFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, publishFlow, subscriptionFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -67,4 +68,16 @@ func TestTopicListingUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, publishResult.DecodeSingleOutput(&published))
 	require.Equal(t, "example-message-id", published.MessageID)
 	require.Len(t, mock.PublishMessage().Calls(), 1)
+	subscriptionID := "sns-subscription-listing-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, subscriptionFlow, subscriptionID, sns.ListSubscriptionsByTopicInput{
+		TopicARN: "arn:aws:sns:us-east-1:123456789012:example-topic",
+	}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	subscriptionResult, err := client.WaitForFlow(ctx, subscriptionID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, subscriptionResult.Status, subscriptionResult.ErrorMessage)
+	var subscriptions sns.SubscriptionPage
+	require.NoError(t, subscriptionResult.DecodeSingleOutput(&subscriptions))
+	require.Len(t, subscriptions.Subscriptions, 1)
+	require.Len(t, mock.ListSubscriptionsByTopic().Calls(), 1)
 }

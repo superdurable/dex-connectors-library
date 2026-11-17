@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: amazon-sns
   displayName: Amazon SNS
-  description: List, create, update, and delete SNS topics, and publish messages with AWS Signature Version 4.
+  description: Manage SNS topics and subscriptions, and publish messages with AWS Signature Version 4.
   company: Amazon
   categories: [developer-tools, communication]
   version: v0.2.0
@@ -65,7 +65,7 @@ spec:
     guide:
       startURL: https://console.aws.amazon.com/iam
       steps:
-        - Open IAM > Users > Create user for Dex. Grant sns:ListTopics and the operation permissions you use (sns:CreateTopic, sns:DeleteTopic, sns:SetTopicAttributes, sns:Publish); do not use the root user. Topics are visible at https://console.aws.amazon.com/sns > Topics in the selected Region.
+        - Open IAM > Users > Create user for Dex. Grant sns:ListTopics and the operation permissions you use (sns:CreateTopic, sns:DeleteTopic, sns:SetTopicAttributes, sns:Publish, sns:Subscribe, sns:Unsubscribe, sns:ListSubscriptionsByTopic, sns:ListSubscriptions, sns:GetSubscriptionAttributes, sns:SetSubscriptionAttributes); do not use the root user. Topics and subscriptions are visible at https://console.aws.amazon.com/sns in the selected Region.
         - Open the IAM user > Security credentials > Access keys > Create access key > Other. Copy the Access key ID to secret access_key_id and the one-time Secret access key Value to secret_access_key. Leave session_token blank for long-term keys; include it for temporary ASIA keys.
         - Open https://console.aws.amazon.com/sns > Topics, choose the Region in the console selector, and set region to that Region code. Leave endpoint blank for AWS. Copy the full Topic ARN from a selected topic for deleteTopic, setTopicAttribute, or publishMessage. Leave nextToken blank for the first listTopics page; pass the returned token for the next page.
         - Rotate the key under IAM > Users > selected user > Security credentials > Access keys by creating a second key, updating this connection, verifying a Flow, then deactivating and deleting the old key.
@@ -167,3 +167,114 @@ spec:
           default: true
           description: One example topic is in the first page.
           output: {topicARNs: ['arn:aws:sns:us-east-1:123456789012:example-topic'], nextToken: ''}
+    - name: subscribeEndpoint
+      goName: SubscribeEndpoint
+      inputType: SubscribeEndpointInput
+      outputType: SubscriptionIdentity
+      kind: mutation
+      description: Subscribe one HTTPS, email, SQS, or Lambda endpoint to a topic with bounded possible requests.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
+      branches:
+        - {id: subscribed, goName: Subscribed, description: SNS accepted or read-back confirmed the subscription.}
+        - {id: providerRejected, goName: ProviderRejected, description: SNS conclusively rejected the endpoint or topic., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The subscription may exist but read-back could not confirm it., optional: true}
+        - {id: defect, goName: Defect, description: "The topic, protocol, endpoint, or credentials are invalid.", optional: true}
+      mocks:
+        - {name: subscribedDefault, branch: subscribed, default: true, description: SNS accepted one HTTPS subscription., output: {subscriptionARN: 'arn:aws:sns:us-east-1:123456789012:example-topic:11111111-1111-4111-8111-111111111111', topicARN: 'arn:aws:sns:us-east-1:123456789012:example-topic', protocol: https, endpoint: 'https://example.com/sns'}}
+    - name: listSubscriptionsByTopic
+      goName: ListSubscriptionsByTopic
+      inputType: ListSubscriptionsByTopicInput
+      outputType: SubscriptionPage
+      kind: query
+      description: List one page of subscriptions for a topic.
+      idempotency: none
+      authorization: required
+      pagination: {inputField: nextToken, nextField: nextToken}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: page, goName: Page, description: SNS returned one page of subscriptions.}
+        - {id: providerRejected, goName: ProviderRejected, description: SNS refused the listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SNS returned malformed subscription XML., optional: true}
+        - {id: defect, goName: Defect, description: The topic ARN or token is invalid., optional: true}
+      mocks:
+        - name: topicSubscriptionPages
+          branch: page
+          default: true
+          description: Three pages of topic subscriptions.
+          pages:
+            - {subscriptions: [{subscriptionARN: 'arn:aws:sns:us-east-1:123456789012:example-topic:11111111-1111-4111-8111-111111111111', topicARN: 'arn:aws:sns:us-east-1:123456789012:example-topic', protocol: https, endpoint: 'https://example.com/sns', owner: '123456789012'}], nextToken: subscription-page-2}
+            - {subscriptions: [{subscriptionARN: 'arn:aws:sns:us-east-1:123456789012:example-topic:22222222-2222-4222-8222-222222222222', topicARN: 'arn:aws:sns:us-east-1:123456789012:example-topic', protocol: email, endpoint: 'reader@example.net', owner: '123456789012'}], nextToken: subscription-page-3}
+            - {subscriptions: [{subscriptionARN: 'arn:aws:sns:us-east-1:123456789012:example-topic:33333333-3333-4333-8333-333333333333', topicARN: 'arn:aws:sns:us-east-1:123456789012:example-topic', protocol: sqs, endpoint: 'arn:aws:sqs:us-east-1:123456789012:queue', owner: '123456789012'}]}
+    - name: listSubscriptions
+      goName: ListSubscriptions
+      inputType: ListSubscriptionsInput
+      outputType: SubscriptionPage
+      kind: query
+      description: List one page of account subscriptions.
+      idempotency: none
+      authorization: required
+      pagination: {inputField: nextToken, nextField: nextToken}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: page, goName: Page, description: SNS returned one page of account subscriptions.}
+        - {id: providerRejected, goName: ProviderRejected, description: SNS refused the listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SNS returned malformed subscription XML., optional: true}
+        - {id: defect, goName: Defect, description: The token or credentials are invalid., optional: true}
+      mocks:
+        - name: accountSubscriptionPages
+          branch: page
+          default: true
+          description: Three pages of account subscriptions.
+          pages:
+            - {subscriptions: [{subscriptionARN: 'arn:aws:sns:us-east-1:123456789012:example-topic:11111111-1111-4111-8111-111111111111', topicARN: 'arn:aws:sns:us-east-1:123456789012:example-topic', protocol: https, endpoint: 'https://example.com/sns', owner: '123456789012'}], nextToken: account-page-2}
+            - {subscriptions: [{subscriptionARN: 'arn:aws:sns:us-east-1:123456789012:example-topic:22222222-2222-4222-8222-222222222222', topicARN: 'arn:aws:sns:us-east-1:123456789012:example-topic', protocol: email, endpoint: 'reader@example.net', owner: '123456789012'}], nextToken: account-page-3}
+            - {subscriptions: []}
+    - name: getSubscriptionAttributes
+      goName: GetSubscriptionAttributes
+      inputType: SubscriptionARNInput
+      outputType: SubscriptionAttributes
+      kind: query
+      description: Read non-secret SNS subscription attributes.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: SNS returned subscription attributes.}
+        - {id: missing, goName: Missing, description: The subscription is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: SNS refused the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SNS returned invalid attributes., optional: true}
+        - {id: defect, goName: Defect, description: The subscription ARN or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundAttributes, branch: found, default: true, description: SNS returned one confirmed subscription., output: {subscriptionARN: 'arn:aws:sns:us-east-1:123456789012:example-topic:11111111-1111-4111-8111-111111111111', attributes: {PendingConfirmation: 'false', RawMessageDelivery: 'false'}}}
+    - name: setSubscriptionAttribute
+      goName: SetSubscriptionAttribute
+      inputType: SetSubscriptionAttributeInput
+      outputType: SubscriptionIdentity
+      kind: mutation
+      description: Replace one subscription delivery or filter attribute.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: SNS accepted the absolute replacement.}
+        - {id: providerRejected, goName: ProviderRejected, description: SNS refused the update., optional: true}
+        - {id: defect, goName: Defect, description: The subscription ARN or attribute is invalid., optional: true}
+      mocks:
+        - {name: updatedSubscription, branch: updated, default: true, description: SNS enabled raw delivery., output: {subscriptionARN: 'arn:aws:sns:us-east-1:123456789012:example-topic:11111111-1111-4111-8111-111111111111'}}
+    - name: unsubscribeEndpoint
+      goName: UnsubscribeEndpoint
+      inputType: SubscriptionARNInput
+      outputType: SubscriptionIdentity
+      kind: mutation
+      description: Delete a subscription; absence is success.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: unsubscribed, goName: Unsubscribed, description: The subscription is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: SNS refused the deletion., optional: true}
+        - {id: defect, goName: Defect, description: The subscription ARN is invalid., optional: true}
+      mocks:
+        - {name: unsubscribedDefault, branch: unsubscribed, default: true, description: SNS removed one subscription., output: {subscriptionARN: 'arn:aws:sns:us-east-1:123456789012:example-topic:11111111-1111-4111-8111-111111111111'}}

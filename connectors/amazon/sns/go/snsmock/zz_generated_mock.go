@@ -17,12 +17,18 @@ import (
 
 // Mock is a scripted amazon-sns connection. Script each operation through its accessor.
 type Mock struct {
-	connection        sns.Connection
-	createTopic       *connectormock.Mutation[sns.CreateTopicInput, sns.TopicIdentity]
-	deleteTopic       *connectormock.Mutation[sns.TopicARNInput, sns.TopicIdentity]
-	setTopicAttribute *connectormock.Mutation[sns.SetTopicAttributeInput, sns.TopicIdentity]
-	publishMessage    *connectormock.Mutation[sns.PublishMessageInput, sns.PublishedMessage]
-	listTopics        *connectormock.Query[sns.ListTopicsInput, sns.TopicPage]
+	connection                sns.Connection
+	createTopic               *connectormock.Mutation[sns.CreateTopicInput, sns.TopicIdentity]
+	deleteTopic               *connectormock.Mutation[sns.TopicARNInput, sns.TopicIdentity]
+	setTopicAttribute         *connectormock.Mutation[sns.SetTopicAttributeInput, sns.TopicIdentity]
+	publishMessage            *connectormock.Mutation[sns.PublishMessageInput, sns.PublishedMessage]
+	listTopics                *connectormock.Query[sns.ListTopicsInput, sns.TopicPage]
+	subscribeEndpoint         *connectormock.Mutation[sns.SubscribeEndpointInput, sns.SubscriptionIdentity]
+	listSubscriptionsByTopic  *connectormock.Query[sns.ListSubscriptionsByTopicInput, sns.SubscriptionPage]
+	listSubscriptions         *connectormock.Query[sns.ListSubscriptionsInput, sns.SubscriptionPage]
+	getSubscriptionAttributes *connectormock.Query[sns.SubscriptionARNInput, sns.SubscriptionAttributes]
+	setSubscriptionAttribute  *connectormock.Mutation[sns.SetSubscriptionAttributeInput, sns.SubscriptionIdentity]
+	unsubscribeEndpoint       *connectormock.Mutation[sns.SubscriptionARNInput, sns.SubscriptionIdentity]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -30,17 +36,29 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		createTopic:       connectormock.NewMutation[sns.CreateTopicInput, sns.TopicIdentity](t, sns.CreateTopicDefinition),
-		deleteTopic:       connectormock.NewMutation[sns.TopicARNInput, sns.TopicIdentity](t, sns.DeleteTopicDefinition),
-		setTopicAttribute: connectormock.NewMutation[sns.SetTopicAttributeInput, sns.TopicIdentity](t, sns.SetTopicAttributeDefinition),
-		publishMessage:    connectormock.NewMutation[sns.PublishMessageInput, sns.PublishedMessage](t, sns.PublishMessageDefinition),
-		listTopics:        connectormock.NewQuery[sns.ListTopicsInput, sns.TopicPage](t, sns.ListTopicsDefinition),
+		createTopic:               connectormock.NewMutation[sns.CreateTopicInput, sns.TopicIdentity](t, sns.CreateTopicDefinition),
+		deleteTopic:               connectormock.NewMutation[sns.TopicARNInput, sns.TopicIdentity](t, sns.DeleteTopicDefinition),
+		setTopicAttribute:         connectormock.NewMutation[sns.SetTopicAttributeInput, sns.TopicIdentity](t, sns.SetTopicAttributeDefinition),
+		publishMessage:            connectormock.NewMutation[sns.PublishMessageInput, sns.PublishedMessage](t, sns.PublishMessageDefinition),
+		listTopics:                connectormock.NewQuery[sns.ListTopicsInput, sns.TopicPage](t, sns.ListTopicsDefinition),
+		subscribeEndpoint:         connectormock.NewMutation[sns.SubscribeEndpointInput, sns.SubscriptionIdentity](t, sns.SubscribeEndpointDefinition),
+		listSubscriptionsByTopic:  connectormock.NewQuery[sns.ListSubscriptionsByTopicInput, sns.SubscriptionPage](t, sns.ListSubscriptionsByTopicDefinition),
+		listSubscriptions:         connectormock.NewQuery[sns.ListSubscriptionsInput, sns.SubscriptionPage](t, sns.ListSubscriptionsDefinition),
+		getSubscriptionAttributes: connectormock.NewQuery[sns.SubscriptionARNInput, sns.SubscriptionAttributes](t, sns.GetSubscriptionAttributesDefinition),
+		setSubscriptionAttribute:  connectormock.NewMutation[sns.SetSubscriptionAttributeInput, sns.SubscriptionIdentity](t, sns.SetSubscriptionAttributeDefinition),
+		unsubscribeEndpoint:       connectormock.NewMutation[sns.SubscriptionARNInput, sns.SubscriptionIdentity](t, sns.UnsubscribeEndpointDefinition),
 	}
 	mock.createTopic.Default(CreateTopicDefault())
 	mock.deleteTopic.Default(DeleteTopicDefault())
 	mock.setTopicAttribute.Default(SetTopicAttributeDefault())
 	mock.publishMessage.Default(PublishMessageDefault())
 	mock.listTopics.Default(ListTopicsDefault())
+	mock.subscribeEndpoint.Default(SubscribeEndpointDefault())
+	mock.listSubscriptionsByTopic.Default(ListSubscriptionsByTopicDefault())
+	mock.listSubscriptions.Default(ListSubscriptionsDefault())
+	mock.getSubscriptionAttributes.Default(GetSubscriptionAttributesDefault())
+	mock.setSubscriptionAttribute.Default(SetSubscriptionAttributeDefault())
+	mock.unsubscribeEndpoint.Default(UnsubscribeEndpointDefault())
 	connection, err := sns.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "amazon-sns", Name: connectionName})
 	if err != nil {
 		t.Fatalf("amazon-sns mock connection: %v", err)
@@ -77,6 +95,36 @@ func (mock *Mock) ListTopics() *connectormock.Query[sns.ListTopicsInput, sns.Top
 	return mock.listTopics
 }
 
+// SubscribeEndpoint returns the subscribeEndpoint script.
+func (mock *Mock) SubscribeEndpoint() *connectormock.Mutation[sns.SubscribeEndpointInput, sns.SubscriptionIdentity] {
+	return mock.subscribeEndpoint
+}
+
+// ListSubscriptionsByTopic returns the listSubscriptionsByTopic script.
+func (mock *Mock) ListSubscriptionsByTopic() *connectormock.Query[sns.ListSubscriptionsByTopicInput, sns.SubscriptionPage] {
+	return mock.listSubscriptionsByTopic
+}
+
+// ListSubscriptions returns the listSubscriptions script.
+func (mock *Mock) ListSubscriptions() *connectormock.Query[sns.ListSubscriptionsInput, sns.SubscriptionPage] {
+	return mock.listSubscriptions
+}
+
+// GetSubscriptionAttributes returns the getSubscriptionAttributes script.
+func (mock *Mock) GetSubscriptionAttributes() *connectormock.Query[sns.SubscriptionARNInput, sns.SubscriptionAttributes] {
+	return mock.getSubscriptionAttributes
+}
+
+// SetSubscriptionAttribute returns the setSubscriptionAttribute script.
+func (mock *Mock) SetSubscriptionAttribute() *connectormock.Mutation[sns.SetSubscriptionAttributeInput, sns.SubscriptionIdentity] {
+	return mock.setSubscriptionAttribute
+}
+
+// UnsubscribeEndpoint returns the unsubscribeEndpoint script.
+func (mock *Mock) UnsubscribeEndpoint() *connectormock.Mutation[sns.SubscriptionARNInput, sns.SubscriptionIdentity] {
+	return mock.unsubscribeEndpoint
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreateTopic() sdkgo.Mutation[sns.CreateTopicInput, sns.TopicIdentity] {
@@ -93,6 +141,24 @@ func (operations mockOperations) PublishMessage() sdkgo.Mutation[sns.PublishMess
 }
 func (operations mockOperations) ListTopics() sdkgo.Query[sns.ListTopicsInput, sns.TopicPage] {
 	return operations.mock.listTopics
+}
+func (operations mockOperations) SubscribeEndpoint() sdkgo.Mutation[sns.SubscribeEndpointInput, sns.SubscriptionIdentity] {
+	return operations.mock.subscribeEndpoint
+}
+func (operations mockOperations) ListSubscriptionsByTopic() sdkgo.Query[sns.ListSubscriptionsByTopicInput, sns.SubscriptionPage] {
+	return operations.mock.listSubscriptionsByTopic
+}
+func (operations mockOperations) ListSubscriptions() sdkgo.Query[sns.ListSubscriptionsInput, sns.SubscriptionPage] {
+	return operations.mock.listSubscriptions
+}
+func (operations mockOperations) GetSubscriptionAttributes() sdkgo.Query[sns.SubscriptionARNInput, sns.SubscriptionAttributes] {
+	return operations.mock.getSubscriptionAttributes
+}
+func (operations mockOperations) SetSubscriptionAttribute() sdkgo.Mutation[sns.SetSubscriptionAttributeInput, sns.SubscriptionIdentity] {
+	return operations.mock.setSubscriptionAttribute
+}
+func (operations mockOperations) UnsubscribeEndpoint() sdkgo.Mutation[sns.SubscriptionARNInput, sns.SubscriptionIdentity] {
+	return operations.mock.unsubscribeEndpoint
 }
 
 // CreateTopicCreated selects the created branch: AWS created or found the named topic.
@@ -253,3 +319,224 @@ func ListTopicsPageDefault() connectormock.Case[sns.TopicPage] {
 
 // ListTopicsDefault is the manifest default, pageDefault, which New installs.
 func ListTopicsDefault() connectormock.Case[sns.TopicPage] { return ListTopicsPageDefault() }
+
+// SubscribeEndpointSubscribed selects the subscribed branch: SNS accepted or read-back confirmed the subscription.
+func SubscribeEndpointSubscribed(value sns.SubscriptionIdentity, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionIdentity] {
+	return connectormock.Branch(sns.SubscribeEndpointBranchSubscribed, value, failure)
+}
+
+// SubscribeEndpointProviderRejected selects the providerRejected branch: SNS conclusively rejected the endpoint or topic.
+func SubscribeEndpointProviderRejected(value sns.SubscriptionIdentity, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionIdentity] {
+	return connectormock.Branch(sns.SubscribeEndpointBranchProviderRejected, value, failure)
+}
+
+// SubscribeEndpointUncertain returns an uncertain subscribeEndpoint outcome.
+func SubscribeEndpointUncertain(value sns.SubscriptionIdentity, failure sdkgo.Failure) connectormock.Case[sns.SubscriptionIdentity] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SubscribeEndpointDefect selects the defect branch: The topic, protocol, endpoint, or credentials are invalid.
+func SubscribeEndpointDefect(value sns.SubscriptionIdentity, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionIdentity] {
+	return connectormock.Branch(sns.SubscribeEndpointBranchDefect, value, failure)
+}
+
+// SubscribeEndpointRetry asks Dex to retry the subscribeEndpoint Step, after the delay when it is positive.
+func SubscribeEndpointRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sns.SubscriptionIdentity] {
+	return connectormock.Retry[sns.SubscriptionIdentity](failure, after)
+}
+
+// SubscribeEndpointSubscribedDefault is the manifest mock subscribedDefault: SNS accepted one HTTPS subscription.
+func SubscribeEndpointSubscribedDefault() connectormock.Case[sns.SubscriptionIdentity] {
+	value := connectormock.MustDecodeOutput[sns.SubscriptionIdentity](`{"subscriptionARN":"arn:aws:sns:us-east-1:123456789012:example-topic:11111111-1111-4111-8111-111111111111","topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic","protocol":"https","endpoint":"https://example.com/sns"}`)
+	return connectormock.Branch(sns.SubscribeEndpointBranchSubscribed, value, nil)
+}
+
+// SubscribeEndpointDefault is the manifest default, subscribedDefault, which New installs.
+func SubscribeEndpointDefault() connectormock.Case[sns.SubscriptionIdentity] {
+	return SubscribeEndpointSubscribedDefault()
+}
+
+// ListSubscriptionsByTopicPage selects the page branch: SNS returned one page of subscriptions.
+func ListSubscriptionsByTopicPage(value sns.SubscriptionPage, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionPage] {
+	return connectormock.Branch(sns.ListSubscriptionsByTopicBranchPage, value, failure)
+}
+
+// ListSubscriptionsByTopicProviderRejected selects the providerRejected branch: SNS refused the listing.
+func ListSubscriptionsByTopicProviderRejected(value sns.SubscriptionPage, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionPage] {
+	return connectormock.Branch(sns.ListSubscriptionsByTopicBranchProviderRejected, value, failure)
+}
+
+// ListSubscriptionsByTopicInvalidResponse selects the invalidResponse branch: SNS returned malformed subscription XML.
+func ListSubscriptionsByTopicInvalidResponse(value sns.SubscriptionPage, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionPage] {
+	return connectormock.Branch(sns.ListSubscriptionsByTopicBranchInvalidResponse, value, failure)
+}
+
+// ListSubscriptionsByTopicDefect selects the defect branch: The topic ARN or token is invalid.
+func ListSubscriptionsByTopicDefect(value sns.SubscriptionPage, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionPage] {
+	return connectormock.Branch(sns.ListSubscriptionsByTopicBranchDefect, value, failure)
+}
+
+// ListSubscriptionsByTopicRetry asks Dex to retry the listSubscriptionsByTopic Step, after the delay when it is positive.
+func ListSubscriptionsByTopicRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sns.SubscriptionPage] {
+	return connectormock.Retry[sns.SubscriptionPage](failure, after)
+}
+
+// ListSubscriptionsByTopicTopicSubscriptionPages is the manifest mock topicSubscriptionPages: Three pages of topic subscriptions.
+func ListSubscriptionsByTopicTopicSubscriptionPages() connectormock.Case[sns.SubscriptionPage] {
+	pages := []sns.SubscriptionPage{
+		connectormock.MustDecodeOutput[sns.SubscriptionPage](`{"subscriptions":[{"subscriptionARN":"arn:aws:sns:us-east-1:123456789012:example-topic:11111111-1111-4111-8111-111111111111","topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic","protocol":"https","endpoint":"https://example.com/sns","owner":"123456789012"}],"nextToken":"subscription-page-2"}`),
+		connectormock.MustDecodeOutput[sns.SubscriptionPage](`{"subscriptions":[{"subscriptionARN":"arn:aws:sns:us-east-1:123456789012:example-topic:22222222-2222-4222-8222-222222222222","topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic","protocol":"email","endpoint":"reader@example.net","owner":"123456789012"}],"nextToken":"subscription-page-3"}`),
+		connectormock.MustDecodeOutput[sns.SubscriptionPage](`{"subscriptions":[{"subscriptionARN":"arn:aws:sns:us-east-1:123456789012:example-topic:33333333-3333-4333-8333-333333333333","topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic","protocol":"sqs","endpoint":"arn:aws:sqs:us-east-1:123456789012:queue","owner":"123456789012"}]}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[sns.ListSubscriptionsByTopicInput]("nextToken", "nextToken", pages)
+	return connectormock.Paged(sns.ListSubscriptionsByTopicBranchPage, pageNumber, pages...)
+}
+
+// ListSubscriptionsByTopicDefault is the manifest default, topicSubscriptionPages, which New installs.
+func ListSubscriptionsByTopicDefault() connectormock.Case[sns.SubscriptionPage] {
+	return ListSubscriptionsByTopicTopicSubscriptionPages()
+}
+
+// ListSubscriptionsPage selects the page branch: SNS returned one page of account subscriptions.
+func ListSubscriptionsPage(value sns.SubscriptionPage, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionPage] {
+	return connectormock.Branch(sns.ListSubscriptionsBranchPage, value, failure)
+}
+
+// ListSubscriptionsProviderRejected selects the providerRejected branch: SNS refused the listing.
+func ListSubscriptionsProviderRejected(value sns.SubscriptionPage, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionPage] {
+	return connectormock.Branch(sns.ListSubscriptionsBranchProviderRejected, value, failure)
+}
+
+// ListSubscriptionsInvalidResponse selects the invalidResponse branch: SNS returned malformed subscription XML.
+func ListSubscriptionsInvalidResponse(value sns.SubscriptionPage, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionPage] {
+	return connectormock.Branch(sns.ListSubscriptionsBranchInvalidResponse, value, failure)
+}
+
+// ListSubscriptionsDefect selects the defect branch: The token or credentials are invalid.
+func ListSubscriptionsDefect(value sns.SubscriptionPage, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionPage] {
+	return connectormock.Branch(sns.ListSubscriptionsBranchDefect, value, failure)
+}
+
+// ListSubscriptionsRetry asks Dex to retry the listSubscriptions Step, after the delay when it is positive.
+func ListSubscriptionsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sns.SubscriptionPage] {
+	return connectormock.Retry[sns.SubscriptionPage](failure, after)
+}
+
+// ListSubscriptionsAccountSubscriptionPages is the manifest mock accountSubscriptionPages: Three pages of account subscriptions.
+func ListSubscriptionsAccountSubscriptionPages() connectormock.Case[sns.SubscriptionPage] {
+	pages := []sns.SubscriptionPage{
+		connectormock.MustDecodeOutput[sns.SubscriptionPage](`{"subscriptions":[{"subscriptionARN":"arn:aws:sns:us-east-1:123456789012:example-topic:11111111-1111-4111-8111-111111111111","topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic","protocol":"https","endpoint":"https://example.com/sns","owner":"123456789012"}],"nextToken":"account-page-2"}`),
+		connectormock.MustDecodeOutput[sns.SubscriptionPage](`{"subscriptions":[{"subscriptionARN":"arn:aws:sns:us-east-1:123456789012:example-topic:22222222-2222-4222-8222-222222222222","topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic","protocol":"email","endpoint":"reader@example.net","owner":"123456789012"}],"nextToken":"account-page-3"}`),
+		connectormock.MustDecodeOutput[sns.SubscriptionPage](`{"subscriptions":[]}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[sns.ListSubscriptionsInput]("nextToken", "nextToken", pages)
+	return connectormock.Paged(sns.ListSubscriptionsBranchPage, pageNumber, pages...)
+}
+
+// ListSubscriptionsDefault is the manifest default, accountSubscriptionPages, which New installs.
+func ListSubscriptionsDefault() connectormock.Case[sns.SubscriptionPage] {
+	return ListSubscriptionsAccountSubscriptionPages()
+}
+
+// GetSubscriptionAttributesFound selects the found branch: SNS returned subscription attributes.
+func GetSubscriptionAttributesFound(value sns.SubscriptionAttributes, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionAttributes] {
+	return connectormock.Branch(sns.GetSubscriptionAttributesBranchFound, value, failure)
+}
+
+// GetSubscriptionAttributesMissing selects the missing branch: The subscription is absent.
+func GetSubscriptionAttributesMissing(value sns.SubscriptionAttributes, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionAttributes] {
+	return connectormock.Branch(sns.GetSubscriptionAttributesBranchMissing, value, failure)
+}
+
+// GetSubscriptionAttributesProviderRejected selects the providerRejected branch: SNS refused the read.
+func GetSubscriptionAttributesProviderRejected(value sns.SubscriptionAttributes, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionAttributes] {
+	return connectormock.Branch(sns.GetSubscriptionAttributesBranchProviderRejected, value, failure)
+}
+
+// GetSubscriptionAttributesInvalidResponse selects the invalidResponse branch: SNS returned invalid attributes.
+func GetSubscriptionAttributesInvalidResponse(value sns.SubscriptionAttributes, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionAttributes] {
+	return connectormock.Branch(sns.GetSubscriptionAttributesBranchInvalidResponse, value, failure)
+}
+
+// GetSubscriptionAttributesDefect selects the defect branch: The subscription ARN or credentials are invalid.
+func GetSubscriptionAttributesDefect(value sns.SubscriptionAttributes, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionAttributes] {
+	return connectormock.Branch(sns.GetSubscriptionAttributesBranchDefect, value, failure)
+}
+
+// GetSubscriptionAttributesRetry asks Dex to retry the getSubscriptionAttributes Step, after the delay when it is positive.
+func GetSubscriptionAttributesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sns.SubscriptionAttributes] {
+	return connectormock.Retry[sns.SubscriptionAttributes](failure, after)
+}
+
+// GetSubscriptionAttributesFoundAttributes is the manifest mock foundAttributes: SNS returned one confirmed subscription.
+func GetSubscriptionAttributesFoundAttributes() connectormock.Case[sns.SubscriptionAttributes] {
+	value := connectormock.MustDecodeOutput[sns.SubscriptionAttributes](`{"subscriptionARN":"arn:aws:sns:us-east-1:123456789012:example-topic:11111111-1111-4111-8111-111111111111","attributes":{"PendingConfirmation":"false","RawMessageDelivery":"false"}}`)
+	return connectormock.Branch(sns.GetSubscriptionAttributesBranchFound, value, nil)
+}
+
+// GetSubscriptionAttributesDefault is the manifest default, foundAttributes, which New installs.
+func GetSubscriptionAttributesDefault() connectormock.Case[sns.SubscriptionAttributes] {
+	return GetSubscriptionAttributesFoundAttributes()
+}
+
+// SetSubscriptionAttributeUpdated selects the updated branch: SNS accepted the absolute replacement.
+func SetSubscriptionAttributeUpdated(value sns.SubscriptionIdentity, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionIdentity] {
+	return connectormock.Branch(sns.SetSubscriptionAttributeBranchUpdated, value, failure)
+}
+
+// SetSubscriptionAttributeProviderRejected selects the providerRejected branch: SNS refused the update.
+func SetSubscriptionAttributeProviderRejected(value sns.SubscriptionIdentity, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionIdentity] {
+	return connectormock.Branch(sns.SetSubscriptionAttributeBranchProviderRejected, value, failure)
+}
+
+// SetSubscriptionAttributeDefect selects the defect branch: The subscription ARN or attribute is invalid.
+func SetSubscriptionAttributeDefect(value sns.SubscriptionIdentity, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionIdentity] {
+	return connectormock.Branch(sns.SetSubscriptionAttributeBranchDefect, value, failure)
+}
+
+// SetSubscriptionAttributeRetry asks Dex to retry the setSubscriptionAttribute Step, after the delay when it is positive.
+func SetSubscriptionAttributeRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sns.SubscriptionIdentity] {
+	return connectormock.Retry[sns.SubscriptionIdentity](failure, after)
+}
+
+// SetSubscriptionAttributeUpdatedSubscription is the manifest mock updatedSubscription: SNS enabled raw delivery.
+func SetSubscriptionAttributeUpdatedSubscription() connectormock.Case[sns.SubscriptionIdentity] {
+	value := connectormock.MustDecodeOutput[sns.SubscriptionIdentity](`{"subscriptionARN":"arn:aws:sns:us-east-1:123456789012:example-topic:11111111-1111-4111-8111-111111111111"}`)
+	return connectormock.Branch(sns.SetSubscriptionAttributeBranchUpdated, value, nil)
+}
+
+// SetSubscriptionAttributeDefault is the manifest default, updatedSubscription, which New installs.
+func SetSubscriptionAttributeDefault() connectormock.Case[sns.SubscriptionIdentity] {
+	return SetSubscriptionAttributeUpdatedSubscription()
+}
+
+// UnsubscribeEndpointUnsubscribed selects the unsubscribed branch: The subscription is absent.
+func UnsubscribeEndpointUnsubscribed(value sns.SubscriptionIdentity, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionIdentity] {
+	return connectormock.Branch(sns.UnsubscribeEndpointBranchUnsubscribed, value, failure)
+}
+
+// UnsubscribeEndpointProviderRejected selects the providerRejected branch: SNS refused the deletion.
+func UnsubscribeEndpointProviderRejected(value sns.SubscriptionIdentity, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionIdentity] {
+	return connectormock.Branch(sns.UnsubscribeEndpointBranchProviderRejected, value, failure)
+}
+
+// UnsubscribeEndpointDefect selects the defect branch: The subscription ARN is invalid.
+func UnsubscribeEndpointDefect(value sns.SubscriptionIdentity, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionIdentity] {
+	return connectormock.Branch(sns.UnsubscribeEndpointBranchDefect, value, failure)
+}
+
+// UnsubscribeEndpointRetry asks Dex to retry the unsubscribeEndpoint Step, after the delay when it is positive.
+func UnsubscribeEndpointRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sns.SubscriptionIdentity] {
+	return connectormock.Retry[sns.SubscriptionIdentity](failure, after)
+}
+
+// UnsubscribeEndpointUnsubscribedDefault is the manifest mock unsubscribedDefault: SNS removed one subscription.
+func UnsubscribeEndpointUnsubscribedDefault() connectormock.Case[sns.SubscriptionIdentity] {
+	value := connectormock.MustDecodeOutput[sns.SubscriptionIdentity](`{"subscriptionARN":"arn:aws:sns:us-east-1:123456789012:example-topic:11111111-1111-4111-8111-111111111111"}`)
+	return connectormock.Branch(sns.UnsubscribeEndpointBranchUnsubscribed, value, nil)
+}
+
+// UnsubscribeEndpointDefault is the manifest default, unsubscribedDefault, which New installs.
+func UnsubscribeEndpointDefault() connectormock.Case[sns.SubscriptionIdentity] {
+	return UnsubscribeEndpointUnsubscribedDefault()
+}
