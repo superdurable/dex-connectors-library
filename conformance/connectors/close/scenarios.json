@@ -2,6 +2,1854 @@
   "connector": "close",
   "scenarios": [
     {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"lead_meridian1\",\"name\":\"Meridian Research\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestBody": {
+            "description": "Research account",
+            "name": "Meridian Research"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "lead_meridian1",
+          "name": "Meridian Research"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "input": {
+        "description": "Research account",
+        "leadId": "lead_meridian1",
+        "name": "Meridian Research"
+      },
+      "name": "updateLead-updated",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "not found",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestBody": {
+            "description": "Research account",
+            "name": "Meridian Research"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "input": {
+        "description": "Research account",
+        "leadId": "lead_meridian1",
+        "name": "Meridian Research"
+      },
+      "name": "updateLead-notFound",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "secret SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestBody": {
+            "description": "Research account",
+            "name": "Meridian Research"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "input": {
+        "description": "Research account",
+        "leadId": "lead_meridian1",
+        "name": "Meridian Research"
+      },
+      "name": "updateLead-providerRejected",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestBody": {
+            "description": "Research account",
+            "name": "Meridian Research"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "input": {
+        "description": "Research account",
+        "leadId": "lead_meridian1",
+        "name": "Meridian Research"
+      },
+      "name": "updateLead-invalidResponse",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "input": {
+        "description": "Research account",
+        "leadId": "",
+        "name": "Meridian Research"
+      },
+      "name": "updateLead-defect",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestBody": {
+            "description": "Research account",
+            "name": "Meridian Research"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "input": {
+        "description": "Research account",
+        "leadId": "lead_meridian1",
+        "name": "Meridian Research"
+      },
+      "name": "updateLead-rateLimit",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "temporarily unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestBody": {
+            "description": "Research account",
+            "name": "Meridian Research"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "input": {
+        "description": "Research account",
+        "leadId": "lead_meridian1",
+        "name": "Meridian Research"
+      },
+      "name": "updateLead-serverUnavailable",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestBody": {
+            "description": "Research account",
+            "name": "Meridian Research"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "input": {
+        "description": "Research account",
+        "leadId": "lead_meridian1",
+        "name": "Meridian Research"
+      },
+      "name": "updateLead-transportFailure",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "cdade215-8c22-557a-9d89-9a17cd06405b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "leadId": "lead_meridian1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cdade215-8c22-557a-9d89-9a17cd06405b",
+      "input": {
+        "leadId": "lead_meridian1"
+      },
+      "name": "deleteLead-deleted",
+      "operation": "deleteLead"
+    },
+    {
+      "callId": "cdade215-8c22-557a-9d89-9a17cd06405b",
+      "exchanges": [
+        {
+          "body": "not found",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "leadId": "lead_meridian1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cdade215-8c22-557a-9d89-9a17cd06405b",
+      "input": {
+        "leadId": "lead_meridian1"
+      },
+      "name": "deleteLead-alreadyAbsent",
+      "operation": "deleteLead"
+    },
+    {
+      "callId": "cdade215-8c22-557a-9d89-9a17cd06405b",
+      "exchanges": [
+        {
+          "body": "secret SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "leadId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cdade215-8c22-557a-9d89-9a17cd06405b",
+      "input": {
+        "leadId": "lead_meridian1"
+      },
+      "name": "deleteLead-providerRejected",
+      "operation": "deleteLead"
+    },
+    {
+      "callId": "cdade215-8c22-557a-9d89-9a17cd06405b",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "leadId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cdade215-8c22-557a-9d89-9a17cd06405b",
+      "input": {
+        "leadId": "lead_meridian1"
+      },
+      "name": "deleteLead-invalidResponse",
+      "operation": "deleteLead"
+    },
+    {
+      "callId": "cdade215-8c22-557a-9d89-9a17cd06405b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "leadId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cdade215-8c22-557a-9d89-9a17cd06405b",
+      "input": {
+        "leadId": ""
+      },
+      "name": "deleteLead-defect",
+      "operation": "deleteLead"
+    },
+    {
+      "callId": "cdade215-8c22-557a-9d89-9a17cd06405b",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cdade215-8c22-557a-9d89-9a17cd06405b",
+      "input": {
+        "leadId": "lead_meridian1"
+      },
+      "name": "deleteLead-rateLimit",
+      "operation": "deleteLead"
+    },
+    {
+      "callId": "cdade215-8c22-557a-9d89-9a17cd06405b",
+      "exchanges": [
+        {
+          "body": "temporarily unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cdade215-8c22-557a-9d89-9a17cd06405b",
+      "input": {
+        "leadId": "lead_meridian1"
+      },
+      "name": "deleteLead-serverUnavailable",
+      "operation": "deleteLead"
+    },
+    {
+      "callId": "cdade215-8c22-557a-9d89-9a17cd06405b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cdade215-8c22-557a-9d89-9a17cd06405b",
+      "input": {
+        "leadId": "lead_meridian1"
+      },
+      "name": "deleteLead-transportFailure",
+      "operation": "deleteLead"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000117",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"cont_meridian1\",\"name\":\"Ada\",\"lead_id\":\"lead_meridian1\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/contact/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "contacts": [
+            {
+              "id": "cont_meridian1",
+              "leadId": "lead_meridian1",
+              "name": "Ada"
+            }
+          ],
+          "hasMore": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listContacts-listed",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000118",
+      "exchanges": [
+        {
+          "body": "secret SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/contact/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "contacts": [],
+          "hasMore": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listContacts-providerRejected",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000119",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/contact/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contacts": [],
+          "hasMore": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listContacts-invalidResponse",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000120",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contacts": [],
+          "hasMore": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listContacts-defect",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000121",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/contact/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listContacts-rateLimit",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000122",
+      "exchanges": [
+        {
+          "body": "temporarily unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/contact/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listContacts-serverUnavailable",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000123",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/contact/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listContacts-transportFailure",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000124",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"cont_meridian1\",\"name\":\"Ada\",\"lead_id\":\"lead_meridian1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "cont_meridian1",
+          "leadId": "lead_meridian1",
+          "name": "Ada"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "cont_meridian1"
+      },
+      "name": "getContact-found",
+      "operation": "getContact"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000125",
+      "exchanges": [
+        {
+          "body": "not found",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "leadId": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "cont_meridian1"
+      },
+      "name": "getContact-notFound",
+      "operation": "getContact"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000126",
+      "exchanges": [
+        {
+          "body": "secret SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "leadId": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "cont_meridian1"
+      },
+      "name": "getContact-providerRejected",
+      "operation": "getContact"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000127",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "leadId": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "cont_meridian1"
+      },
+      "name": "getContact-invalidResponse",
+      "operation": "getContact"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000128",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "leadId": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": ""
+      },
+      "name": "getContact-defect",
+      "operation": "getContact"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000129",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "cont_meridian1"
+      },
+      "name": "getContact-rateLimit",
+      "operation": "getContact"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000130",
+      "exchanges": [
+        {
+          "body": "temporarily unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "cont_meridian1"
+      },
+      "name": "getContact-serverUnavailable",
+      "operation": "getContact"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000131",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "cont_meridian1"
+      },
+      "name": "getContact-transportFailure",
+      "operation": "getContact"
+    },
+    {
+      "callId": "9d00a774-21e4-5b87-b8be-b600822b8074",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"cont_meridian1\",\"name\":\"Ada Lovelace\",\"lead_id\":\"lead_meridian1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestBody": {
+            "name": "Ada Lovelace",
+            "title": "Analyst"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "cont_meridian1",
+          "leadId": "lead_meridian1",
+          "name": "Ada Lovelace"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d00a774-21e4-5b87-b8be-b600822b8074",
+      "input": {
+        "contactId": "cont_meridian1",
+        "name": "Ada Lovelace",
+        "title": "Analyst"
+      },
+      "name": "updateContact-updated",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "9d00a774-21e4-5b87-b8be-b600822b8074",
+      "exchanges": [
+        {
+          "body": "not found",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestBody": {
+            "name": "Ada Lovelace",
+            "title": "Analyst"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "leadId": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d00a774-21e4-5b87-b8be-b600822b8074",
+      "input": {
+        "contactId": "cont_meridian1",
+        "name": "Ada Lovelace",
+        "title": "Analyst"
+      },
+      "name": "updateContact-notFound",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "9d00a774-21e4-5b87-b8be-b600822b8074",
+      "exchanges": [
+        {
+          "body": "secret SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestBody": {
+            "name": "Ada Lovelace",
+            "title": "Analyst"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "leadId": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d00a774-21e4-5b87-b8be-b600822b8074",
+      "input": {
+        "contactId": "cont_meridian1",
+        "name": "Ada Lovelace",
+        "title": "Analyst"
+      },
+      "name": "updateContact-providerRejected",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "9d00a774-21e4-5b87-b8be-b600822b8074",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestBody": {
+            "name": "Ada Lovelace",
+            "title": "Analyst"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "leadId": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d00a774-21e4-5b87-b8be-b600822b8074",
+      "input": {
+        "contactId": "cont_meridian1",
+        "name": "Ada Lovelace",
+        "title": "Analyst"
+      },
+      "name": "updateContact-invalidResponse",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "9d00a774-21e4-5b87-b8be-b600822b8074",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "leadId": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d00a774-21e4-5b87-b8be-b600822b8074",
+      "input": {
+        "contactId": "",
+        "name": "Ada Lovelace",
+        "title": "Analyst"
+      },
+      "name": "updateContact-defect",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "9d00a774-21e4-5b87-b8be-b600822b8074",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestBody": {
+            "name": "Ada Lovelace",
+            "title": "Analyst"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d00a774-21e4-5b87-b8be-b600822b8074",
+      "input": {
+        "contactId": "cont_meridian1",
+        "name": "Ada Lovelace",
+        "title": "Analyst"
+      },
+      "name": "updateContact-rateLimit",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "9d00a774-21e4-5b87-b8be-b600822b8074",
+      "exchanges": [
+        {
+          "body": "temporarily unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestBody": {
+            "name": "Ada Lovelace",
+            "title": "Analyst"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d00a774-21e4-5b87-b8be-b600822b8074",
+      "input": {
+        "contactId": "cont_meridian1",
+        "name": "Ada Lovelace",
+        "title": "Analyst"
+      },
+      "name": "updateContact-serverUnavailable",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "9d00a774-21e4-5b87-b8be-b600822b8074",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestBody": {
+            "name": "Ada Lovelace",
+            "title": "Analyst"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d00a774-21e4-5b87-b8be-b600822b8074",
+      "input": {
+        "contactId": "cont_meridian1",
+        "name": "Ada Lovelace",
+        "title": "Analyst"
+      },
+      "name": "updateContact-transportFailure",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "809980dd-a297-58d9-9e8d-d4abe0c93aa5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "contactId": "cont_meridian1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "809980dd-a297-58d9-9e8d-d4abe0c93aa5",
+      "input": {
+        "contactId": "cont_meridian1"
+      },
+      "name": "deleteContact-deleted",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "809980dd-a297-58d9-9e8d-d4abe0c93aa5",
+      "exchanges": [
+        {
+          "body": "not found",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "contactId": "cont_meridian1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "809980dd-a297-58d9-9e8d-d4abe0c93aa5",
+      "input": {
+        "contactId": "cont_meridian1"
+      },
+      "name": "deleteContact-alreadyAbsent",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "809980dd-a297-58d9-9e8d-d4abe0c93aa5",
+      "exchanges": [
+        {
+          "body": "secret SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "contactId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "809980dd-a297-58d9-9e8d-d4abe0c93aa5",
+      "input": {
+        "contactId": "cont_meridian1"
+      },
+      "name": "deleteContact-providerRejected",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "809980dd-a297-58d9-9e8d-d4abe0c93aa5",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contactId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "809980dd-a297-58d9-9e8d-d4abe0c93aa5",
+      "input": {
+        "contactId": "cont_meridian1"
+      },
+      "name": "deleteContact-invalidResponse",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "809980dd-a297-58d9-9e8d-d4abe0c93aa5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "809980dd-a297-58d9-9e8d-d4abe0c93aa5",
+      "input": {
+        "contactId": ""
+      },
+      "name": "deleteContact-defect",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "809980dd-a297-58d9-9e8d-d4abe0c93aa5",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "809980dd-a297-58d9-9e8d-d4abe0c93aa5",
+      "input": {
+        "contactId": "cont_meridian1"
+      },
+      "name": "deleteContact-rateLimit",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "809980dd-a297-58d9-9e8d-d4abe0c93aa5",
+      "exchanges": [
+        {
+          "body": "temporarily unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "809980dd-a297-58d9-9e8d-d4abe0c93aa5",
+      "input": {
+        "contactId": "cont_meridian1"
+      },
+      "name": "deleteContact-serverUnavailable",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "809980dd-a297-58d9-9e8d-d4abe0c93aa5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/contact/cont_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "809980dd-a297-58d9-9e8d-d4abe0c93aa5",
+      "input": {
+        "contactId": "cont_meridian1"
+      },
+      "name": "deleteContact-transportFailure",
+      "operation": "deleteContact"
+    },
+    {
       "callId": "ce6820f9-d99c-5111-9087-4d93211349cd",
       "exchanges": [
         {

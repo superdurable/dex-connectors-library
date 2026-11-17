@@ -17,9 +17,15 @@ import (
 
 // Mock is a scripted close connection. Script each operation through its accessor.
 type Mock struct {
-	connection close.Connection
-	listLeads  *connectormock.Query[close.ListLeadsInput, close.LeadPage]
-	getLead    *connectormock.Query[close.GetLeadInput, close.Lead]
+	connection    close.Connection
+	listLeads     *connectormock.Query[close.ListLeadsInput, close.LeadPage]
+	updateLead    *connectormock.Mutation[close.UpdateLeadInput, close.Lead]
+	deleteLead    *connectormock.Mutation[close.DeleteLeadInput, close.DeletedLead]
+	listContacts  *connectormock.Query[close.ListContactsInput, close.ContactPage]
+	getContact    *connectormock.Query[close.GetContactInput, close.Contact]
+	updateContact *connectormock.Mutation[close.UpdateContactInput, close.Contact]
+	deleteContact *connectormock.Mutation[close.DeleteContactInput, close.DeletedContact]
+	getLead       *connectormock.Query[close.GetLeadInput, close.Lead]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,10 +33,22 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listLeads: connectormock.NewQuery[close.ListLeadsInput, close.LeadPage](t, close.ListLeadsDefinition),
-		getLead:   connectormock.NewQuery[close.GetLeadInput, close.Lead](t, close.GetLeadDefinition),
+		listLeads:     connectormock.NewQuery[close.ListLeadsInput, close.LeadPage](t, close.ListLeadsDefinition),
+		updateLead:    connectormock.NewMutation[close.UpdateLeadInput, close.Lead](t, close.UpdateLeadDefinition),
+		deleteLead:    connectormock.NewMutation[close.DeleteLeadInput, close.DeletedLead](t, close.DeleteLeadDefinition),
+		listContacts:  connectormock.NewQuery[close.ListContactsInput, close.ContactPage](t, close.ListContactsDefinition),
+		getContact:    connectormock.NewQuery[close.GetContactInput, close.Contact](t, close.GetContactDefinition),
+		updateContact: connectormock.NewMutation[close.UpdateContactInput, close.Contact](t, close.UpdateContactDefinition),
+		deleteContact: connectormock.NewMutation[close.DeleteContactInput, close.DeletedContact](t, close.DeleteContactDefinition),
+		getLead:       connectormock.NewQuery[close.GetLeadInput, close.Lead](t, close.GetLeadDefinition),
 	}
 	mock.listLeads.Default(ListLeadsDefault())
+	mock.updateLead.Default(UpdateLeadDefault())
+	mock.deleteLead.Default(DeleteLeadDefault())
+	mock.listContacts.Default(ListContactsDefault())
+	mock.getContact.Default(GetContactDefault())
+	mock.updateContact.Default(UpdateContactDefault())
+	mock.deleteContact.Default(DeleteContactDefault())
 	mock.getLead.Default(GetLeadDefault())
 	connection, err := close.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "close", Name: connectionName})
 	if err != nil {
@@ -48,6 +66,36 @@ func (mock *Mock) ListLeads() *connectormock.Query[close.ListLeadsInput, close.L
 	return mock.listLeads
 }
 
+// UpdateLead returns the updateLead script.
+func (mock *Mock) UpdateLead() *connectormock.Mutation[close.UpdateLeadInput, close.Lead] {
+	return mock.updateLead
+}
+
+// DeleteLead returns the deleteLead script.
+func (mock *Mock) DeleteLead() *connectormock.Mutation[close.DeleteLeadInput, close.DeletedLead] {
+	return mock.deleteLead
+}
+
+// ListContacts returns the listContacts script.
+func (mock *Mock) ListContacts() *connectormock.Query[close.ListContactsInput, close.ContactPage] {
+	return mock.listContacts
+}
+
+// GetContact returns the getContact script.
+func (mock *Mock) GetContact() *connectormock.Query[close.GetContactInput, close.Contact] {
+	return mock.getContact
+}
+
+// UpdateContact returns the updateContact script.
+func (mock *Mock) UpdateContact() *connectormock.Mutation[close.UpdateContactInput, close.Contact] {
+	return mock.updateContact
+}
+
+// DeleteContact returns the deleteContact script.
+func (mock *Mock) DeleteContact() *connectormock.Mutation[close.DeleteContactInput, close.DeletedContact] {
+	return mock.deleteContact
+}
+
 // GetLead returns the getLead script.
 func (mock *Mock) GetLead() *connectormock.Query[close.GetLeadInput, close.Lead] { return mock.getLead }
 
@@ -55,6 +103,24 @@ type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListLeads() sdkgo.Query[close.ListLeadsInput, close.LeadPage] {
 	return operations.mock.listLeads
+}
+func (operations mockOperations) UpdateLead() sdkgo.Mutation[close.UpdateLeadInput, close.Lead] {
+	return operations.mock.updateLead
+}
+func (operations mockOperations) DeleteLead() sdkgo.Mutation[close.DeleteLeadInput, close.DeletedLead] {
+	return operations.mock.deleteLead
+}
+func (operations mockOperations) ListContacts() sdkgo.Query[close.ListContactsInput, close.ContactPage] {
+	return operations.mock.listContacts
+}
+func (operations mockOperations) GetContact() sdkgo.Query[close.GetContactInput, close.Contact] {
+	return operations.mock.getContact
+}
+func (operations mockOperations) UpdateContact() sdkgo.Mutation[close.UpdateContactInput, close.Contact] {
+	return operations.mock.updateContact
+}
+func (operations mockOperations) DeleteContact() sdkgo.Mutation[close.DeleteContactInput, close.DeletedContact] {
+	return operations.mock.deleteContact
 }
 func (operations mockOperations) GetLead() sdkgo.Query[close.GetLeadInput, close.Lead] {
 	return operations.mock.getLead
@@ -99,6 +165,227 @@ func ListLeadsInvalidKey() connectormock.Case[close.LeadPage] {
 
 // ListLeadsDefault is the manifest default, defaultAnswer, which New installs.
 func ListLeadsDefault() connectormock.Case[close.LeadPage] { return ListLeadsDefaultAnswer() }
+
+// UpdateLeadUpdated selects the updated branch: Close returned the updated lead.
+func UpdateLeadUpdated(value close.Lead, failure *sdkgo.Failure) connectormock.Case[close.Lead] {
+	return connectormock.Branch(close.UpdateLeadBranchUpdated, value, failure)
+}
+
+// UpdateLeadNotFound selects the notFound branch: The lead does not exist.
+func UpdateLeadNotFound(value close.Lead, failure *sdkgo.Failure) connectormock.Case[close.Lead] {
+	return connectormock.Branch(close.UpdateLeadBranchNotFound, value, failure)
+}
+
+// UpdateLeadProviderRejected selects the providerRejected branch: Close conclusively rejected the update.
+func UpdateLeadProviderRejected(value close.Lead, failure *sdkgo.Failure) connectormock.Case[close.Lead] {
+	return connectormock.Branch(close.UpdateLeadBranchProviderRejected, value, failure)
+}
+
+// UpdateLeadInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func UpdateLeadInvalidResponse(value close.Lead, failure *sdkgo.Failure) connectormock.Case[close.Lead] {
+	return connectormock.Branch(close.UpdateLeadBranchInvalidResponse, value, failure)
+}
+
+// UpdateLeadDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateLeadDefect(value close.Lead, failure *sdkgo.Failure) connectormock.Case[close.Lead] {
+	return connectormock.Branch(close.UpdateLeadBranchDefect, value, failure)
+}
+
+// UpdateLeadRetry asks Dex to retry the updateLead Step, after the delay when it is positive.
+func UpdateLeadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.Lead] {
+	return connectormock.Retry[close.Lead](failure, after)
+}
+
+// UpdateLeadUpdatedDefault is the manifest mock updatedDefault: Meridian Labs was renamed.
+func UpdateLeadUpdatedDefault() connectormock.Case[close.Lead] {
+	value := connectormock.MustDecodeOutput[close.Lead](`{"id":"lead_meridian1","name":"Meridian Research"}`)
+	return connectormock.Branch(close.UpdateLeadBranchUpdated, value, nil)
+}
+
+// UpdateLeadDefault is the manifest default, updatedDefault, which New installs.
+func UpdateLeadDefault() connectormock.Case[close.Lead] { return UpdateLeadUpdatedDefault() }
+
+// DeleteLeadDeleted selects the deleted branch: Close accepted deletion or the lead is already absent.
+func DeleteLeadDeleted(value close.DeletedLead, failure *sdkgo.Failure) connectormock.Case[close.DeletedLead] {
+	return connectormock.Branch(close.DeleteLeadBranchDeleted, value, failure)
+}
+
+// DeleteLeadProviderRejected selects the providerRejected branch: Close conclusively rejected the deletion.
+func DeleteLeadProviderRejected(value close.DeletedLead, failure *sdkgo.Failure) connectormock.Case[close.DeletedLead] {
+	return connectormock.Branch(close.DeleteLeadBranchProviderRejected, value, failure)
+}
+
+// DeleteLeadInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func DeleteLeadInvalidResponse(value close.DeletedLead, failure *sdkgo.Failure) connectormock.Case[close.DeletedLead] {
+	return connectormock.Branch(close.DeleteLeadBranchInvalidResponse, value, failure)
+}
+
+// DeleteLeadDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteLeadDefect(value close.DeletedLead, failure *sdkgo.Failure) connectormock.Case[close.DeletedLead] {
+	return connectormock.Branch(close.DeleteLeadBranchDefect, value, failure)
+}
+
+// DeleteLeadRetry asks Dex to retry the deleteLead Step, after the delay when it is positive.
+func DeleteLeadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.DeletedLead] {
+	return connectormock.Retry[close.DeletedLead](failure, after)
+}
+
+// DeleteLeadDeletedDefault is the manifest mock deletedDefault: Meridian Labs was deleted.
+func DeleteLeadDeletedDefault() connectormock.Case[close.DeletedLead] {
+	value := connectormock.MustDecodeOutput[close.DeletedLead](`{"leadId":"lead_meridian1"}`)
+	return connectormock.Branch(close.DeleteLeadBranchDeleted, value, nil)
+}
+
+// DeleteLeadDefault is the manifest default, deletedDefault, which New installs.
+func DeleteLeadDefault() connectormock.Case[close.DeletedLead] { return DeleteLeadDeletedDefault() }
+
+// ListContactsListed selects the listed branch: Close returned the contact page.
+func ListContactsListed(value close.ContactPage, failure *sdkgo.Failure) connectormock.Case[close.ContactPage] {
+	return connectormock.Branch(close.ListContactsBranchListed, value, failure)
+}
+
+// ListContactsProviderRejected selects the providerRejected branch: Close conclusively rejected the read.
+func ListContactsProviderRejected(value close.ContactPage, failure *sdkgo.Failure) connectormock.Case[close.ContactPage] {
+	return connectormock.Branch(close.ListContactsBranchProviderRejected, value, failure)
+}
+
+// ListContactsInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func ListContactsInvalidResponse(value close.ContactPage, failure *sdkgo.Failure) connectormock.Case[close.ContactPage] {
+	return connectormock.Branch(close.ListContactsBranchInvalidResponse, value, failure)
+}
+
+// ListContactsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListContactsDefect(value close.ContactPage, failure *sdkgo.Failure) connectormock.Case[close.ContactPage] {
+	return connectormock.Branch(close.ListContactsBranchDefect, value, failure)
+}
+
+// ListContactsRetry asks Dex to retry the listContacts Step, after the delay when it is positive.
+func ListContactsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.ContactPage] {
+	return connectormock.Retry[close.ContactPage](failure, after)
+}
+
+// ListContactsListedDefault is the manifest mock listedDefault: Meridian Labs has one sample contact.
+func ListContactsListedDefault() connectormock.Case[close.ContactPage] {
+	value := connectormock.MustDecodeOutput[close.ContactPage](`{"contacts":[{"id":"cont_meridian1","name":"Ada","leadId":"lead_meridian1"}],"hasMore":false}`)
+	return connectormock.Branch(close.ListContactsBranchListed, value, nil)
+}
+
+// ListContactsDefault is the manifest default, listedDefault, which New installs.
+func ListContactsDefault() connectormock.Case[close.ContactPage] { return ListContactsListedDefault() }
+
+// GetContactFound selects the found branch: Close returned the contact.
+func GetContactFound(value close.Contact, failure *sdkgo.Failure) connectormock.Case[close.Contact] {
+	return connectormock.Branch(close.GetContactBranchFound, value, failure)
+}
+
+// GetContactNotFound selects the notFound branch: The contact does not exist.
+func GetContactNotFound(value close.Contact, failure *sdkgo.Failure) connectormock.Case[close.Contact] {
+	return connectormock.Branch(close.GetContactBranchNotFound, value, failure)
+}
+
+// GetContactProviderRejected selects the providerRejected branch: Close conclusively rejected the read.
+func GetContactProviderRejected(value close.Contact, failure *sdkgo.Failure) connectormock.Case[close.Contact] {
+	return connectormock.Branch(close.GetContactBranchProviderRejected, value, failure)
+}
+
+// GetContactInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func GetContactInvalidResponse(value close.Contact, failure *sdkgo.Failure) connectormock.Case[close.Contact] {
+	return connectormock.Branch(close.GetContactBranchInvalidResponse, value, failure)
+}
+
+// GetContactDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetContactDefect(value close.Contact, failure *sdkgo.Failure) connectormock.Case[close.Contact] {
+	return connectormock.Branch(close.GetContactBranchDefect, value, failure)
+}
+
+// GetContactRetry asks Dex to retry the getContact Step, after the delay when it is positive.
+func GetContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.Contact] {
+	return connectormock.Retry[close.Contact](failure, after)
+}
+
+// GetContactFoundDefault is the manifest mock foundDefault: Meridian Labs contact Ada is returned.
+func GetContactFoundDefault() connectormock.Case[close.Contact] {
+	value := connectormock.MustDecodeOutput[close.Contact](`{"id":"cont_meridian1","name":"Ada","leadId":"lead_meridian1"}`)
+	return connectormock.Branch(close.GetContactBranchFound, value, nil)
+}
+
+// GetContactDefault is the manifest default, foundDefault, which New installs.
+func GetContactDefault() connectormock.Case[close.Contact] { return GetContactFoundDefault() }
+
+// UpdateContactUpdated selects the updated branch: Close returned the updated contact.
+func UpdateContactUpdated(value close.Contact, failure *sdkgo.Failure) connectormock.Case[close.Contact] {
+	return connectormock.Branch(close.UpdateContactBranchUpdated, value, failure)
+}
+
+// UpdateContactNotFound selects the notFound branch: The contact does not exist.
+func UpdateContactNotFound(value close.Contact, failure *sdkgo.Failure) connectormock.Case[close.Contact] {
+	return connectormock.Branch(close.UpdateContactBranchNotFound, value, failure)
+}
+
+// UpdateContactProviderRejected selects the providerRejected branch: Close conclusively rejected the update.
+func UpdateContactProviderRejected(value close.Contact, failure *sdkgo.Failure) connectormock.Case[close.Contact] {
+	return connectormock.Branch(close.UpdateContactBranchProviderRejected, value, failure)
+}
+
+// UpdateContactInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func UpdateContactInvalidResponse(value close.Contact, failure *sdkgo.Failure) connectormock.Case[close.Contact] {
+	return connectormock.Branch(close.UpdateContactBranchInvalidResponse, value, failure)
+}
+
+// UpdateContactDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateContactDefect(value close.Contact, failure *sdkgo.Failure) connectormock.Case[close.Contact] {
+	return connectormock.Branch(close.UpdateContactBranchDefect, value, failure)
+}
+
+// UpdateContactRetry asks Dex to retry the updateContact Step, after the delay when it is positive.
+func UpdateContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.Contact] {
+	return connectormock.Retry[close.Contact](failure, after)
+}
+
+// UpdateContactUpdatedDefault is the manifest mock updatedDefault: Meridian Labs contact Ada has a new title.
+func UpdateContactUpdatedDefault() connectormock.Case[close.Contact] {
+	value := connectormock.MustDecodeOutput[close.Contact](`{"id":"cont_meridian1","name":"Ada","leadId":"lead_meridian1"}`)
+	return connectormock.Branch(close.UpdateContactBranchUpdated, value, nil)
+}
+
+// UpdateContactDefault is the manifest default, updatedDefault, which New installs.
+func UpdateContactDefault() connectormock.Case[close.Contact] { return UpdateContactUpdatedDefault() }
+
+// DeleteContactDeleted selects the deleted branch: Close accepted deletion or the contact is already absent.
+func DeleteContactDeleted(value close.DeletedContact, failure *sdkgo.Failure) connectormock.Case[close.DeletedContact] {
+	return connectormock.Branch(close.DeleteContactBranchDeleted, value, failure)
+}
+
+// DeleteContactProviderRejected selects the providerRejected branch: Close conclusively rejected the deletion.
+func DeleteContactProviderRejected(value close.DeletedContact, failure *sdkgo.Failure) connectormock.Case[close.DeletedContact] {
+	return connectormock.Branch(close.DeleteContactBranchProviderRejected, value, failure)
+}
+
+// DeleteContactInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func DeleteContactInvalidResponse(value close.DeletedContact, failure *sdkgo.Failure) connectormock.Case[close.DeletedContact] {
+	return connectormock.Branch(close.DeleteContactBranchInvalidResponse, value, failure)
+}
+
+// DeleteContactDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteContactDefect(value close.DeletedContact, failure *sdkgo.Failure) connectormock.Case[close.DeletedContact] {
+	return connectormock.Branch(close.DeleteContactBranchDefect, value, failure)
+}
+
+// DeleteContactRetry asks Dex to retry the deleteContact Step, after the delay when it is positive.
+func DeleteContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.DeletedContact] {
+	return connectormock.Retry[close.DeletedContact](failure, after)
+}
+
+// DeleteContactDeletedDefault is the manifest mock deletedDefault: Meridian Labs contact Ada was deleted.
+func DeleteContactDeletedDefault() connectormock.Case[close.DeletedContact] {
+	value := connectormock.MustDecodeOutput[close.DeletedContact](`{"contactId":"cont_meridian1"}`)
+	return connectormock.Branch(close.DeleteContactBranchDeleted, value, nil)
+}
+
+// DeleteContactDefault is the manifest default, deletedDefault, which New installs.
+func DeleteContactDefault() connectormock.Case[close.DeletedContact] {
+	return DeleteContactDeletedDefault()
+}
 
 // GetLeadFound selects the found branch: Close returned the requested data.
 func GetLeadFound(value close.Lead, failure *sdkgo.Failure) connectormock.Case[close.Lead] {

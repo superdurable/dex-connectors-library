@@ -21,7 +21,13 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listLeads": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListLeads(), connection),
-		"getLead":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetLead(), connection),
+		"listLeads":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListLeads(), connection),
+		"getLead":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetLead(), connection),
+		"updateLead":    newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateLead(), connection, scenario.CallID),
+		"deleteLead":    newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteLead(), connection, scenario.CallID),
+		"listContacts":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListContacts(), connection),
+		"getContact":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetContact(), connection),
+		"updateContact": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateContact(), connection, scenario.CallID),
+		"deleteContact": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteContact(), connection, scenario.CallID),
 	}}
 }

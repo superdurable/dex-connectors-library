@@ -20,6 +20,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[close.LeadPage](`{"leads":[{"id":"lead_meridian1","name":"Meridian Labs"}],"hasMore":false}`)
 			return err
 		}},
+		{name: "updateLead/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Lead](`{"id":"lead_meridian1","name":"Meridian Research"}`)
+			return err
+		}},
+		{name: "deleteLead/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.DeletedLead](`{"leadId":"lead_meridian1"}`)
+			return err
+		}},
+		{name: "listContacts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.ContactPage](`{"contacts":[{"id":"cont_meridian1","name":"Ada","leadId":"lead_meridian1"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getContact/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Contact](`{"id":"cont_meridian1","name":"Ada","leadId":"lead_meridian1"}`)
+			return err
+		}},
+		{name: "updateContact/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Contact](`{"id":"cont_meridian1","name":"Ada","leadId":"lead_meridian1"}`)
+			return err
+		}},
+		{name: "deleteContact/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.DeletedContact](`{"contactId":"cont_meridian1"}`)
+			return err
+		}},
 		{name: "getLead/defaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[close.Lead](`{"id":"lead_meridian1","name":"Meridian Labs"}`)
 			return err
@@ -36,6 +60,24 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.ListLeads().Definition().Operation.OperationID != "listLeads" {
 		t.Errorf("listLeads mock has another definition")
+	}
+	if mock.UpdateLead().Definition().Operation.OperationID != "updateLead" {
+		t.Errorf("updateLead mock has another definition")
+	}
+	if mock.DeleteLead().Definition().Operation.OperationID != "deleteLead" {
+		t.Errorf("deleteLead mock has another definition")
+	}
+	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
+		t.Errorf("listContacts mock has another definition")
+	}
+	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
+		t.Errorf("getContact mock has another definition")
+	}
+	if mock.UpdateContact().Definition().Operation.OperationID != "updateContact" {
+		t.Errorf("updateContact mock has another definition")
+	}
+	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
+		t.Errorf("deleteContact mock has another definition")
 	}
 	if mock.GetLead().Definition().Operation.OperationID != "getLead" {
 		t.Errorf("getLead mock has another definition")

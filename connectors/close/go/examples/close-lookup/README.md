@@ -1,10 +1,10 @@
 # Close lookup example
 
-This Worker registers `CloseLookup` with static connection name `close`. It calls `listLeads and getLead` in one typed Flow.
+This Worker registers `CloseLookup` with static connection name `close`. It calls `listLeads`, `getLead`, and Go `listContacts` in one typed Flow.
 
 ## Generate and run
 
-From `connectors/close`, generate strict FDG 2.0 from the checked-in Flow source:
+From `connectors/close/go`, generate strict FDG 2.0 from the checked-in Flow source:
 
 ```bash
 mkdir -p /tmp/close-lookup-fdg
@@ -19,11 +19,11 @@ mkdir -p /tmp/close-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/close/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/close/go \
-  --version v0.2.0 --tag connectors/close/go/v0.2.0 \
+  --version v0.3.0 --tag connectors/close/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/close-release/connector-release.json \
   --digest-output /tmp/close-release/connector-release.json.sha256
-dexcli dev \
+dexcli dev -open=false \
   --flow-rendering-dir /tmp/close-lookup-fdg \
   --connector-release-override close=/tmp/close-release
 ```
