@@ -40,6 +40,11 @@ type Mock struct {
 	createInvoice                    *connectormock.Mutation[harvest.CreateInvoiceInput, harvest.InvoiceRecord]
 	updateInvoice                    *connectormock.Mutation[harvest.UpdateInvoiceInput, harvest.InvoiceRecord]
 	deleteInvoice                    *connectormock.Mutation[harvest.DeleteInvoiceInput, harvest.DeletedInvoice]
+	listExpenses                     *connectormock.Query[harvest.ListExpensesInput, harvest.ExpensePage]
+	getExpense                       *connectormock.Query[harvest.GetExpenseInput, harvest.ExpenseRecord]
+	createExpense                    *connectormock.Mutation[harvest.CreateExpenseInput, harvest.ExpenseRecord]
+	updateExpense                    *connectormock.Mutation[harvest.UpdateExpenseInput, harvest.ExpenseRecord]
+	deleteExpense                    *connectormock.Mutation[harvest.DeleteExpenseInput, harvest.DeletedExpense]
 	listUsers                        *connectormock.Query[harvest.ListUsersInput, harvest.UserPage]
 	getUser                          *connectormock.Query[harvest.GetUserInput, harvest.UserRecord]
 	getCurrentUser                   *connectormock.Query[harvest.GetCurrentUserInput, harvest.UserRecord]
@@ -88,6 +93,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		createInvoice:                    connectormock.NewMutation[harvest.CreateInvoiceInput, harvest.InvoiceRecord](t, harvest.CreateInvoiceDefinition),
 		updateInvoice:                    connectormock.NewMutation[harvest.UpdateInvoiceInput, harvest.InvoiceRecord](t, harvest.UpdateInvoiceDefinition),
 		deleteInvoice:                    connectormock.NewMutation[harvest.DeleteInvoiceInput, harvest.DeletedInvoice](t, harvest.DeleteInvoiceDefinition),
+		listExpenses:                     connectormock.NewQuery[harvest.ListExpensesInput, harvest.ExpensePage](t, harvest.ListExpensesDefinition),
+		getExpense:                       connectormock.NewQuery[harvest.GetExpenseInput, harvest.ExpenseRecord](t, harvest.GetExpenseDefinition),
+		createExpense:                    connectormock.NewMutation[harvest.CreateExpenseInput, harvest.ExpenseRecord](t, harvest.CreateExpenseDefinition),
+		updateExpense:                    connectormock.NewMutation[harvest.UpdateExpenseInput, harvest.ExpenseRecord](t, harvest.UpdateExpenseDefinition),
+		deleteExpense:                    connectormock.NewMutation[harvest.DeleteExpenseInput, harvest.DeletedExpense](t, harvest.DeleteExpenseDefinition),
 		listUsers:                        connectormock.NewQuery[harvest.ListUsersInput, harvest.UserPage](t, harvest.ListUsersDefinition),
 		getUser:                          connectormock.NewQuery[harvest.GetUserInput, harvest.UserRecord](t, harvest.GetUserDefinition),
 		getCurrentUser:                   connectormock.NewQuery[harvest.GetCurrentUserInput, harvest.UserRecord](t, harvest.GetCurrentUserDefinition),
@@ -130,6 +140,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createInvoice.Default(CreateInvoiceDefault())
 	mock.updateInvoice.Default(UpdateInvoiceDefault())
 	mock.deleteInvoice.Default(DeleteInvoiceDefault())
+	mock.listExpenses.Default(ListExpensesDefault())
+	mock.getExpense.Default(GetExpenseDefault())
+	mock.createExpense.Default(CreateExpenseDefault())
+	mock.updateExpense.Default(UpdateExpenseDefault())
+	mock.deleteExpense.Default(DeleteExpenseDefault())
 	mock.listUsers.Default(ListUsersDefault())
 	mock.getUser.Default(GetUserDefault())
 	mock.getCurrentUser.Default(GetCurrentUserDefault())
@@ -268,6 +283,31 @@ func (mock *Mock) UpdateInvoice() *connectormock.Mutation[harvest.UpdateInvoiceI
 // DeleteInvoice returns the deleteInvoice script.
 func (mock *Mock) DeleteInvoice() *connectormock.Mutation[harvest.DeleteInvoiceInput, harvest.DeletedInvoice] {
 	return mock.deleteInvoice
+}
+
+// ListExpenses returns the listExpenses script.
+func (mock *Mock) ListExpenses() *connectormock.Query[harvest.ListExpensesInput, harvest.ExpensePage] {
+	return mock.listExpenses
+}
+
+// GetExpense returns the getExpense script.
+func (mock *Mock) GetExpense() *connectormock.Query[harvest.GetExpenseInput, harvest.ExpenseRecord] {
+	return mock.getExpense
+}
+
+// CreateExpense returns the createExpense script.
+func (mock *Mock) CreateExpense() *connectormock.Mutation[harvest.CreateExpenseInput, harvest.ExpenseRecord] {
+	return mock.createExpense
+}
+
+// UpdateExpense returns the updateExpense script.
+func (mock *Mock) UpdateExpense() *connectormock.Mutation[harvest.UpdateExpenseInput, harvest.ExpenseRecord] {
+	return mock.updateExpense
+}
+
+// DeleteExpense returns the deleteExpense script.
+func (mock *Mock) DeleteExpense() *connectormock.Mutation[harvest.DeleteExpenseInput, harvest.DeletedExpense] {
+	return mock.deleteExpense
 }
 
 // ListUsers returns the listUsers script.
@@ -432,6 +472,21 @@ func (operations mockOperations) UpdateInvoice() sdkgo.Mutation[harvest.UpdateIn
 }
 func (operations mockOperations) DeleteInvoice() sdkgo.Mutation[harvest.DeleteInvoiceInput, harvest.DeletedInvoice] {
 	return operations.mock.deleteInvoice
+}
+func (operations mockOperations) ListExpenses() sdkgo.Query[harvest.ListExpensesInput, harvest.ExpensePage] {
+	return operations.mock.listExpenses
+}
+func (operations mockOperations) GetExpense() sdkgo.Query[harvest.GetExpenseInput, harvest.ExpenseRecord] {
+	return operations.mock.getExpense
+}
+func (operations mockOperations) CreateExpense() sdkgo.Mutation[harvest.CreateExpenseInput, harvest.ExpenseRecord] {
+	return operations.mock.createExpense
+}
+func (operations mockOperations) UpdateExpense() sdkgo.Mutation[harvest.UpdateExpenseInput, harvest.ExpenseRecord] {
+	return operations.mock.updateExpense
+}
+func (operations mockOperations) DeleteExpense() sdkgo.Mutation[harvest.DeleteExpenseInput, harvest.DeletedExpense] {
+	return operations.mock.deleteExpense
 }
 func (operations mockOperations) ListUsers() sdkgo.Query[harvest.ListUsersInput, harvest.UserPage] {
 	return operations.mock.listUsers
@@ -1276,6 +1331,189 @@ func DeleteInvoiceDefaultAnswer() connectormock.Case[harvest.DeletedInvoice] {
 // DeleteInvoiceDefault is the manifest default, defaultAnswer, which New installs.
 func DeleteInvoiceDefault() connectormock.Case[harvest.DeletedInvoice] {
 	return DeleteInvoiceDefaultAnswer()
+}
+
+// ListExpensesListed selects the listed branch: Harvest confirmed the expense result.
+func ListExpensesListed(value harvest.ExpensePage, failure *sdkgo.Failure) connectormock.Case[harvest.ExpensePage] {
+	return connectormock.Branch(harvest.ListExpensesBranchListed, value, failure)
+}
+
+// ListExpensesProviderRejected selects the providerRejected branch: Harvest rejected the expense operation.
+func ListExpensesProviderRejected(value harvest.ExpensePage, failure *sdkgo.Failure) connectormock.Case[harvest.ExpensePage] {
+	return connectormock.Branch(harvest.ListExpensesBranchProviderRejected, value, failure)
+}
+
+// ListExpensesInvalidResponse selects the invalidResponse branch: Harvest returned unusable JSON.
+func ListExpensesInvalidResponse(value harvest.ExpensePage, failure *sdkgo.Failure) connectormock.Case[harvest.ExpensePage] {
+	return connectormock.Branch(harvest.ListExpensesBranchInvalidResponse, value, failure)
+}
+
+// ListExpensesDefect selects the defect branch: Local input or credentials are invalid.
+func ListExpensesDefect(value harvest.ExpensePage, failure *sdkgo.Failure) connectormock.Case[harvest.ExpensePage] {
+	return connectormock.Branch(harvest.ListExpensesBranchDefect, value, failure)
+}
+
+// ListExpensesRetry asks Dex to retry the listExpenses Step, after the delay when it is positive.
+func ListExpensesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.ExpensePage] {
+	return connectormock.Retry[harvest.ExpensePage](failure, after)
+}
+
+// ListExpensesDefaultAnswer is the manifest mock defaultAnswer: A Meridian expense result.
+func ListExpensesDefaultAnswer() connectormock.Case[harvest.ExpensePage] {
+	value := connectormock.MustDecodeOutput[harvest.ExpensePage](`{"expenses":[{"id":10001,"projectId":3001,"categoryId":11001,"notes":"Team lunch","totalCost":45,"spentDate":"2026-11-01","billable":true}]}`)
+	return connectormock.Branch(harvest.ListExpensesBranchListed, value, nil)
+}
+
+// ListExpensesDefault is the manifest default, defaultAnswer, which New installs.
+func ListExpensesDefault() connectormock.Case[harvest.ExpensePage] {
+	return ListExpensesDefaultAnswer()
+}
+
+// GetExpenseFound selects the found branch: Harvest confirmed the expense result.
+func GetExpenseFound(value harvest.ExpenseRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ExpenseRecord] {
+	return connectormock.Branch(harvest.GetExpenseBranchFound, value, failure)
+}
+
+// GetExpenseNotFound selects the notFound branch: The expense ID does not exist.
+func GetExpenseNotFound(value harvest.ExpenseRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ExpenseRecord] {
+	return connectormock.Branch(harvest.GetExpenseBranchNotFound, value, failure)
+}
+
+// GetExpenseProviderRejected selects the providerRejected branch: Harvest rejected the expense operation.
+func GetExpenseProviderRejected(value harvest.ExpenseRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ExpenseRecord] {
+	return connectormock.Branch(harvest.GetExpenseBranchProviderRejected, value, failure)
+}
+
+// GetExpenseInvalidResponse selects the invalidResponse branch: Harvest returned unusable JSON.
+func GetExpenseInvalidResponse(value harvest.ExpenseRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ExpenseRecord] {
+	return connectormock.Branch(harvest.GetExpenseBranchInvalidResponse, value, failure)
+}
+
+// GetExpenseDefect selects the defect branch: Local input or credentials are invalid.
+func GetExpenseDefect(value harvest.ExpenseRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ExpenseRecord] {
+	return connectormock.Branch(harvest.GetExpenseBranchDefect, value, failure)
+}
+
+// GetExpenseRetry asks Dex to retry the getExpense Step, after the delay when it is positive.
+func GetExpenseRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.ExpenseRecord] {
+	return connectormock.Retry[harvest.ExpenseRecord](failure, after)
+}
+
+// GetExpenseDefaultAnswer is the manifest mock defaultAnswer: A Meridian expense result.
+func GetExpenseDefaultAnswer() connectormock.Case[harvest.ExpenseRecord] {
+	value := connectormock.MustDecodeOutput[harvest.ExpenseRecord](`{"id":10001,"projectId":3001,"categoryId":11001,"notes":"Team lunch","totalCost":45,"spentDate":"2026-11-01","billable":true}`)
+	return connectormock.Branch(harvest.GetExpenseBranchFound, value, nil)
+}
+
+// GetExpenseDefault is the manifest default, defaultAnswer, which New installs.
+func GetExpenseDefault() connectormock.Case[harvest.ExpenseRecord] { return GetExpenseDefaultAnswer() }
+
+// CreateExpenseCreated selects the created branch: Harvest confirmed the expense result.
+func CreateExpenseCreated(value harvest.ExpenseRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ExpenseRecord] {
+	return connectormock.Branch(harvest.CreateExpenseBranchCreated, value, failure)
+}
+
+// CreateExpenseProviderRejected selects the providerRejected branch: Harvest rejected the expense operation.
+func CreateExpenseProviderRejected(value harvest.ExpenseRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ExpenseRecord] {
+	return connectormock.Branch(harvest.CreateExpenseBranchProviderRejected, value, failure)
+}
+
+// CreateExpenseUncertain returns an uncertain createExpense outcome.
+func CreateExpenseUncertain(value harvest.ExpenseRecord, failure sdkgo.Failure) connectormock.Case[harvest.ExpenseRecord] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateExpenseDefect selects the defect branch: Local input or credentials are invalid.
+func CreateExpenseDefect(value harvest.ExpenseRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ExpenseRecord] {
+	return connectormock.Branch(harvest.CreateExpenseBranchDefect, value, failure)
+}
+
+// CreateExpenseRetry asks Dex to retry the createExpense Step, after the delay when it is positive.
+func CreateExpenseRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.ExpenseRecord] {
+	return connectormock.Retry[harvest.ExpenseRecord](failure, after)
+}
+
+// CreateExpenseDefaultAnswer is the manifest mock defaultAnswer: A Meridian expense result.
+func CreateExpenseDefaultAnswer() connectormock.Case[harvest.ExpenseRecord] {
+	value := connectormock.MustDecodeOutput[harvest.ExpenseRecord](`{"id":10001,"projectId":3001,"categoryId":11001,"notes":"Team lunch","totalCost":45,"spentDate":"2026-11-01","billable":true}`)
+	return connectormock.Branch(harvest.CreateExpenseBranchCreated, value, nil)
+}
+
+// CreateExpenseDefault is the manifest default, defaultAnswer, which New installs.
+func CreateExpenseDefault() connectormock.Case[harvest.ExpenseRecord] {
+	return CreateExpenseDefaultAnswer()
+}
+
+// UpdateExpenseUpdated selects the updated branch: Harvest confirmed the expense result.
+func UpdateExpenseUpdated(value harvest.ExpenseRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ExpenseRecord] {
+	return connectormock.Branch(harvest.UpdateExpenseBranchUpdated, value, failure)
+}
+
+// UpdateExpenseNotFound selects the notFound branch: The expense ID does not exist.
+func UpdateExpenseNotFound(value harvest.ExpenseRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ExpenseRecord] {
+	return connectormock.Branch(harvest.UpdateExpenseBranchNotFound, value, failure)
+}
+
+// UpdateExpenseProviderRejected selects the providerRejected branch: Harvest rejected the expense operation.
+func UpdateExpenseProviderRejected(value harvest.ExpenseRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ExpenseRecord] {
+	return connectormock.Branch(harvest.UpdateExpenseBranchProviderRejected, value, failure)
+}
+
+// UpdateExpenseDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateExpenseDefect(value harvest.ExpenseRecord, failure *sdkgo.Failure) connectormock.Case[harvest.ExpenseRecord] {
+	return connectormock.Branch(harvest.UpdateExpenseBranchDefect, value, failure)
+}
+
+// UpdateExpenseRetry asks Dex to retry the updateExpense Step, after the delay when it is positive.
+func UpdateExpenseRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.ExpenseRecord] {
+	return connectormock.Retry[harvest.ExpenseRecord](failure, after)
+}
+
+// UpdateExpenseDefaultAnswer is the manifest mock defaultAnswer: A Meridian expense result.
+func UpdateExpenseDefaultAnswer() connectormock.Case[harvest.ExpenseRecord] {
+	value := connectormock.MustDecodeOutput[harvest.ExpenseRecord](`{"id":10001,"projectId":3001,"categoryId":11001,"notes":"Team lunch","totalCost":45,"spentDate":"2026-11-01","billable":true}`)
+	return connectormock.Branch(harvest.UpdateExpenseBranchUpdated, value, nil)
+}
+
+// UpdateExpenseDefault is the manifest default, defaultAnswer, which New installs.
+func UpdateExpenseDefault() connectormock.Case[harvest.ExpenseRecord] {
+	return UpdateExpenseDefaultAnswer()
+}
+
+// DeleteExpenseDeleted selects the deleted branch: Harvest confirmed the expense result.
+func DeleteExpenseDeleted(value harvest.DeletedExpense, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedExpense] {
+	return connectormock.Branch(harvest.DeleteExpenseBranchDeleted, value, failure)
+}
+
+// DeleteExpenseNotFound selects the notFound branch: The expense ID does not exist.
+func DeleteExpenseNotFound(value harvest.DeletedExpense, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedExpense] {
+	return connectormock.Branch(harvest.DeleteExpenseBranchNotFound, value, failure)
+}
+
+// DeleteExpenseProviderRejected selects the providerRejected branch: Harvest rejected the expense operation.
+func DeleteExpenseProviderRejected(value harvest.DeletedExpense, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedExpense] {
+	return connectormock.Branch(harvest.DeleteExpenseBranchProviderRejected, value, failure)
+}
+
+// DeleteExpenseDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteExpenseDefect(value harvest.DeletedExpense, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedExpense] {
+	return connectormock.Branch(harvest.DeleteExpenseBranchDefect, value, failure)
+}
+
+// DeleteExpenseRetry asks Dex to retry the deleteExpense Step, after the delay when it is positive.
+func DeleteExpenseRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.DeletedExpense] {
+	return connectormock.Retry[harvest.DeletedExpense](failure, after)
+}
+
+// DeleteExpenseDefaultAnswer is the manifest mock defaultAnswer: A Meridian expense result.
+func DeleteExpenseDefaultAnswer() connectormock.Case[harvest.DeletedExpense] {
+	value := connectormock.MustDecodeOutput[harvest.DeletedExpense](`{"id":10001}`)
+	return connectormock.Branch(harvest.DeleteExpenseBranchDeleted, value, nil)
+}
+
+// DeleteExpenseDefault is the manifest default, defaultAnswer, which New installs.
+func DeleteExpenseDefault() connectormock.Case[harvest.DeletedExpense] {
+	return DeleteExpenseDefaultAnswer()
 }
 
 // ListUsersListed selects the listed branch: Harvest confirmed the user result.

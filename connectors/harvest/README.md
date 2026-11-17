@@ -29,6 +29,7 @@ The TypeScript package is [`@superdurable/connector-harvest`](typescript/README.
 | `getCompany`, `updateCompany` | [Harvest Company API](https://help.getharvest.com/api-v2/company-api/company/company/) |
 | `listTasks`, `getTask`, `createTask`, `updateTask`, `deleteTask` | [Harvest Tasks API](https://help.getharvest.com/api-v2/tasks-api/tasks/tasks/) |
 | `listInvoices`, `getInvoice`, `createInvoice`, `updateInvoice`, `deleteInvoice` | [Harvest Invoices API](https://help.getharvest.com/api-v2/invoices-api/invoices/invoices/) |
+| `listExpenses`, `getExpense`, `createExpense`, `updateExpense`, `deleteExpense` | [Harvest Expenses API](https://help.getharvest.com/api-v2/expenses-api/expenses/expenses/) |
 
 Each operation returns a bounded, typed response. A 404 on a single-resource read selects `notFound`; other definitive 4xx select `providerRejected`; 408, 409, 429, 5xx, and interrupted reads Retry under the default one-hour budget. Malformed and oversized JSON selects `invalidResponse`. Invalid local input or missing credentials selects `defect` before a request. Provider error bodies are not copied into failures.
 
@@ -48,13 +49,15 @@ Both completed time-entry create operations use the limited tier with at most th
 
 `createInvoice` creates a free-form draft with at least one line item and uses the limited tier with at most three sends. A lost response without a returned invoice ID can select `uncertain`; inspect Harvest before creating another invoice. `updateInvoice` sets absolute header fields and `deleteInvoice` is repeat-safe. Invoice endpoints require Administrator or Manager permissions. Tracked-time imports, line-item edits, payments, messages, and beta e-invoice submission are outside these operations.
 
+`createExpense` creates a cost-based expense without a receipt and uses the limited tier with at most three sends. A lost response without a returned expense ID can select `uncertain`; inspect Harvest before creating another expense. `updateExpense` sets absolute date, cost, notes, and billable fields; `deleteExpense` is repeat-safe. Receipt upload is excluded because Harvest requires multipart file transfer. Beta approval and withdrawal endpoints are excluded.
+
 ## Mocks
 
 The generated `harvestmock` package includes one default Meridian answer per operation and an invalid-key rejection for each. The defaults describe a consistent set of project, lead, sheet, or file records.
 
 ## Example
 
-The runnable [example](go/examples/harvest-lookup/README.md) registers a Worker and a Flow using the static `harvest` connection. It lists projects, reads the first project's details, lists time entries, reads the first time-entry detail, reads the connected user, lists clients and contacts for the first client, reads company settings, lists tasks, and lists invoices. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
+The runnable [example](go/examples/harvest-lookup/README.md) registers a Worker and a Flow using the static `harvest` connection. It lists projects, reads the first project's details, lists time entries, reads the first time-entry detail, reads the connected user, lists clients and contacts for the first client, reads company settings, lists tasks and invoices, and lists expenses. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
 
 ## Live verification
 

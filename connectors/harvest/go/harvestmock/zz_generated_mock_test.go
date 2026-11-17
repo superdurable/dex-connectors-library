@@ -92,6 +92,23 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "deleteInvoice/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[harvest.DeletedInvoice](`{"id":9001}`); return err }},
+		{name: "listExpenses/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ExpensePage](`{"expenses":[{"id":10001,"projectId":3001,"categoryId":11001,"notes":"Team lunch","totalCost":45,"spentDate":"2026-11-01","billable":true}]}`)
+			return err
+		}},
+		{name: "getExpense/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ExpenseRecord](`{"id":10001,"projectId":3001,"categoryId":11001,"notes":"Team lunch","totalCost":45,"spentDate":"2026-11-01","billable":true}`)
+			return err
+		}},
+		{name: "createExpense/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ExpenseRecord](`{"id":10001,"projectId":3001,"categoryId":11001,"notes":"Team lunch","totalCost":45,"spentDate":"2026-11-01","billable":true}`)
+			return err
+		}},
+		{name: "updateExpense/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ExpenseRecord](`{"id":10001,"projectId":3001,"categoryId":11001,"notes":"Team lunch","totalCost":45,"spentDate":"2026-11-01","billable":true}`)
+			return err
+		}},
+		{name: "deleteExpense/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[harvest.DeletedExpense](`{"id":10001}`); return err }},
 		{name: "listUsers/defaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[harvest.UserPage](`{"users":[{"id":6001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com","isActive":true}]}`)
 			return err
@@ -237,6 +254,21 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteInvoice().Definition().Operation.OperationID != "deleteInvoice" {
 		t.Errorf("deleteInvoice mock has another definition")
+	}
+	if mock.ListExpenses().Definition().Operation.OperationID != "listExpenses" {
+		t.Errorf("listExpenses mock has another definition")
+	}
+	if mock.GetExpense().Definition().Operation.OperationID != "getExpense" {
+		t.Errorf("getExpense mock has another definition")
+	}
+	if mock.CreateExpense().Definition().Operation.OperationID != "createExpense" {
+		t.Errorf("createExpense mock has another definition")
+	}
+	if mock.UpdateExpense().Definition().Operation.OperationID != "updateExpense" {
+		t.Errorf("updateExpense mock has another definition")
+	}
+	if mock.DeleteExpense().Definition().Operation.OperationID != "deleteExpense" {
+		t.Errorf("deleteExpense mock has another definition")
 	}
 	if mock.ListUsers().Definition().Operation.OperationID != "listUsers" {
 		t.Errorf("listUsers mock has another definition")

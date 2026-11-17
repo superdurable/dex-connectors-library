@@ -63,6 +63,11 @@ type Operations interface {
 	CreateInvoice() sdkgo.Mutation[CreateInvoiceInput, InvoiceRecord]
 	UpdateInvoice() sdkgo.Mutation[UpdateInvoiceInput, InvoiceRecord]
 	DeleteInvoice() sdkgo.Mutation[DeleteInvoiceInput, DeletedInvoice]
+	ListExpenses() sdkgo.Query[ListExpensesInput, ExpensePage]
+	GetExpense() sdkgo.Query[GetExpenseInput, ExpenseRecord]
+	CreateExpense() sdkgo.Mutation[CreateExpenseInput, ExpenseRecord]
+	UpdateExpense() sdkgo.Mutation[UpdateExpenseInput, ExpenseRecord]
+	DeleteExpense() sdkgo.Mutation[DeleteExpenseInput, DeletedExpense]
 	ListUsers() sdkgo.Query[ListUsersInput, UserPage]
 	GetUser() sdkgo.Query[GetUserInput, UserRecord]
 	GetCurrentUser() sdkgo.Query[GetCurrentUserInput, UserRecord]
@@ -151,6 +156,21 @@ func (operations clientOperations) UpdateInvoice() sdkgo.Mutation[UpdateInvoiceI
 }
 func (operations clientOperations) DeleteInvoice() sdkgo.Mutation[DeleteInvoiceInput, DeletedInvoice] {
 	return operations.client.DeleteInvoice()
+}
+func (operations clientOperations) ListExpenses() sdkgo.Query[ListExpensesInput, ExpensePage] {
+	return operations.client.ListExpenses()
+}
+func (operations clientOperations) GetExpense() sdkgo.Query[GetExpenseInput, ExpenseRecord] {
+	return operations.client.GetExpense()
+}
+func (operations clientOperations) CreateExpense() sdkgo.Mutation[CreateExpenseInput, ExpenseRecord] {
+	return operations.client.CreateExpense()
+}
+func (operations clientOperations) UpdateExpense() sdkgo.Mutation[UpdateExpenseInput, ExpenseRecord] {
+	return operations.client.UpdateExpense()
+}
+func (operations clientOperations) DeleteExpense() sdkgo.Mutation[DeleteExpenseInput, DeletedExpense] {
+	return operations.client.DeleteExpense()
 }
 func (operations clientOperations) ListUsers() sdkgo.Query[ListUsersInput, UserPage] {
 	return operations.client.ListUsers()
@@ -1951,6 +1971,374 @@ func NewDeleteInvoiceStep[IN any](config DeleteInvoiceStepConfig[IN]) sdkgo.Muta
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteInvoiceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListExpensesBranchListed sdkgo.BranchID = "listed"
+const ListExpensesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListExpensesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListExpensesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListExpensesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listExpenses"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListExpensesBranchListed, Description: "Harvest confirmed the expense result."},
+		{ID: ListExpensesBranchProviderRejected, Description: "Harvest rejected the expense operation.", Optional: true},
+		{ID: ListExpensesBranchInvalidResponse, Description: "Harvest returned unusable JSON.", Optional: true},
+		{ID: ListExpensesBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListExpensesResult = sdkgo.QueryResult[ExpensePage]
+
+type ListExpensesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=harvest"`
+	operationID                    struct{}                                       `connector:"operationId=listExpenses"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListExpensesInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListExpensesResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListExpensesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListExpensesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListExpensesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ExpensePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListExpensesStep[IN any](config ListExpensesStepConfig[IN]) sdkgo.QueryStep[IN, ListExpensesInput, ExpensePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListExpensesInput, ExpensePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListExpenses(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListExpensesResult] {
+			branches := make([]sdkgo.BranchTarget[ListExpensesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListExpensesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListExpensesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListExpensesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListExpensesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetExpenseBranchFound sdkgo.BranchID = "found"
+const GetExpenseBranchNotFound sdkgo.BranchID = "notFound"
+const GetExpenseBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetExpenseBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetExpenseBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetExpenseDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getExpense"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetExpenseBranchFound, Description: "Harvest confirmed the expense result."},
+		{ID: GetExpenseBranchNotFound, Description: "The expense ID does not exist.", Optional: true},
+		{ID: GetExpenseBranchProviderRejected, Description: "Harvest rejected the expense operation.", Optional: true},
+		{ID: GetExpenseBranchInvalidResponse, Description: "Harvest returned unusable JSON.", Optional: true},
+		{ID: GetExpenseBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetExpenseResult = sdkgo.QueryResult[ExpenseRecord]
+
+type GetExpenseStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=harvest"`
+	operationID                    struct{}                                         `connector:"operationId=getExpense"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetExpenseInput                         `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetExpenseResult]                   `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetExpenseResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetExpenseResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetExpenseResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetExpenseResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ExpenseRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetExpenseStep[IN any](config GetExpenseStepConfig[IN]) sdkgo.QueryStep[IN, GetExpenseInput, ExpenseRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetExpenseInput, ExpenseRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetExpense(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetExpenseResult] {
+			branches := make([]sdkgo.BranchTarget[GetExpenseResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetExpenseBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetExpenseBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetExpenseBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetExpenseBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetExpenseBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateExpenseBranchCreated sdkgo.BranchID = "created"
+const CreateExpenseBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateExpenseBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateExpenseBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateExpenseDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createExpense"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateExpenseBranchCreated, Description: "Harvest confirmed the expense result."},
+		{ID: CreateExpenseBranchProviderRejected, Description: "Harvest rejected the expense operation.", Optional: true},
+		{ID: CreateExpenseBranchUncertain, Description: "A submitted expense may have been created.", Optional: true},
+		{ID: CreateExpenseBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateExpenseResult = sdkgo.MutationResult[ExpenseRecord]
+
+type CreateExpenseStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=harvest"`
+	operationID                       struct{}                                            `connector:"operationId=createExpense"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateExpenseInput                         `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateExpenseResult]                   `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateExpenseResult]                   `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateExpenseResult]                   `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateExpenseResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ExpenseRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateExpenseStep[IN any](config CreateExpenseStepConfig[IN]) sdkgo.MutationStep[IN, CreateExpenseInput, ExpenseRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateExpenseInput, ExpenseRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateExpense(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateExpenseResult] {
+			branches := make([]sdkgo.BranchTarget[CreateExpenseResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateExpenseBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateExpenseBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateExpenseBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateExpenseBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateExpenseBranchUpdated sdkgo.BranchID = "updated"
+const UpdateExpenseBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateExpenseBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateExpenseBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateExpenseDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateExpense"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateExpenseBranchUpdated, Description: "Harvest confirmed the expense result."},
+		{ID: UpdateExpenseBranchNotFound, Description: "The expense ID does not exist.", Optional: true},
+		{ID: UpdateExpenseBranchProviderRejected, Description: "Harvest rejected the expense operation.", Optional: true},
+		{ID: UpdateExpenseBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateExpenseResult = sdkgo.MutationResult[ExpenseRecord]
+
+type UpdateExpenseStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=harvest"`
+	operationID                       struct{}                                            `connector:"operationId=updateExpense"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateExpenseInput                         `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateExpenseResult]                   `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateExpenseResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateExpenseResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateExpenseResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ExpenseRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateExpenseStep[IN any](config UpdateExpenseStepConfig[IN]) sdkgo.MutationStep[IN, UpdateExpenseInput, ExpenseRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateExpenseInput, ExpenseRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateExpense(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateExpenseResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateExpenseResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateExpenseBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateExpenseBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateExpenseBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateExpenseBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteExpenseBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteExpenseBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteExpenseBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteExpenseBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteExpenseDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteExpense"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteExpenseBranchDeleted, Description: "Harvest confirmed the expense result."},
+		{ID: DeleteExpenseBranchNotFound, Description: "The expense ID does not exist.", Optional: true},
+		{ID: DeleteExpenseBranchProviderRejected, Description: "Harvest rejected the expense operation.", Optional: true},
+		{ID: DeleteExpenseBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteExpenseResult = sdkgo.MutationResult[DeletedExpense]
+
+type DeleteExpenseStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=harvest"`
+	operationID                       struct{}                                             `connector:"operationId=deleteExpense"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteExpenseInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteExpenseResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteExpenseResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteExpenseResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteExpenseResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedExpense]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteExpenseStep[IN any](config DeleteExpenseStepConfig[IN]) sdkgo.MutationStep[IN, DeleteExpenseInput, DeletedExpense] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteExpenseInput, DeletedExpense]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteExpense(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteExpenseResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteExpenseResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteExpenseBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteExpenseBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteExpenseBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteExpenseBranchDefect))
 			}
 			return branches
 		}(),
