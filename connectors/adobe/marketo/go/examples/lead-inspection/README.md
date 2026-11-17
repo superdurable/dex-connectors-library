@@ -1,6 +1,6 @@
 # Marketo lead inspection Flow
 
-This runnable Worker registers `MarketoLeadInspection`, `MarketoFindLeadsByEmail`, `MarketoCreateLead`, `MarketoUpsertLeadByEmail`, `MarketoListActivities`, `MarketoGetCompanyByExternalID`, and `MarketoUpsertCompany` through the static `adobe-marketo` connection. Each Flow stores its result in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+This runnable Worker registers `MarketoLeadInspection`, `MarketoFindLeadsByEmail`, `MarketoCreateLead`, `MarketoUpsertLeadByEmail`, `MarketoListActivities`, `MarketoGetCompanyByExternalID`, `MarketoUpsertCompany`, `MarketoGetOpportunityByExternalID`, and `MarketoUpsertOpportunity` through the static `adobe-marketo` connection. Each Flow stores its result in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -14,6 +14,8 @@ dexcli visualize ./examples/lead-inspection/flow/upsert_lead_by_email_workflow.g
 dexcli visualize ./examples/lead-inspection/flow/list_activities_workflow.go --schema-version 2.0 --json --out /tmp/marketo-list-activities-fdg
 dexcli visualize ./examples/lead-inspection/flow/get_company_workflow.go --schema-version 2.0 --json --out /tmp/marketo-get-company-fdg
 dexcli visualize ./examples/lead-inspection/flow/upsert_company_workflow.go --schema-version 2.0 --json --out /tmp/marketo-upsert-company-fdg
+dexcli visualize ./examples/lead-inspection/flow/get_opportunity_workflow.go --schema-version 2.0 --json --out /tmp/marketo-get-opportunity-fdg
+dexcli visualize ./examples/lead-inspection/flow/upsert_opportunity_workflow.go --schema-version 2.0 --json --out /tmp/marketo-upsert-opportunity-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.

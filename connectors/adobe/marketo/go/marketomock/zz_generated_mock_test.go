@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getOpportunityByExternalID/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.OpportunityProfile](`{"marketoGUID":"dff23271-f996-47d7-984f-f2676861b5fa","name":"Sample Opportunity"}`)
+			return err
+		}},
+		{name: "createOpportunity/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.OpportunityWriteResult](`{"marketoGUID":"dff23271-f996-47d7-984f-f2676861b5fa","status":"created"}`)
+			return err
+		}},
+		{name: "upsertOpportunity/syncedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.OpportunityWriteResult](`{"marketoGUID":"dff23271-f996-47d7-984f-f2676861b5fa","status":"updated"}`)
+			return err
+		}},
+		{name: "deleteOpportunity/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.DeletedOpportunity](`{"deleted":true}`)
+			return err
+		}},
 		{name: "getCompanyByExternalID/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[marketo.CompanyProfile](`{"id":3433,"company":"Sample Company"}`)
 			return err
@@ -74,6 +90,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetOpportunityByExternalID().Definition().Operation.OperationID != "getOpportunityByExternalID" {
+		t.Errorf("getOpportunityByExternalID mock has another definition")
+	}
+	if mock.CreateOpportunity().Definition().Operation.OperationID != "createOpportunity" {
+		t.Errorf("createOpportunity mock has another definition")
+	}
+	if mock.UpsertOpportunity().Definition().Operation.OperationID != "upsertOpportunity" {
+		t.Errorf("upsertOpportunity mock has another definition")
+	}
+	if mock.DeleteOpportunity().Definition().Operation.OperationID != "deleteOpportunity" {
+		t.Errorf("deleteOpportunity mock has another definition")
+	}
 	if mock.GetCompanyByExternalID().Definition().Operation.OperationID != "getCompanyByExternalID" {
 		t.Errorf("getCompanyByExternalID mock has another definition")
 	}

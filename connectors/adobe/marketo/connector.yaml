@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: adobe-marketo
   displayName: Adobe Marketo Engage
-  description: Read activity metadata and create, read, update, and delete selected lead and company fields in a Marketo Engage subscription.
+  description: Read activity metadata and create, read, update, and delete selected lead, company, and opportunity fields in a Marketo Engage subscription.
   company: Adobe
   categories: [marketing]
   version: v0.2.0
@@ -67,7 +67,7 @@ spec:
     guide:
       startURL: https://app.marketo.com/
       steps:
-        - Sign in to Marketo, open Admin > Users & Roles > Roles, and create an API role with Access API > Read-Only Lead. Grant Read-Write Lead for lead writes, Read-Only Activity for activity queries, Read-Only Company for company reads, and Read-Write Company for company writes. Add an API-Only user assigned this role in Admin > Users & Roles > Users. No browser redirect URI or consent screen is needed for this client credentials grant.
+        - Sign in to Marketo, open Admin > Users & Roles > Roles, and create an API role with Access API > Read-Only Lead. Grant Read-Write Lead for lead writes, Read-Only Activity for activity queries, Read-Only Company and Read-Write Company for company operations, and Read-Only Opportunity and Read-Write Opportunity for opportunity operations. Add an API-Only user assigned this role in Admin > Users & Roles > Users. No browser redirect URI or consent screen is needed for this client credentials grant.
         - Open Admin > Integration > LaunchPoint > New Service, choose Custom, select the API-Only user, and create the service. Open View Details to copy its Client ID and Client Secret; keep the secret in Dex Web only.
         - Open Admin > Integration > Web Services. Copy REST API > Endpoint into restEndpoint. Copy REST API > Identity and append /oauth/token into tokenEndpoint. Both HTTPS URLs must use the same subscription host ending in .mktorest.com.
         - Save the connection; Dex mints and refreshes the access token. Leave access_token, timeout, and maxResponseBytes blank. Revoke the Custom service in LaunchPoint to stop this connection.
@@ -83,6 +83,72 @@ spec:
         - {credential: access_token, source: access_token}
       terminalErrorCodes: [invalid_client, unauthorized_client, invalid_scope]
   operations:
+    - name: getOpportunityByExternalID
+      goName: GetOpportunityByExternalID
+      inputType: GetOpportunityByExternalIDInput
+      outputType: OpportunityProfile
+      kind: query
+      idempotency: none
+      authorization: required
+      description: Read one opportunity GUID and name by its external ID.
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Marketo returned the opportunity.}
+        - {id: notFound, goName: NotFound, description: Marketo found no matching opportunity., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Marketo rejected the opportunity lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Marketo returned malformed opportunity JSON., optional: true}
+        - {id: defect, goName: Defect, description: The external opportunity ID is invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: A sample opportunity is returned., output: {marketoGUID: 'dff23271-f996-47d7-984f-f2676861b5fa', name: Sample Opportunity}}
+    - name: createOpportunity
+      goName: CreateOpportunity
+      inputType: CreateOpportunityInput
+      outputType: OpportunityWriteResult
+      kind: mutation
+      idempotency: required
+      authorization: required
+      description: Create one opportunity by external ID with bounded sends and read-back.
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Marketo created the opportunity.}
+        - {id: alreadyExists, goName: AlreadyExists, description: An opportunity already uses the external ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Marketo conclusively rejected the create., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A prior create may have succeeded but cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: The external opportunity ID or name is invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: A sample opportunity was created., output: {marketoGUID: 'dff23271-f996-47d7-984f-f2676861b5fa', status: created}}
+    - name: upsertOpportunity
+      goName: UpsertOpportunity
+      inputType: UpsertOpportunityInput
+      outputType: OpportunityWriteResult
+      kind: mutation
+      idempotency: required
+      authorization: required
+      description: Create or replace an opportunity name using its external ID.
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: synced, goName: Synced, description: Marketo created or updated the opportunity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Marketo rejected the upsert., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Marketo returned malformed opportunity JSON., optional: true}
+        - {id: defect, goName: Defect, description: The external opportunity ID or name is invalid., optional: true}
+      mocks:
+        - {name: syncedDefault, branch: synced, default: true, description: A sample opportunity was updated., output: {marketoGUID: 'dff23271-f996-47d7-984f-f2676861b5fa', status: updated}}
+    - name: deleteOpportunity
+      goName: DeleteOpportunity
+      inputType: DeleteOpportunityInput
+      outputType: DeletedOpportunity
+      kind: mutation
+      idempotency: required
+      authorization: required
+      description: Delete an opportunity by external ID; an already-absent opportunity converges to deleted.
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The opportunity is absent after the call.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Marketo rejected deletion, including existing opportunity roles.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Marketo returned malformed deletion JSON., optional: true}
+        - {id: defect, goName: Defect, description: The external opportunity ID is invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: A sample opportunity was deleted., output: {deleted: true}}
     - name: getCompanyByExternalID
       goName: GetCompanyByExternalID
       inputType: GetCompanyByExternalIDInput

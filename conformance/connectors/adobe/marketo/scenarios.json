@@ -4351,6 +4351,1457 @@
       },
       "name": "deleteCompany-transportFailure",
       "operation": "deleteCompany"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"marketoGUID\":\"dff23271-f996-47d7-984f-f2676861b5fa\",\"name\":\"Sample Opportunity\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/opportunities.json",
+          "query": {
+            "fields": [
+              "marketoGUID,name"
+            ],
+            "filterType": [
+              "externalOpportunityId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "marketoGUID": "dff23271-f996-47d7-984f-f2676861b5fa",
+          "name": "Sample Opportunity"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "getOpportunityByExternalID-found",
+      "operation": "getOpportunityByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/opportunities.json",
+          "query": {
+            "fields": [
+              "marketoGUID,name"
+            ],
+            "filterType": [
+              "externalOpportunityId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "",
+        "output": {
+          "marketoGUID": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "getOpportunityByExternalID-notFound",
+      "operation": "getOpportunityByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/opportunities.json",
+          "query": {
+            "fields": [
+              "marketoGUID,name"
+            ],
+            "filterType": [
+              "externalOpportunityId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "marketoGUID": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "getOpportunityByExternalID-providerRejected",
+      "operation": "getOpportunityByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/opportunities.json",
+          "query": {
+            "fields": [
+              "marketoGUID,name"
+            ],
+            "filterType": [
+              "externalOpportunityId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "marketoGUID": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "getOpportunityByExternalID-invalidResponse",
+      "operation": "getOpportunityByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "marketoGUID": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalOpportunityId": ""
+      },
+      "name": "getOpportunityByExternalID-defect",
+      "operation": "getOpportunityByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/opportunities.json",
+          "query": {
+            "fields": [
+              "marketoGUID,name"
+            ],
+            "filterType": [
+              "externalOpportunityId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "getOpportunityByExternalID-rateLimit",
+      "operation": "getOpportunityByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/opportunities.json",
+          "query": {
+            "fields": [
+              "marketoGUID,name"
+            ],
+            "filterType": [
+              "externalOpportunityId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "getOpportunityByExternalID-unavailable",
+      "operation": "getOpportunityByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/opportunities.json",
+          "query": {
+            "fields": [
+              "marketoGUID,name"
+            ],
+            "filterType": [
+              "externalOpportunityId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "getOpportunityByExternalID-transportFailure",
+      "operation": "getOpportunityByExternalID"
+    },
+    {
+      "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"marketoGUID\":\"dff23271-f996-47d7-984f-f2676861b5fa\",\"status\":\"created\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+          "providerId": "dff23271-f996-47d7-984f-f2676861b5fa",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "marketoGUID": "dff23271-f996-47d7-984f-f2676861b5fa",
+          "status": "created"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-created",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"status\":\"skipped\",\"reasons\":[{\"code\":\"1005\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "alreadyExists",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "marketoGUID": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-alreadyExists",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "marketoGUID": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-providerRejected",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "marketoGUID": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-uncertain",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "marketoGUID": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "input": {
+        "externalOpportunityId": "",
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-defect",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-rateLimit",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-unavailable",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-transportFailure",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"marketoGUID\":\"dff23271-f996-47d7-984f-f2676861b5fa\",\"status\":\"updated\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "synced",
+        "failureKind": "",
+        "output": {
+          "marketoGUID": "dff23271-f996-47d7-984f-f2676861b5fa",
+          "status": "updated"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "upsertOpportunity-synced",
+      "operation": "upsertOpportunity"
+    },
+    {
+      "callId": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "marketoGUID": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "upsertOpportunity-providerRejected",
+      "operation": "upsertOpportunity"
+    },
+    {
+      "callId": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "marketoGUID": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "upsertOpportunity-invalidResponse",
+      "operation": "upsertOpportunity"
+    },
+    {
+      "callId": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "marketoGUID": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "input": {
+        "externalOpportunityId": "",
+        "name": "Sample Opportunity"
+      },
+      "name": "upsertOpportunity-defect",
+      "operation": "upsertOpportunity"
+    },
+    {
+      "callId": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "upsertOpportunity-rateLimit",
+      "operation": "upsertOpportunity"
+    },
+    {
+      "callId": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "upsertOpportunity-unavailable",
+      "operation": "upsertOpportunity"
+    },
+    {
+      "callId": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "upsertOpportunity-transportFailure",
+      "operation": "upsertOpportunity"
+    },
+    {
+      "callId": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"marketoGUID\":\"dff23271-f996-47d7-984f-f2676861b5fa\",\"status\":\"deleted\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "deleteOpportunity-deleted",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"status\":\"skipped\",\"reasons\":[{\"code\":\"1013\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "deleteOpportunity-alreadyAbsent",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "deleteOpportunity-providerRejected",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "deleteOpportunity-invalidResponse",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "input": {
+        "externalOpportunityId": ""
+      },
+      "name": "deleteOpportunity-defect",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "deleteOpportunity-rateLimit",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "deleteOpportunity-unavailable",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "deleteOpportunity-transportFailure",
+      "operation": "deleteOpportunity"
     }
   ],
   "schemaVersion": 1

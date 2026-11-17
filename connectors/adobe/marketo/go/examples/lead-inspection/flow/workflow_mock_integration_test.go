@@ -235,3 +235,51 @@ func TestCompanyFlowsUseMocksWithRealDex(t *testing.T) {
 	require.Len(t, mock.GetCompanyByExternalID().Calls(), 1)
 	require.Len(t, mock.UpsertCompany().Calls(), 1)
 }
+func TestOpportunityFlowsUseMocksWithRealDex(t *testing.T) {
+	mock := marketomock.New(t, ConnectionName)
+	getFlow := NewGetOpportunityByExternalIDFlow(mock.Connection())
+	upsertFlow := NewUpsertOpportunityFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{getFlow, upsertFlow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	serverAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
+	if serverAddress == "" {
+		serverAddress = "127.0.0.1:9260"
+	}
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	t.Cleanup(func() {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		require.NoError(t, errors.Join(worker.Stop(stopCtx), <-workerResult, client.Close(), cache.Close()))
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	require.NoError(t, worker.WaitPullRegistered(ctx))
+	for _, testCase := range []struct {
+		flow  dex.Flow
+		input any
+	}{
+		{getFlow, marketo.GetOpportunityByExternalIDInput{ExternalOpportunityID: "source-123"}},
+		{upsertFlow, marketo.UpsertOpportunityInput{ExternalOpportunityID: "source-123", Name: "Sample Opportunity"}},
+	} {
+		flowID := "marketo-opportunity-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+		_, err := client.StartFlow(ctx, testCase.flow, flowID, testCase.input, dex.StartFlowOptions{})
+		require.NoError(t, err)
+		result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+		require.NoError(t, err)
+		require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+		var output struct {
+			MarketoGUID string `json:"marketoGUID"`
+		}
+		require.NoError(t, result.DecodeSingleOutput(&output))
+		require.Equal(t, "dff23271-f996-47d7-984f-f2676861b5fa", output.MarketoGUID)
+	}
+	require.Len(t, mock.GetOpportunityByExternalID().Calls(), 1)
+	require.Len(t, mock.UpsertOpportunity().Calls(), 1)
+}

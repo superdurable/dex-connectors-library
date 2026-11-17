@@ -45,6 +45,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		leadinspection.NewListActivitiesFlow(connection),
 		leadinspection.NewGetCompanyByExternalIDFlow(connection),
 		leadinspection.NewUpsertCompanyFlow(connection),
+		leadinspection.NewGetOpportunityByExternalIDFlow(connection), leadinspection.NewUpsertOpportunityFlow(connection),
 	})
 	if err != nil {
 		return fmt.Errorf("register Marketo lead inspection Flow: %w", err)
