@@ -22,6 +22,8 @@ func conformanceOperationsCommand(manifestPath string, output io.Writer) error {
 		OptionalInputFields []string `json:"optionalInputFields"`
 		// IsSafeToRepeat marks a safe Mutation, whose declared uncertain and invalidResponse branches may be unreachable.
 		IsSafeToRepeat bool `json:"isSafeToRepeat,omitempty"`
+		// RetiredBranches lists declared branches the connector no longer selects; they need no replay coverage.
+		RetiredBranches []string `json:"retiredBranches,omitempty"`
 	}
 	operations := make(map[string]conformanceOperation, len(manifest.Spec.Operations))
 	goPackage := newConnectorGoPackage(manifestPath)
@@ -34,6 +36,9 @@ func conformanceOperationsCommand(manifestPath string, output io.Writer) error {
 		}
 		for _, branch := range operation.Branches {
 			entry.Branches = append(entry.Branches, branch.ID)
+			if branch.Retired {
+				entry.RetiredBranches = append(entry.RetiredBranches, branch.ID)
+			}
 		}
 		operations[operation.Name] = entry
 	}

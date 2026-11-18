@@ -193,6 +193,84 @@ func TestManifestJSONSchemaChecksRepeatOnUnknown(t *testing.T) {
 	}
 }
 
+func TestManifestJSONSchemaChecksRetiredBranches(t *testing.T) {
+	contents, err := os.ReadFile("connector-manifest.schema.json")
+	require.NoError(t, err)
+	var definition struct {
+		Definitions map[string]any `json:"$defs"`
+	}
+	require.NoError(t, json.Unmarshal(contents, &definition))
+	compiler := jsonschema.NewCompiler()
+	const resource = "https://connectors.dex.dev/branch.schema.json"
+	require.NoError(t, compiler.AddResource(resource, definition.Definitions["branch"]))
+	compiled, err := compiler.Compile(resource)
+	require.NoError(t, err)
+	branch := func(fields string) any {
+		var document any
+		require.NoError(t, json.Unmarshal([]byte(`{"goName":"Branch","description":"A branch."`+fields+`}`), &document))
+		return document
+	}
+	for _, fields := range []string{
+		`,"id":"invalidResponse","optional":true`,
+		`,"id":"invalidResponse","optional":true,"retired":false`,
+		`,"id":"invalidResponse","optional":true,"retired":true,"retiredReason":"An accepted write selects uncertain instead."`,
+		`,"id":"defect","optional":true`,
+	} {
+		require.NoError(t, compiled.Validate(branch(fields)), fields)
+	}
+	for _, fields := range []string{
+		`,"id":"invalidResponse","optional":true,"retired":true`,
+		`,"id":"invalidResponse","retired":true,"retiredReason":"Selects uncertain instead."`,
+		`,"id":"invalidResponse","optional":true,"retired":true,"retiredReason":" "`,
+		`,"id":"invalidResponse","optional":true,"retiredReason":"Selects uncertain instead."`,
+		`,"id":"defect","optional":true,"retired":true,"retiredReason":"Never selected."`,
+	} {
+		require.Error(t, compiled.Validate(branch(fields)), fields)
+	}
+}
+
+func TestManifestValidationChecksRetiredBranches(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		branch  schema.OperationBranch
+		problem string
+	}{
+		"retired optional branch": {branch: schema.OperationBranch{ID: "invalidResponse", GoName: "InvalidResponse", Description: "Kept for compatibility.",
+			Optional: true, Retired: true, RetiredReason: "An accepted write selects uncertain instead."}},
+		"retired required branch": {branch: schema.OperationBranch{ID: "invalidResponse", GoName: "InvalidResponse", Description: "Kept for compatibility.",
+			Retired: true, RetiredReason: "Selects uncertain instead."}, problem: "retired branch invalidResponse must be optional, not defect, and state a retiredReason"},
+		"retired without reason": {branch: schema.OperationBranch{ID: "invalidResponse", GoName: "InvalidResponse", Description: "Kept for compatibility.",
+			Optional: true, Retired: true, RetiredReason: " "}, problem: "retired branch invalidResponse must be optional, not defect, and state a retiredReason"},
+		"reason without retired": {branch: schema.OperationBranch{ID: "invalidResponse", GoName: "InvalidResponse", Description: "Kept for compatibility.",
+			Optional: true, RetiredReason: "Selects uncertain instead."}, problem: "branch invalidResponse has a retiredReason but is not retired"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			file, err := os.Open("testdata/api-key-methods.yaml")
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, file.Close()) })
+			manifest, err := schema.Decode(file)
+			require.NoError(t, err)
+			manifest.Spec.Operations[0].Branches = append(manifest.Spec.Operations[0].Branches, testCase.branch)
+			if testCase.problem == "" {
+				require.NoError(t, manifest.Validate())
+				return
+			}
+			require.ErrorContains(t, manifest.Validate(), testCase.problem)
+		})
+	}
+	file, err := os.Open("testdata/api-key-methods.yaml")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, file.Close()) })
+	manifest, err := schema.Decode(file)
+	require.NoError(t, err)
+	for index, branch := range manifest.Spec.Operations[0].Branches {
+		if branch.ID == "defect" {
+			manifest.Spec.Operations[0].Branches[index].Retired = true
+			manifest.Spec.Operations[0].Branches[index].RetiredReason = "Never selected."
+		}
+	}
+	require.ErrorContains(t, manifest.Validate(), "retired branch defect must be optional, not defect, and state a retiredReason")
+}
+
 func TestLanguageManifestVersionAndPackageValidation(t *testing.T) {
 	fixture, err := os.ReadFile("testdata/google-oauth.yaml")
 	require.NoError(t, err)

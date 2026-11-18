@@ -351,6 +351,8 @@ def run_connector(connector: Path, paths: list[str], exemptions: dict[str, str] 
                 observed_server_errors.add(operation)
         elif branch not in declared_operations[operation]["branches"]:
             raise ValueError(f"{scenario['name']} names undeclared branch {branch}")
+        elif branch in declared_operations[operation].get("retiredBranches", []):
+            raise ValueError(f"{scenario['name']} selects retired branch {branch}; unmark it or fix the connector")
         if not expected["retry"] and "output" not in expected:
             raise ValueError(f"{scenario['name']} has no recorded output")
         if expected["uncertain"]:
@@ -362,6 +364,7 @@ def run_connector(connector: Path, paths: list[str], exemptions: dict[str, str] 
         if operation not in observed_rate_limits or operation not in observed_server_errors:
             raise ValueError(f"{fixture.relative_to(ROOT)} lacks {operation} separate 429 and 5xx Retry coverage")
         if ("uncertain" in declaration["branches"] and not declaration.get("isSafeToRepeat")
+                and "uncertain" not in declaration.get("retiredBranches", [])
                 and operation not in observed_uncertainty):
             raise ValueError(f"{fixture.relative_to(ROOT)} lacks {operation} uncertainty coverage")
     for language, package_file, runner_path in (
@@ -383,6 +386,8 @@ def run_connector(connector: Path, paths: list[str], exemptions: dict[str, str] 
             if declared_operations[operation].get("isSafeToRepeat"):
                 # A safe Mutation retries unknown outcomes, so these branches may stay declared yet unreachable.
                 required -= SAFE_MUTATION_UNREACHABLE_BRANCHES
+            # A retired branch stays declared for compatibility, but the connector no longer selects it.
+            required -= set(declared_operations[operation].get("retiredBranches", []))
             missing = required - observed_branches.get(operation, set())
             if missing:
                 raise ValueError(f"{fixture.relative_to(ROOT)} lacks {operation} branches: {sorted(missing)}")

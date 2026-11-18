@@ -236,6 +236,8 @@ An operation declares:
   another send, and read-back cannot confirm the outcome;
 - `optional: true` on every branch that is not a happy path; `defect` is always
   optional, and `connectorctl validate` rejects a required one;
+- `retired: true` and `retiredReason` on a released branch the connector no
+  longer selects; see [Retired branches](#retired-branches);
 - progress capabilities used to generate typed Stream fields;
 - `authorization: required` for operations that require an authorized
   connection, or `none` for public operations;
@@ -316,6 +318,32 @@ or later, each generated Mutation definition gets `repeatOnUnknown`, and a
 `limited` one also gets `maxSends`; `devDependencies` and `peerDependencies` do
 not count. Any other requirement, such as a range, a wildcard, a pre-release, or
 an earlier release, keeps the earlier output.
+
+### Retired branches
+
+Removing a released branch breaks applications that wire it, so a branch the
+connector no longer selects stays declared and is marked retired:
+
+```yaml
+branches:
+  - {id: invalidResponse, goName: InvalidResponse, description: "No longer selected; an accepted reply that does not decode selects uncertain instead.", optional: true, retired: true, retiredReason: "An accepted reply whose part does not decode may exist, so the operation selects uncertain instead."}
+```
+
+- A retired branch must be optional and must not be `defect`, because local
+  failures can always select `defect`.
+- `retiredReason` is required with `retired: true`. It states why the branch
+  is no longer selected and what the connector selects instead. It is not
+  allowed on a branch that is not retired. Keep the `description` accurate as
+  well, because it is what applications read.
+- Code generation ignores both fields. The branch keeps its identity, its Go,
+  Python, and TypeScript constants, and its factory target, so existing
+  applications compile and run unchanged.
+- Conformance replay does not require a scenario for a retired branch, and it
+  rejects any scenario that selects one. A retired `uncertain` branch also
+  removes the uncertainty-scenario requirement.
+- Retire a branch only when no code path in any language selects it. A branch
+  that a `safe` Mutation can no longer reach needs no marker, because replay
+  already exempts its `uncertain` and `invalidResponse` branches.
 
 `auth.oauth2.protocol` distinguishes plain OAuth 2.0 from OpenID Connect. It
 defaults to `oauth2` for existing manifests. An `oidc` manifest must also
@@ -1668,10 +1696,14 @@ Commit its recording; do not hand-edit expectations. Keep credentials inert.
 CI runs Go in verify mode and requires the committed recording to match exactly.
 It rejects `pending`, requires the union of inputs to set every Go operation
 `Input` field to a nonzero value, and requires an exact output for every
-non-retry branch and every declared branch. Each operation needs separate 429
+non-retry branch and every declared branch, except a
+[retired branch](#retired-branches) and the `uncertain` and `invalidResponse`
+branches of a `safe` Mutation, which may be unreachable. A scenario that
+selects a retired branch fails. Each operation needs separate 429
 and 5xx Retry scenarios whose classified status is the first exchange of the
 final attempt, plus a transport-failure scenario. Operations declaring
-uncertainty need an uncertainty scenario. Python and TypeScript compare the
+uncertainty need an uncertainty scenario unless the operation is `safe` or
+its `uncertain` branch is retired. Python and TypeScript compare the
 complete recorded requests and exact outputs through their production Dex SDK
 codecs, and derive mutation idempotency keys through their production SDK paths.
 Other recovery paths remain a review requirement.

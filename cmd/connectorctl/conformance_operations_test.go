@@ -59,6 +59,20 @@ func TestConformanceOperationsMarksOnlySafeMutations(t *testing.T) {
 	require.Equal(t, true, decoded["createRefund"]["isSafeToRepeat"])
 }
 
+func TestConformanceOperationsListsRetiredBranchesAndKeepsThemDeclared(t *testing.T) {
+	var output bytes.Buffer
+	require.NoError(t, conformanceOperationsCommand(filepath.Join("..", "..", "connectors", "intercom", "connector.yaml"), &output))
+	var decoded map[string]struct {
+		Branches        []string `json:"branches"`
+		RetiredBranches []string `json:"retiredBranches"`
+	}
+	require.NoError(t, json.Unmarshal(output.Bytes(), &decoded))
+	require.Equal(t, []string{"invalidResponse"}, decoded["replyToConversation"].RetiredBranches)
+	require.Contains(t, decoded["replyToConversation"].Branches, "invalidResponse", "a retired branch stays declared")
+	require.Empty(t, decoded["getConversation"].RetiredBranches)
+	require.NotContains(t, output.String(), `"retiredBranches":null`)
+}
+
 func TestConformanceOperationsCommandMatchesPerOperationPackageLoads(t *testing.T) {
 	for _, connector := range []string{"stripe", "newsapi", filepath.Join("microsoft", "entra-id")} {
 		t.Run(connector, func(t *testing.T) {
