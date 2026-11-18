@@ -17,7 +17,7 @@ export interface CreateEnvelopeFromTemplateStepConfig<StepInput, OperationInput 
   created: StepTarget<MutationResult<OperationOutput>>;
   /** DocuSign conclusively rejected the envelope, such as an unknown template, an unfilled or unknown role, an invalid email address, an exhausted envelope allowance, or a user who may not send; nothing was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send cap was reached with DocuSign's answer lost, a server error, or unreadable, and no envelope with this Step's custom field could be found, or several envelopes carry it, or DocuSign refused a resend after an earlier attempt may have sent, so an envelope may exist that this Result does not name; do not create another automatically. */
+  /** The send cap was reached with DocuSign's answer lost, a server error, or unreadable, and no envelope with this Step's custom field could be found, or several envelopes carry it, or DocuSign refused a resend after an earlier attempt may have sent, or a terminal credential failure followed a possible send, or an accepted create could neither be found nor recorded as accepted, so an envelope may exist that this Result does not name; do not create another automatically. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

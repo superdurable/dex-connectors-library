@@ -4,6 +4,7 @@
 package docusign_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -18,6 +19,8 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/docusign/go"
 	"github.com/superdurable/dex-connectors-library/connectors/docusign/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
 const envelopesPath = accountPath + "/envelopes"
@@ -486,6 +489,9 @@ func TestCreateEnvelopeReportsUncertainWhenALaterAttemptCannotOpenItsSession(t *
 				return testsupport.NewRefreshingCredentialSource(productionCredentials(), nil)
 			},
 		},
+		"connection credentials missing": {
+			credentials: func() docusign.CredentialSource { return failingCredentials{err: projectconfig.ErrObjectNotFound} },
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			fake := newFakeDocuSign(t, test.routes)
@@ -494,22 +500,17 @@ func TestCreateEnvelopeReportsUncertainWhenALaterAttemptCannotOpenItsSession(t *
 				credentials = test.credentials()
 			}
 			client := newTestClient(t, fake, credentials, test.config)
-			belowCap := newRetriedTestDexContext("dispatched-then-unauthorized", 2)
-			require.NoError(t, belowCap.RecordHeartbeat(map[string]any{"isDispatched": true, "dispatchedAt": fixedNow.Add(-time.Minute)}))
-			_, err := sdkgo.RunMutation(belowCap, client.CreateEnvelopeFromTemplate(), testConnection, validCreateInput())
-			var retry *sdkgo.RetryError
-			require.ErrorAs(t, err, &retry, "a later attempt may still read back and resend")
-			require.Contains(t, retry.Failure.Message, "an earlier attempt may have sent the DocuSign create request")
-
-			context := newRetriedTestDexContext("dispatched-then-unauthorized", 3)
-			require.NoError(t, context.RecordHeartbeat(map[string]any{"isDispatched": true, "dispatchedAt": fixedNow.Add(-time.Minute)}))
-			result, err := sdkgo.RunMutation(context, client.CreateEnvelopeFromTemplate(), testConnection, validCreateInput())
-			require.NoError(t, err)
-			require.Equal(t, docusign.CreateEnvelopeFromTemplateBranchUncertain, result.Branch, "the earlier attempt may have created the envelope")
-			require.Contains(t, result.Failure.Message, "an earlier attempt may have sent the DocuSign create request")
+			for _, attempt := range []int32{2, 3} {
+				context := newRetriedTestDexContext("dispatched-then-unauthorized", attempt)
+				require.NoError(t, context.RecordHeartbeat(map[string]any{"isDispatched": true, "dispatchedAt": fixedNow.Add(-time.Minute)}))
+				result, err := sdkgo.RunMutation(context, client.CreateEnvelopeFromTemplate(), testConnection, validCreateInput())
+				require.NoError(t, err)
+				require.Equal(t, docusign.CreateEnvelopeFromTemplateBranchUncertain, result.Branch, "a terminal failure after a possible send selects uncertain, attempt %d", attempt)
+				require.Contains(t, result.Failure.Message, "an earlier attempt may have sent the DocuSign create request")
+				require.Contains(t, string(context.lastHeartbeat()), `"isDispatched":true`, "the checkpoint survives")
+				requireNoSecrets(t, result)
+			}
 			require.Empty(t, fake.requestsTo(http.MethodPost, envelopesPath))
-			require.Contains(t, string(context.lastHeartbeat()), `"isDispatched":true`, "the checkpoint survives for a later attempt")
-			requireNoSecrets(t, result)
 		})
 	}
 }
@@ -567,4 +568,102 @@ func TestCreateEnvelopeLaterAttemptSendsNothingWhenSeveralEnvelopesCarryItsMarke
 	require.Equal(t, docusign.CreateEnvelopeFromTemplateBranchUncertain, result.Branch)
 	require.Equal(t, sdkgo.FailureConflict, result.Failure.Kind)
 	require.Len(t, fake.requestsTo(http.MethodPost, envelopesPath), 1, "only the first attempt sent")
+}
+
+// failingCredentials fails every Resolve with err.
+type failingCredentials struct{ err error }
+
+func (credentials failingCredentials) Resolve(sdkgo.Call) (docusign.Credentials, error) {
+	return docusign.Credentials{}, credentials.err
+}
+
+func (credentials failingCredentials) ResolveWithRefresh(
+	context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[docusign.Credentials],
+) (docusign.Credentials, error) {
+	return docusign.Credentials{}, credentials.err
+}
+
+func TestCreateEnvelopeClassifiesCredentialFailuresBeforeTheFirstSend(t *testing.T) {
+	for name, test := range map[string]struct {
+		err        error
+		wantBranch sdkgo.BranchID
+	}{
+		"broker unavailable":     {err: projectconfig.ErrCredentialBrokerUnavailable},
+		"credentials missing":    {err: projectconfig.ErrObjectNotFound, wantBranch: docusign.CreateEnvelopeFromTemplateBranchDefect},
+		"connection unselected":  {err: projectconfig.ErrConnectionNotSelected, wantBranch: docusign.CreateEnvelopeFromTemplateBranchDefect},
+		"broker rejected":        {err: projectconfig.ErrCredentialBrokerRejected, wantBranch: docusign.CreateEnvelopeFromTemplateBranchDefect},
+		"reauthorization needed": {err: sdkgo.ErrReauthorizationRequired, wantBranch: docusign.CreateEnvelopeFromTemplateBranchDefect},
+	} {
+		t.Run(name, func(t *testing.T) {
+			fake := newFakeDocuSign(t, nil)
+			client := newTestClient(t, fake, failingCredentials{err: test.err}, docusign.Config{})
+			context := newTestDexContext("credentials-" + name)
+			result, err := sdkgo.RunMutation(context, client.CreateEnvelopeFromTemplate(), testConnection, validCreateInput())
+			if test.wantBranch == "" {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry, "a broker that cannot answer yet retries")
+				require.Contains(t, string(context.lastHeartbeat()), `"sendCount":0`, "nothing was sent")
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.wantBranch, result.Branch)
+			}
+			require.Empty(t, fake.recordedRequests())
+		})
+	}
+}
+
+func TestCreateEnvelopeAcceptedCreateWhoseMarkerIsLostSelectsUncertain(t *testing.T) {
+	fake := newFakeDocuSign(t, map[string]http.HandlerFunc{
+		"POST " + envelopesPath: respondJSON(http.StatusCreated, `{"envelopeId":`),
+		"GET " + envelopesPath:  (&fakeEnvelopeStore{}).list,
+	})
+	client := newTestClient(t, fake, staticCredentials(productionCredentials()), docusign.Config{})
+	context := newTestDexContext("accepted-marker-lost")
+	context.failingHeartbeatNumber = 2
+	result, err := sdkgo.RunMutation(context, client.CreateEnvelopeFromTemplate(), testConnection, validCreateInput())
+	require.NoError(t, err)
+	require.Equal(t, docusign.CreateEnvelopeFromTemplateBranchUncertain, result.Branch, "a later attempt could not know the create was accepted")
+	require.Len(t, fake.requestsTo(http.MethodPost, envelopesPath), 1)
+	require.Len(t, fake.requestsTo(http.MethodGet, envelopesPath), 1)
+}
+
+func TestCreateEnvelopeRefusalWithAnIncompleteOrEnvelopeBearingBodyIsAnUnknownOutcome(t *testing.T) {
+	for name, answer := range map[string]http.HandlerFunc{
+		"oversized refusal body": respondJSON(http.StatusBadRequest, docusignError("TEMPLATE_ID_INVALID")+strings.Repeat(" ", providerhttp.MaxErrorBodyBytes)),
+		"refusal body cut off":   cutOffBody(http.StatusBadRequest, docusignError("TEMPLATE_ID_INVALID")),
+		"refusal naming an envelope": respondJSON(http.StatusUnprocessableEntity,
+			`{"errorCode":"UNSPECIFIED_ERROR","envelopeId":"`+otherEnvelopeID+`"}`),
+	} {
+		t.Run(name, func(t *testing.T) {
+			fake := newFakeDocuSign(t, map[string]http.HandlerFunc{
+				"POST " + envelopesPath: answer,
+				"GET " + envelopesPath:  (&fakeEnvelopeStore{}).list,
+			})
+			client := newTestClient(t, fake, staticCredentials(productionCredentials()), docusign.Config{})
+			_, heartbeat, err := runCreateAttempt(t, client, nil, 1)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "the first of three possible sends resends on a later attempt")
+			require.Len(t, fake.requestsTo(http.MethodGet, envelopesPath), 1, "the unknown create is read back")
+
+			_, heartbeat, err = runCreateAttempt(t, client, heartbeat, 2)
+			require.ErrorAs(t, err, &retry)
+			result, _, err := runCreateAttempt(t, client, heartbeat, 3)
+			require.NoError(t, err)
+			require.Equal(t, docusign.CreateEnvelopeFromTemplateBranchUncertain, result.Branch, "the third send reached the cap")
+			require.Len(t, fake.requestsTo(http.MethodPost, envelopesPath), 3)
+		})
+	}
+}
+
+func TestCreateEnvelopeIncompleteUnauthorizedBodyIsNotSentAgainAfterARefresh(t *testing.T) {
+	fake := newFakeDocuSign(t, map[string]http.HandlerFunc{
+		"POST " + envelopesPath: cutOffBody(http.StatusUnauthorized, docusignError("USER_AUTHENTICATION_FAILED")),
+		"GET " + envelopesPath:  (&fakeEnvelopeStore{}).list,
+		"POST /oauth/token":     respondJSON(http.StatusOK, `{"access_token":"new-access","token_type":"Bearer","expires_in":28800}`),
+	})
+	client := newTestClient(t, fake, testsupport.NewRefreshingCredentialSource(productionCredentials(), nil), docusign.Config{})
+	_, _, err := runCreateAttempt(t, client, nil, 1)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an incomplete 401 body proves no refusal")
+	require.Len(t, fake.requestsTo(http.MethodPost, envelopesPath), 1, "the create is not sent again with a refreshed token")
 }

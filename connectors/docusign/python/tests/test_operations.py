@@ -5,9 +5,17 @@
 import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import Any
 
+import httpx
 import pytest
-from dex_connectors.sdk.providerhttp import ProviderTransportError
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+)
+from dex_connectors.sdk.providerhttp import MAX_ERROR_BODY_BYTES, ProviderTransportError
 
 from dex_connectors import sdk
 from dex_connectors.docusign import (
@@ -17,10 +25,19 @@ from dex_connectors.docusign import (
     Credentials,
     EnvelopeCustomField,
     TemplateRole,
+    VoidEnvelopeInput,
 )
-from dex_connectors.docusign.client import ProviderResponse, failure, path_escape, query_escape
+from dex_connectors.docusign.client import (
+    ProviderResponse,
+    Session,
+    SessionFailure,
+    failure,
+    path_escape,
+    query_escape,
+)
 from dex_connectors.docusign.operations import (
     CreateEnvelopeFromTemplateOperation,
+    VoidEnvelopeOperation,
     _create_body,
     _CreateDispatchCheckpoint,
     _CreateSendBudget,
@@ -401,6 +418,152 @@ async def test_refusal_after_a_lost_checkpoint_selects_uncertain() -> None:
     result, _ = await _run_create_attempt(provider, 2, None)
     assert result.kind == "uncertain", "the first attempt may have sent before Dex stored its checkpoint"
     assert provider.methods == ["GET", "POST"]
+
+
+class _AcceptedMarkerLostContext(_AttemptContext):
+    """Fail the heartbeat that would record the accepted marker."""
+
+    async def heartbeat(self, value: _CreateDispatchCheckpoint | None = None) -> None:
+        if value is not None and value.is_accepted:
+            raise RuntimeError("the heartbeat could not be recorded")
+        self.value = value
+
+
+@pytest.mark.asyncio
+async def test_accepted_create_whose_marker_is_lost_selects_uncertain() -> None:
+    provider = _ScriptedDocuSign([ProviderResponse(201, {}, b'{"envelopeId":')])
+    call = SimpleNamespace(
+        id="call-1", idempotency_key="call-1", context=_AcceptedMarkerLostContext(1, None), max_sends=3
+    )
+    input = CreateEnvelopeFromTemplateInput(
+        template_id=_ENVELOPE_ID,
+        template_roles=(TemplateRole("Customer", "Priya Raman", "priya@example.com"),),
+    )
+    result = await CreateEnvelopeFromTemplateOperation(provider).invoke(call, input)  # type: ignore[arg-type]
+    assert result.kind == "uncertain", "a later attempt could not know the create was accepted"
+    assert provider.methods == ["POST", "GET"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "answer",
+    [
+        ProviderResponse(400, {}, b"", True),
+        ProviderResponse(
+            422, {}, json.dumps({"errorCode": "UNSPECIFIED_ERROR", "envelopeId": _ENVELOPE_ID}).encode()
+        ),
+    ],
+    ids=["incomplete refusal body", "refusal naming an envelope"],
+)
+async def test_refusal_that_proves_nothing_resends_below_the_cap(answer: ProviderResponse) -> None:
+    provider = _ScriptedDocuSign([answer, answer, answer])
+    result, heartbeat = await _run_create_attempt(provider, 1, None)
+    assert result.kind == "retry" and provider.methods == ["POST", "GET"]
+    result, heartbeat = await _run_create_attempt(provider, 2, heartbeat)
+    assert result.kind == "retry"
+    result, _ = await _run_create_attempt(provider, 3, heartbeat)
+    assert result.kind == "uncertain", "the third send reached the cap"
+    assert provider.methods.count("POST") == 3
+
+
+class _SessionFailingDocuSign(_ScriptedDocuSign):
+    """Fail every session with a terminal credential failure."""
+
+    async def open_session(self, _call: object, operation: str) -> object:
+        raise SessionFailure(
+            "defect", failure(operation, sdk.FailureKind.AUTHENTICATION, "authorize the connection again")
+        )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("attempt", [2, 3])
+async def test_terminal_session_failure_after_a_possible_send_selects_uncertain(attempt: int) -> None:
+    provider = _SessionFailingDocuSign([])
+    result, heartbeat = await _run_create_attempt(provider, attempt, _DISPATCHED)
+    assert result.kind == "uncertain"
+    assert heartbeat == _DISPATCHED and provider.methods == []
+
+
+class _FailingCredentials:
+    """Fail every resolve with error."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, _call: object) -> Credentials:
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (CredentialBrokerUnavailableError("broker is unavailable"), "retry"),
+        (ObjectNotFoundError("missing"), "defect"),
+        (ConnectionNotSelectedError(), "defect"),
+        (CredentialBrokerRejectedError(), "defect"),
+        (sdk.ReauthorizationRequiredError(), "defect"),
+    ],
+    ids=["broker unavailable", "credentials missing", "connection unselected", "broker rejected", "reauth"],
+)
+async def test_open_session_classifies_credential_failures(error: Exception, expected: str) -> None:
+    client = Client(Config(), _FailingCredentials(error))  # type: ignore[arg-type]
+    try:
+        with pytest.raises(SessionFailure) as raised:
+            await client.open_session(SimpleNamespace(), "createEnvelopeFromTemplate")  # type: ignore[arg-type]
+    finally:
+        await client.aclose()
+    assert raised.value.category == expected
+
+
+@pytest.mark.asyncio
+async def test_void_retries_a_refusal_with_an_incomplete_body() -> None:
+    class _VoidDocuSign(_ScriptedDocuSign):
+        async def request(self, *_args: object, **_kwargs: object) -> ProviderResponse:
+            return ProviderResponse(400, {}, b"", True)
+
+    call = SimpleNamespace(id="call-1", idempotency_key="call-1", context=_AttemptContext(1, None))
+    result = await VoidEnvelopeOperation(_VoidDocuSign([])).invoke(  # type: ignore[arg-type]
+        call,  # type: ignore[arg-type]
+        VoidEnvelopeInput(envelope_id=_ENVELOPE_ID, voided_reason="Deal lost"),
+    )
+    assert result.kind == "retry"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "body",
+    [b'{"errorCode":"TEMPLATE_ID_INVALID"}' + b" " * MAX_ERROR_BODY_BYTES, None],
+    ids=["oversized", "cut off"],
+)
+async def test_client_marks_an_incomplete_error_body(body: bytes | None) -> None:
+    async def stream() -> Any:
+        yield b'{"errorCode":"TEMPLATE_ID_INVALID"'
+        raise httpx.ReadError("connection lost")
+
+    def respond(_request: httpx.Request) -> httpx.Response:
+        if body is None:
+            return httpx.Response(400, content=stream())
+        return httpx.Response(400, content=body)
+
+    client = Client(
+        Config(),
+        sdk.StaticCredentialProvider[Credentials]({}),
+        http_client=httpx.AsyncClient(transport=httpx.MockTransport(respond)),
+    )
+    try:
+        credentials = Credentials(access_token=sdk.SecretString("token"))
+        session = Session(_ENVELOPE_ID, "https://na3.docusign.net", credentials)
+        response = await client.request(
+            SimpleNamespace(),  # type: ignore[arg-type]
+            session,
+            "POST",
+            "/envelopes",
+            body={},
+        )
+    finally:
+        await client.aclose()
+    assert response.status == 400 and response.is_error_body_incomplete
 
 
 @pytest.mark.asyncio
