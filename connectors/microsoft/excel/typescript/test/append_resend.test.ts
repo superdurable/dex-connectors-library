@@ -8,7 +8,14 @@ import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBr
 import { ExcelClient } from '../src/client.js';
 import { AppendTableRowsDefinition, UpdateValuesDefinition } from '../src/generated/definitions.js';
 import type { Credentials } from '../src/models.js';
-import type { CredentialSource } from '../src/generated/models.js';
+import { decodeCredentials, type CredentialSource } from '../src/generated/models.js';
+
+/** Return the error the SDK project provider throws when the generated decoder rejects stored material. */
+function sdkWrappedMaterialError(): TypeError {
+  try { decodeCredentials({ unexpected_field: 'value' }); }
+  catch { return new TypeError('project credential decoding failed'); }
+  throw new Error('malformed stored material decoded');
+}
 
 const callId = '6072a0ce-9ddb-5937-8998-675e48cfa408';
 const connection = { provider: 'microsoft', name: 'approvals' };
@@ -131,7 +138,7 @@ describe('Excel appendTableRows bounded resend', () => {
     expect(branches).toEqual(['retry', 'defect']);
   });
 
-  const terminalCredentialErrors: Error[] = [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError()];
+  const terminalCredentialErrors: Error[] = [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError(), sdkWrappedMaterialError()];
   const transientCredentialErrors: Error[] = [new CredentialBrokerUnavailableError(), new RejectedCredentialNotRefreshedError(), new Error('connection is not configured'), new TypeError('unlisted')];
 
   it.each([...terminalCredentialErrors, ...transientCredentialErrors].map(error => [error.name, error] as const))('classifies %s like every connector', async (_name, error) => {
