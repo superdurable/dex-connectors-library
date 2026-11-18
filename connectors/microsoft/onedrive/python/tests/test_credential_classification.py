@@ -132,7 +132,8 @@ async def test_a_later_write_attempt_retries_a_terminal_credential_failure(error
     ("status", "body", "expected"),
     [
         (403, b'{"error":{"code":"accessDenied"}}', "providerRejected"),
-        (507, b'{"error":{"code":"quotaLimitReached"}}', "retry"),
+        (507, b'{"error":{"code":"quotaLimitReached"}}', "providerRejected"),
+        (501, b'{"error":{"code":"notSupported"}}', "retry"),
         (412, b'{"error":{"code":"resourceModified"}}', "retry"),
         (409, b'{"error":{"code":"otherConflict"}}', "retry"),
         (403, b"x" * 70000, "retry"),

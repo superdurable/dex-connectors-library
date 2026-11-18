@@ -147,7 +147,7 @@ export interface CreateFolderStepConfig<StepInput, OperationInput = CreateFolder
   created: StepTarget<MutationResult<OperationOutput>>;
   /** A file, not a folder, already has the name in the parent folder, so nothing was created. */
   nameConflict?: StepTarget<MutationResult<OperationOutput>>;
-  /** Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder. */
+  /** Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder or a full quota. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Retained for compatibility and no longer selected: an invalid or oversized creation answer or read-back now retries. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;

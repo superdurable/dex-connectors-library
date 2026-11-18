@@ -409,7 +409,7 @@ spec:
       branches:
         - {id: created, goName: Created, description: Microsoft Graph created the folder or a folder with that name already existed.}
         - {id: nameConflict, goName: NameConflict, description: "A file, not a folder, already has the name in the parent folder, so nothing was created.", optional: true}
-        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder or a full quota.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Retained for compatibility and no longer selected: an invalid or oversized creation answer or read-back now retries.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:

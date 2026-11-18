@@ -155,7 +155,8 @@ def _mutation_read_failure(
     return MutationAttempt.retry(failure, delay)
 
 
-_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+# Graph documents 507 as a full quota, a definite refusal that no repeat clears.
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422, 507))
 
 
 def _is_definite_write_refusal(exchange: Exchange) -> bool:
@@ -730,7 +731,7 @@ class UploadFileOperation:
                 delay,
             )
         if not _is_definite_write_refusal(exchange):
-            # An unlisted status, such as 501 or 507, or an unreadable body leaves the PUT unsettled.
+            # An unlisted status, such as 501, or an unreadable body leaves the PUT unsettled.
             return MutationAttempt.retry(
                 graph_failure(
                     FailureKind.PROTOCOL,

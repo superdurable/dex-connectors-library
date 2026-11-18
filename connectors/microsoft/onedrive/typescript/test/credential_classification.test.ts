@@ -50,7 +50,8 @@ it.each(terminalErrors.map(error => [error.name, error] as const))('retries %s o
 
 it.each([
   ['a definite refusal', 403, '{"error":{"code":"accessDenied"}}', 'providerRejected'],
-  ['a full quota', 507, '{"error":{"code":"quotaLimitReached"}}', 'retry'],
+  ['a full quota', 507, '{"error":{"code":"quotaLimitReached"}}', 'providerRejected'],
+  ['not implemented', 501, '{"error":{"code":"notSupported"}}', 'retry'],
   ['an unlisted status', 412, '{"error":{"code":"resourceModified"}}', 'retry'],
   ['another conflict', 409, '{"error":{"code":"otherConflict"}}', 'retry'],
 ] as const)('selects providerRejected for a write only after %s', async (_name, status, body, expected) => {

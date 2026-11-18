@@ -337,7 +337,7 @@ func CreateFolderNameConflict(value onedrive.CreateFolderOutput, failure *sdkgo.
 	return connectormock.Branch(onedrive.CreateFolderBranchNameConflict, value, failure)
 }
 
-// CreateFolderProviderRejected selects the providerRejected branch: Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder.
+// CreateFolderProviderRejected selects the providerRejected branch: Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder or a full quota.
 func CreateFolderProviderRejected(value onedrive.CreateFolderOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.CreateFolderOutput] {
 	return connectormock.Branch(onedrive.CreateFolderBranchProviderRejected, value, failure)
 }

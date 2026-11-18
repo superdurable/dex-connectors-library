@@ -105,7 +105,7 @@ CREATE_FOLDER_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Microsoft Graph created the folder or a folder with that name already existed.", False),
         BranchDefinition(NAME_CONFLICT, "A file, not a folder, already has the name in the parent folder, so nothing was created.", True),
-        BranchDefinition(PROVIDER_REJECTED, "Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder.", True),
+        BranchDefinition(PROVIDER_REJECTED, "Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder or a full quota.", True),
         BranchDefinition(INVALID_RESPONSE, "Retained for compatibility and no longer selected: an invalid or oversized creation answer or read-back now retries.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),

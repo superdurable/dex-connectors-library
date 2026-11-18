@@ -102,7 +102,7 @@ func TestCreateFolderRejectsInvalidNamesAndClassifiesRejections(t *testing.T) {
 	require.NotContains(t, err.Error(), "GRAPH-MESSAGE-SENTINEL")
 
 	// A 409 without nameAlreadyExists or an unlisted status is unknown, so the safe creation repeats.
-	for _, status := range []int{http.StatusConflict, http.StatusPreconditionFailed, http.StatusInsufficientStorage} {
+	for _, status := range []int{http.StatusConflict, http.StatusPreconditionFailed, http.StatusNotImplemented} {
 		graph.Intercept(func(request graphfake.Request) *graphfake.Response {
 			return &graphfake.Response{StatusCode: status, Code: "otherConflict"}
 		})
@@ -110,6 +110,20 @@ func TestCreateFolderRejectsInvalidNamesAndClassifiesRejections(t *testing.T) {
 		var retry *sdkgo.RetryError
 		require.ErrorAs(t, err, &retry, status)
 	}
+
+	// Graph documents 507 as a full quota, so the creation is refused once and never repeated.
+	var quotaPosts int
+	graph.Intercept(func(request graphfake.Request) *graphfake.Response {
+		if request.Method == http.MethodPost {
+			quotaPosts++
+		}
+		return &graphfake.Response{StatusCode: http.StatusInsufficientStorage, Code: "quotaLimitReached"}
+	})
+	quota, err := sdkgo.RunMutation(newDexContext("folder-quota"), client.CreateFolder(), graphConnection, onedrive.CreateFolderInput{DriveID: teamDriveID, Name: "x"})
+	require.NoError(t, err)
+	require.Equal(t, onedrive.CreateFolderBranchProviderRejected, quota.Branch)
+	require.Equal(t, sdkgo.FailureQuotaExhausted, quota.Failure.Kind)
+	require.Equal(t, 1, quotaPosts)
 }
 
 func TestCreateFolderRetriesADefiniteReadBackRefusalOnALaterAttempt(t *testing.T) {

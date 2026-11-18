@@ -691,7 +691,7 @@ var CreateFolderDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateFolderBranchCreated, Description: "Microsoft Graph created the folder or a folder with that name already existed."},
 		{ID: CreateFolderBranchNameConflict, Description: "A file, not a folder, already has the name in the parent folder, so nothing was created.", Optional: true},
-		{ID: CreateFolderBranchProviderRejected, Description: "Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder.", Optional: true},
+		{ID: CreateFolderBranchProviderRejected, Description: "Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder or a full quota.", Optional: true},
 		{ID: CreateFolderBranchInvalidResponse, Description: "Retained for compatibility and no longer selected: an invalid or oversized creation answer or read-back now retries.", Optional: true},
 		{ID: CreateFolderBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},

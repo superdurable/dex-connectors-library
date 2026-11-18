@@ -28,7 +28,8 @@ function mutationReadFailure<T>(client: OneDriveClient, call: Call, operation: s
   if (result.branch && !isLaterAttempt(call) && isDefiniteWriteRefusal(exchange)) return newMutationBranch(result.branch, zero, result.receipt, result.failure);
   return newMutationRetry(result.failure, result.retryAfterMs);
 }
-const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+// Graph documents 507 as a full quota, a definite refusal that no repeat clears.
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422, 507]);
 /** An allowlisted refusal status whose fully read body describes no item. */
 function isDefiniteWriteRefusal(exchange: Exchange): boolean {
   if (exchange.error || exchange.isErrorBodyIncomplete || !definiteRefusalStatuses.has(exchange.status)) return false;
@@ -242,7 +243,7 @@ export class UploadFileOperation implements Mutation<UploadFileInput, UploadFile
     }
     if (exchange.status === 409 || exchange.status === 423) return this.readBack(call, credentials, input, content, codes);
     if (retryableStatus(exchange.status, codes)) return newMutationRetry(failure(operation, statusFailureKind(exchange.status, codes), 'provider temporarily rejected the upload'), retryDelay(exchange.headers, this.client));
-    // An unlisted status, such as 501 or 507, or an unreadable body leaves the PUT unsettled.
+    // An unlisted status, such as 501, or an unreadable body leaves the PUT unsettled.
     if (!isDefiniteWriteRefusal(exchange)) return newMutationRetry(failure(operation, 'PROTOCOL', 'provider answer did not settle the upload, so the PUT repeats'));
     return newMutationBranch(UploadFileBranch.ProviderRejected, zero, received, failure(operation, statusFailureKind(exchange.status, codes), 'provider rejected the upload'));
   }

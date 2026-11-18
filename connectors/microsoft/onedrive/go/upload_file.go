@@ -133,7 +133,7 @@ func (operation UploadFileOperation) Invoke(call sdkgo.Call, input UploadFileInp
 		delay := providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now())
 		return sdkgo.NewMutationRetry[UploadFileOutput](graphFailure(statusFailureKind(response.status, codes), uploadFileOperationID, "provider temporarily rejected the upload"), delay)
 	case !isDefiniteWriteRefusal(response):
-		// An unlisted status, such as 501 or 507, or an unreadable body leaves the PUT unsettled.
+		// An unlisted status, such as 501, or an unreadable body leaves the PUT unsettled.
 		return sdkgo.NewMutationRetry[UploadFileOutput](graphFailure(sdkgo.FailureProtocol, uploadFileOperationID, "provider answer did not settle the upload, so the PUT repeats"), 0)
 	default:
 		return sdkgo.NewMutationBranch(UploadFileBranchProviderRejected, UploadFileOutput{}, graphFailurePointer(statusFailureKind(response.status, codes), uploadFileOperationID, "provider rejected the upload"), receipt)
@@ -224,7 +224,9 @@ func isDefiniteWriteRefusal(response graphResponse) bool {
 	switch response.status {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
 		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
-		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity,
+		// Graph documents 507 as a full quota, a definite refusal that no repeat clears.
+		http.StatusInsufficientStorage:
 	default:
 		return false
 	}
