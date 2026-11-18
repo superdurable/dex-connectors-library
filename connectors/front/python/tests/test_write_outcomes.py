@@ -18,6 +18,7 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     SecretString,
 )
+from dex_connectors.sdk.singledispatch import Fence
 
 from dex_connectors.front import (
     Client,
@@ -165,6 +166,40 @@ async def test_write_window_timeout_after_dispatch_is_an_unknown_outcome(
             new_call(HeartbeatContext(deadline_seconds=1), "replyToConversation", max_sends), REPLY
         )
     assert attempt.kind == kind
+
+
+class StalledBody(httpx.AsyncByteStream):
+    """A 2xx body whose first bytes arrive and whose rest never does."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        yield b'{"message_uid":'
+        await asyncio.sleep(30)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("max_sends", [3, 1])
+async def test_2xx_headers_then_the_write_deadline_cuts_the_body_is_never_resent(
+    monkeypatch: pytest.MonkeyPatch, max_sends: int
+) -> None:
+    """The Fence's TimeoutError after a 2xx status means Front accepted the reply."""
+    original_dispatch = Fence.dispatch
+
+    async def cut_at_the_write_deadline(
+        fence: Fence, send: Callable[[datetime], Awaitable[object]]
+    ) -> object:
+        async def send_until_the_window_closes(deadline: datetime) -> object:
+            return await asyncio.wait_for(send(deadline), 0.3)
+
+        return await original_dispatch(fence, send_until_the_window_closes)
+
+    monkeypatch.setattr(Fence, "dispatch", cut_at_the_write_deadline)
+    provider, requests = recording(lambda request: httpx.Response(202, stream=StalledBody()))
+    async with provider:
+        attempt = await new_client(provider).reply_to_conversation().invoke(
+            new_call(HeartbeatContext(), "replyToConversation", max_sends), REPLY
+        )
+    assert attempt.kind == "uncertain"
+    assert len(requests) == 1
 
 
 @pytest.mark.asyncio

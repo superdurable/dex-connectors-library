@@ -938,10 +938,17 @@ class ReplyToConversationOperation:
             )
         assert credentials is not None
         path, payload = _reply_payload(input)
+        observed_statuses: list[int] = []
 
         async def send(deadline: datetime) -> Exchange:
             return await self.client.exchange(
-                credentials, operation, "POST", path, payload=payload, deadline=deadline
+                credentials,
+                operation,
+                "POST",
+                path,
+                payload=payload,
+                deadline=deadline,
+                on_response_status=observed_statuses.append,
             )
 
         try:
@@ -956,6 +963,15 @@ class ReplyToConversationOperation:
                 )
             )
         except TimeoutError:
+            if observed_statuses and 200 <= observed_statuses[0] < 300:
+                # Front accepted the write, and without its body no ID exists to read it back by.
+                return self._uncertain(
+                    call,
+                    output,
+                    FailureKind.TRANSPORT,
+                    "Front accepted the reply or comment, but its answer did not arrive within "
+                    "the write window; it is not resent",
+                )
             # The write window closed after dispatch, so Front may have the reply or comment.
             return permit.resend_or_uncertain(
                 call,
