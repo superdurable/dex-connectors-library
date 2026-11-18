@@ -28,6 +28,7 @@ from dex_connectors.sdk.projectconfig import (
 )
 from dex_connectors.sdk.projectconfig.broker import RejectedCredentialNotRefreshedError
 
+import dex_connectors.microsoft_teams._generated.connection as generated_connection
 from dex_connectors.microsoft_teams import (
     Client,
     Config,
@@ -267,11 +268,24 @@ async def test_definite_refusal_is_never_resent() -> None:
     assert methods(requests) == ["POST"]
 
 
+def sdk_wrapped_material_error() -> ValueError:
+    """Return the SDK refreshing provider's error for stored material the decoder rejects."""
+    try:
+        try:
+            generated_connection.decode_credentials({"unexpected_field": "value"})
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed stored material decoded")
+
+
 TERMINAL_CREDENTIAL_ERRORS: tuple[Exception, ...] = (
     ReauthorizationRequiredError(),
     ObjectNotFoundError(),
     ConnectionNotSelectedError(),
     CredentialBrokerRejectedError(),
+    sdk_wrapped_material_error(),
 )
 TRANSIENT_CREDENTIAL_ERRORS: tuple[Exception, ...] = (
     CredentialBrokerUnavailableError(),

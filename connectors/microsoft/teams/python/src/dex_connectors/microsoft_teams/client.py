@@ -398,6 +398,13 @@ class Client:
                 credentials = await resolve_credential(self.credentials, call, self.refresh_driver)
         except (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError) as error:
             raise ReauthorizationRequiredError() from error
+        except ValueError as error:
+            # Imported here because the generated connection module imports this one.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                raise ReauthorizationRequiredError() from error
+            raise
         if not is_header_safe_credential(credentials.access_token.reveal()):
             raise ReauthorizationRequiredError()
         return credentials
