@@ -583,6 +583,49 @@
       "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
       "exchanges": [
         {
+          "body": "see other",
+          "headers": {
+            "Location": "http://outside.example/items/1"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/items",
+          "requestBody": "payload",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 303
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "input": {
+        "body": "payload",
+        "method": "POST",
+        "path": "/items"
+      },
+      "name": "sendRequest-redirect-post-retried",
+      "operation": "sendRequest"
+    },
+    {
+      "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "exchanges": [
+        {
           "body": "conformance-access-token",
           "headers": {},
           "keyMode": "absent",
