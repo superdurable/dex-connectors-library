@@ -87,7 +87,7 @@ class ListChannelMessagesOperation:
         self, call: Call, input: ListChannelMessagesInput
     ) -> QueryAttempt[ListChannelMessagesOutput]:
         """Validate, read conversations.history, and classify one provider attempt."""
-        from .client import _classify_query_response, _failure, _query_branch
+        from .client import _classify_query_response, _failure, _query_branch, _query_credential_failure
 
         operation = "listChannelMessages"
         if not _is_valid_input(input):
@@ -98,11 +98,9 @@ class ListChannelMessagesOperation:
                 "channel, valid Slack message timestamps, and page size 1 through 15 (blank or 0 reads 15) "
                 "are required",
             )
-        credentials, _ = await self.client._resolve(call, "bot_token")
+        credentials, is_terminal = await self.client._resolve(call, "bot_token")
         if credentials is None:
-            return _query_branch(
-                operation, DEFECT, FailureKind.AUTHENTICATION, "Slack connection credentials are unavailable"
-            )
+            return _query_credential_failure(operation, is_terminal)
         query = {
             "channel": input.channel_id,
             "limit": str(input.page_size or _MAXIMUM_CHANNEL_HISTORY_PAGE_SIZE),

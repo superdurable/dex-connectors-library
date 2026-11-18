@@ -485,8 +485,14 @@ Read-back uses the remaining Step context; a timeout retries read-back on the
 next attempt without posting. When the timestamp checkpoint write itself fails,
 a later attempt could not find the timestamp and would resend, so a read-back
 that would retry selects `uncertain` instead.
+A credential failure is terminal only when reauthorization is required, the
+connection or its credential object is not found, the connection is not
+selected, the credential broker rejected the read, or the resolved token is
+missing or not header-safe. Every other credential failure, including an
+unavailable broker, a timeout, or a static provider without the connection, is
+transient. Queries retry a transient failure and select `defect` for a terminal one.
 Before a first post, a transient credential lookup failure records `notSent` and
-retries. Reauthorization-required or missing bot credentials record `notSent`
+retries. Terminal bot credentials record `notSent`
 and select `defect` with an authentication failure and reconnect guidance.
 Before a resend, an earlier post may have landed, so nothing is recorded: a
 transient credential failure retries, and terminal credentials select
@@ -495,7 +501,7 @@ Python v0.6.1, this applies on any attempt where an earlier post may have
 landed, including a send allowed by a `canResend` checkpoint that still counts
 an earlier post: such an attempt never records `notSent` or selects `defect`.
 During read-back, a transient credential failure retries without another post;
-reauthorization-required or missing user credentials select `uncertain` with
+terminal user credentials select `uncertain` with
 the known message timestamp in the receipt and reconnect guidance.
 For replies, whether Slack excludes the parent message when `oldest` and `latest`
 name the reply and `limit=1` is unverified. A parent-only result selects

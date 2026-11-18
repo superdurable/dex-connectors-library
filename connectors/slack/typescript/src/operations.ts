@@ -3,7 +3,7 @@
 
 import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { CheckpointError, InsufficientTimeError, newFence, type Marker } from '@superdurable/connectors-sdk/singledispatch';
-import { failure, isCredentialRejected, retryAfter, type SlackClient, type SlackExchange } from './client.js';
+import { failure, isCredentialRejected, queryCredentialFailure, retryAfter, type SlackClient, type SlackExchange } from './client.js';
 import { GetThreadReplyDefinition, GetWorkspaceIdentityDefinition, ListChannelMessagesDefinition, ListChannelsDefinition, ListThreadMessagesDefinition, PostButtonMessageDefinition, PostChannelMessageDefinition, PostThreadReplyDefinition } from './generated/definitions.js';
 import type { Channel, ChannelMessage, GetThreadReplyInput, GetThreadReplyOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListChannelMessagesInput, ListChannelMessagesOutput, ListChannelsInput, ListChannelsOutput, ListThreadMessagesInput, ListThreadMessagesOutput, Message, PostButtonMessageInput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput } from './generated/models.js';
 
@@ -27,7 +27,7 @@ export class ListChannelsOperation implements Query<ListChannelsInput, ListChann
     const limit = input.limit ?? 0;
     if (!channelTypes || !Number.isInteger(limit) || limit < 0 || limit > 999) return newQueryBranch('defect', emptyChannels, {}, failure(operation, 'VALIDATION', 'visibility must be blank, public, or private, and limit must be from 0 through 999'));
     const credential = await this.client.resolveToken(call, 'bot');
-    if (!credential.token) return newQueryBranch('defect', emptyChannels, {}, failure(operation, 'AUTHENTICATION', 'Slack connection credentials are unavailable'));
+    if (!credential.token) return queryCredentialFailure(operation, emptyChannels, credential.terminal);
     const query = new URLSearchParams({ exclude_archived: 'true', types: channelTypes, limit: String(limit || 200) });
     if (input.cursor) query.set('cursor', input.cursor);
     // users.conversations lists only joined channels and omits is_member.
@@ -54,7 +54,7 @@ export class GetWorkspaceIdentityOperation implements Query<GetWorkspaceIdentity
   async invoke(call: Call, _input: GetWorkspaceIdentityInput): Promise<QueryAttempt<GetWorkspaceIdentityOutput>> {
     const operation = 'getWorkspaceIdentity';
     const credential = await this.client.resolveToken(call, 'bot');
-    if (!credential.token) return newQueryBranch('defect', emptyIdentity, {}, failure(operation, 'AUTHENTICATION', 'Slack connection credentials are unavailable'));
+    if (!credential.token) return queryCredentialFailure(operation, emptyIdentity, credential.terminal);
     const response = await this.client.postForm(call, credential.token, 'auth.test', new URLSearchParams(), 'bot');
     const classified = classifyQuery(this.client, call, operation, response, emptyIdentity, 'Slack workspace identity is temporarily unavailable', 'Slack rate limited the identity query');
     if (classified) return classified;
@@ -73,7 +73,7 @@ export class ListThreadMessagesOperation implements Query<ListThreadMessagesInpu
     const operation = 'listThreadMessages';
     if (!input.channelId.trim() || !input.threadTimestamp.trim() || !Number.isInteger(input.pageSize) || input.pageSize < 1 || input.pageSize > 15) return newQueryBranch('defect', emptyList, {}, failure(operation, 'VALIDATION', 'channel, thread timestamp, and page size from 1 through 15 are required'));
     const credential = await this.client.resolveToken(call, 'user');
-    if (!credential.token) return newQueryBranch('defect', emptyList, {}, failure(operation, 'AUTHENTICATION', 'Slack connection credentials are unavailable'));
+    if (!credential.token) return queryCredentialFailure(operation, emptyList, credential.terminal);
     const query = new URLSearchParams({ channel: input.channelId, ts: input.threadTimestamp, limit: String(input.pageSize) });
     if (input.cursor) query.set('cursor', input.cursor);
     const response = await this.client.get(call, credential.token, 'conversations.replies', query);
@@ -94,7 +94,7 @@ export class GetThreadReplyOperation implements Query<GetThreadReplyInput, GetTh
     const operation = 'getThreadReply';
     if (!input.channelId.trim() || !input.threadTimestamp.trim() || !input.replyTimestamp.trim() || input.replyTimestamp === input.threadTimestamp) return newQueryBranch('defect', emptyReply, {}, failure(operation, 'VALIDATION', 'channel, thread timestamp, and a distinct reply timestamp are required'));
     const credential = await this.client.resolveToken(call, 'user');
-    if (!credential.token) return newQueryBranch('defect', emptyReply, {}, failure(operation, 'AUTHENTICATION', 'Slack connection credentials are unavailable'));
+    if (!credential.token) return queryCredentialFailure(operation, emptyReply, credential.terminal);
     const query = replyQuery(input.channelId, input.threadTimestamp, input.replyTimestamp);
     const response = await this.client.get(call, credential.token, 'conversations.replies', query);
     const classified = classifyQuery(this.client, call, operation, response, emptyReply, 'Slack thread reply is temporarily unavailable', 'Slack rate limited the reply query');
@@ -120,7 +120,7 @@ export class ListChannelMessagesOperation implements Query<ListChannelMessagesIn
       return newQueryBranch('defect', emptyChannelHistory, {}, failure(operation, 'VALIDATION', 'channel, valid Slack message timestamps, and page size 1 through 15 (blank or 0 reads 15) are required'));
     }
     const credential = await this.client.resolveToken(call, 'bot');
-    if (!credential.token) return newQueryBranch('defect', emptyChannelHistory, {}, failure(operation, 'AUTHENTICATION', 'Slack connection credentials are unavailable'));
+    if (!credential.token) return queryCredentialFailure(operation, emptyChannelHistory, credential.terminal);
     const query = new URLSearchParams({ channel: input.channelId, limit: String(pageSize || maximumChannelHistoryPageSize) });
     if (input.oldestTimestamp) query.set('oldest', input.oldestTimestamp);
     if (input.latestTimestamp) query.set('latest', input.latestTimestamp);

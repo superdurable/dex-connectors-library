@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -345,9 +346,9 @@ func (operation ListThreadMessagesOperation) Invoke(call sdkgo.Call, input ListT
 	if strings.TrimSpace(input.ChannelID) == "" || strings.TrimSpace(input.ThreadTimestamp) == "" || input.PageSize < 1 || input.PageSize > maximumThreadPageSize {
 		return sdkgo.NewQueryBranch(ListThreadMessagesBranchDefect, ListThreadMessagesOutput{}, slackFailurePointer("listThreadMessages", sdkgo.FailureValidation, "channel, thread timestamp, and page size from 1 through 15 are required"), sdkgo.Receipt{})
 	}
-	credentials, failure, _ := operation.client.resolveCredentials(call, "listThreadMessages", userCredentialToken)
+	credentials, failure, isTerminalCredentialFailure := operation.client.resolveCredentials(call, "listThreadMessages", userCredentialToken)
 	if failure != nil {
-		return sdkgo.NewQueryBranch(ListThreadMessagesBranchDefect, ListThreadMessagesOutput{}, failure, sdkgo.Receipt{})
+		return queryCredentialFailure[ListThreadMessagesOutput](ListThreadMessagesBranchDefect, failure, isTerminalCredentialFailure)
 	}
 	values := url.Values{"channel": {input.ChannelID}, "ts": {input.ThreadTimestamp}, "limit": {strconv.Itoa(input.PageSize)}}
 	if input.Cursor != "" {
@@ -374,9 +375,9 @@ func (operation GetThreadReplyOperation) Invoke(call sdkgo.Call, input GetThread
 	if strings.TrimSpace(input.ChannelID) == "" || strings.TrimSpace(input.ThreadTimestamp) == "" || strings.TrimSpace(input.ReplyTimestamp) == "" || input.ReplyTimestamp == input.ThreadTimestamp {
 		return sdkgo.NewQueryBranch(GetThreadReplyBranchDefect, GetThreadReplyOutput{}, slackFailurePointer("getThreadReply", sdkgo.FailureValidation, "channel, thread timestamp, and a distinct reply timestamp are required"), sdkgo.Receipt{})
 	}
-	credentials, failure, _ := operation.client.resolveCredentials(call, "getThreadReply", userCredentialToken)
+	credentials, failure, isTerminalCredentialFailure := operation.client.resolveCredentials(call, "getThreadReply", userCredentialToken)
 	if failure != nil {
-		return sdkgo.NewQueryBranch(GetThreadReplyBranchDefect, GetThreadReplyOutput{}, failure, sdkgo.Receipt{})
+		return queryCredentialFailure[GetThreadReplyOutput](GetThreadReplyBranchDefect, failure, isTerminalCredentialFailure)
 	}
 	values := url.Values{
 		"channel": {input.ChannelID}, "ts": {input.ThreadTimestamp}, "oldest": {input.ReplyTimestamp},
@@ -532,7 +533,7 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 		isReplacementUnchanged := !isReplacementInvalid && replacement.BotToken.Reveal() == credentials.BotToken.Reveal()
 		if refreshErr != nil || isReplacementInvalid || isReplacementUnchanged {
 			failureMessage := "Slack credential refresh is temporarily unavailable"
-			if sdkgo.IsReauthorizationRequired(refreshErr) || (refreshErr == nil && (isReplacementInvalid || isReplacementUnchanged)) {
+			if isTerminalCredentialError(refreshErr) || (refreshErr == nil && (isReplacementInvalid || isReplacementUnchanged)) {
 				failureMessage = "Slack rejected the connection credential; reconnect the connection"
 			}
 			return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, canResendUnknownOutcome, providerRejected, slackFailure(operationName, sdkgo.FailureAuthentication, failureMessage), response, client.receipt(call, response, ""))
@@ -742,12 +743,30 @@ func retryReadBackOrSelectUncertain(isProviderIDCheckpointed bool, failure sdkgo
 func (client *Client) resolveCredentials(call sdkgo.Call, operationName string, tokenKind credentialToken) (Credentials, *sdkgo.Failure, bool) {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	if err != nil {
-		return Credentials{}, slackFailurePointer(operationName, sdkgo.FailureAuthentication, "Slack connection credentials are unavailable"), sdkgo.IsReauthorizationRequired(err)
+		return Credentials{}, slackFailurePointer(operationName, sdkgo.FailureAuthentication, "Slack connection credentials are unavailable"), isTerminalCredentialError(err)
 	}
 	if validateResolvedCredentialToken(credentials, tokenKind) != nil {
 		return Credentials{}, slackFailurePointer(operationName, sdkgo.FailureAuthentication, "Slack connection credentials are unavailable"), true
 	}
 	return credentials, nil, false
+}
+
+// queryCredentialFailure selects defect for a terminal credential failure and retries a transient one.
+func queryCredentialFailure[Output any](defect sdkgo.BranchID, failure *sdkgo.Failure, isTerminalCredentialFailure bool) sdkgo.QueryAttempt[Output] {
+	var zero Output
+	if isTerminalCredentialFailure {
+		return sdkgo.NewQueryBranch(defect, zero, failure, sdkgo.Receipt{})
+	}
+	failure.Kind = sdkgo.FailureAvailability
+	failure.Message = "Slack credentials are temporarily unavailable"
+	return sdkgo.NewQueryRetry[Output](*failure, 0)
+}
+
+// isTerminalCredentialError reports a credential failure that no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 type credentialToken int

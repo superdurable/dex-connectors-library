@@ -26,6 +26,11 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -110,6 +115,30 @@ def _encode_query(values: dict[str, str]) -> str:
 def _query_branch(operation: str, branch: str, kind: FailureKind, message: str) -> QueryAttempt[Any]:
     return QueryAttempt.branch_result(
         branch, _empty_output(operation), Receipt(), _failure(operation, kind, message)
+    )
+
+
+def _query_credential_failure(operation: str, is_terminal: bool) -> QueryAttempt[Any]:
+    """Select defect for a terminal credential failure and retry a transient one."""
+    if is_terminal:
+        return _query_branch(
+            operation, DEFECT, FailureKind.AUTHENTICATION, "Slack connection credentials are unavailable"
+        )
+    return QueryAttempt.retry(
+        _failure(operation, FailureKind.AVAILABILITY, "Slack credentials are temporarily unavailable")
+    )
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential failure that no later attempt resolves without a person."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
     )
 
 
@@ -314,7 +343,7 @@ class Client:
         try:
             credentials = await self.credentials.resolve(call)
         except Exception as error:
-            return None, isinstance(error, ReauthorizationRequiredError)
+            return None, _is_terminal_credential_error(error)
         if not getattr(credentials, token_field).reveal():
             return None, True
         return credentials, False
@@ -456,11 +485,9 @@ class ListThreadMessagesOperation:
                 FailureKind.VALIDATION,
                 "channel, thread timestamp, and page size from 1 through 15 are required",
             )
-        credentials, _ = await self.client._resolve(call, "user_token")
+        credentials, is_terminal = await self.client._resolve(call, "user_token")
         if credentials is None:
-            return _query_branch(
-                operation, DEFECT, FailureKind.AUTHENTICATION, "Slack connection credentials are unavailable"
-            )
+            return _query_credential_failure(operation, is_terminal)
         query = {"channel": input.channel_id, "ts": input.thread_timestamp, "limit": str(input.page_size)}
         if input.cursor:
             query["cursor"] = input.cursor
@@ -510,11 +537,9 @@ class GetThreadReplyOperation:
                 FailureKind.VALIDATION,
                 "channel, thread timestamp, and a distinct reply timestamp are required",
             )
-        credentials, _ = await self.client._resolve(call, "user_token")
+        credentials, is_terminal = await self.client._resolve(call, "user_token")
         if credentials is None:
-            return _query_branch(
-                operation, DEFECT, FailureKind.AUTHENTICATION, "Slack connection credentials are unavailable"
-            )
+            return _query_credential_failure(operation, is_terminal)
         query = {
             "channel": input.channel_id,
             "ts": input.thread_timestamp,
@@ -666,11 +691,9 @@ class ListChannelsOperation:
                 FailureKind.VALIDATION,
                 "visibility must be blank, public, or private, and limit must be from 0 through 999",
             )
-        credentials, _ = await self.client._resolve(call, "bot_token")
+        credentials, is_terminal = await self.client._resolve(call, "bot_token")
         if credentials is None:
-            return _query_branch(
-                operation, DEFECT, FailureKind.AUTHENTICATION, "Slack connection credentials are unavailable"
-            )
+            return _query_credential_failure(operation, is_terminal)
         query = {"exclude_archived": "true", "types": channel_types, "limit": str(input.limit or 200)}
         if input.cursor:
             query["cursor"] = input.cursor
@@ -733,11 +756,9 @@ class GetWorkspaceIdentityOperation:
     ) -> QueryAttempt[GetWorkspaceIdentityOutput]:
         """Read and classify one provider attempt."""
         operation = "getWorkspaceIdentity"
-        credentials, _ = await self.client._resolve(call, "bot_token")
+        credentials, is_terminal = await self.client._resolve(call, "bot_token")
         if credentials is None:
-            return _query_branch(
-                operation, DEFECT, FailureKind.AUTHENTICATION, "Slack connection credentials are unavailable"
-            )
+            return _query_credential_failure(operation, is_terminal)
         response = await self.client._post_form(call, credentials, {}, "bot_token", "auth.test")
         classified = _classify_query_response(
             self.client,
