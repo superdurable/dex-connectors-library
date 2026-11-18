@@ -204,7 +204,12 @@ class SearchTicketsOperation:
             return QueryAttempt.branch_result(
                 defs.DEFECT, zero, Receipt(), failure(FailureKind.VALIDATION, operation, str(error))
             )
-        credentials, credential_failure = await self.client.resolve_credentials(call, operation)
+        credentials, credential_failure, is_terminal = await self.client.resolve_write_credentials(
+            call, operation
+        )
+        if credential_failure and not is_terminal:
+            # Nothing reached Gorgias, so a transient credential failure retries.
+            return QueryAttempt.retry(credential_failure)
         if credential_failure:
             return QueryAttempt.branch_result(defs.DEFECT, zero, Receipt(), credential_failure)
         assert credentials is not None
@@ -311,7 +316,12 @@ class GetTicketOperation:
                     "ticketId must be positive and latestMessageLimit must be 0 through 20",
                 ),
             )
-        credentials, credential_failure = await self.client.resolve_credentials(call, operation)
+        credentials, credential_failure, is_terminal = await self.client.resolve_write_credentials(
+            call, operation
+        )
+        if credential_failure and not is_terminal:
+            # Nothing reached Gorgias, so a transient credential failure retries.
+            return QueryAttempt.retry(credential_failure)
         if credential_failure:
             return QueryAttempt.branch_result(defs.DEFECT, zero, Receipt(), credential_failure)
         assert credentials is not None
@@ -370,7 +380,12 @@ class FindCustomerByEmailOperation:
                     "email must be one bare email address such as jane@example.com",
                 ),
             )
-        credentials, credential_failure = await self.client.resolve_credentials(call, operation)
+        credentials, credential_failure, is_terminal = await self.client.resolve_write_credentials(
+            call, operation
+        )
+        if credential_failure and not is_terminal:
+            # Nothing reached Gorgias, so a transient credential failure retries.
+            return QueryAttempt.retry(credential_failure)
         if credential_failure:
             return QueryAttempt.branch_result(defs.DEFECT, zero, Receipt(), credential_failure)
         assert credentials is not None

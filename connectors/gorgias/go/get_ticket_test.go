@@ -65,6 +65,32 @@ func TestGetTicketTruncatesLongBodiesAndRejectsForeignMessages(t *testing.T) {
 	require.Equal(t, gorgias.GetTicketBranchInvalidResponse, result.Branch)
 }
 
+func TestQueriesRetryTransientCredentialFailuresAndSelectDefectForTerminalOnes(t *testing.T) {
+	provider := newRecordingGorgias(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	for _, test := range credentialFailureCases {
+		t.Run(test.name, func(t *testing.T) {
+			client := newGorgiasClientWithCredentials(t, provider.URL, test.credentials)
+			ticket, ticketErr := sdkgo.RunQuery(newGorgiasDexContext("get-credentials"), client.GetTicket(), gorgiasConnection, gorgias.GetTicketInput{TicketID: 5512})
+			search, searchErr := sdkgo.RunQuery(newGorgiasDexContext("search-credentials"), client.SearchTickets(), gorgiasConnection, gorgias.SearchTicketsInput{})
+			customer, customerErr := sdkgo.RunQuery(newGorgiasDexContext("customer-credentials"), client.FindCustomerByEmail(), gorgiasConnection,
+				gorgias.FindCustomerByEmailInput{Email: "jane@example.com"})
+			if !test.isTerminal {
+				requireRetry(t, ticketErr)
+				requireRetry(t, searchErr)
+				requireRetry(t, customerErr)
+				return
+			}
+			require.NoError(t, ticketErr)
+			require.NoError(t, searchErr)
+			require.NoError(t, customerErr)
+			require.Equal(t, gorgias.GetTicketBranchDefect, ticket.Branch)
+			require.Equal(t, gorgias.SearchTicketsBranchDefect, search.Branch)
+			require.Equal(t, gorgias.FindCustomerByEmailBranchDefect, customer.Branch)
+		})
+	}
+	require.Zero(t, provider.requestCount())
+}
+
 func TestGetTicketRejectsInvalidInputBeforeAnyRequest(t *testing.T) {
 	provider := newRecordingGorgias(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
 	for _, input := range []gorgias.GetTicketInput{{}, {TicketID: 1, LatestMessageLimit: gorgias.MaxLatestMessageLimit + 1}, {TicketID: 1, LatestMessageLimit: -1}} {

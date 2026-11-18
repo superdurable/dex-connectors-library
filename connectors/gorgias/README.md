@@ -341,7 +341,7 @@ and the `createTicket` or `addNote` send.
 | 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | Retry; a create or message reads back, resends below the cap, and selects `uncertain` at the cap |
 | oversized, malformed, credential-reflecting, or broken 2xx | `invalidResponse` | Retry for `updateTicket`; a create or message is read back once and never resent |
 | invalid input | `defect`, with no request | `defect`, with no request |
-| connection credentials | `defect`, with no request | revoked or unusable: `defect`, or `uncertain` after a possible earlier create or message send, or Retry on a later `updateTicket` attempt; unreadable this time: Retry |
+| connection credentials | revoked, unusable, or malformed stored material: `defect`; unreadable this time: Retry; no request either way | revoked or unusable: `defect`, or `uncertain` after a possible earlier create or message send, or Retry on a later `updateTicket` attempt; unreadable this time: Retry |
 
 Gorgias limits API-key integrations to 40 requests per 20-second window, a
 10-second window for Enterprise accounts, and answers 429 with `Retry-After`

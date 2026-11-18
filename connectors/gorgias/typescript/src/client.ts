@@ -4,7 +4,7 @@
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderStalledError, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { defaultTriggerLogger, ReauthorizationRequiredError, type Call, type CredentialProvider, type Failure, type Receipt, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { SearchTicketsOperation, GetTicketOperation, FindCustomerByEmailOperation, CreateTicketOperation, UpdateTicketOperation, AddNoteOperation } from './operations.js';
 
 const domainPattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
@@ -89,10 +89,12 @@ export class GorgiasClient {
 
   /** Return the current time of the injected clock. */ currentTime(): Date { return this.now(); }
 
-  /** Resolve current credentials without retaining credential bearing errors. */
-  async resolveCredentials(call: Call, operation: string): Promise<{ credentials?: Credentials; failure?: Failure }> {
-    const resolved = await this.resolveWriteCredentials(call, operation);
-    return resolved.credentials ? { credentials: resolved.credentials } : { failure: gorgiasFailure('AUTHENTICATION', operation, 'connection credentials are unavailable') };
+  /**
+   * Resolve current credentials for a Query without retaining credential bearing errors. A terminal failure selects
+   * defect; any other one is retried, because nothing reached Gorgias.
+   */
+  async resolveCredentials(call: Call, operation: string): Promise<CredentialResolution> {
+    return this.resolveWriteCredentials(call, operation);
   }
 
   /**
@@ -105,7 +107,7 @@ export class GorgiasClient {
     try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
     catch (error) {
       // Credential provider errors may contain secrets, so only their class is kept.
-      if (error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError) return unusable;
+      if (error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error)) return unusable;
       return { failure: gorgiasFailure('AVAILABILITY', operation, 'connection credentials could not be read'), isTerminal: false };
     }
     const secret = credentials?.apiKey?.reveal?.();

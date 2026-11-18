@@ -189,14 +189,9 @@ class Client:
         unusable = failure(FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable")
         try:
             credentials = await self.credentials.resolve(call)
-        except (
-            ReauthorizationRequiredError,
-            ObjectNotFoundError,
-            ConnectionNotSelectedError,
-            CredentialBrokerRejectedError,
-        ):
-            return None, unusable, True
-        except Exception:
+        except Exception as error:
+            if _is_terminal_credential_error(error):
+                return None, unusable, True
             unread = failure(FailureKind.AVAILABILITY, operation, "connection credentials could not be read")
             return None, unread, False
         try:
@@ -402,6 +397,22 @@ class Client:
 def failure(kind: FailureKind, operation: str, message: str) -> Failure:
     """Construct a provider-safe Gorgias failure."""
     return Failure(kind, "gorgias", operation, message)
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a resolve failure another attempt cannot repair, including malformed stored material."""
+    # The generated connection module imports this module, so import it lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def describe_error(body: bytes, secret: str) -> str:

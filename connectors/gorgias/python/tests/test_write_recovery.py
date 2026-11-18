@@ -6,7 +6,7 @@ import asyncio
 import json
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 import httpx
 import pytest
@@ -23,6 +23,7 @@ from dex_connectors.sdk import (
     run_mutation,
 )
 from dex_connectors.sdk.projectconfig import (
+    ConnectionKey,
     ConnectionNotSelectedError,
     CredentialBrokerRejectedError,
     CredentialBrokerUnavailableError,
@@ -32,10 +33,14 @@ from dex_connectors.sdk.projectconfig import (
 from dex_connectors.sdk.singledispatch import Marker, State
 
 from dex_connectors.gorgias import Client, Config, Credentials
+from dex_connectors.gorgias._generated.connection import _ProjectCredentialSource
 from dex_connectors.gorgias._generated.definitions import ADD_NOTE_DEFINITION, CREATE_TICKET_DEFINITION
 from dex_connectors.gorgias.models import (
     AddNoteInput,
     CreateTicketInput,
+    FindCustomerByEmailInput,
+    GetTicketInput,
+    SearchTicketsInput,
     TicketRequesterInput,
     UpdateTicketInput,
 )
@@ -137,8 +142,21 @@ class FailingCredentials:
         raise self.error
 
 
+class MalformedMaterialProject:
+    """A loaded project whose stored Gorgias credential has an unknown field."""
+
+    async def resolve_credential(self, key: ConnectionKey, call_id: str) -> dict[str, Any]:
+        """Return malformed stored material."""
+        return {"email": "agent@example.com", "api_key": "inert-key", "unknown": "value"}
+
+
 Answer = Callable[[httpx.Request], httpx.Response]
 CREDENTIAL_FAILURES: list[tuple[str, Any, bool]] = [
+    (
+        "malformed stored material",
+        _ProjectCredentialSource(cast(Any, MalformedMaterialProject()), ConnectionKey("gorgias", "gorgias")),
+        True,
+    ),
     ("transient store failure", FailingCredentials(RuntimeError("credential store unavailable")), False),
     ("broker unavailable", FailingCredentials(CredentialBrokerUnavailableError()), False),
     ("relay token renewal deferred", FailingCredentials(RelayTokenRenewalDeferredError()), False),
@@ -274,6 +292,39 @@ async def test_add_note_whose_2xx_body_breaks_is_read_back_and_never_resent() ->
     result = await run("addNote", answer, AttemptContext(), requests)
     assert isinstance(result, MutationResult) and result.branch == "added"
     assert [request.method for request in requests] == ["POST", "GET"]
+
+
+@pytest.mark.parametrize(("name", "credentials", "is_terminal"), CREDENTIAL_FAILURES)
+async def test_query_credential_failure_retries_unless_terminal(
+    name: str, credentials: Any, is_terminal: bool
+) -> None:
+    """A Query selects defect only for a terminal credential failure and never contacts Gorgias."""
+    requests: list[httpx.Request] = []
+
+    def record(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return respond_json(500, {})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(record)) as transport:
+        client = Client(Config("acme"), credentials, transport)
+        results = [
+            await client.get_ticket().invoke(
+                Call(CALL_ID, REFERENCE, OperationRef("gorgias", "getTicket")), GetTicketInput(ticket_id=7001)
+            ),
+            await client.find_customer_by_email().invoke(
+                Call(CALL_ID, REFERENCE, OperationRef("gorgias", "findCustomerByEmail")),
+                FindCustomerByEmailInput(email="ada@example.com"),
+            ),
+            await client.search_tickets().invoke(
+                Call(CALL_ID, REFERENCE, OperationRef("gorgias", "searchTickets")), SearchTicketsInput()
+            ),
+        ]
+    for result in results:
+        if is_terminal:
+            assert result.kind == "branch" and result.branch == "defect", name
+        else:
+            assert result.kind == "retry", name
+    assert requests == []
 
 
 @pytest.mark.parametrize("operation", ["createTicket", "addNote"])

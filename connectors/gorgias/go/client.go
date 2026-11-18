@@ -231,13 +231,10 @@ func (client *Client) UpdateTicket() UpdateTicketOperation {
 // AddNote returns the addNote Mutation bound to this client.
 func (client *Client) AddNote() AddNoteOperation { return AddNoteOperation{client: client} }
 
-// resolveCredentials returns header-safe credentials, or a safe defect Failure.
-func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
-	credentials, err := client.credentials.Resolve(call)
-	if err != nil || validateResolvedCredentials(credentials) != nil {
-		return Credentials{}, gorgiasFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
-	}
-	return credentials, nil
+// resolveCredentials returns header-safe credentials for a Query, or a safe Failure and whether it is terminal.
+// A terminal failure selects defect; any other one is retried, because nothing reached Gorgias.
+func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure, bool) {
+	return client.resolveWriteCredentials(call, operation)
 }
 
 // resolveWriteCredentials returns header-safe credentials, or a safe Failure and whether it is terminal:

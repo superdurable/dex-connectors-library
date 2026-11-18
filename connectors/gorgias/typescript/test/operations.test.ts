@@ -44,6 +44,8 @@ const credentialFailures = [
   ['missing connection object', async () => { throw new ObjectNotFoundError(); }, true],
   ['connection that is not selected', async () => { throw new ConnectionNotSelectedError(); }, true],
   ['broker refusal', async () => { throw new CredentialBrokerRejectedError(); }, true],
+  // The SDK project provider replaces a malformed-material decoder error with this TypeError.
+  ['malformed stored material', async () => { throw new TypeError('project credential decoding failed'); }, true],
   ['unusable credential', async () => ({ email: 'not an address', apiKey: new SecretString('testKey0123456789') }), true],
 ] as const;
 
@@ -72,13 +74,11 @@ describe('Gorgias client', () => {
     expect(attempt.failure?.kind).toBe('TRANSPORT');
   });
 
-  it('treats unavailable credentials as a terminal defect', async () => {
+  it('retries credentials that could not be read this time without leaking the error', async () => {
     const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => { throw new Error('secret-bearing error'); } });
     const attempt = await client.getTicket().invoke(call, { ticketId: 7001 });
-    expect(attempt.kind).toBe('branch');
-    if (attempt.kind !== 'branch') throw new Error('expected a terminal branch');
-    expect(attempt.branch).toBe('defect');
-    expect(attempt.failure?.kind).toBe('AUTHENTICATION');
+    expect(attempt.kind).toBe('retry');
+    expect(attempt.failure?.kind).toBe('AVAILABILITY');
     expect(attempt.failure?.message).not.toContain('secret');
   });
 });
@@ -153,6 +153,21 @@ describe('Gorgias retry and routing parity', () => {
     expect(heartbeats).toEqual([]);
     expect(attempt.kind).toBe(isTerminal ? 'uncertain' : 'retry');
     if (isTerminal) expect(attempt.failure?.message).toContain('credentials are unusable to read it back');
+  });
+
+  it.each(credentialFailures)('retries a Query %s unless it is terminal, without a request', async (_name, resolve, isTerminal) => {
+    let requestCount = 0;
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve }, { send: async () => { requestCount++; return response(500); } });
+    const attempts = [
+      await client.getTicket().invoke(call, { ticketId: 7001 }),
+      await client.findCustomerByEmail().invoke(call, { email: 'ada@example.com' }),
+      await client.searchTickets().invoke(call, {}),
+    ];
+    for (const attempt of attempts) {
+      expect(attempt.kind).toBe(isTerminal ? 'branch' : 'retry');
+      if (attempt.kind === 'branch') expect(attempt.branch).toBe('defect');
+    }
+    expect(requestCount).toBe(0);
   });
 
   it.each(credentialFailures)('maps a %s on a first send after recording notSent', async (_name, resolve, isTerminal) => {

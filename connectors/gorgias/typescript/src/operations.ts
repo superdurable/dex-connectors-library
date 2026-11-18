@@ -3,7 +3,7 @@
 
 import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type Receipt } from '@superdurable/connectors-sdk';
 import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence, type Decision, type Fence } from '@superdurable/connectors-sdk/singledispatch';
-import { gorgiasFailure, isBareEmail, type Exchange, type GorgiasClient } from './client.js';
+import { gorgiasFailure, isBareEmail, type CredentialResolution, type Exchange, type GorgiasClient } from './client.js';
 import { AddNoteDefinition, CreateTicketDefinition, FindCustomerByEmailDefinition, GetTicketDefinition, SearchTicketsDefinition, UpdateTicketDefinition } from './generated/definitions.js';
 import { emptyAddNoteOutput, emptyCreateTicketOutput, emptyCustomerMatches, emptySearchTicketsOutput, emptyTicketDetails, emptyUpdateTicketOutput } from './generated/mock.js';
 import type { AddNoteInput, AddNoteOutput, CreateTicketInput, CreateTicketOutput, Credentials, CustomerMatches, FindCustomerByEmailInput, GetTicketInput, SearchTicketsInput, SearchTicketsOutput, Ticket, TicketDetails, TicketMessage, UpdateTicketInput, UpdateTicketOutput } from './generated/models.js';
@@ -13,6 +13,10 @@ function queryFailure<T>(client: GorgiasClient, call: Call, result: Exchange, ou
   if (['rateLimited', 'notSent', 'unavailable'].includes(result.outcome)) return newQueryRetry(result.failure!, result.retryAfterMs);
   const branch = result.outcome === 'invalid' ? 'invalidResponse' : result.outcome === 'defect' ? 'defect' : result.outcome === 'notFound' ? notFoundBranch : 'providerRejected';
   return newQueryBranch(branch, output, client.receipt(call, result, objectID), result.failure);
+}
+/** A terminal Query credential failure selects defect; any other one retries, since nothing reached Gorgias. */
+function credentialFailure<T>(resolved: CredentialResolution, output: T): QueryAttempt<T> {
+  return resolved.isTerminal ? newQueryBranch('defect', output, {} as Receipt, resolved.failure) : newQueryRetry(resolved.failure!);
 }
 function mutationFailure<T>(client: GorgiasClient, call: Call, result: Exchange, output: T, notFoundBranch = 'providerRejected', objectID = 0, invalidBranch = 'invalidResponse'): MutationAttempt<T> {
   if (['rateLimited', 'notSent', 'unavailable'].includes(result.outcome)) return newMutationRetry(result.failure!, result.retryAfterMs);
@@ -71,7 +75,7 @@ export class SearchTicketsOperation implements Query<SearchTicketsInput, SearchT
       if (input.updatedSince && (!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/.test(input.updatedSince) || Number.isNaN(Date.parse(input.updatedSince)))) throw new TypeError('invalid updatedSince');
     } catch (error) { return defect('searchTickets', emptySearchTicketsOutput, error, false); }
     const resolved = await this.client.resolveCredentials(call, 'searchTickets');
-    if (!resolved.credentials) return newQueryBranch('defect', emptySearchTicketsOutput, {} as Receipt, resolved.failure);
+    if (!resolved.credentials) return credentialFailure(resolved, emptySearchTicketsOutput);
     let requesterID = input.requesterId ?? 0;
     if (input.requesterEmail) {
       const lookup = await this.client.exchange(call, resolved.credentials, 'searchTickets', 'GET', '/customers', queryString({ email: input.requesterEmail, limit: 10 }));
@@ -100,7 +104,7 @@ export class GetTicketOperation implements Query<GetTicketInput, TicketDetails> 
     try { requireID(input.ticketId, 'ticketId'); if (!Number.isInteger(input.latestMessageLimit ?? 0) || (input.latestMessageLimit ?? 0) < 0 || (input.latestMessageLimit ?? 0) > 20) throw new TypeError('latestMessageLimit must be 1 to 20 or zero'); }
     catch (error) { return defect('getTicket', emptyTicketDetails, error, false); }
     const resolved = await this.client.resolveCredentials(call, 'getTicket');
-    if (!resolved.credentials) return newQueryBranch('defect', emptyTicketDetails, {} as Receipt, resolved.failure);
+    if (!resolved.credentials) return credentialFailure(resolved, emptyTicketDetails);
     const result = await this.client.exchange(call, resolved.credentials, 'getTicket', 'GET', `/tickets/${input.ticketId}`);
     if (result.outcome !== 'succeeded') return queryFailure(this.client, call, result, emptyTicketDetails, 'notFound', input.ticketId);
     try { return newQueryBranch('found', decodeDetails(result.response!.body, input), this.client.receipt(call, result, input.ticketId)); }
@@ -116,7 +120,7 @@ export class FindCustomerByEmailOperation implements Query<FindCustomerByEmailIn
   async invoke(call: Call, input: FindCustomerByEmailInput): Promise<QueryAttempt<CustomerMatches>> {
     if (!isBareEmail(input.email)) return defect('findCustomerByEmail', emptyCustomerMatches, new TypeError('email must be one bare email address'), false);
     const resolved = await this.client.resolveCredentials(call, 'findCustomerByEmail');
-    if (!resolved.credentials) return newQueryBranch('defect', emptyCustomerMatches, {} as Receipt, resolved.failure);
+    if (!resolved.credentials) return credentialFailure(resolved, emptyCustomerMatches);
     const result = await this.client.exchange(call, resolved.credentials, 'findCustomerByEmail', 'GET', '/customers', queryString({ email: input.email, limit: 10 }));
     if (result.outcome !== 'succeeded') return queryFailure(this.client, call, result, emptyCustomerMatches);
     try {
