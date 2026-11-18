@@ -264,6 +264,7 @@ describe('executeNonIdempotent', () => {
   it.each([
     ['connection lost', { code: 'ECONNRESET' }],
     ['server error at COMMIT', serverError(1180, 'HY000')],
+    ['driver AggregateError at COMMIT', new AggregateError([{ code: 'ECONNRESET' }], 'driver failure')],
   ])('selects uncertain after a %s and never runs the statement again', async (_name, commitError) => {
     const { client, connects } = fakeWriteConnection({ commit: commitError });
     const context = new AttemptContext();
