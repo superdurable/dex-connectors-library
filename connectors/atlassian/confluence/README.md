@@ -342,6 +342,13 @@ seconds, because sending the same version again is safe, so the operation
 declares `repeatOnUnknown: safe`. A 429 or 503 retries without reading back.
 404 selects `notFound`; 401, 403, 413, and 422 select `providerRejected`; any
 other status leaves a write's outcome unknown and is read back before a retry.
+A refusal status whose body broke or exceeds 64 KiB is unknown as well, in
+every write operation.
+
+Every operation retries a temporarily unavailable credential store or broker
+with nothing sent; a missing, invalid, or reauthorization-required credential
+selects `defect`, or `uncertain` for `addComment` after an earlier possible
+POST.
 
 ### addComment
 
@@ -366,8 +373,8 @@ the default send cap of 3 possibly effective POSTs per Call ID:
    within the cap, and selects `uncertain` at the cap. A missing checkpoint
    counts each earlier attempt as a possible POST. A 404 on that read selects
    `uncertain`, because the earlier POST may have added the comment.
-5. A 2xx whose body breaks, overflows the size limit, or lacks a usable comment
-   is never resent: the attempt reads the page's comments at once, and selects
+5. A 2xx whose body breaks, overflows the size limit, is cut off by the write
+   deadline, or lacks a usable comment is never resent: the attempt reads the page's comments at once, and selects
    `added` when the comment is there and `uncertain` otherwise.
 6. On the first POST, 404 selects `notFound`, and 400, 401, 403, 411, 413, 414,
    415, and 422 select `providerRejected`; after an earlier possible POST they

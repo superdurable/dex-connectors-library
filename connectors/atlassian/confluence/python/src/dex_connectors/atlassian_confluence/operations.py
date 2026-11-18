@@ -1038,6 +1038,7 @@ class AddCommentOperation:
                     ),
                     read_receipt,
                 )
+        observed_statuses: list[int] = []
         try:
             response = await fence.dispatch(
                 lambda _deadline: self.client.exchange(
@@ -1046,9 +1047,24 @@ class AddCommentOperation:
                     "content",
                     "/footer-comments",
                     payload={"pageId": page_id, "body": {"representation": "storage", "value": storage}},
+                    observed_statuses=observed_statuses,
                 )
             )
         except TimeoutError:
+            if observed_statuses and 200 <= observed_statuses[-1] < 300:
+                # Confluence accepted the comment before the write deadline cut its body; it is never resent.
+                return await self._confirm_accepted(
+                    session,
+                    requested,
+                    page_id,
+                    comparison,
+                    first_send_at,
+                    failure(
+                        operation,
+                        FailureKind.TRANSPORT,
+                        "Confluence accepted the comment but the write deadline cut off its response",
+                    ),
+                )
             # The write window closed after dispatch, so the claim stays and the next attempt reads back.
             return MutationAttempt.retry(
                 failure(operation, FailureKind.TRANSPORT, "Confluence comment outcome is unknown"), 5
