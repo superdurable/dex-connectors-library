@@ -72,6 +72,8 @@ type sendCapPolicy struct {
 	canResendUnknownOutcome bool
 	// hasPossibleEarlierSend is true when an earlier send of this call may have taken effect.
 	hasPossibleEarlierSend bool
+	// hasUncheckpointedAcceptance is true when Jira accepted this send without a recorded provider ID.
+	hasUncheckpointedAcceptance bool
 }
 
 func newSendCapPolicy(call sdkgo.Call, decision singledispatch.Decision) sendCapPolicy {
@@ -79,6 +81,16 @@ func newSendCapPolicy(call sdkgo.Call, decision singledispatch.Decision) sendCap
 		canResendUnknownOutcome: decision.MaximumPriorSends+1 < call.MaxSends(),
 		hasPossibleEarlierSend:  decision.MaximumPriorSends > 0,
 	}
+}
+
+// acceptedWritePolicy reconciles a write Jira accepted in this attempt: it is never sent again.
+func acceptedWritePolicy(hasRecordedProviderID bool) sendCapPolicy {
+	return sendCapPolicy{hasPossibleEarlierSend: true, hasUncheckpointedAcceptance: !hasRecordedProviderID}
+}
+
+// needsReadBack reports a possible earlier send, including a SendAllowed decision after a canResend marker.
+func needsReadBack(decision singledispatch.Decision) bool {
+	return decision.Kind != singledispatch.SendAllowed || decision.MaximumPriorSends > 0 || decision.Marker.ProviderID != ""
 }
 
 // resendOrSelectUncertain retries an unknown outcome while the send cap allows another send.

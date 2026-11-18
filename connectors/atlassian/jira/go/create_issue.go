@@ -117,7 +117,8 @@ func (operation CreateIssueOperation) Invoke(call sdkgo.Call, input CreateIssueI
 	policy := newSendCapPolicy(call, decision)
 	session, cancel, sessionErr := client.startSession(call, createIssueOperationID)
 	if sessionErr != nil {
-		if decision.Kind == singledispatch.SendAllowed {
+		// notSent after a possible earlier send would hide it, so only a first send records it.
+		if !needsReadBack(decision) {
 			if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
 				return sdkgo.NewMutationRetry[CreateIssueOutput](newFailure(createIssueOperationID, sdkgo.FailureAvailability, "Jira setup failed and the not-sent checkpoint could not be recorded"), sessionErr.retryAfter)
 			}
@@ -131,13 +132,12 @@ func (operation CreateIssueOperation) Invoke(call sdkgo.Call, input CreateIssueI
 	marker := jiraCallPropertyForCall(call)
 	receipt := client.emptyReceipt(session)
 	possibleEarlierSendFailure := newFailure(createIssueOperationID, sdkgo.FailureAvailability, "Jira issue dispatch may have succeeded")
-	switch decision.Kind {
-	case singledispatch.ReadBackRequired:
+	switch {
+	case decision.Kind == singledispatch.ReadBackRequired:
 		return client.reconcileCreatedIssue(session, requested, marker, decision.Marker.ProviderID, sendCapPolicy{}, possibleEarlierSendFailure, receipt)
-	case singledispatch.ReadBackThenResendAllowed:
-		if decision.Marker.ProviderID != "" {
-			return client.reconcileCreatedIssue(session, requested, marker, decision.Marker.ProviderID, sendCapPolicy{}, possibleEarlierSendFailure, receipt)
-		}
+	case decision.Marker.ProviderID != "":
+		return client.reconcileCreatedIssue(session, requested, marker, decision.Marker.ProviderID, sendCapPolicy{}, possibleEarlierSendFailure, receipt)
+	case needsReadBack(decision):
 		created, status := client.findCreatedIssue(session, requested, marker, "")
 		switch status {
 		case writeReadbackFound:
@@ -167,6 +167,8 @@ func (operation CreateIssueOperation) Invoke(call sdkgo.Call, input CreateIssueI
 		return defectOrSelectUncertain(policy, CreateIssueBranchDefect, requested, classification.failure, receipt)
 	case writeUncertain:
 		return client.reconcileCreatedIssue(session, requested, marker, "", policy, classification.failure, receipt)
+	case writeAcceptedUnreadable:
+		return client.reconcileCreatedIssue(session, requested, marker, "", acceptedWritePolicy(false), classification.failure, receipt)
 	case writeRejected, writeNotFound:
 		if result.response.statusCode == http.StatusUnauthorized && client.refreshRejectedCredential(session) {
 			if err := fence.RecordCanResend(); err != nil {
@@ -179,14 +181,14 @@ func (operation CreateIssueOperation) Invoke(call sdkgo.Call, input CreateIssueI
 	}
 	var created createdIssueResource
 	if json.Unmarshal(result.response.body, &created) == nil && numericIDPattern.MatchString(created.ID) {
-		// The accepted issue identity is useful after a lost Step result; failure to record it cannot authorize a resend.
-		_ = fence.RecordProviderID(created.ID)
+		// The accepted issue identity guards a lost Step result; without it, reconciliation never retries.
+		hasRecordedProviderID := fence.RecordProviderID(created.ID) == nil
 		if issueKeyPattern.MatchString(created.Key) {
 			return createdIssueBranch(requested, created, receipt)
 		}
-		return client.reconcileCreatedIssue(session, requested, marker, created.ID, policy, newFailure(createIssueOperationID, sdkgo.FailureProtocol, "Jira accepted the issue but returned an unusable issue key"), receipt)
+		return client.reconcileCreatedIssue(session, requested, marker, created.ID, acceptedWritePolicy(hasRecordedProviderID), newFailure(createIssueOperationID, sdkgo.FailureProtocol, "Jira accepted the issue but returned an unusable issue key"), receipt)
 	}
-	return client.reconcileCreatedIssue(session, requested, marker, "", policy, newFailure(createIssueOperationID, sdkgo.FailureProtocol, "Jira accepted the issue but returned an unusable issue reference"), receipt)
+	return client.reconcileCreatedIssue(session, requested, marker, "", acceptedWritePolicy(false), newFailure(createIssueOperationID, sdkgo.FailureProtocol, "Jira accepted the issue but returned an unusable issue reference"), receipt)
 }
 
 func createdIssueBranch(requested CreateIssueOutput, created createdIssueResource, receipt sdkgo.Receipt) sdkgo.MutationAttempt[CreateIssueOutput] {
