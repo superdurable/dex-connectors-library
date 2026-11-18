@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/reamaze/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
@@ -128,8 +127,8 @@ func TestFencedWritesKeepReceiptIdentityWhenCheckpointFailsClosed(t *testing.T) 
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			ctx := singledispatchtest.NewContext("reamaze-flow", test.name+"-foreign-checkpoint")
-			require.NoError(t, ctx.SetPersistedCheckpoint(singledispatch.Marker{CallID: "foreign", Attempt: 1, State: singledispatch.StateClaimed}))
+			ctx := singledispatchtest.NewContext("reamaze-flow", test.name+"-unreadable-checkpoint")
+			ctx.SetReadError(errors.New("heartbeat unavailable"))
 			_, _, err := test.run(ctx)
 			var retry *sdkgo.RetryError
 			require.ErrorAs(t, err, &retry, "FailClosed returns Retry instead of a terminal branch")
