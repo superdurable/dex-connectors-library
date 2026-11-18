@@ -4,7 +4,7 @@
 import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, ReauthorizationRequiredError, type Call, type Failure, type FailureKind, type Mutation, type MutationAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { RefreshFailedError } from '@superdurable/connectors-sdk/projectconfig';
 import { AddressRefusal, ProviderTransportError, parseRetryAfter } from '@superdurable/connectors-sdk/providerhttp';
-import { CheckpointError, InsufficientTimeError, newFence, type Fence } from '@superdurable/connectors-sdk/singledispatch';
+import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { PostNonIdempotentDefinition, SendRequestDefinition } from './generated/definitions.js';
 import type { PostNonIdempotentInput, SendRequestInput, SendRequestOutput } from './generated/models.js';
 import { planRequest, type APIResponse, type OAuth2HTTPClient, type RequestPlan } from './client.js';
@@ -14,6 +14,8 @@ const sendRequestOperation = 'sendRequest';
 const postNonIdempotentOperation = 'postNonIdempotent';
 // Only these statuses prove the API refused a request without processing it.
 const definiteRefusals = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+// A redirect of any other method may follow a processed write.
+const readMethods = new Set(['GET', 'HEAD', 'OPTIONS']);
 // The POST gets most of the Execute budget, because no read-back follows it.
 const postWriteWindowFraction = 5 / 6;
 const operationBudgetMs = 25_000;
@@ -28,8 +30,9 @@ export class SendRequestOperation implements Mutation<SendRequestInput, SendRequ
   idempotencyKey(callId: string): string { return callId; }
 
   /**
-   * Send one OAuth bearer request and classify its observed result. A 2xx selects completed; a redirect
-   * or a definite refusal selects rejected. Every other outcome returns Retry; the declared uncertain branch is never selected.
+   * Send one OAuth bearer request and classify its observed result. A 2xx selects completed; a redirect of a
+   * GET, HEAD, or OPTIONS request or a definite refusal selects rejected. Every other outcome, including a
+   * redirect of a POST, PUT, PATCH, or DELETE, returns Retry; the declared uncertain branch is never selected.
    */
   async invoke(call: Call, input: SendRequestInput): Promise<MutationAttempt<SendRequestOutput>> {
     let plan: RequestPlan;
@@ -60,6 +63,8 @@ export class SendRequestOperation implements Mutation<SendRequestInput, SendRequ
     const status = answer.status;
     if (answer.readError) return newMutationRetry(failure(sendRequestOperation, 'TRANSPORT', 'the request was sent but the API did not answer completely'));
     if (status >= 200 && status < 300) return newMutationBranch('completed', output, receipt);
+    // A redirect, such as 303 See Other, may follow a processed write, so the write is sent again.
+    if (status >= 300 && status < 400 && !readMethods.has(plan.method)) return newMutationRetry(failure(sendRequestOperation, 'PROTOCOL', `the API answered HTTP ${status} to a ${plan.method}, which does not prove the request was refused`), retryAfter(answer, this.client.now()));
     // The connector never follows a redirect, so a redirect is reported like a refusal.
     if ((status >= 300 && status < 400) || definiteRefusals.has(status)) return newMutationBranch('rejected', output, receipt, failure(sendRequestOperation, rejectionKind(status), `the API answered HTTP ${status}`));
     const delay = retryAfter(answer, this.client.now());
@@ -127,7 +132,8 @@ export class PostNonIdempotentOperation implements Mutation<PostNonIdempotentInp
       answer = await fence.dispatch(dispatchSignal => client.exchange(call, plan, token, AbortSignal.any([signal, dispatchSignal]), deadline));
     } catch (error) {
       if (error instanceof CheckpointError) return newMutationRetry(failure(postNonIdempotentOperation, 'AVAILABILITY', 'the single-dispatch claim could not be recorded; nothing was sent'));
-      if (error instanceof InsufficientTimeError) return newMutationRetry(failure(postNonIdempotentOperation, 'AVAILABILITY', "too little of the Step's time remained to send the POST; nothing was sent"));
+      if (error instanceof InsufficientTimeError || isFenceInsufficientTimeAggregateError(error)) return newMutationRetry(failure(postNonIdempotentOperation, 'AVAILABILITY', "too little of the Step's time remained to send the POST; nothing was sent"));
+      if (error instanceof DispatchNotAllowedError) return newMutationRetry(failure(postNonIdempotentOperation, 'LOCAL_DEFECT', 'the single-dispatch fence refused the POST; nothing was sent'));
       if (error instanceof AddressRefusal) return outcome.refuse('defect', zeroOutput, 'VALIDATION', `the connection's apiBaseUrl resolves to an address the connector will not connect to: ${error.reason}`);
       if (error instanceof ProviderTransportError && error.isProvablyNotSent) return outcome.retryUnprocessed('AVAILABILITY', 'the API could not be reached; the POST was not sent', 0);
       return outcome.uncertain(zeroOutput, 'TRANSPORT', 'the POST was sent but the API did not answer completely');
@@ -214,7 +220,12 @@ function isTemporaryRefreshFailure(error: unknown): boolean {
   return error instanceof RefreshFailedError || error instanceof ProviderTransportError || error instanceof Error && /token endpoint is unavailable|token response could not be read/i.test(error.message);
 }
 
-// Kept narrowly so the declared sendRequest uncertain branch stays reachable; see the README.
+/** Match only the Fence's pre-send AggregateError: too little time, and the notSent checkpoint failed. */
+function isFenceInsufficientTimeAggregateError(error: unknown): boolean {
+  return error instanceof AggregateError && error.errors.some(cause => cause instanceof InsufficientTimeError);
+}
+
+// sendRequest is repeat-safe, so every failure after planning returns Retry or selects defect.
 function dispatchFailure(error: unknown): MutationAttempt<SendRequestOutput> {
   if (error instanceof AddressRefusal) return newMutationBranch('defect', zeroOutput, {}, failure(sendRequestOperation, 'VALIDATION', `the connection's apiBaseUrl resolves to an address the connector will not connect to: ${error.reason}`));
   if (error instanceof ProviderTransportError && error.isProvablyNotSent) return newMutationRetry(failure(sendRequestOperation, 'AVAILABILITY', 'the API could not be reached; no request was sent'));

@@ -203,6 +203,20 @@ func TestPostNonIdempotentRetriesWhenTheCheckpointCannotBeRead(t *testing.T) {
 	require.Empty(t, session.server.requests())
 }
 
+func TestPostNonIdempotentRetriesWithoutSendingWhenNoTimeRemainsAndTheCheckpointFails(t *testing.T) {
+	session := newTestSession(t, nil, time.Hour)
+	context := singledispatchtest.NewContext("oauth2-http-flow", "expired")
+	cancel := context.SetDeadline(time.Now().Add(-time.Second))
+	defer cancel()
+	context.SetWriteError(errors.New("heartbeat unavailable"))
+
+	_, err := postNonIdempotent(t, session, context, oauth2http.PostNonIdempotentInput{Path: "/orders"})
+
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "nothing was sent, so no branch is selected")
+	require.Empty(t, session.server.requests())
+}
+
 func TestPostNonIdempotentSelectsUncertainWithoutSendingAfterAnEarlierPossibleSend(t *testing.T) {
 	session := newTestSession(t, nil, time.Hour)
 	context := singledispatchtest.NewContext("oauth2-http-flow", "earlier-send")

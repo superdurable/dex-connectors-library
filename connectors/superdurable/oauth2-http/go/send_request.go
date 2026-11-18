@@ -85,10 +85,11 @@ func (SendRequestOperation) IdempotencyKey(callID sdkgo.CallID, _ SendRequestInp
 }
 
 // Invoke sends the request once with the access token, and again after a 401 once the token has been
-// renewed. A 2xx selects completed, and a redirect, a definite refusal (400, 401, 403, 404, 411, 413, 414,
-// 415, or 422), or an authorization the server will no longer renew selects rejected. Every other
-// outcome, including a lost connection, a 5xx, and any other status, returns Retry, so the request is
-// sent again. The declared uncertain branch is kept for compatibility and never selected.
+// renewed. A 2xx selects completed, and a redirect of a GET, HEAD, or OPTIONS request, a definite
+// refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or an authorization the server will no
+// longer renew selects rejected. Every other outcome, including a redirect of a POST, PUT, PATCH, or
+// DELETE, a lost connection, a 5xx, and any other status, returns Retry, so the request is sent again.
+// The declared uncertain branch is kept for compatibility and never selected.
 func (operation SendRequestOperation) Invoke(call sdkgo.Call, input SendRequestInput) sdkgo.MutationAttempt[SendRequestOutput] {
 	client := operation.client
 	operationName := SendRequestDefinition.Operation.OperationID
@@ -261,6 +262,10 @@ func (operation SendRequestOperation) attemptFor(call sdkgo.Call, request planne
 			"the request was sent but the API did not answer completely"), 0)
 	case status >= 200 && status < 300:
 		return sdkgo.NewMutationBranch(SendRequestBranchCompleted, output, nil, receipt)
+	case status >= 300 && status < 400 && isWriteMethod(request.method):
+		// A redirect, such as 303 See Other, may follow a processed write, so the write is sent again.
+		return sdkgo.NewMutationRetry[SendRequestOutput](operationFailure(operationName, sdkgo.FailureProtocol,
+			fmt.Sprintf("the API answered HTTP %d to a %s, which does not prove the request was refused", status, request.method)), retryAfter)
 	case status >= 300 && status < 400, isDefiniteRefusal(status):
 		// The connector never follows a redirect, so a redirect is reported like a refusal.
 		failure := operationFailure(operationName, rejectionFailureKind(status), fmt.Sprintf("the API answered HTTP %d", status))
@@ -288,6 +293,15 @@ func (client *Client) receipt(call sdkgo.Call, answer httpExchange) sdkgo.Receip
 // retryAfter returns the delay the answer's Retry-After header asks for, or zero.
 func (client *Client) retryAfter(answer httpExchange) time.Duration {
 	return providerhttp.ParseRetryAfter(answer.header.Get("Retry-After"), client.now())
+}
+
+// isWriteMethod reports a method that may change server state: POST, PUT, PATCH, or DELETE.
+func isWriteMethod(method string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return false
+	}
+	return true
 }
 
 // isDefiniteRefusal reports a status that proves the API refused the request without processing it.
