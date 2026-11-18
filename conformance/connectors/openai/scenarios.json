@@ -2130,6 +2130,90 @@
       ],
       "name": "create-cancelled-then-resend",
       "operation": "createResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{\"id\":",
+          "headers": {
+            "X-Request-Id": "req_unreadable"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this",
+            "instructions": "Be brief",
+            "model": "gpt-test",
+            "text": {
+              "format": {
+                "description": "Short summary",
+                "name": "summary",
+                "schema": {
+                  "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+          "sendCount": 1
+        },
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "input": {
+        "Input": "Summarize this",
+        "Instructions": "Be brief",
+        "Model": "gpt-test",
+        "StructuredOutput": {
+          "description": "Short summary",
+          "name": "summary",
+          "schema": {
+            "type": "object"
+          },
+          "strict": true
+        }
+      },
+      "name": "create-accepted-unreadable-is-uncertain-without-resending",
+      "operation": "createResponse"
     }
   ],
   "schemaVersion": 1

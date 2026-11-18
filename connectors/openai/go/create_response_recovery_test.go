@@ -438,6 +438,32 @@ func TestCreateResponseRefusedResendAfterAPossibleCreateSelectsUncertain(t *test
 	require.Equal(t, []string{http.MethodPost, http.MethodPost}, script.requestMethods())
 }
 
+// After a possible create, missing credentials retry, while invalid ones, which no attempt can fix, select uncertain.
+func TestCreateResponseCredentialFailureAfterAPossibleCreate(t *testing.T) {
+	for name, test := range map[string]struct {
+		credentials sdkgo.StaticCredentialProvider[openai.Credentials]
+		isUncertain bool
+	}{
+		"unavailable": {credentials: sdkgo.StaticCredentialProvider[openai.Credentials]{}},
+		"invalid":     {credentials: sdkgo.StaticCredentialProvider[openai.Credentials]{openAIConnection: {APIKey: sdkgo.NewSecretString("")}}, isUncertain: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, err := openai.New(openai.Config{Endpoint: "https://api.openai.example/v1"}, test.credentials)
+			require.NoError(t, err)
+			ctx := testsupport.NewDexContext("flow-1", "credentials-after-send-"+name)
+			ctx.AttemptNo = 2
+			result, err := runCreateResponse(ctx, client)
+			if !test.isUncertain {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch, "never defect after a possible create")
+		})
+	}
+}
+
 // A later attempt treats a foreign checkpoint or an invalid saved ID as no checkpoint, never as a defect.
 func TestCreateResponseLaterAttemptTreatsAnUntrustedCheckpointAsAPossibleSend(t *testing.T) {
 	for name, replaceCheckpoint := range map[string]func(map[string]any){

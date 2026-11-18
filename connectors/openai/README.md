@@ -61,7 +61,7 @@ effect without a restart. Configuration is captured at startup:
 | --- | --- | --- |
 | `model` | `gpt-6-sol` | Model that `createResponse` sends when its request names none. A request's optional `Model` overrides it; omit it or leave it empty to use this default. |
 | `endpoint` | `https://api.openai.com/v1` | Base URL each operation appends its path to, such as `/responses`. HTTPS is required except for loopback test servers. |
-| `maxResponseBytes` | `8388608` (8 MiB) | Largest response, counting every byte of a stream. Each streamed text delta carries about 260 bytes of event framing, so 8 MiB holds roughly 30,000 streamed output tokens. When a `createResponse` stream grows larger, the connector reads it to the end and reads the stored Response back if its ID was observed, or otherwise resends below the send cap and selects `uncertain` at it. A larger non-streamed `createResponse` response is handled the same way, and a larger `retrieveResponse` response selects `invalidResponse`. |
+| `maxResponseBytes` | `8388608` (8 MiB) | Largest response, counting every byte of a stream. Each streamed text delta carries about 260 bytes of event framing, so 8 MiB holds roughly 30,000 streamed output tokens. When a `createResponse` stream grows larger, the connector reads it to the end and reads the stored Response back if its ID was observed, or otherwise selects `uncertain` without resending, because the `2xx` stream already created a Response. A larger non-streamed `createResponse` response is handled the same way, and a larger `retrieveResponse` response selects `invalidResponse`. |
 | `maxSseEventBytes` | `1048576` (1 MiB) | Largest server-sent event. The final Responses event repeats the whole Response, so raise it for very long outputs. An oversized event is handled like an oversized stream. |
 
 OpenAI's [models page](https://developers.openai.com/api/docs/models)
@@ -203,13 +203,19 @@ details, for example when the Dex Server stops during an attempt. Every attempt
 a checkpoint cannot rule out then counts as a possible create, and a checkpoint
 from an earlier release without `sendCount` counts every earlier attempt.
 
+A `2xx` answer means OpenAI created the Response. When its ID cannot be read,
+because the body is malformed, oversized, or cut off after the headers, the ID
+is invalid, or a stream ends without naming the Response, the operation selects
+`uncertain` at once and never sends again, even below the cap: the Response
+exists, and without its ID it cannot be read back.
+
 | Operation | Branch | Selected when |
 | --- | --- | --- |
 | `createResponse` | `completed` (required) | OpenAI completed the Response. |
 | `createResponse` | `failed` | OpenAI returned a terminal `failed` or `incomplete` Response, streamed or not. |
 | `createResponse` | `providerRejected` | A conclusive refusal of the first possible create: HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422. |
-| `createResponse` | `uncertain` | A request may have created a Response that cannot be confirmed: the send cap was reached with no Response ID observed, for example after HTTP 408, HTTP 409, a 3xx, another 4xx, a 5xx other than 503, or a streaming `error` event; a resend was refused after an earlier possible create; the Response has no recognized status; or reading it back returned 401, 403, 404, another 4xx other than 408, 409, or 429, or an unreadable body. |
-| `createResponse` | `defect` | The input, the model, credentials, or connection configuration is invalid on the first attempt; nothing is sent. A later attempt retries instead, since an earlier create may exist. |
+| `createResponse` | `uncertain` | A request may have created a Response that cannot be confirmed: the send cap was reached with no Response ID observed, for example after HTTP 408, HTTP 409, a 3xx, another 4xx, or a 5xx other than 503; a `2xx` answer, streamed or not, did not yield a readable Response ID; a resend was refused after an earlier possible create; the Response has no recognized status; or reading it back returned 401, 403, 404, another 4xx other than 408, 409, or 429, or an unreadable body. |
+| `createResponse` | `defect` | The input, the model, credentials, or connection configuration is invalid on the first attempt; nothing is sent. On a later attempt, since an earlier create may exist, unavailable credentials retry and any other such failure selects `uncertain`. |
 | `retrieveResponse` | `found` (required) | The Response exists and was returned. |
 | `retrieveResponse` | `notFound` | OpenAI returned 404. |
 | `retrieveResponse` | `providerRejected` | Another conclusive refusal. |

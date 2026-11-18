@@ -438,6 +438,44 @@ async def test_unusable_create_body_is_uncertain(body: object) -> None:
     assert result.branch == UNCERTAIN
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "body", [b"{", b'data: {"type":"error"}\n\n'], ids=["malformed body", "stream error only"]
+)
+async def test_accepted_create_without_a_readable_id_is_never_resent_below_the_cap(body: bytes) -> None:
+    """A 2xx created a response; without its ID it can be neither read back nor resent."""
+    requests: list[httpx.Request] = []
+    client = make_client(lambda request: httpx.Response(200, content=body), requests)
+    is_stream = body.startswith(b"data:")
+    call = make_call(FakeContext(), TextCollector() if is_stream else None, max_sends=3)
+    result = await create(client, call)
+    assert result.branch == UNCERTAIN
+    assert result.failure is not None
+    assert result.failure.message.startswith("OpenAI accepted the create request")
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("credentials", "expected"),
+    [({}, "retry"), ({CONNECTION: Credentials(SecretString(""))}, UNCERTAIN)],
+    ids=["unavailable", "invalid"],
+)
+async def test_credential_failure_after_a_possible_create(credentials: dict[Any, Any], expected: str) -> None:
+    """Missing credentials retry; invalid ones, which no attempt fixes, select uncertain, never defect."""
+    client = Client(
+        Config(endpoint="http://localhost:8848/v1"),
+        StaticCredentialProvider(credentials),
+        httpx.AsyncClient(transport=httpx.MockTransport(lambda request: httpx.Response(500))),
+    )
+    call = make_call(FakeContext(attempt=2), max_sends=3)
+    if expected == "retry":
+        with pytest.raises(RetryError):
+            await create(client, call)
+        return
+    assert (await create(client, call)).branch == UNCERTAIN
+
+
 def sse(*events: dict[str, Any] | str) -> bytes:
     lines = []
     for event in events:
@@ -539,7 +577,10 @@ async def test_oversized_stream_before_id_is_uncertain() -> None:
     client = make_client(lambda request: httpx.Response(200, content=body), [], max_response_bytes=200)
     result = await create(client, make_call(FakeContext(), TextCollector()))
     assert result.branch == UNCERTAIN
-    assert result.failure is not None and result.failure.message == "stream exceeds the configured size limit"
+    assert result.failure is not None
+    assert result.failure.message == (
+        "OpenAI accepted the create request, but stream exceeds the configured size limit"
+    )
 
 
 @pytest.mark.asyncio
