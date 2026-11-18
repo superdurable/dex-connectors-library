@@ -12,6 +12,11 @@ from urllib.parse import urlsplit
 
 import httpx
 from dex_connectors.sdk import Call, CredentialProvider, ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -151,9 +156,14 @@ class Client:
     async def _resolve_token(self, call: Call) -> tuple[str, str]:
         try:
             credentials = await self.credentials.resolve(call)
-        except ReauthorizationRequiredError:
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
             return "", "credential"
-        except (ValueError, LookupError, OSError):
+        except Exception:
             return "", "refresh"
         token = credentials.access_token.reveal()
         if not token or not is_header_safe_credential(token):

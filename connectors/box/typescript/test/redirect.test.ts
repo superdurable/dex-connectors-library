@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { SecretString, type Call, type CredentialRefreshDriver } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialRefreshDriver } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { ProviderRequest, ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { BoxClient } from '../src/client.js';
 import type { Credentials } from '../src/models.js';
@@ -55,5 +56,24 @@ describe('Box signed download redirect', () => {
     expect(result.kind).toBe('branch');
     expect(requests).toHaveLength(1);
     if (result.kind === 'branch') expect(result.branch).toBe('invalidResponse');
+  });
+
+  it.each([
+    ['broker unavailable', new CredentialBrokerUnavailableError(), 'retry'],
+    ['static not configured', new Error('connection is not configured'), 'retry'],
+    ['unlisted error', new RangeError('credential store hiccup'), 'retry'],
+    ['reauthorization', new ReauthorizationRequiredError(), 'branch'],
+    ['object not found', new ObjectNotFoundError(), 'branch'],
+    ['connection not selected', new ConnectionNotSelectedError(), 'branch'],
+    ['broker rejected', new CredentialBrokerRejectedError(), 'branch'],
+  ])('classifies a %s credential failure before any request', async (_name, error, kind) => {
+    const requests: ProviderRequest[] = [];
+    const client = new BoxClient({ baseUrl: 'https://api.box.com' }, { resolve: async () => { throw error; } }, {
+      refreshDriver: driver, send: async request => { requests.push(request); throw new Error('no request may be sent'); },
+    });
+    const result = await client.downloadFile().invoke(call(), { fileId: '12345' });
+    expect(result.kind).toBe(kind);
+    if (result.kind === 'branch') expect(result.branch).toBe('defect');
+    expect(requests).toHaveLength(0);
   });
 });
