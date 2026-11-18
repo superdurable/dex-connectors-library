@@ -101,7 +101,8 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 		if sdkgo.IsReauthorizationRequired(err) {
 			return createLocalFailure(hasPossibleEarlierSend, sdkgo.FailureAuthentication, "connection requires reauthorization")
 		}
-		if decision.Kind == singledispatch.SendAllowed {
+		// After a possible earlier send, notSent would let the next attempt drop that send from the count.
+		if decision.Kind == singledispatch.SendAllowed && !hasPossibleEarlierSend {
 			if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
 				return createRetry(sdkgo.FailureTransport, "credential refresh checkpoint is unavailable", 0)
 			}
@@ -159,23 +160,31 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 	if readErr == nil && !isResponseUnsafe && json.Unmarshal(responseBody, &person) == nil {
 		contact, hasContact = person.project()
 	}
+	isResourceNameSaved := false
 	if hasContact {
 		// A later attempt reads this contact back instead of creating another one.
-		_ = fence.RecordProviderID(contact.ResourceName)
+		isResourceNameSaved = fence.RecordProviderID(contact.ResourceName) == nil
 	}
-	if isDefiniteContactRefusal(response.StatusCode) && !hasContact {
+	isSuccessStatus := response.StatusCode >= 200 && response.StatusCode < 300
+	if isSuccessStatus && hasContact {
+		return sdkgo.NewMutationBranch(CreateContactBranchCreated, contact, nil, sdkgo.Receipt{})
+	}
+	if isSuccessStatus {
+		// A 2xx proves Google created the contact; without its resource name it cannot be read back.
+		return createUncertain(sdkgo.FailureProtocol, "Google accepted the contact but returned no usable resource name; inspect Contacts before creating another")
+	}
+	if hasContact {
+		// A resource name proves the create despite the status, so it is read back and never resent.
+		if isResourceNameSaved {
+			return createRetry(sdkgo.FailureProtocol, "Google returned a contact resource name with HTTP "+strconv.Itoa(response.StatusCode)+"; the next attempt reads it back", retryAfter)
+		}
+		return createUncertain(sdkgo.FailureProtocol, "Google returned a contact resource name with HTTP "+strconv.Itoa(response.StatusCode)+", and its checkpoint failed; inspect Contacts before creating another")
+	}
+	// A refusal whose body cannot be read safely might hide a resource name, so its outcome is unknown.
+	if isDefiniteContactRefusal(response.StatusCode) && readErr == nil && !isResponseUnsafe {
 		return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, contactRefusalFailureKind(response.StatusCode), "Google rejected HTTP "+strconv.Itoa(response.StatusCode))
 	}
-	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated {
-		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureAvailability, "contact creation outcome is unknown after HTTP "+strconv.Itoa(response.StatusCode), retryAfter)
-	}
-	if readErr != nil || isResponseUnsafe {
-		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureTransport, "Google contact response could not be read safely", 0)
-	}
-	if !hasContact {
-		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureProtocol, "Google returned no usable contact resource name", 0)
-	}
-	return sdkgo.NewMutationBranch(CreateContactBranchCreated, contact, nil, sdkgo.Receipt{})
+	return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureAvailability, "contact creation outcome is unknown after HTTP "+strconv.Itoa(response.StatusCode), retryAfter)
 }
 
 // readBackCreatedContact confirms a contact whose resource name an earlier attempt saved.
@@ -196,6 +205,10 @@ func (operation CreateContactOperation) readBackCreatedContact(call sdkgo.Call, 
 	}
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return createRetry(sdkgo.FailureAvailability, "Google Contacts is temporarily unavailable for read-back", response.retryAfter)
+	}
+	if response.err != nil && !errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
+		// The contact was accepted, so a body that breaks mid-read is read again, never resent.
+		return createRetry(sdkgo.FailureTransport, "contact read-back response could not be read", response.retryAfter)
 	}
 	var person personWire
 	if response.status != http.StatusOK || response.err != nil || json.Unmarshal(response.body, &person) != nil {

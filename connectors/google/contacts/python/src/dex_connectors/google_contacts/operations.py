@@ -298,7 +298,8 @@ class CreateContactOperation:
                 "connection credentials are unavailable or invalid",
             )
         if error:
-            if decision.kind == DecisionKind.SEND_ALLOWED:
+            # After a possible earlier send, notSent would let the next attempt drop that send from the count.
+            if decision.kind == DecisionKind.SEND_ALLOWED and not has_possible_earlier_send:
                 try:
                     await fence.record_not_sent()
                 except Exception:
@@ -335,35 +336,45 @@ class CreateContactOperation:
             kind = FailureKind.RATE_LIMIT if exchange.status == 429 else FailureKind.AVAILABILITY
             return self._retry(kind, "Google did not create the contact", exchange.retry_after)
         contact = None if exchange.error else _contact(_document(exchange.body))
+        is_resource_name_saved = False
         if contact is not None:
             try:
                 await fence.record_provider_id(contact.resource_name)
+                is_resource_name_saved = True
             except Exception:
                 pass  # A lost provider-ID heartbeat counts this send, so the cap still holds.
-        if exchange.status in _DEFINITE_REFUSAL_STATUSES and contact is None:
+        is_success_status = 200 <= exchange.status < 300
+        if is_success_status and contact is not None:
+            return MutationAttempt.branch_result("created", contact, Receipt())
+        if is_success_status:
+            # A 2xx proves Google created the contact; without its resource name it cannot be read back.
+            return self._uncertain(
+                FailureKind.PROTOCOL,
+                "Google accepted the contact but returned no usable resource name; "
+                "inspect Contacts before creating another",
+            )
+        if contact is not None:
+            # A resource name proves the create despite the status, so it is read back and never resent.
+            message = f"Google returned a contact resource name with HTTP {exchange.status}"
+            if is_resource_name_saved:
+                return self._retry(
+                    FailureKind.PROTOCOL, message + "; the next attempt reads it back", exchange.retry_after
+                )
+            return self._uncertain(
+                FailureKind.PROTOCOL,
+                message + ", and its checkpoint failed; inspect Contacts before creating another",
+            )
+        # A refusal whose body cannot be read safely might hide a resource name, so its outcome is unknown.
+        if exchange.status in _DEFINITE_REFUSAL_STATUSES and not exchange.error:
             return await self._reject_or_select_uncertain(
                 fence, has_possible_earlier_send, exchange.status
             )
-        if exchange.status not in (200, 201):
-            return self._resend_or_select_uncertain(
-                can_resend_unknown_outcome,
-                FailureKind.AVAILABILITY,
-                f"contact creation outcome is unknown after HTTP {exchange.status}",
-                exchange.retry_after,
-            )
-        if exchange.error:
-            return self._resend_or_select_uncertain(
-                can_resend_unknown_outcome,
-                FailureKind.TRANSPORT,
-                "Google contact response could not be read safely",
-            )
-        if contact is None:
-            return self._resend_or_select_uncertain(
-                can_resend_unknown_outcome,
-                FailureKind.PROTOCOL,
-                "Google returned no usable contact resource name",
-            )
-        return MutationAttempt.branch_result("created", contact, Receipt())
+        return self._resend_or_select_uncertain(
+            can_resend_unknown_outcome,
+            FailureKind.AVAILABILITY,
+            f"contact creation outcome is unknown after HTTP {exchange.status}",
+            exchange.retry_after,
+        )
 
     async def _read_back_created_contact(self, call: Call, resource_name: str) -> MutationAttempt[Contact]:
         """Confirm a contact whose resource name an earlier attempt saved."""
@@ -380,7 +391,8 @@ class CreateContactOperation:
                 "contact read-back credentials are unavailable; "
                 "reconnect the connection to confirm the contact",
             )
-        if exchange.error in ("refresh", "request", "not_built"):
+        # The contact was accepted, so a body that breaks mid-read is read again, never resent.
+        if exchange.error in ("refresh", "request", "not_built", "read"):
             return self._retry(FailureKind.TRANSPORT, "contact read-back request failed")
         if exchange.status == 429:
             return self._retry(

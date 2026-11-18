@@ -418,7 +418,7 @@ var CreateContactDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateContactBranchCreated, Description: "Google created the contact and returned its resource name."},
 		{ID: CreateContactBranchProviderRejected, Description: "Google conclusively rejected the contact.", Optional: true},
-		{ID: CreateContactBranchUncertain, Description: "Google may have created the contact, and its resource name was still not confirmed when the send cap was reached.", Optional: true},
+		{ID: CreateContactBranchUncertain, Description: "Google may have created the contact, and its resource name was not confirmed: at the send cap, after a refusal that follows a possible send, or after a 2xx without a usable resource name.", Optional: true},
 		{ID: CreateContactBranchDefect, Description: "Local contact input, connection credentials, or dispatch checkpoint is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
