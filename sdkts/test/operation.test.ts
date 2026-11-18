@@ -83,7 +83,7 @@ describe('operation execution', () => {
     expect(invocations).toBe(1);
   });
 
-  it('gives the next begun mutation occurrence 2 after refused concurrent calls, as Go does', async () => {
+  it('keeps the occurrences of refused concurrent calls, so the next call gets occurrence 4', async () => {
     const stepContext = { attempt: 1, flowId: 'flow-ordinal', stepExecutionId: 'step-1', recordHeartbeat: async () => {} } as unknown as AsyncContext;
     const progress: { callId: string; sequence: number }[] = [];
     const progressStream = { write: (_context: unknown, update: { callId: string; sequence: number }) => { progress.push(update); } } as never;
@@ -106,9 +106,9 @@ describe('operation execution', () => {
     release();
     expect((await first).receipt.callId).toBe(calls[0]!.id);
 
-    const secondOccurrence = deriveCallID('flow-ordinal', 'step-1', call.operation, 2);
+    const fourthOccurrence = deriveCallID('flow-ordinal', 'step-1', call.operation, 4);
     const laterCall = derivedCall();
-    expect(laterCall.id).not.toBe(secondOccurrence);
+    expect(laterCall.id).toBe(fourthOccurrence);
     let observedId = '';
     let observedKey = '';
     const later = await runMutation({ definition: () => mutationDefinition, idempotencyKey: () => '', invoke: (receivedCall: Call, input: string) => {
@@ -117,11 +117,14 @@ describe('operation execution', () => {
       receivedCall.reportProgress({ phase: 'sending' });
       return newMutationBranch('created', input);
     } }, laterCall, 'later');
-    expect([observedId, observedKey, later.receipt.callId]).toEqual([secondOccurrence, secondOccurrence, secondOccurrence]);
-    expect(progress).toMatchObject([{ callId: secondOccurrence, sequence: 1 }]);
+    expect([observedId, observedKey, later.receipt.callId]).toEqual([fourthOccurrence, fourthOccurrence, fourthOccurrence]);
+    expect(progress).toMatchObject([{ callId: fourthOccurrence, sequence: 1 }]);
     let rerunId = '';
     await runMutation({ definition: () => mutationDefinition, idempotencyKey: () => '', invoke: (receivedCall: Call, input: string) => { rerunId = receivedCall.id; return newMutationBranch('created', input); } }, laterCall, 'rerun');
-    expect(rerunId).toBe(secondOccurrence);
+    expect(rerunId).toBe(fourthOccurrence);
+    let refusedRerunId = '';
+    await runMutation({ definition: () => mutationDefinition, idempotencyKey: () => '', invoke: (receivedCall: Call, input: string) => { refusedRerunId = receivedCall.id; return newMutationBranch('created', input); } }, calls[1]!, 'refused rerun');
+    expect(refusedRerunId).toBe(calls[1]!.id);
 
     const applicationCall = { ...laterCall, id: 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa' } as Call;
     Object.defineProperty(applicationCall, 'context', { value: stepContext, enumerable: false });
@@ -130,7 +133,7 @@ describe('operation execution', () => {
     expect(keptId).toBe(applicationCall.id);
   });
 
-  it('shifts occurrences only past calls refused before they began, never reusing a call ID', async () => {
+  it('assigns occurrences by construction order only, also around refused calls', async () => {
     const stepContext = { attempt: 1, flowId: 'flow-shift', stepExecutionId: 'step-1' } as AsyncContext;
     const derivedCall = () => createCall(stepContext, { provider: 'sample', name: 'default' }, call.operation);
     const occurrence = (n: number) => deriveCallID('flow-shift', 'step-1', call.operation, n);
@@ -163,12 +166,8 @@ describe('operation execution', () => {
     expect(await runAndObserve(refusedCall)).toBeUndefined();
     holder.release();
     await holder.result;
-    expect(await runAndObserve(derivedCall())).toBe(occurrence(5));
-    let isCollisionInvoked = false;
-    const collision = await runMutation({ definition: () => mutationDefinition, idempotencyKey: () => '', invoke: (_call: unknown, input: string) => { isCollisionInvoked = true; return newMutationBranch('created', input); } }, refusedCall, 'rerun');
-    expect(collision).toMatchObject({ branch: 'defect', failure: { kind: 'LOCAL_DEFECT' } });
-    expect(collision.failure?.message).toContain('reuse the call ID');
-    expect(isCollisionInvoked).toBe(false);
+    expect(await runAndObserve(derivedCall())).toBe(occurrence(6));
+    expect(await runAndObserve(refusedCall)).toBe(occurrence(5));
   });
 
   it('allows uncertainty only for a declared mutation branch', async () => {

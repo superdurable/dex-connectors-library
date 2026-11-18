@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { MaximumMaxSends, isValidMaxSends } from './operation.js';
-import { nextCallOccurrence, registerCallOccurrenceBuilder } from './call_occurrence.js';
+import { nextCallOccurrence } from './call_occurrence.js';
 import { ConnectionRefSchema, OperationRefSchema, deriveCallID, type CallID, type ConnectionRef, type OperationRef } from './types.js';
 import type { AsyncContext, BufferedTextStreamOptions, Stream } from '@superdurable/dex';
 
@@ -59,11 +59,6 @@ export interface Call {
  * so several fenced writes of one operation keep separate checkpoint entries; the first keeps the
  * four-field ID. The count restarts each attempt, so IDs stay stable across retries only when the
  * Step creates its calls in a deterministic order. Call it once per logical call.
- *
- * As in Go, a Mutation call that `runMutation` refuses as concurrent before it ever began gives up
- * its occurrence, and later calls of the operation shift down past it: the operation, Fence,
- * receipt, and progress of such a later call see the shifted occurrence's ID. Without a refusal,
- * every call keeps this ID.
  */
 export function createCall(context: AsyncContext, connection: ConnectionRef, operation: OperationRef, options: CallOptions = {}): Call {
   if (!context?.flowId) throw new TypeError('Dex Flow ID is required');
@@ -71,17 +66,9 @@ export function createCall(context: AsyncContext, connection: ConnectionRef, ope
   ConnectionRefSchema.parse(connection);
   OperationRefSchema.parse(operation);
   if (options.maxSendsOverride !== undefined && !isValidMaxSends(options.maxSendsOverride)) throw new RangeError(`connector maxSends must be an integer from 1 to ${MaximumMaxSends}`);
-  const textWriter = options.textStream?.bufferedText(context, options.textOptions);
-  const buildCall = (id: CallID): Call => buildStepCall(context, connection, operation, options, textWriter, id);
-  const ordinal = nextCallOccurrence(context, operation);
-  const call = buildCall(deriveCallID(context.flowId, context.stepExecutionId, operation, ordinal));
-  registerCallOccurrenceBuilder(call, ordinal, occurrence => buildCall(deriveCallID(context.flowId, context.stepExecutionId, operation, occurrence)));
-  return call;
-}
-
-function buildStepCall(context: AsyncContext, connection: ConnectionRef, operation: OperationRef, options: CallOptions, textWriter: ReturnType<Stream<string>['bufferedText']> | undefined, id: CallID): Call {
-  const call = { context, id, connection, operation } as Call;
+  const call = { context, id: deriveCallID(context.flowId, context.stepExecutionId, operation, nextCallOccurrence(context, operation)), connection, operation } as Call;
   if (options.maxSendsOverride !== undefined) call.maxSendsOverride = options.maxSendsOverride;
+  const textWriter = options.textStream?.bufferedText(context, options.textOptions);
   let sequence = 0;
   Object.defineProperty(call, 'context', { value: context, enumerable: false });
   Object.defineProperties(call, {
