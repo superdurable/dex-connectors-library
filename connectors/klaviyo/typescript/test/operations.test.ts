@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { BodyTooLargeError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { expect, it } from 'vitest';
 import { KlaviyoClient } from '../src/client.js';
 
@@ -26,13 +27,27 @@ it('escapes opaque profile IDs like Go url.PathEscape', async () => {
   expect(requestUrl).toBe('https://a.klaviyo.com/api/profiles/profile%2Cone%3Btwo%21it%27s%28ok%29%2A+$=:@%20%F0%9F%98%80');
 });
 
-it('treats unavailable credentials as a terminal defect before transmission', async () => {
-  const client = new KlaviyoClient({}, { resolve: async () => { throw new Error('sensitive credential detail'); } }, {
-    send: async () => { throw new Error('unexpected provider request'); },
-  });
-  const result = await client.getProfile().invoke(call, { id: 'profile-1' });
-  expect(result).toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'AUTHENTICATION' } });
-  expect(JSON.stringify(result)).not.toContain('sensitive credential detail');
+it('treats terminal credential failures as a defect before transmission', async () => {
+  for (const error of [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError()]) {
+    const client = new KlaviyoClient({}, { resolve: async () => { throw error; } }, {
+      send: async () => { throw new Error('unexpected provider request'); },
+    });
+    const result = await client.getProfile().invoke(call, { id: 'profile-1' });
+    expect(result, error.name).toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'AUTHENTICATION' } });
+    expect(JSON.stringify(result)).not.toContain('sensitive credential detail');
+  }
+});
+
+it('retries transient credential failures before transmission', async () => {
+  for (const error of [new Error('connection is not configured'), new CredentialBrokerUnavailableError(), new RangeError('sensitive credential detail'), new TypeError('sensitive credential detail')]) {
+    const client = new KlaviyoClient({}, { resolve: async () => { throw error; } }, {
+      send: async () => { throw new Error('unexpected provider request'); },
+    });
+    const eventCall = { ...call, idempotencyKey: 'klaviyo-provider-call' } as Call;
+    const result = await client.createEvent().invoke(eventCall, { email: 'member@meridian.co', metricName: 'Signed Up' });
+    expect(result, error.name).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(JSON.stringify(result)).not.toContain('sensitive credential detail');
+  }
 });
 
 it('retries a refused connection and an oversized 429 response', async () => {

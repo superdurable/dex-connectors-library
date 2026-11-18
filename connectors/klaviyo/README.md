@@ -30,8 +30,8 @@ Sign in at [Klaviyo API keys](https://www.klaviyo.com/settings/account/api-keys)
 | Profile missing | `notFound` |
 | Definite provider rejection | `providerRejected` |
 | Malformed or oversized profile response | `invalidResponse` |
-| Invalid input or missing credentials | `defect` |
-| Transport failure, 408, 409, 429, or 5xx | Retry with Dex's default one-hour budget |
+| Invalid input or credentials, or a connection that needs reauthorization, is missing or no longer selected, or that the credential broker refused | `defect` |
+| Transport failure, 408, 409, 429, 5xx, or any other credential lookup failure, such as an unavailable broker | Retry with Dex's default one-hour budget |
 
 Only the happy branch is wired in the [profile event example](go/examples/profile-event). Other branches fail its Flow. There is no `uncertain` branch because the unique ID makes event submission repeat-safe.
 

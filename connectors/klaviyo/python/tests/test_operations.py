@@ -13,12 +13,19 @@ from dex_connectors.sdk import (
     CallID,
     ConnectionRef,
     FailureKind,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
     run_query,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.klaviyo import (
     ACCEPTED,
@@ -63,6 +70,43 @@ def profile_call() -> Call:
 
 def event_call() -> Call:
     return Call(CallID(str(uuid4())), CONNECTION, CREATE_EVENT_DEFINITION.operation)
+
+
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, _call: object) -> Credentials:
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_transient"),
+    [
+        (CredentialBrokerUnavailableError(), True),
+        (ValueError("connection is not configured"), True),
+        (RuntimeError("unlisted"), True),
+        (ReauthorizationRequiredError(), False),
+        (ObjectNotFoundError(), False),
+        (ConnectionNotSelectedError(), False),
+        (CredentialBrokerRejectedError(), False),
+    ],
+)
+async def test_event_classifies_credential_resolve_failures(error: Exception, is_transient: bool) -> None:
+    client = Client(
+        Config(base_url="http://localhost:8848/api"),
+        _FailingCredentials(error),  # type: ignore[arg-type]
+        httpx.AsyncClient(transport=httpx.MockTransport(lambda request: pytest.fail("sent"))),
+    )
+    event = CreateEventInput("a@example.test", "Signed Up")
+    if is_transient:
+        with pytest.raises(RetryError) as raised:
+            await run_mutation(client.create_event(), event_call(), event)
+        assert raised.value.failure.kind == FailureKind.AVAILABILITY
+        return
+    result = await run_mutation(client.create_event(), event_call(), event)
+    assert result.branch == DEFECT
 
 
 @pytest.mark.asyncio
