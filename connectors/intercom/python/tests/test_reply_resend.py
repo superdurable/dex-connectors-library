@@ -28,7 +28,7 @@ from dex_connectors.sdk.singledispatch import Marker
 from dex_connectors.intercom import Client, Config, Credentials, ReplyToConversationInput
 from dex_connectors.intercom._generated.connection import CredentialMaterialError
 from dex_connectors.intercom._generated.definitions import REPLY_TO_CONVERSATION_DEFINITION
-from dex_connectors.intercom.models import ReplyToConversationOutput
+from dex_connectors.intercom.models import ReplyToConversationOutput, UpdateConversationStateInput
 
 CONNECTION = ConnectionRef("intercom", "intercom-test")
 CALL_ID = CallID("086d15f9-0a76-5218-9367-313eebf7077a")
@@ -282,3 +282,97 @@ async def test_oversized_refusal_is_an_unknown_outcome() -> None:
     result = await reply(lambda _: httpx.Response(400, content=body), AttemptContext(), requests)
     assert isinstance(result, RetryError), "an uninspectable refusal may hide an applied reply"
     assert result.failure.kind == "RESPONSE_TOO_LARGE"
+
+
+@pytest.mark.asyncio
+async def test_credential_echoing_refusal_resends_below_the_cap_and_is_uncertain_at_the_cap() -> None:
+    requests: list[httpx.Request] = []
+    echo = {"type": "error.list", "errors": [{"message": "inert-intercom-token"}]}
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET":
+            return httpx.Response(200, json=conversation())
+        return httpx.Response(422, json=echo)
+
+    context = AttemptContext()
+    for attempt in (1, 2, 3):
+        context.attempt = attempt
+        result = await reply(respond, context, requests)
+        assert isinstance(result, RetryError), "a refusal that echoes the token may hide an applied reply"
+        assert "inert-intercom-token" not in result.failure.message
+        assert context.marker is not None and context.marker.state == "claimed"
+    context.attempt = 4
+    result = await reply(respond, context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert [request.method for request in requests].count("POST") == 3
+
+
+async def update_state(
+    respond: Callable[[httpx.Request], httpx.Response], requests: list[httpx.Request]
+) -> MutationResult[object] | RetryError:
+    """Run one Execute attempt of updateConversationState closing conversation 2002."""
+
+    def record(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return respond(request)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(record)) as transport:
+        client = Client(
+            Config(max_response_bytes=4096), STATIC_CREDENTIALS, transport, endpoint="http://127.0.0.1:37345"
+        )
+        call = Call(
+            CALL_ID, CONNECTION, OperationRef("intercom", "updateConversationState"), context=AttemptContext()
+        )
+        try:
+            return await run_mutation(
+                client.update_conversation_state(),
+                call,
+                UpdateConversationStateInput("2002", "77", state="closed"),
+            )
+        except RetryError as error:
+            return error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("status", "body"),
+    [
+        (200, b'{"type":"conversation","id":"another"}'),
+        (200, b'{"type":"conversation","id":"2002","title":"inert-intercom-token"}'),
+        (200, json.dumps({"type": "conversation", "padding": "a" * 8000}).encode()),
+        (404, json.dumps({"type": "error.list", "padding": "a" * 8000}).encode()),
+        (403, b'{"type":"error.list","errors":[{"message":"inert-intercom-token"}]}'),
+        (409, b'{"type":"error.list","errors":[{"code":"conflict"}]}'),
+        (410, b'{"type":"error.list","errors":[{"code":"gone"}]}'),
+        (302, b"{}"),
+    ],
+    ids=["invalid", "echoing 200", "oversized 200", "oversized 404", "echoing 403", "409", "410", "302"],
+)
+async def test_update_state_retries_an_inconclusive_read_before_the_change(status: int, body: bytes) -> None:
+    requests: list[httpx.Request] = []
+    result = await update_state(lambda _: httpx.Response(status, content=body), requests)
+    assert isinstance(result, RetryError), "only a readable listed refusal selects a branch"
+    assert [request.method for request in requests] == ["GET"]
+
+
+@pytest.mark.asyncio
+async def test_update_state_keeps_a_readable_listed_refusal_of_the_read_definite() -> None:
+    requests: list[httpx.Request] = []
+    refusal = {"type": "error.list", "errors": [{"code": "forbidden"}]}
+    result = await update_state(lambda _: httpx.Response(403, json=refusal), requests)
+    assert isinstance(result, MutationResult) and result.branch == "providerRejected"
+
+
+@pytest.mark.asyncio
+async def test_update_state_retries_a_credential_echoing_refusal_of_the_write() -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET":
+            return httpx.Response(200, json=conversation())
+        echo = {"type": "error.list", "errors": [{"message": "inert-intercom-token"}]}
+        return httpx.Response(400, json=echo)
+
+    result = await update_state(respond, requests)
+    assert isinstance(result, RetryError)
+    assert [request.method for request in requests] == ["GET", "POST"]

@@ -469,6 +469,86 @@ it("treats an oversized refusal of a reply as an unknown outcome", async () => {
   expect(state.heartbeat).toMatchObject({ state: "claimed" });
 });
 
+it("resends a credential-echoing refusal of a reply below the cap and selects uncertain at the cap", async () => {
+  const methods: string[] = [];
+  const { replyCall, state } = fencedReplyCall();
+  const client = new IntercomClient({}, validCredentials, {
+    endpoint: "http://127.0.0.1:0",
+    now: () => new Date("2026-10-30T00:00:00Z"),
+    send: async (request) => {
+      methods.push(request.method);
+      if (request.method === "GET") return { status: 200, headers: {}, body: conversationBody(false) };
+      return { status: 422, headers: {}, body: Buffer.from('{"type":"error.list","errors":[{"message":"test-token"}]}') };
+    },
+  });
+  for (const attempt of [1, 2, 3]) {
+    state.attempt = attempt;
+    const result = await client.replyToConversation().invoke(replyCall, replyInput);
+    expect(result.kind).toBe("retry");
+    if (result.kind === "retry") expect(result.failure.message).not.toContain("test-token");
+    expect(state.heartbeat).toMatchObject({ state: "claimed" });
+  }
+  state.attempt = 4;
+  const capped = await client.replyToConversation().invoke(replyCall, replyInput);
+  expect(capped.kind).toBe("uncertain");
+  expect(methods.filter((method) => method === "POST")).toHaveLength(3);
+});
+
+const stateInput = { conversationId: "2002", adminId: "77", state: "closed" as const };
+
+it.each([
+  ["invalid 200", 200, '{"type":"conversation","id":"another"}'],
+  ["credential-echoing 200", 200, '{"type":"conversation","id":"2002","title":"test-token"}'],
+  ["credential-echoing 403", 403, '{"type":"error.list","errors":[{"message":"test-token"}]}'],
+  ["unlisted 409", 409, '{"type":"error.list","errors":[{"code":"conflict"}]}'],
+  ["gone 410", 410, '{"type":"error.list","errors":[{"code":"gone"}]}'],
+  ["redirect 302", 302, "{}"],
+] as const)("retries an inconclusive %s read before a state change, without writing", async (_name, status, body) => {
+  const methods: string[] = [];
+  const client = new IntercomClient({}, validCredentials, {
+    endpoint: "http://127.0.0.1:0",
+    send: async (request) => {
+      methods.push(request.method);
+      return { status, headers: {}, body: Buffer.from(body) };
+    },
+  });
+  const attempt = await client.updateConversationState().invoke(call, stateInput);
+  expect(attempt.kind).toBe("retry");
+  expect(methods).toEqual(["GET"]);
+});
+
+it("retries an oversized 404 read before a state change", async () => {
+  const client = new IntercomClient({}, validCredentials, {
+    endpoint: "http://127.0.0.1:0",
+    send: async () => { throw new BodyTooLargeError(404, {}); },
+  });
+  expect((await client.updateConversationState().invoke(call, stateInput)).kind).toBe("retry");
+});
+
+it("keeps a readable listed refusal of the read before a state change definite", async () => {
+  const client = new IntercomClient({}, validCredentials, {
+    endpoint: "http://127.0.0.1:0",
+    send: async () => ({ status: 403, headers: {}, body: Buffer.from('{"type":"error.list","errors":[{"code":"forbidden"}]}') }),
+  });
+  const attempt = await client.updateConversationState().invoke(call, stateInput);
+  expect(attempt.kind).toBe("branch");
+  if (attempt.kind === "branch") expect(attempt.branch).toBe("providerRejected");
+});
+
+it("retries a credential-echoing refusal of a state change", async () => {
+  const methods: string[] = [];
+  const client = new IntercomClient({}, validCredentials, {
+    endpoint: "http://127.0.0.1:0",
+    send: async (request) => {
+      methods.push(request.method);
+      if (request.method === "GET") return { status: 200, headers: {}, body: conversationBody(false) };
+      return { status: 400, headers: {}, body: Buffer.from('{"type":"error.list","errors":[{"message":"test-token"}]}') };
+    },
+  });
+  expect((await client.updateConversationState().invoke(call, stateInput)).kind).toBe("retry");
+  expect(methods).toEqual(["GET", "POST"]);
+});
+
 it("uses Go whitespace for reply body validation and HTML", async () => {
   let sentBody = "";
   const { replyCall } = fencedReplyCall();

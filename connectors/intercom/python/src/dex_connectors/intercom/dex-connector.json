@@ -232,7 +232,7 @@
       "kind": "mutation",
       "operationId": "updateConversationState",
       "inputType": "UpdateConversationStateInput",
-      "description": "Close, reopen, or snooze one conversation as an admin. Every attempt reads the conversation first and writes only when its state differs, so a repeated Step is safe. An unknown, unusable, or oversized answer to the write, and a credential lookup that may succeed later, retry.",
+      "description": "Close, reopen, or snooze one conversation as an admin. Every attempt reads the conversation first and writes only when its state differs, so a repeated Step is safe. On the read before the change, only a readable 400, 401, 403, 404, 411, 413, 414, 415, or 422 selects its branch; any other read answer retries. An unknown, unusable, oversized, or credential-reflecting answer to the write, and a credential lookup that may succeed later, retry.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",

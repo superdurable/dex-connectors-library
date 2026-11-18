@@ -134,6 +134,8 @@ type intercomResponse struct {
 	requestID  string
 	// isBodyTooLarge means the body exceeded maxResponseBytes, so only its first bytes were kept.
 	isBodyTooLarge bool
+	// isCredentialEchoed means a non-2xx body contained the access token, so it cannot be trusted.
+	isCredentialEchoed bool
 }
 
 // exchangeOutcome is the provider-neutral meaning of one Intercom request that each operation maps to a branch.
@@ -176,14 +178,22 @@ func (result intercomExchange) hasSuccessStatus() bool {
 	return result.response.statusCode >= 200 && result.response.statusCode < 300
 }
 
-// withOversizedRefusalAsUnknown treats a refusal whose body was too large to inspect as an unknown write outcome.
-func (result intercomExchange) withOversizedRefusalAsUnknown(operation string) intercomExchange {
-	if !result.response.isBodyTooLarge || (result.outcome != exchangeRejected && result.outcome != exchangeNotFound) {
+// withUntrustedRefusalAsUnknown treats a refusal whose body was too large to inspect, or that echoed the
+// access token, as an unknown outcome.
+func (result intercomExchange) withUntrustedRefusalAsUnknown(operation string) intercomExchange {
+	if result.outcome != exchangeRejected && result.outcome != exchangeNotFound {
 		return result
 	}
-	result.outcome = exchangeUnconfirmed
-	result.failure = intercomFailure(sdkgo.FailureResponseTooLarge, operation, fmt.Sprintf(
-		"Intercom answered HTTP %d with a body larger than maxResponseBytes, so the outcome is unknown", result.response.statusCode))
+	switch {
+	case result.response.isBodyTooLarge:
+		result.outcome = exchangeUnconfirmed
+		result.failure = intercomFailure(sdkgo.FailureResponseTooLarge, operation, fmt.Sprintf(
+			"Intercom answered HTTP %d with a body larger than maxResponseBytes, so the outcome is unknown", result.response.statusCode))
+	case result.response.isCredentialEchoed:
+		result.outcome = exchangeUnconfirmed
+		result.failure = intercomFailure(sdkgo.FailureProtocol, operation, fmt.Sprintf(
+			"Intercom answered HTTP %d with a body that reflected the connection credential, so the outcome is unknown", result.response.statusCode))
+	}
 	return result
 }
 
@@ -370,13 +380,15 @@ func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operati
 	}
 	response.body = body
 	response.isBodyTooLarge = errors.Is(readErr, providerhttp.ErrBodyTooLarge)
+	isCredentialEchoed := bytes.Contains(body, []byte(credentials.AccessToken.Reveal()))
 	if isSuccess {
-		if bytes.Contains(body, []byte(credentials.AccessToken.Reveal())) {
+		if isCredentialEchoed {
 			response.body = nil
 			return intercomExchange{outcome: exchangeInvalid, response: response, failure: intercomFailure(sdkgo.FailureProtocol, operation, "Intercom response reflected the connection credential")}
 		}
 		return intercomExchange{outcome: exchangeSucceeded, response: response}
 	}
+	response.isCredentialEchoed = isCredentialEchoed && credentials.AccessToken.Reveal() != ""
 	return client.classifyFailureStatus(response, operation)
 }
 

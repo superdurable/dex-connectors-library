@@ -193,7 +193,7 @@ spec:
         - {id: replied, goName: Replied, description: "The reply or note is in the conversation; a retried attempt that found its own earlier reply reports it instead of sending again."}
         - {id: notFound, goName: NotFound, description: "The conversation does not exist or is not visible to the connection's token; nothing was added.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Intercom conclusively rejected the reply, such as an unknown admin or a closed channel; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The reply may exist but could not be confirmed: the send cap is reached and the conversation shows no part by the admin with the reply's type and text; or, after a possible send, the conversation could not be read back, is missing, or shows the reply with an invalid part; or Intercom accepted the reply with an unusable answer that a read-back could not confirm. Do not send it again without checking the conversation. Below the cap, a read-back that shows no matching part resends.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The reply may exist but could not be confirmed: the send cap is reached and the conversation shows no part by the admin with the reply's type and text; or, after a possible send, the conversation could not be read back, is missing, or shows the reply with an invalid part; or Intercom accepted the reply with an unusable answer that a read-back could not confirm. A refusal whose body is oversized or reflects the access token is unconfirmed like a lost answer. Do not send it again without checking the conversation. Below the cap, a read-back that shows no matching part resends.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "No longer selected. A reply whose part is invalid may exist, so the connector selects uncertain instead; the branch stays declared for compatibility.", optional: true, retired: true, retiredReason: "An accepted reply whose part does not decode may exist, so replyToConversation selects uncertain instead of invalidResponse."}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
@@ -222,13 +222,13 @@ spec:
       inputType: UpdateConversationStateInput
       outputType: UpdateConversationStateOutput
       kind: mutation
-      description: "Close, reopen, or snooze one conversation as an admin. Every attempt reads the conversation first and writes only when its state differs, so a repeated Step is safe. An unknown, unusable, or oversized answer to the write, and a credential lookup that may succeed later, retry."
+      description: "Close, reopen, or snooze one conversation as an admin. Every attempt reads the conversation first and writes only when its state differs, so a repeated Step is safe. On the read before the change, only a readable 400, 401, 403, 404, 411, 413, 414, 415, or 422 selects its branch; any other read answer retries. An unknown, unusable, oversized, or credential-reflecting answer to the write, and a credential lookup that may succeed later, retry."
       idempotency: required
       branches:
         - {id: updated, goName: Updated, description: "The conversation is in the requested state; a repeated attempt that finds it there writes nothing."}
         - {id: notFound, goName: NotFound, description: The conversation does not exist or is not visible to the connection's token., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Intercom conclusively rejected the change, such as an unknown admin, and the conversation is not in the requested state.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Intercom returned an invalid or oversized conversation on the read before the change, so this attempt changed nothing.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: an invalid, oversized, or credential-reflecting conversation read before the change returns Retry, because the change is safe to repeat.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s

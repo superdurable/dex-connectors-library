@@ -286,23 +286,6 @@ function queryFailure<T>(
           : "providerRejected";
   return newQueryBranch(branch, empty, exchange.receipt, exchange.failure);
 }
-function mutationFailure<T>(
-  exchange: IntercomExchange,
-  empty: T,
-): MutationAttempt<T> | undefined {
-  if (exchange.outcome === "succeeded") return;
-  if (retryable(exchange))
-    return newMutationRetry(exchange.failure, exchange.retryAfterMs);
-  const branch =
-    exchange.outcome === "notFound"
-      ? "notFound"
-      : exchange.outcome === "invalid"
-        ? "invalidResponse"
-        : exchange.outcome === "defect"
-          ? "defect"
-          : "providerRejected";
-  return newMutationBranch(branch, empty, exchange.receipt, exchange.failure);
-}
 function rfc3339(value: string): number | undefined {
   const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,]\d+)?(Z|([+-])(\d{2}):(\d{2}))$/.exec(value);
   if (!parts) return;
@@ -743,7 +726,7 @@ export class ReplyToConversationOperation
     } catch (dispatchError) {
       return replyDispatchErrorAttempt(this.client, operation, dispatchError);
     }
-    exchange = withOversizedRefusalAsUnknown(this.client, exchange, operation);
+    exchange = withUntrustedRefusalAsUnknown(this.client, exchange, operation);
     if (exchange.outcome !== "succeeded" && hasSuccessStatus(exchange))
       // An oversized, credential-reflecting, or unreadable 2xx still means Intercom accepted the reply.
       return this.confirmAccepted(call, fence, input, token, exchange.failure);
@@ -967,27 +950,48 @@ function hasSuccessStatus(exchange: IntercomExchange): boolean {
   return status !== undefined && status >= 200 && status < 300;
 }
 
-/** A refusal whose body was too large to inspect is an unknown write outcome. */
-function withOversizedRefusalAsUnknown(
+/** A refusal whose body was too large to inspect, or echoed the access token, is an unknown outcome. */
+function withUntrustedRefusalAsUnknown(
   client: IntercomClient,
   exchange: IntercomExchange,
   operation: string,
 ): IntercomExchange {
   if (
     exchange.outcome === "succeeded" ||
-    !exchange.isBodyOversized ||
+    (!exchange.isBodyOversized && !exchange.isCredentialEchoed) ||
     (exchange.outcome !== "rejected" && exchange.outcome !== "notFound")
   )
     return exchange;
+  const failureDetail = exchange.isBodyOversized
+    ? (["RESPONSE_TOO_LARGE", "a body larger than maxResponseBytes"] as const)
+    : (["PROTOCOL", "a body that reflected the connection credential"] as const);
   return {
     ...exchange,
     outcome: "unconfirmed",
     failure: client.failure(
       operation,
-      "RESPONSE_TOO_LARGE",
-      `Intercom answered HTTP ${exchange.status ?? 0} with a body larger than maxResponseBytes, so the outcome is unknown`,
+      failureDetail[0],
+      `Intercom answered HTTP ${exchange.status ?? 0} with ${failureDetail[1]}, so the outcome is unknown`,
     ),
   };
+}
+
+/** Map the read before a safe write: only a readable listed refusal selects a branch; anything else retries. */
+function preWriteReadFailure<T>(
+  client: IntercomClient,
+  read: IntercomExchange,
+  empty: T,
+  operation: string,
+): MutationAttempt<T> | undefined {
+  const exchange = withUntrustedRefusalAsUnknown(client, read, operation);
+  if (exchange.outcome === "succeeded") return;
+  if (exchange.outcome === "defect")
+    return newMutationBranch("defect", empty, exchange.receipt, exchange.failure);
+  if (exchange.outcome === "notFound" && exchange.status === 404)
+    return newMutationBranch("notFound", empty, exchange.receipt, exchange.failure);
+  if (exchange.outcome === "rejected" && definiteRefusalStatuses.has(exchange.status ?? 0))
+    return newMutationBranch("providerRejected", empty, exchange.receipt, exchange.failure);
+  return newMutationRetry(exchange.failure, exchange.retryAfterMs);
 }
 
 /** Map unusable credentials before this send; after a possible send record nothing and never defect. */
@@ -1210,16 +1214,14 @@ export class UpdateConversationStateOperation
         input.conversationId,
         dispatch,
       ),
-      bad = mutationFailure(first, zeroUpdate());
+      bad = preWriteReadFailure(this.client, first, zeroUpdate(), operation);
     if (bad) return bad;
     let current: Conversation;
     try {
       current = conversation(envelope(first, input.conversationId), false);
     } catch (error) {
-      return newMutationBranch(
-        "invalidResponse",
-        zeroUpdate(),
-        first.receipt,
+      // An unusable 2xx read before the change proves nothing, so the attempt repeats.
+      return newMutationRetry(
         this.client.failure(
           operation,
           "PROTOCOL",
@@ -1233,7 +1235,7 @@ export class UpdateConversationStateOperation
         { conversation: current, wasAlreadyApplied: true },
         this.client.receipt(call, input.conversationId),
       );
-    const write = withOversizedRefusalAsUnknown(
+    const write = withUntrustedRefusalAsUnknown(
       this.client,
       await this.client.exchange(
         call,

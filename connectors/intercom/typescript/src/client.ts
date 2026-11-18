@@ -93,6 +93,8 @@ export interface IntercomFailedExchange {
   status?: number;
   /** True when the body exceeded maxResponseBytes, so it could not be inspected. */
   isBodyOversized?: boolean;
+  /** True when a non-2xx body contained the access token, so it cannot be trusted. */
+  isCredentialEchoed?: boolean;
 }
 
 /** A resolved access token, or why it is unavailable. */
@@ -377,10 +379,13 @@ export class IntercomClient {
         };
       return { outcome: "succeeded", response, receipt };
     }
+    const isCredentialEchoed =
+      token !== "" && Buffer.from(response.body).includes(Buffer.from(token));
     return {
       ...this.classifyFailureStatus(call, operation, objectId, response),
       status: response.status,
       ...(isBodyOversized ? { isBodyOversized } : {}),
+      ...(isCredentialEchoed ? { isCredentialEchoed } : {}),
     };
   }
 
