@@ -149,11 +149,13 @@ loopback-only, stateless Streamable HTTP. It is built from three parts:
 
 - **Tool metadata.** It comes from the generated `ExposedAgentTools()` and
   `Connection.AgentTools()` code of each linked connector module. Tools run
-  through `sdkgo.AgentTool.RunAttemptWithOptions`, which also classifies each
-  attempt's branch. A `limited` Mutation gets its manifest `maxSends` through
-  `sdkgo.WithMaxSends` on every attempt of a call, so its Fence may resend an
-  unconfirmed write within that cap. An `idempotent_write` still retries
-  inline, and every other `non_idempotent_write` runs once.
+  through `sdkgo.AgentTool.RunAttemptWithOptions`. The server classifies each
+  attempt only by the branch the connector selects, as Dex Agents do, and
+  never parses the connector's heartbeat checkpoint. A connector Retry runs
+  the next attempt under the Step retry policy. A `limited` Mutation gets its
+  manifest `maxSends` through `sdkgo.WithMaxSends` on every attempt of a call,
+  so its Fence may resend an unconfirmed write within that cap. For every
+  other write, the connector's Fence decides whether the next attempt sends.
 - **Results.** Tool `_meta` and results follow the Dex MCP conventions:
   - `io.superdurable.dex/effect` and `io.superdurable.dex/approval` describe
     each tool.

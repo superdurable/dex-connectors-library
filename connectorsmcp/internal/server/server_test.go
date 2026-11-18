@@ -189,15 +189,27 @@ func TestNonIdempotentWriteRejectedBeforeSendingIsStoredRejected(t *testing.T) {
 	require.Equal(t, 0, harness.provider.NoteRequests())
 }
 
-func TestNonIdempotentWriteRetryAfterSendIsUnknown(t *testing.T) {
+func TestNonIdempotentWriteRetryFollowsTheStepRetryPolicy(t *testing.T) {
 	harness := newTestHarness(t, harnessOptions{})
 	harness.provider.Script("postNote", testconnectors.ScriptedResponse{Status: http.StatusServiceUnavailable})
 	result := harness.mustCallResult("example-notes_post_note", map[string]any{"text": "hello"}, "flow/turn/post-503")
-	require.Equal(t, "unknown", result.outcome(), "canResend follows a claim and does not prove the note was not created")
-	require.Empty(t, harness.clock.recordedSleeps(), "a non-idempotent write is never retried inline")
+	require.False(t, result.IsError, result.text())
+	require.Equal(t, []time.Duration{time.Second}, harness.clock.recordedSleeps(), "the connector's Retry runs the next attempt, whose Fence allowed the resend")
+	require.Equal(t, 2, harness.provider.NoteRequests())
 	again := harness.mustCallResult("example-notes_post_note", map[string]any{"text": "hello"}, "flow/turn/post-503")
 	require.Equal(t, true, again.Meta[metaKeyReplayed])
-	require.Equal(t, 1, harness.provider.NoteRequests())
+	require.Equal(t, 2, harness.provider.NoteRequests())
+}
+
+func TestNonIdempotentWriteRetryWithNoAttemptLeftIsUnknown(t *testing.T) {
+	harness := newTestHarness(t, harnessOptions{})
+	for range 3 {
+		harness.provider.Script("postNote", testconnectors.ScriptedResponse{Status: http.StatusServiceUnavailable})
+	}
+	result := harness.mustCallResult("example-notes_post_note", map[string]any{"text": "hello"}, "flow/turn/post-exhausted")
+	require.Equal(t, "unknown", result.outcome(), result.text())
+	require.Contains(t, result.text(), "still asked to retry after 3 attempts")
+	require.Equal(t, 3, harness.provider.NoteRequests())
 }
 
 func TestIdempotentWriteRetriesInlineUnderOneKey(t *testing.T) {

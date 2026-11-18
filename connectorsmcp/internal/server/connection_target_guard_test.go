@@ -85,12 +85,11 @@ func TestARebindInsideAnAttemptSendsNothing(t *testing.T) {
 			outcome           string
 			text              string
 		}{
-			// saveRecord has no Fence, so its Retry cannot prove nothing was sent.
+			// A Retry after Invoke never proves nothing was sent; the Fence checkpoint is not read.
 			{"example-notes_save_record", "saveRecord", map[string]any{"name": "a", "value": "1"}, outcomeUnknown,
 				"example-notes saveRecord may have taken effect: the connection now points to a different target; do not repeat it"},
-			// postNote's Fence records notSent before it returns Retry.
-			{"example-notes_post_note", "postNote", map[string]any{"text": "hello"}, outcomeRejected,
-				"example-notes postNote did not take effect: the connection now points to a different target; nothing was sent"},
+			{"example-notes_post_note", "postNote", map[string]any{"text": "hello"}, outcomeUnknown,
+				"example-notes postNote may have taken effect: the connection now points to a different target; do not repeat it"},
 		} {
 			t.Run(rebindCase.name+"/"+toolCase.operationID, func(t *testing.T) {
 				otherAccount := testconnectors.NewFakeProvider()
