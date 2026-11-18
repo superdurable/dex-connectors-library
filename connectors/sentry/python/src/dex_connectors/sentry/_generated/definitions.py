@@ -64,7 +64,7 @@ UPDATE_ISSUE_STATUS_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "Sentry returned the requested result.", False),
         BranchDefinition(NOT_FOUND, "The requested resource does not exist.", True),
         BranchDefinition(PROVIDER_REJECTED, "The provider definitively rejected the request.", True),
-        BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and no longer selected: a malformed or oversized answer now retries, because repeating the absolute status update is safe.", True),
         BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
     ),
     StepDefaults(

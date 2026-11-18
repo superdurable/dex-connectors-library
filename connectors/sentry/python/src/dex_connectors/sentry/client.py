@@ -32,14 +32,12 @@ from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
 from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
-    MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
     ProviderTransportError,
     is_header_safe_credential,
     new_provider_http_client,
     parse_retry_after,
     read_bounded_body,
-    read_error_tokens,
     send_traced,
     validate_base_url,
 )
@@ -222,25 +220,16 @@ class Client:
                 retry_after_seconds=retry_after,
                 is_retry=True,
             )
-        if is_mutation and status == 409:
-            try:
-                conflict = await read_bounded_body(response, MAX_ERROR_BODY_BYTES)
-            except (BodyTooLargeError, ProviderTransportError):
-                conflict = b""
-            if read_error_tokens(conflict, ("/name",)) == ("invalid_idempotent_request",):
-                return _Outcome(
-                    PROVIDER_REJECTED,
-                    FailureKind.PROVIDER_REJECTION,
-                    "idempotency key was used for a different request",
-                )
-            return _Outcome(
-                kind=FailureKind.AVAILABILITY,
-                message="provider is processing the same request",
-                is_retry=True,
-            )
         if status == 404 and has_not_found_branch:
             return _Outcome(NOT_FOUND, FailureKind.NOT_FOUND, "provider resource was not found")
         is_success = status in (200, 201, 202) if is_mutation else status == 200
+        if not is_success and is_mutation and status not in _DEFINITE_REFUSAL_STATUSES:
+            # The absolute status update is safe to repeat, so an unknown answer, including 409, retries.
+            return _Outcome(
+                kind=FailureKind.AVAILABILITY,
+                message=f"provider answered HTTP {status}, so the outcome is unknown",
+                is_retry=True,
+            )
         if not is_success:
             return _Outcome(
                 PROVIDER_REJECTED,
@@ -250,6 +239,12 @@ class Client:
         try:
             content = await read_bounded_body(response, self.max_response_bytes)
         except BodyTooLargeError:
+            if is_mutation:
+                return _Outcome(
+                    kind=FailureKind.RESPONSE_TOO_LARGE,
+                    message="provider response exceeded the configured limit",
+                    is_retry=True,
+                )
             return _Outcome(
                 INVALID_RESPONSE,
                 FailureKind.RESPONSE_TOO_LARGE,
@@ -365,13 +360,9 @@ class UpdateIssueStatusOperation:
         try:
             issue = _decode_issue(_decode_object(outcome.content))
         except (ValueError, TypeError, UnicodeDecodeError):
-            return _mutation_failure(
-                operation,
-                INVALID_RESPONSE,
-                Issue(),
-                FailureKind.PROTOCOL,
-                "provider response is incomplete or malformed",
-            )
+            # Repeating the absolute update is safe, so a malformed answer retries.
+            message = "provider response is incomplete or malformed"
+            return MutationAttempt.retry(Failure(FailureKind.PROTOCOL, CONNECTOR_ID, operation, message))
         return MutationAttempt.branch_result(UPDATED, issue, Receipt())
 
 
@@ -395,9 +386,15 @@ def _query_attempt(
     return QueryAttempt.branch_result(success, value, Receipt())
 
 
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
 def _is_terminal_credential_error(error: BaseException) -> bool:
     """Report a credential resolution failure that no retry fixes; every other error is transient."""
-    return isinstance(
+    # Imported here because the generated connection module imports this client.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
         error,
         (
             ReauthorizationRequiredError,

@@ -6,6 +6,7 @@ import { ReauthorizationRequiredError, SecretString, type Call } from '@superdur
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { SentryClient } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const call = { id: 'test-call', context: { cancellationSignal: new AbortController().signal } } as Call;
 
@@ -38,11 +39,26 @@ describe('Sentry provider adapter', () => {
     ['reauthorization', () => new ReauthorizationRequiredError(), 'defect'],
     ['not selected', () => new ConnectionNotSelectedError(), 'defect'],
     ['broker rejected', () => new CredentialBrokerRejectedError(), 'defect'],
+    ['malformed material', () => new CredentialMaterialError('credential api_key is required'), 'defect'],
+    ['SDK decoding failure', () => new TypeError('project credential decoding failed'), 'defect'],
     ['broker unavailable', () => new CredentialBrokerUnavailableError(), 'retry'],
     ['not configured', () => new Error('connection is not configured'), 'retry'],
   ])('classifies a credential resolve failure (%s) for the status write', async (_name, newError, expected) => {
     const error = newError();
     const client = new SentryClient({}, { resolve: async () => { throw error; } }, { send: async () => { throw new Error('unexpected request'); } });
+    const result = await client.updateIssueStatus().invoke(call, { organization: 'acme', id: '123', status: 'resolved' });
+    expect(result.kind === 'branch' ? result.branch : result.kind).toBe(expected);
+  });
+  it.each([
+    [409, '{"name":"invalid_idempotent_request"}', 'retry'],
+    [425, '{}', 'retry'],
+    [302, '', 'retry'],
+    [200, '[]', 'retry'],
+    [422, '{}', 'providerRejected'],
+  ])('classifies status write HTTP %s as %s', async (status, body, expected) => {
+    const client = new SentryClient({ baseUrl: 'http://127.0.0.1:12345' }, {
+      resolve: async () => ({ apiKey: new SecretString('test-secret-token') }),
+    }, { send: async () => ({ status, headers: {}, body: Buffer.from(body) }) });
     const result = await client.updateIssueStatus().invoke(call, { organization: 'acme', id: '123', status: 'resolved' });
     expect(result.kind === 'branch' ? result.branch : result.kind).toBe(expected);
   });
