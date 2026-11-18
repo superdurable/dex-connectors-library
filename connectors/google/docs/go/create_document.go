@@ -326,7 +326,7 @@ func (client *Client) createAttemptFromResponse(call sdkgo.Call, send createDocu
 		return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(statusFailureKind(response.status, tokens), createDocumentOperationID, "provider temporarily rejected the create"), delay)
 	case response.status == http.StatusUnauthorized && !response.isErrorBodyOversized:
 		refreshed, refreshErr := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
-		if refreshErr != nil && !sdkgo.IsReauthorizationRequired(refreshErr) {
+		if refreshErr != nil && !isTerminalCredentialError(refreshErr) {
 			// Google refuses an unauthenticated create before processing it, so a transient refresh failure retries.
 			if err := fence.RecordCanResend(); err != nil {
 				return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(sdkgo.FailureAuthentication, createDocumentOperationID, "Dex could not record safe resend after a failed credential refresh"), 0)

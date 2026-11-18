@@ -17,6 +17,11 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -41,6 +46,13 @@ if TYPE_CHECKING:
         ReplaceDocumentTextOperation,
     )
 
+# Resolve failures that only reconnection repairs; any other resolve failure is transient.
+TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
 DRIVE_ID = re.compile(r"[A-Za-z0-9_-]{1,256}\Z")
 # Only these statuses prove Google refused a write; every other status is an unknown outcome.
 DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
@@ -146,11 +158,12 @@ class Client:
     async def write_credential(self, call: Call) -> tuple[Credentials | None, bool]:
         """Resolve a write credential and report whether a failure may clear on a later attempt.
 
-        Only reauthorization or an unusable credential is terminal; any other resolution error is transient.
+        Only a terminal resolve error or an unusable credential is terminal; any other resolution
+        error, including an unconfigured static connection, is transient.
         """
         try:
             credential = await self._credentials.resolve(call)
-        except ReauthorizationRequiredError:
+        except TERMINAL_CREDENTIAL_ERRORS:
             return None, False
         except Exception:
             return None, True

@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import quote
 
-from dex_connectors.sdk import Call, FailureKind, MutationAttempt, ReauthorizationRequiredError, Receipt
+from dex_connectors.sdk import Call, FailureKind, MutationAttempt, Receipt
 from dex_connectors.sdk.providerhttp import parse_retry_after
 from dex_connectors.sdk.singledispatch import (
     CheckpointError,
@@ -26,6 +26,7 @@ from .client import (
     DRIVE_ID,
     GO_PATH_SAFE,
     GOOGLE_DOCUMENT_MIME,
+    TERMINAL_CREDENTIAL_ERRORS,
     Client,
     Credentials,
     Exchange,
@@ -508,7 +509,7 @@ async def _after_create(
             )
         try:
             await client._credentials.resolve_after_rejection(call)
-        except ReauthorizationRequiredError:
+        except TERMINAL_CREDENTIAL_ERRORS:
             return await _reject_or_select_uncertain(
                 send, FailureKind.AUTHENTICATION, "provider rejected the create credential", receipt
             )

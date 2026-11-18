@@ -23,6 +23,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/google/docs/go"
 	"github.com/superdurable/dex-connectors-library/connectors/google/docs/go/internal/fakegoogledocs"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
@@ -757,6 +758,55 @@ func TestCreateDocumentTerminalCredentialFailureIsDefectBeforeASendAndUncertainA
 	require.NoError(t, err)
 	require.Equal(t, docs.CreateDocumentBranchUncertain, result.Branch)
 	require.Zero(t, countRecordedCreates(server.recorded()))
+}
+
+// resolveErrorCredentials fails every resolution with one error.
+type resolveErrorCredentials struct{ err error }
+
+func (credentials resolveErrorCredentials) Resolve(sdkgo.Call) (docs.Credentials, error) {
+	return docs.Credentials{}, credentials.err
+}
+
+func (credentials resolveErrorCredentials) ResolveWithRefresh(context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[docs.Credentials]) (docs.Credentials, error) {
+	return docs.Credentials{}, credentials.err
+}
+
+func TestCreateDocumentClassifiesEveryCredentialResolveFailure(t *testing.T) {
+	for _, test := range []struct {
+		err        error
+		isTerminal bool
+	}{
+		{err: sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), isTerminal: true},
+		{err: projectconfig.ErrReauthorizationRequired, isTerminal: true},
+		{err: projectconfig.ErrObjectNotFound, isTerminal: true},
+		{err: projectconfig.ErrConnectionNotSelected, isTerminal: true},
+		{err: projectconfig.ErrCredentialBrokerRejected, isTerminal: true},
+		{err: projectconfig.ErrCredentialBrokerUnavailable},
+		{err: errors.New("connection is not configured")},
+		{err: errors.New("unlisted resolve failure")},
+	} {
+		t.Run(test.err.Error(), func(t *testing.T) {
+			server := newRecordingServer(t, func(response http.ResponseWriter, _ recordedRequest) {
+				writeJSON(t, response, http.StatusOK, `{"files":[]}`)
+			})
+			client, err := docs.New(docs.Config{DocsEndpoint: server.URL, DriveEndpoint: server.URL}, resolveErrorCredentials{err: test.err})
+			require.NoError(t, err)
+			first, err := sdkgo.RunMutation(singledispatchtest.NewContext("docs-flow", "credential-first"), client.CreateDocument(), docsConnection, policyDraftInput())
+			ctx := singledispatchtest.NewContext("docs-flow", "credential-after-send")
+			ctx.AdvanceAttempt()
+			later, laterErr := sdkgo.RunMutation(ctx, client.CreateDocument(), docsConnection, policyDraftInput())
+			if test.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, docs.CreateDocumentBranchDefect, first.Branch)
+				require.NoError(t, laterErr)
+				require.Equal(t, docs.CreateDocumentBranchUncertain, later.Branch)
+			} else {
+				requireRetry(t, err, sdkgo.FailureAuthentication)
+				requireRetry(t, laterErr, sdkgo.FailureAuthentication)
+			}
+			require.Zero(t, countRecordedCreates(server.recorded()))
+		})
+	}
 }
 
 func TestCreateDocumentRetriesTransientCredentialsAfterAPossibleSend(t *testing.T) {
