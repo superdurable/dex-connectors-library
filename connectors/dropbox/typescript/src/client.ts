@@ -11,6 +11,7 @@ import {
   BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL,
   type ProviderRequest, type ProviderResponse,
 } from '@superdurable/connectors-sdk/providerhttp';
+import { isCredentialMaterialError } from './generated/models.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, Credentials } from './models.js';
 import {
@@ -103,7 +104,8 @@ export class DropboxClient {
       credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
     } catch (error) {
       const isTerminal = error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
-        || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+        || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError
+        || isCredentialMaterialError(error);
       return { status: 0, body: new Uint8Array(), metadata: '', retryAfterMs: 0, error: isTerminal ? 'credential' : 'refresh' };
     }
     const token = credentials.accessToken instanceof SecretString ? credentials.accessToken.reveal() : '';

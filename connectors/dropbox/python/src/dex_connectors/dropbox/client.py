@@ -161,8 +161,11 @@ class Client:
             CredentialBrokerRejectedError,
         ):
             return Exchange(error="credential")
-        except Exception:
-            return Exchange(error="refresh")
+        except Exception as error:
+            # The generated connection module imports this one, so import its predicate lazily.
+            from ._generated.connection import is_credential_material_error
+
+            return Exchange(error="credential" if is_credential_material_error(error) else "refresh")
         token = credentials.access_token.reveal()
         if not token or not is_header_safe_credential(token):
             return Exchange(error="credential")
