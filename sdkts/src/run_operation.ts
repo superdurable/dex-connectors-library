@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { beginRunningMutation } from './call_occurrence.js';
+import { beginMutationOccurrence, callForBegunOccurrence } from './call_occurrence.js';
 import { FailureSchema, RetryError, type Failure } from './errors.js';
 import type { Call } from './credentials.js';
 import { validateMutationDefinition, validateQueryDefinition, type Mutation, type MutationDefinition, type Query, type QueryDefinition } from './operation.js';
@@ -23,7 +23,9 @@ export async function runQuery<Input, Output>(operation: Query<Input, Output>, c
  *
  * Concurrent calls of the same operation in one Step attempt are unsupported: a call that starts
  * while an earlier one is still running selects `defect` without invoking the operation, so it
- * never sends.
+ * never sends. As in Go, such a call that never began gives up its occurrence, and later `createCall`
+ * calls of the operation run with the occurrence shifted down past it. A call whose shifted occurrence
+ * another call already holds also selects `defect` without invoking the operation.
  */
 export async function runMutation<Input, Output>(operation: Mutation<Input, Output>, call: Call, input: Input): Promise<MutationResult<Output>> {
   if (!operation) return defectResult<Output>(undefined, call, 'connector mutation is required');
@@ -32,12 +34,16 @@ export async function runMutation<Input, Output>(operation: Mutation<Input, Outp
   const invalidCall = validateCall(call, definition.operation);
   if (invalidCall) return defectResult(definition, call, invalidCall);
   if (!call.context) return runValidatedMutation(operation, definition, call, input);
-  const endRunning = beginRunningMutation(call.context, definition.operation);
-  if (!endRunning) {
-    return defectResult(definition, call, `concurrent calls of connector operation ${definition.operation.connectorId} ${definition.operation.operationId} in one Step are not supported; an earlier call of it is still running, so this call was not sent`);
+  const { connectorId, operationId } = definition.operation;
+  const begun = beginMutationOccurrence(call.context, definition.operation, call);
+  if (begun.kind === 'concurrent') {
+    return defectResult(definition, call, `concurrent calls of connector operation ${connectorId} ${operationId} in one Step are not supported; an earlier call of it is still running, so this call was not sent`);
   }
-  try { return await runValidatedMutation(operation, definition, call, input); }
-  finally { endRunning(); }
+  if (begun.kind !== 'begun') {
+    return defectResult(definition, call, `this call of connector operation ${connectorId} ${operationId} would reuse the call ID of another call in this Step attempt, so this call was not sent`);
+  }
+  try { return await runValidatedMutation(operation, definition, callForBegunOccurrence(call, begun.occurrence), input); }
+  finally { begun.end(); }
 }
 
 async function runValidatedMutation<Input, Output>(operation: Mutation<Input, Output>, definition: MutationDefinition, call: Call, input: Input): Promise<MutationResult<Output>> {

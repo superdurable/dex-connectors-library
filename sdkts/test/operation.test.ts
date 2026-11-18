@@ -3,10 +3,10 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError } from '../src/errors.js';
-import { createCall, StaticCredentialProvider, resolveCredential, resolveCredentialAfterRejection, type CredentialRefreshDriver } from '../src/credentials.js';
+import { createCall, StaticCredentialProvider, resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialRefreshDriver } from '../src/credentials.js';
 import { validateMutationDefinition, validateQueryDefinition, type MutationDefinition, type QueryDefinition } from '../src/operation.js';
 import { runMutation, runQuery } from '../src/run_operation.js';
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt } from '../src/types.js';
+import { deriveCallID, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt } from '../src/types.js';
 import type { AsyncContext } from '@superdurable/dex';
 
 const context = { attempt: 1, flowId: 'flow-1', stepExecutionId: 'step-1' } as AsyncContext;
@@ -81,6 +81,94 @@ describe('operation execution', () => {
     expect((await first).branch).toBe('created');
     expect((await runMutation(concurrent, stepCall, 'third')).branch).toBe('created');
     expect(invocations).toBe(1);
+  });
+
+  it('gives the next begun mutation occurrence 2 after refused concurrent calls, as Go does', async () => {
+    const stepContext = { attempt: 1, flowId: 'flow-ordinal', stepExecutionId: 'step-1', recordHeartbeat: async () => {} } as unknown as AsyncContext;
+    const progress: { callId: string; sequence: number }[] = [];
+    const progressStream = { write: (_context: unknown, update: { callId: string; sequence: number }) => { progress.push(update); } } as never;
+    const derivedCall = () => createCall(stepContext, { provider: 'sample', name: 'default' }, call.operation, { progressStream });
+    let release!: () => void;
+    const released = new Promise<void>(resolve => { release = resolve; });
+    let started!: () => void;
+    const hasStarted = new Promise<void>(resolve => { started = resolve; });
+    const blocking = { definition: () => mutationDefinition, idempotencyKey: () => '', invoke: async (_call: unknown, input: string) => {
+      started();
+      await released;
+      return newMutationBranch('created', input);
+    } };
+    // Promise.all builds every Call before any mutation begins.
+    const calls = [derivedCall(), derivedCall(), derivedCall()];
+    const first = runMutation(blocking, calls[0]!, 'first');
+    await hasStarted;
+    const refused = await Promise.all(calls.slice(1).map(refusedCall => runMutation({ ...blocking, invoke: () => newMutationBranch('created', 'never') }, refusedCall, 'concurrent')));
+    expect(refused.map(result => result.branch)).toEqual(['defect', 'defect']);
+    release();
+    expect((await first).receipt.callId).toBe(calls[0]!.id);
+
+    const secondOccurrence = deriveCallID('flow-ordinal', 'step-1', call.operation, 2);
+    const laterCall = derivedCall();
+    expect(laterCall.id).not.toBe(secondOccurrence);
+    let observedId = '';
+    let observedKey = '';
+    const later = await runMutation({ definition: () => mutationDefinition, idempotencyKey: () => '', invoke: (receivedCall: Call, input: string) => {
+      observedId = receivedCall.id;
+      observedKey = receivedCall.idempotencyKey ?? '';
+      receivedCall.reportProgress({ phase: 'sending' });
+      return newMutationBranch('created', input);
+    } }, laterCall, 'later');
+    expect([observedId, observedKey, later.receipt.callId]).toEqual([secondOccurrence, secondOccurrence, secondOccurrence]);
+    expect(progress).toMatchObject([{ callId: secondOccurrence, sequence: 1 }]);
+    let rerunId = '';
+    await runMutation({ definition: () => mutationDefinition, idempotencyKey: () => '', invoke: (receivedCall: Call, input: string) => { rerunId = receivedCall.id; return newMutationBranch('created', input); } }, laterCall, 'rerun');
+    expect(rerunId).toBe(secondOccurrence);
+
+    const applicationCall = { ...laterCall, id: 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa' } as Call;
+    Object.defineProperty(applicationCall, 'context', { value: stepContext, enumerable: false });
+    let keptId = '';
+    await runMutation({ definition: () => mutationDefinition, idempotencyKey: () => '', invoke: (receivedCall: Call, input: string) => { keptId = receivedCall.id; return newMutationBranch('created', input); } }, applicationCall, 'application');
+    expect(keptId).toBe(applicationCall.id);
+  });
+
+  it('shifts occurrences only past calls refused before they began, never reusing a call ID', async () => {
+    const stepContext = { attempt: 1, flowId: 'flow-shift', stepExecutionId: 'step-1' } as AsyncContext;
+    const derivedCall = () => createCall(stepContext, { provider: 'sample', name: 'default' }, call.operation);
+    const occurrence = (n: number) => deriveCallID('flow-shift', 'step-1', call.operation, n);
+    const runAndObserve = async (target: Call): Promise<string | undefined> => {
+      let observed: string | undefined;
+      await runMutation({ definition: () => mutationDefinition, idempotencyKey: () => '', invoke: (receivedCall: Call, input: string) => { observed = receivedCall.id; return newMutationBranch('created', input); } }, target, 'input');
+      return observed;
+    };
+    const runBlocking = async (target: Call) => {
+      let release!: () => void;
+      const released = new Promise<void>(resolve => { release = resolve; });
+      let started!: () => void;
+      const hasStarted = new Promise<void>(resolve => { started = resolve; });
+      const result = runMutation({ definition: () => mutationDefinition, idempotencyKey: () => '', invoke: async (_call: unknown, input: string) => { started(); await released; return newMutationBranch('created', input); } }, target, 'blocking');
+      await hasStarted;
+      return { release, result };
+    };
+
+    const first = derivedCall();
+    const running = await runBlocking(first);
+    expect(await runAndObserve(first)).toBeUndefined();
+    running.release();
+    await running.result;
+    expect(await runAndObserve(first)).toBe(occurrence(1));
+    expect(derivedCall().id).toBe(occurrence(2));
+    expect(await runAndObserve(derivedCall())).toBe(occurrence(3));
+
+    const holder = await runBlocking(derivedCall());
+    const refusedCall = derivedCall();
+    expect(await runAndObserve(refusedCall)).toBeUndefined();
+    holder.release();
+    await holder.result;
+    expect(await runAndObserve(derivedCall())).toBe(occurrence(5));
+    let isCollisionInvoked = false;
+    const collision = await runMutation({ definition: () => mutationDefinition, idempotencyKey: () => '', invoke: (_call: unknown, input: string) => { isCollisionInvoked = true; return newMutationBranch('created', input); } }, refusedCall, 'rerun');
+    expect(collision).toMatchObject({ branch: 'defect', failure: { kind: 'LOCAL_DEFECT' } });
+    expect(collision.failure?.message).toContain('reuse the call ID');
+    expect(isCollisionInvoked).toBe(false);
   });
 
   it('allows uncertainty only for a declared mutation branch', async () => {
