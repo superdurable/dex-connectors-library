@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -102,15 +103,68 @@ func TestSendTemplateMessageRetries429(t *testing.T) {
 	require.Equal(t, 2, requests)
 }
 
-func TestSendTextMessageRetriesTransientGraphRefusal(t *testing.T) {
-	server, requests := newScriptedSendServer(t, []int{http.StatusBadRequest, http.StatusOK},
-		[]string{`{"error":{"code":131000,"is_transient":true}}`, sentTextBody})
+func TestSendTextMessageTransientGraphErrorSelectsUncertainAtCap(t *testing.T) {
+	server, requests := newScriptedSendServer(t, []int{http.StatusBadRequest}, []string{`{"error":{"code":131000,"is_transient":true}}`})
 	client := newTestClient(t, server.URL, 0)
 	ctx := singledispatchtest.NewContext("whatsapp-transient", "send-text")
+	for attempt := 1; attempt < 3; attempt++ {
+		_, err := sdkgo.RunMutation(ctx, client.SendTextMessage(), testConnection, testTextInput)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "attempt %d resends", attempt)
+		require.Equal(t, singledispatch.StateClaimed, lastSendMarker(t, ctx).State, "is_transient leaves the outcome unknown")
+		ctx.AdvanceAttempt()
+	}
+	uncertain, err := sdkgo.RunMutation(ctx, client.SendTextMessage(), testConnection, testTextInput)
+	require.NoError(t, err)
+	require.Equal(t, SendTextMessageBranchUncertain, uncertain.Branch)
+	require.Equal(t, 3, *requests)
+}
+
+func TestSendTextMessageNeverResendsAcceptedUnreadableResponse(t *testing.T) {
+	for _, body := range []string{`{}`, `not JSON`, `{"messaging_product":"whatsapp","messages":[{"id":"wamid.` + strings.Repeat("x", 200) + `"}]}`} {
+		t.Run(body, func(t *testing.T) {
+			server, requests := newScriptedSendServer(t, []int{http.StatusOK}, []string{body})
+			client := newTestClient(t, server.URL, 128)
+			ctx := singledispatchtest.NewContext("whatsapp-accepted-unreadable", "send-text")
+			uncertain, err := sdkgo.RunMutation(ctx, client.SendTextMessage(), testConnection, testTextInput)
+			require.NoError(t, err)
+			require.Equal(t, SendTextMessageBranchUncertain, uncertain.Branch)
+			require.Equal(t, 1, *requests)
+		})
+	}
+}
+
+func TestSendTextMessageAcceptedBodyBreaksAfterHeadersSelectsUncertain(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.Header().Set("Content-Length", "100")
+		w.WriteHeader(http.StatusOK)
+		_, err := fmt.Fprint(w, `{"messages":`)
+		require.NoError(t, err)
+		w.(http.Flusher).Flush()
+		connection, _, err := w.(http.Hijacker).Hijack()
+		require.NoError(t, err)
+		require.NoError(t, connection.Close())
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL, 0)
+	ctx := singledispatchtest.NewContext("whatsapp-body-breaks", "send-text")
+	uncertain, err := sdkgo.RunMutation(ctx, client.SendTextMessage(), testConnection, testTextInput)
+	require.NoError(t, err)
+	require.Equal(t, SendTextMessageBranchUncertain, uncertain.Branch)
+	require.Equal(t, 1, requests)
+}
+
+func TestSendTextMessageUnreadableClientErrorIsUnknown(t *testing.T) {
+	longError := `{"error":{"code":100,"message":"` + strings.Repeat("x", 200) + `"}}`
+	server, requests := newScriptedSendServer(t, []int{http.StatusBadRequest, http.StatusOK}, []string{longError, sentTextBody})
+	client := newTestClient(t, server.URL, 128)
+	ctx := singledispatchtest.NewContext("whatsapp-oversized-refusal", "send-text")
 	_, err := sdkgo.RunMutation(ctx, client.SendTextMessage(), testConnection, testTextInput)
 	var retry *sdkgo.RetryError
-	require.ErrorAs(t, err, &retry, "is_transient means Meta did not process the send")
-	require.Equal(t, singledispatch.StateCanResend, lastSendMarker(t, ctx).State)
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, singledispatch.StateClaimed, lastSendMarker(t, ctx).State)
 	ctx.AdvanceAttempt()
 	sent, err := sdkgo.RunMutation(ctx, client.SendTextMessage(), testConnection, testTextInput)
 	require.NoError(t, err)
@@ -118,11 +172,52 @@ func TestSendTextMessageRetriesTransientGraphRefusal(t *testing.T) {
 	require.Equal(t, 2, *requests)
 }
 
+func TestSendTextMessageUnlistedClientErrorWithMessageIDSelectsUncertain(t *testing.T) {
+	server, requests := newScriptedSendServer(t, []int{http.StatusConflict}, []string{sentTextBody})
+	client := newTestClient(t, server.URL, 0)
+	ctx := singledispatchtest.NewContext("whatsapp-conflict-id", "send-text")
+	uncertain, err := sdkgo.RunMutation(ctx, client.SendTextMessage(), testConnection, testTextInput)
+	require.NoError(t, err)
+	require.Equal(t, SendTextMessageBranchUncertain, uncertain.Branch)
+	require.Equal(t, 1, *requests)
+}
+
+func TestSendTextMessageRefusalAfterRateLimitedResendSelectsUncertain(t *testing.T) {
+	server, requests := newScriptedSendServer(t, []int{http.StatusInternalServerError, http.StatusTooManyRequests, http.StatusBadRequest},
+		[]string{``, ``, `{"error":{"code":100}}`})
+	client := newTestClient(t, server.URL, 0)
+	ctx := singledispatchtest.NewContext("whatsapp-rate-limited-resend", "send-text")
+	for attempt := 1; attempt < 3; attempt++ {
+		_, err := sdkgo.RunMutation(ctx, client.SendTextMessage(), testConnection, testTextInput)
+		require.Error(t, err, "attempt %d retries", attempt)
+		ctx.AdvanceAttempt()
+	}
+	uncertain, err := sdkgo.RunMutation(ctx, client.SendTextMessage(), testConnection, testTextInput)
+	require.NoError(t, err)
+	require.Equal(t, SendTextMessageBranchUncertain, uncertain.Branch)
+	require.Equal(t, 3, *requests)
+}
+
+func TestSendTextMessageInvalidCredentialsAfterPossibleSendSelectsUncertain(t *testing.T) {
+	server, requests := newScriptedSendServer(t, []int{http.StatusInternalServerError}, []string{``})
+	client := newTestClient(t, server.URL, 0)
+	ctx := singledispatchtest.NewContext("whatsapp-invalid-credentials", "send-text")
+	_, err := sdkgo.RunMutation(ctx, client.SendTextMessage(), testConnection, testTextInput)
+	require.Error(t, err)
+	ctx.AdvanceAttempt()
+	invalidCredentials, err := New(Config{BaseURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {AccessToken: sdkgo.NewSecretString("bad\ntoken")}})
+	require.NoError(t, err)
+	uncertain, err := sdkgo.RunMutation(ctx, invalidCredentials.SendTextMessage(), testConnection, testTextInput)
+	require.NoError(t, err)
+	require.Equal(t, SendTextMessageBranchUncertain, uncertain.Branch)
+	require.Equal(t, 1, *requests)
+}
+
 func TestSendTextMessageResendsUnknownOutcomeBelowCap(t *testing.T) {
 	for _, response := range []struct {
 		status int
 		body   string
-	}{{500, ``}, {502, ``}, {408, ``}, {409, ``}, {425, ``}, {418, ``}, {200, `{}`}, {200, `not JSON`}} {
+	}{{500, ``}, {502, ``}, {408, ``}, {409, ``}, {425, ``}, {418, ``}, {400, `{"error":{"code":100,"is_transient":true}}`}} {
 		t.Run(fmt.Sprintf("%d %s", response.status, response.body), func(t *testing.T) {
 			server, requests := newScriptedSendServer(t, []int{response.status, http.StatusOK}, []string{response.body, sentTextBody})
 			client := newTestClient(t, server.URL, 0)

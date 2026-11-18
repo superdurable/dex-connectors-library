@@ -180,18 +180,21 @@ func (client *Client) sendMessage(call sdkgo.Call, operationName, phoneNumberID 
 		hasPossibleEarlierSend: decision.MaximumPriorSends > 0,
 	}
 	credentials, err := client.credentials.Resolve(call)
-	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.AccessToken.Reveal()) {
-		return attempt.localFailure(sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
+	if err != nil {
+		return attempt.localFailure(false, sdkgo.FailureAuthentication, "connection credentials are unavailable")
+	}
+	if credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.AccessToken.Reveal()) {
+		return attempt.localFailure(true, sdkgo.FailureAuthentication, "connection credentials are invalid")
 	}
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+"/"+phoneNumberID+"/messages", bytes.NewReader(body))
 	if err != nil {
-		return attempt.localFailure(sdkgo.FailureLocalDefect, "message request could not be built")
+		return attempt.localFailure(true, sdkgo.FailureLocalDefect, "message request could not be built")
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "Bearer "+credentials.AccessToken.Reveal())
 	if err := singledispatch.PrepareHTTPWrite(request); err != nil {
-		return attempt.localFailure(sdkgo.FailureLocalDefect, "message request is invalid")
+		return attempt.localFailure(true, sdkgo.FailureLocalDefect, "message request is invalid")
 	}
 	dispatch := &messageDispatch{client: client.httpClient, request: request, observation: &dispatchObservation{}}
 	err = fence.Dispatch(dispatch.send)
@@ -214,12 +217,11 @@ func (client *Client) sendMessage(call sdkgo.Call, operationName, phoneNumberID 
 func (attempt messageSend) classifyResponse(response *http.Response, maxResponseBytes int64) sdkgo.MutationAttempt[SentMessage] {
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
 	responseBody, readErr := providerhttp.ReadBoundedBody(response.Body, maxResponseBytes)
+	isBodyReadable := readErr == nil
 	isClientError := response.StatusCode >= 400 && response.StatusCode < 500
 	// A Graph or Cloud API throttling code means Meta refused the send before processing it.
-	isRateLimited := response.StatusCode == http.StatusTooManyRequests || (isClientError && readErr == nil && isGraphThrottleBody(responseBody))
-	// A Graph 4xx marked is_transient is a transient refusal, not a definite one.
-	isTransientRefusal := isClientError && readErr == nil && isGraphTransientBody(responseBody)
-	if isRateLimited || isTransientRefusal || response.StatusCode == http.StatusServiceUnavailable {
+	isRateLimited := response.StatusCode == http.StatusTooManyRequests || (isClientError && isBodyReadable && isGraphThrottleBody(responseBody))
+	if isRateLimited || response.StatusCode == http.StatusServiceUnavailable {
 		if err := attempt.fence.RecordCanResend(); err != nil {
 			return retryMessage(attempt.operationName, sdkgo.FailureAvailability, "Meta retry checkpoint is unavailable", 0)
 		}
@@ -230,32 +232,37 @@ func (attempt messageSend) classifyResponse(response *http.Response, maxResponse
 		return retryMessage(attempt.operationName, kind, "Meta did not process the send", retryAfter)
 	}
 	acceptedMessageID, isComplete := "", false
-	if readErr == nil {
+	if isBodyReadable {
 		acceptedMessageID, isComplete = readSentMessageID(responseBody)
 	}
-	if isDefiniteRefusalStatus(response.StatusCode) {
-		if acceptedMessageID != "" {
-			// The body reports an accepted message, so a resend could duplicate it.
-			return uncertainMessage(attempt.operationName, sdkgo.FailureProtocol, "Meta returned a contradictory send response")
+	if response.StatusCode >= 200 && response.StatusCode < 300 {
+		// Meta accepted the message, so a resend could duplicate it.
+		if !isBodyReadable {
+			return uncertainMessage(attempt.operationName, sdkgo.FailureTransport, "Meta accepted the message, but its response could not be read")
 		}
+		if acceptedMessageID == "" {
+			return uncertainMessage(attempt.operationName, sdkgo.FailureProtocol, "Meta accepted the message, but its response is malformed")
+		}
+		if !isComplete {
+			return uncertainMessage(attempt.operationName, sdkgo.FailureProtocol, "Meta send response is incomplete")
+		}
+		// A lost provider-ID checkpoint leaves the claim, which still counts this send.
+		_ = attempt.fence.RecordProviderID(acceptedMessageID)
+		return sdkgo.NewMutationBranch(sdkgo.BranchID("sent"), SentMessage{MessageID: acceptedMessageID}, nil, sdkgo.Receipt{})
+	}
+	if acceptedMessageID != "" {
+		// The body reports an accepted message, so a resend could duplicate it.
+		return uncertainMessage(attempt.operationName, sdkgo.FailureProtocol, "Meta returned a contradictory send response")
+	}
+	// is_transient does not prove Meta skipped the send, so the outcome is unknown.
+	if isClientError && isBodyReadable && isGraphTransientBody(responseBody) {
+		return attempt.resendOrSelectUncertain(sdkgo.FailureAvailability, "Meta reported a transient error; the message may have been sent", retryAfter)
+	}
+	// An unreadable or oversized body cannot prove a refusal.
+	if isBodyReadable && isDefiniteRefusalStatus(response.StatusCode) {
 		return attempt.rejectOrSelectUncertain(rejectionFailureKind(response.StatusCode), "Meta rejected HTTP "+strconv.Itoa(response.StatusCode))
 	}
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return attempt.resendOrSelectUncertain(sdkgo.FailureAvailability, "Meta message outcome is unknown after HTTP "+strconv.Itoa(response.StatusCode), retryAfter)
-	}
-	if readErr != nil {
-		return attempt.resendOrSelectUncertain(sdkgo.FailureTransport, "Meta send response could not be read", 0)
-	}
-	if acceptedMessageID == "" {
-		return attempt.resendOrSelectUncertain(sdkgo.FailureProtocol, "Meta send response is malformed", 0)
-	}
-	if !isComplete {
-		// Meta returned a wamid, so a resend could duplicate the message.
-		return uncertainMessage(attempt.operationName, sdkgo.FailureProtocol, "Meta send response is incomplete")
-	}
-	// A lost provider-ID checkpoint leaves the claim, which still counts this send.
-	_ = attempt.fence.RecordProviderID(acceptedMessageID)
-	return sdkgo.NewMutationBranch(sdkgo.BranchID("sent"), SentMessage{MessageID: acceptedMessageID}, nil, sdkgo.Receipt{})
+	return attempt.resendOrSelectUncertain(sdkgo.FailureAvailability, "Meta message outcome is unknown after HTTP "+strconv.Itoa(response.StatusCode), retryAfter)
 }
 
 // resendOrSelectUncertain retries a possibly sent message while the send cap allows another send.
@@ -277,8 +284,12 @@ func (attempt messageSend) rejectOrSelectUncertain(kind sdkgo.FailureKind, messa
 	return messageBranch(attempt.operationName, "providerRejected", kind, message)
 }
 
-// localFailure selects defect only when no earlier send may have delivered.
-func (attempt messageSend) localFailure(kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentMessage] {
+// localFailure selects defect only when no earlier send may have delivered. After a possible
+// send, a terminal failure selects uncertain and a transient one returns Retry.
+func (attempt messageSend) localFailure(isTerminal bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentMessage] {
+	if attempt.hasPossibleEarlierSend && isTerminal {
+		return uncertainMessage(attempt.operationName, kind, message+"; an earlier attempt may have sent the WhatsApp message")
+	}
 	if attempt.hasPossibleEarlierSend {
 		// notSent would hide the earlier possible send, so nothing is recorded.
 		return retryMessage(attempt.operationName, kind, message+"; no message was sent in this attempt", 0)

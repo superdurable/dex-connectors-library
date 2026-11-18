@@ -281,7 +281,7 @@ var SendTextMessageDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendTextMessageBranchSent, Description: "Meta returned a WhatsApp message ID."},
 		{ID: SendTextMessageBranchProviderRejected, Description: "Meta definitively rejected the message.", Optional: true},
-		{ID: SendTextMessageBranchUncertain, Description: "Meta may have accepted the message, but the send cap was reached or Meta returned an incomplete confirmation; do not resend blindly.", Optional: true},
+		{ID: SendTextMessageBranchUncertain, Description: "Meta may have accepted the message, but the send cap was reached or Meta returned an unreadable or incomplete confirmation; do not resend blindly.", Optional: true},
 		{ID: SendTextMessageBranchDefect, Description: "Local input or credentials are invalid before any send.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -357,7 +357,7 @@ var SendTemplateMessageDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendTemplateMessageBranchSent, Description: "Meta returned a WhatsApp message ID."},
 		{ID: SendTemplateMessageBranchProviderRejected, Description: "Meta definitively rejected the template send.", Optional: true},
-		{ID: SendTemplateMessageBranchUncertain, Description: "Meta may have accepted the message, but the send cap was reached or Meta returned an incomplete confirmation; do not resend blindly.", Optional: true},
+		{ID: SendTemplateMessageBranchUncertain, Description: "Meta may have accepted the message, but the send cap was reached or Meta returned an unreadable or incomplete confirmation; do not resend blindly.", Optional: true},
 		{ID: SendTemplateMessageBranchDefect, Description: "Local input or credentials are invalid before any send.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

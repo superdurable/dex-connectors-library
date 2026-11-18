@@ -96,7 +96,7 @@ spec:
       branches:
         - {id: sent, goName: Sent, description: Meta returned a WhatsApp message ID.}
         - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the message., optional: true}
-        - {id: uncertain, goName: Uncertain, description: "Meta may have accepted the message, but the send cap was reached or Meta returned an incomplete confirmation; do not resend blindly.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Meta may have accepted the message, but the send cap was reached or Meta returned an unreadable or incomplete confirmation; do not resend blindly.", optional: true}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid before any send., optional: true}
       mocks:
         - name: sentDefault
@@ -120,7 +120,7 @@ spec:
       branches:
         - {id: sent, goName: Sent, description: Meta returned a WhatsApp message ID.}
         - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the template send., optional: true}
-        - {id: uncertain, goName: Uncertain, description: "Meta may have accepted the message, but the send cap was reached or Meta returned an incomplete confirmation; do not resend blindly.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Meta may have accepted the message, but the send cap was reached or Meta returned an unreadable or incomplete confirmation; do not resend blindly.", optional: true}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid before any send., optional: true}
       mocks:
         - name: sentDefault
