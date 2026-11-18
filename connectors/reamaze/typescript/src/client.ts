@@ -26,7 +26,7 @@ export type CredentialResult = { kind: 'resolved'; email: string; token: string 
 export type ReamazeExchange =
   | { kind: 'success'; response: ProviderResponse; requestId: string }
   | { kind: 'notFound' | 'rateLimited' | 'notSent' | 'unavailable' | 'rejected' | 'invalid' | 'defect'; failure: Failure; retryAfterMs: number; status: number; requestId: string;
-    /** A non-2xx answer whose body exceeded maxResponseBytes and was not read. */ hasOversizedBody?: boolean };
+    /** A non-2xx answer whose body exceeded maxResponseBytes, or reflected the credential. */ hasOversizedBody?: boolean };
 
 /** Authenticated Re:amaze API v1 client. */
 export class ReamazeClient {
@@ -119,6 +119,8 @@ export class ReamazeClient {
       if (Buffer.from(response.body).includes(Buffer.from(credentials.token))) return this.failure('invalid', operation, 'PROTOCOL', 'Re:amaze response reflected the connection credential', 0, status, requestId);
       return { kind: 'success', response, requestId };
     }
+    // A credential-reflecting refusal is untrusted, so it cannot prove a refusal either.
+    if (credentials.token !== '' && Buffer.from(response.body).includes(Buffer.from(credentials.token))) hasOversizedBody = true;
     let retryAfterMs = parseRetryAfter(header(response, 'retry-after'), this.now());
     if (status === 429) { if (!retryAfterMs) retryAfterMs = 60_000; return this.failure('rateLimited', operation, 'RATE_LIMIT', 'Re:amaze rate limited the request (HTTP 429)', retryAfterMs, status, requestId); }
     if (status === 408 || status >= 500) return this.failure('unavailable', operation, 'AVAILABILITY', `Re:amaze could not complete the request (HTTP ${status})`, retryAfterMs, status, requestId);

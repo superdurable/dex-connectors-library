@@ -123,7 +123,7 @@ type reamazeResponse struct {
 	header     http.Header
 	body       []byte
 	requestID  string
-	// hasOversizedBody marks a non-2xx answer whose body exceeded maxResponseBytes and was not read.
+	// hasOversizedBody marks a non-2xx answer whose body exceeded maxResponseBytes, or reflected the credential.
 	hasOversizedBody bool
 }
 
@@ -232,20 +232,20 @@ func (client *Client) FindContactByEmail() FindContactByEmailOperation {
 
 // resolveCredentials returns a header-safe email and token; errReamazeCredentialsUnavailable marks a read that may recover.
 func (client *Client) resolveCredentials(call sdkgo.Call) (Credentials, error) {
-	return client.doResolveCredentials(call, sdkgo.IsReauthorizationRequired)
+	return client.doResolveCredentials(call)
 }
 
 // resolveWriteCredentials resolves credentials for a Mutation. A revoked or unselected connection is
 // unusable, because another attempt cannot repair it: a write selects defect before any send and
 // uncertain after one.
 func (client *Client) resolveWriteCredentials(call sdkgo.Call) (Credentials, error) {
-	return client.doResolveCredentials(call, isTerminalWriteCredentialError)
+	return client.doResolveCredentials(call)
 }
 
-func (client *Client) doResolveCredentials(call sdkgo.Call, isTerminal func(error) bool) (Credentials, error) {
+func (client *Client) doResolveCredentials(call sdkgo.Call) (Credentials, error) {
 	credentials, err := client.credentials.Resolve(call)
 	switch {
-	case err != nil && isTerminal(err):
+	case err != nil && isTerminalCredentialError(err):
 		return Credentials{}, errReamazeCredentialsUnusable
 	case err != nil:
 		return Credentials{}, errReamazeCredentialsUnavailable
@@ -255,8 +255,8 @@ func (client *Client) doResolveCredentials(call sdkgo.Call, isTerminal func(erro
 	return credentials, nil
 }
 
-// isTerminalWriteCredentialError reports a credential failure that another attempt cannot repair.
-func isTerminalWriteCredentialError(err error) bool {
+// isTerminalCredentialError reports a credential failure that another attempt cannot repair.
+func isTerminalCredentialError(err error) bool {
 	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
 		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
 		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
@@ -316,6 +316,10 @@ func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operati
 		}
 		response.body = body
 		return reamazeExchange{outcome: exchangeSucceeded, response: response}
+	}
+	if token := credentials.APIToken.Reveal(); token != "" && bytes.Contains(body, []byte(token)) {
+		// A credential-reflecting refusal is untrusted, so it cannot prove a refusal either.
+		response.hasOversizedBody = true
 	}
 	return client.classifyFailureStatus(response, operation)
 }

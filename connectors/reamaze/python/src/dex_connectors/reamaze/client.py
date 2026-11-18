@@ -66,7 +66,7 @@ class Exchange:
     status: int = 0
     body: bytes = b""
     request_id: str = ""
-    # A non-2xx answer whose body exceeded max_response_bytes and was not read.
+    # A non-2xx answer whose body exceeded max_response_bytes, or reflected the credential.
     has_oversized_body: bool = False
 
     @property
@@ -159,7 +159,12 @@ class Client:
         """Resolve current credentials and distinguish transient reads from unusable values."""
         try:
             credentials = await self.credentials.resolve(call)
-        except ReauthorizationRequiredError as error:
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ) as error:
             raise CredentialsUnusableError("connection credentials are unavailable") from error
         except Exception as error:
             raise CredentialsUnavailableError(
@@ -175,14 +180,7 @@ class Client:
         Another attempt cannot repair those, so a write selects defect before any send and uncertain
         after one.
         """
-        try:
-            return await self.resolve_credentials(call)
-        except CredentialsUnavailableError as error:
-            cause = error.__cause__
-            terminal = (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError)
-            if isinstance(cause, terminal):
-                raise CredentialsUnusableError("connection credentials are unavailable") from cause
-            raise
+        return await self.resolve_credentials(call)
 
     async def exchange(
         self,
@@ -277,6 +275,10 @@ class Client:
                     request_id=request_id,
                 )
             return Exchange("succeeded", status=status, body=body, request_id=request_id)
+        token = credentials.api_token.reveal().encode()
+        if token and token in body:
+            # A credential-reflecting refusal is untrusted, so it cannot prove a refusal either.
+            has_oversized_body = True
         if status == 429:
             return Exchange(
                 "rate_limited",

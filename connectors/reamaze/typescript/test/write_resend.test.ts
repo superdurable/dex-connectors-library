@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ReamazeClient } from '../src/client.js';
 import { CreateConversationDefinition, ReplyToConversationDefinition, UpdateConversationDefinition } from '../src/generated/definitions.js';
 
@@ -192,6 +193,8 @@ it.each([
   ['an oversized refusal', () => { throw new BodyTooLargeError(400, {}); }, ''],
   ['a redirect', () => json(301, {}), ''],
   ['a conflict', () => json(409, {}), ''],
+  ['an outage', () => json(500, {}), ''],
+  ['a credential-reflecting refusal', () => json(400, { errors: 'reamazeTestToken0123456789' }), ''],
   ['a definite 403', () => json(403, {}), 'providerRejected'],
   ['a definite 404', () => json(404, {}), 'notFound'],
 ] as const)('selects an updateConversation branch on the first read only for a definite refusal: %s', async (_, answer, branch) => {
@@ -201,6 +204,23 @@ it.each([
   if (branch) await expect(update).resolves.toMatchObject({ branch });
   else await expect(update).rejects.toBeInstanceOf(RetryError);
   expect(methods()).toEqual(['GET']);
+});
+
+it.each([
+  ['reauthorization', () => new ReauthorizationRequiredError(), true],
+  ['missing connection object', () => new ObjectNotFoundError(), true],
+  ['unselected connection', () => new ConnectionNotSelectedError(), true],
+  ['broker refusal', () => new CredentialBrokerRejectedError(), true],
+  ['broker outage', () => new CredentialBrokerUnavailableError(), false],
+  ['unconfigured static connection', () => new Error('connection is not configured'), false],
+] as const)('classifies a %s credential failure the same way for every write', async (_, credentialError, isTerminal) => {
+  for (const operation of ['createConversation', 'replyToConversation'] as const) {
+    const { client, requests } = newClient(() => json(500, {}), { credentialError });
+    const result = await run(client, operation, new AttemptContext());
+    if (isTerminal) expect(result).toMatchObject({ branch: 'defect' });
+    else expect(result).toBeInstanceOf(RetryError);
+    expect(requests).toHaveLength(0);
+  }
 });
 
 it('selects defect for a terminal updateConversation credential failure only on the first attempt', async () => {

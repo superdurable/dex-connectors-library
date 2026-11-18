@@ -145,6 +145,7 @@ func TestFencedWritesRejectUnusableCredentialsBeforeSending(t *testing.T) {
 		err  error
 	}{
 		{name: "reauthorization required", err: sdkgo.ErrReauthorizationRequired},
+		{name: "project reauthorization required", err: projectconfig.ErrReauthorizationRequired},
 		{name: "connection object missing", err: projectconfig.ErrObjectNotFound},
 		{name: "connection not selected", err: projectconfig.ErrConnectionNotSelected},
 		{name: "broker rejected", err: projectconfig.ErrCredentialBrokerRejected},
@@ -172,6 +173,46 @@ func TestFencedWritesRejectUnusableCredentialsBeforeSending(t *testing.T) {
 			require.Len(t, replyContext.Heartbeats(), 1)
 			require.Contains(t, string(replyContext.Heartbeats()[0]), `"state":"notSent"`)
 			require.Zero(t, provider.requestCount())
+		})
+	}
+}
+
+func TestCredentialClassificationIsSharedByQueriesAndWrites(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		err        error
+		isTerminal bool
+	}{
+		{name: "broker unavailable", err: projectconfig.ErrCredentialBrokerUnavailable},
+		{name: "rejected credential not refreshed", err: projectconfig.ErrRejectedCredentialNotRefreshed},
+		{name: "connection not configured", err: errors.New("connection is not configured")},
+		{name: "reauthorization required", err: sdkgo.ErrReauthorizationRequired, isTerminal: true},
+		{name: "project reauthorization required", err: projectconfig.ErrReauthorizationRequired, isTerminal: true},
+		{name: "connection object missing", err: projectconfig.ErrObjectNotFound, isTerminal: true},
+		{name: "connection not selected", err: projectconfig.ErrConnectionNotSelected, isTerminal: true},
+		{name: "broker rejected", err: projectconfig.ErrCredentialBrokerRejected, isTerminal: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingReamaze(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				writeJSON(t, response, http.StatusCreated, `{}`)
+			})
+			client, credentials := newSwitchingReamazeClient(t, provider.URL)
+			credentials.resolveErr = test.err
+			ctx := singledispatchtest.NewContext("reamaze-flow", "credential-classification")
+			create, createErr := sdkgo.RunMutation(ctx, client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+			found, queryErr := sdkgo.RunQuery(singledispatchtest.NewContext("reamaze-flow", "credential-query"), client.GetConversation(), reamazeConnection,
+				reamaze.GetConversationInput{ConversationID: "double-charge"})
+			require.Zero(t, provider.requestCount())
+			if !test.isTerminal {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, createErr, &retry)
+				require.ErrorAs(t, queryErr, &retry)
+				return
+			}
+			require.NoError(t, createErr)
+			require.Equal(t, reamaze.CreateConversationBranchDefect, create.Branch)
+			require.NoError(t, queryErr)
+			require.Equal(t, reamaze.GetConversationBranchDefect, found.Branch)
 		})
 	}
 }
