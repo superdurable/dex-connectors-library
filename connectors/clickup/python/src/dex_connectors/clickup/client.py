@@ -20,6 +20,8 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -156,22 +158,30 @@ class Client:
         """
         try:
             credentials = await self.credentials.resolve(call)
-            token = credentials.api_token.reveal()
-            if not is_header_safe_credential(token) or not token.startswith("pk_") or len(token) <= 3:
-                raise ValueError("invalid personal token")
-            return credentials, None
-        except (AttributeError, TypeError, ValueError, LookupError, ReauthorizationRequiredError):
-            return None, failure(
-                operation,
-                FailureKind.AUTHENTICATION,
-                "ClickUp connection credentials are missing or need reauthorization",
-            )
-        except OSError:
+        except Exception as error:
+            if is_terminal_credential_error(error):
+                return None, failure(
+                    operation,
+                    FailureKind.AUTHENTICATION,
+                    "ClickUp connection credentials are missing or need reauthorization",
+                )
             return None, failure(
                 operation,
                 FailureKind.AVAILABILITY,
                 "ClickUp connection credentials could not be read, so nothing was sent",
             )
+        try:
+            token = credentials.api_token.reveal()
+        except (AttributeError, TypeError):
+            token = ""
+        is_personal_token = isinstance(token, str) and token.startswith("pk_") and len(token) > 3
+        if not is_personal_token or not is_header_safe_credential(token):
+            return None, failure(
+                operation,
+                FailureKind.AUTHENTICATION,
+                "ClickUp connection credentials are invalid",
+            )
+        return credentials, None
 
     async def exchange(
         self,
@@ -411,6 +421,19 @@ class Client:
         from .operations import FindMemberByEmailOperation
 
         return FindMemberByEmailOperation(self)
+
+
+def is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential resolution failure that no retry fixes; every other error is transient."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:

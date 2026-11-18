@@ -4,6 +4,7 @@
 package clickup_test
 
 import (
+	"errors"
 	"net/http"
 	"testing"
 
@@ -123,6 +124,7 @@ func (provider failingCredentialProvider) Resolve(sdkgo.Call) (clickup.Credentia
 func TestTerminalCredentialFailureAfterAPossibleSendIsUncertain(t *testing.T) {
 	for name, providerError := range map[string]error{
 		"reauthorization required": sdkgo.ErrReauthorizationRequired,
+		"project reauthorization":  projectconfig.ErrReauthorizationRequired,
 		"connection not selected":  projectconfig.ErrConnectionNotSelected,
 		"broker rejected":          projectconfig.ErrCredentialBrokerRejected,
 		"object not found":         projectconfig.ErrObjectNotFound,
@@ -180,6 +182,21 @@ func TestCredentialFailureBeforeAnySend(t *testing.T) {
 		require.ErrorAs(t, err, &retry, "a broker outage is transient, so it never selects defect")
 		require.Equal(t, singledispatch.StateNotSent, lastFenceMarker(t, dexContext).State)
 	})
+	for name, providerError := range map[string]error{
+		"connection not configured": errors.New("connection is not configured"),
+		"credential not refreshed":  projectconfig.ErrRejectedCredentialNotRefreshed,
+		"unlisted error":            errors.New("unlisted credential store error"),
+	} {
+		t.Run("unlisted failure retries: "+name, func(t *testing.T) {
+			transient, err := clickup.New(clickup.Config{}, failingCredentialProvider{err: providerError}, clickup.WithAPIBaseURL(provider.URL))
+			require.NoError(t, err)
+			dexContext := newTestDexContext("create-unlisted-credentials-" + name)
+			_, err = sdkgo.RunMutation(dexContext, transient.CreateTask(), clickupConnection, validCreateTaskInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "only the listed credential errors are terminal")
+			require.Equal(t, singledispatch.StateNotSent, lastFenceMarker(t, dexContext).State)
+		})
+	}
 	t.Run("terminal failure selects defect", func(t *testing.T) {
 		terminal, err := clickup.New(clickup.Config{}, failingCredentialProvider{err: sdkgo.ErrReauthorizationRequired}, clickup.WithAPIBaseURL(provider.URL))
 		require.NoError(t, err)
