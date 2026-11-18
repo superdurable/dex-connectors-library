@@ -6,16 +6,16 @@ metadata:
   description: Capture a deduplicated event and list saved insight identities.
   company: PostHog
   categories: [analytics]
-  version: v0.2.0
+  version: v0.2.1
 spec:
   provider: posthog
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       operations: [captureEvent, listInsights]
       triggers: []
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: '@superdurable/connector-posthog'
       operations: [captureEvent, listInsights]
       triggers: []
@@ -78,7 +78,11 @@ spec:
         - {id: quotaLimited, goName: QuotaLimited, description: PostHog reported a billing quota limit and may not ingest the event., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: PostHog conclusively rejected the request., optional: true}
         - {id: defect, goName: Defect, description: Local event input or project token is invalid., optional: true}
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        # PostHog deduplicates a resent event by the uuid that every attempt derives from the call ID.
+        repeatOnUnknown: safe
       mocks:
         - name: acceptedSignup
           branch: accepted
