@@ -7,7 +7,6 @@ from collections.abc import Callable
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
-from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.doist_todoist as todoist
 from dex_connectors.doist_todoist._generated.definitions import CREATE_TASK_DEFINITION
@@ -134,10 +133,11 @@ async def test_refusal_or_defect_after_a_possible_send_is_uncertain() -> None:
 
 
 @pytest.mark.asyncio
-async def test_untrusted_checkpoint_retries_without_sending() -> None:
+async def test_unreadable_checkpoint_retries_without_sending() -> None:
     requests: list[httpx.Request] = []
-    foreign = Marker(call_id=sdk.CallID("another-call"), attempt=1, state="claimed")
-    assert await run("createTask", status(200, TASK), AttemptContext(2, foreign), requests) == "retry"
+    context = AttemptContext(2)
+    context.heartbeat_read_error = RuntimeError("heartbeat store unavailable")
+    assert await run("createTask", status(200, TASK), context, requests) == "retry"
     assert requests == []
 
 
