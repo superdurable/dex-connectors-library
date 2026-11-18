@@ -202,6 +202,19 @@ def _employee_record(body: bytes, expected_id: str, fields: tuple[str, ...]) -> 
     return EmployeeRecord(identifier, values, tuple(sorted(name for name in fields if name not in values)))
 
 
+def _credential_query_failure(
+    operation: str, failure: Failure, is_terminal: bool, empty: Any
+) -> QueryAttempt[Any]:
+    """Select defect for a terminal credential failure and retry a transient one."""
+    if is_terminal:
+        return QueryAttempt.branch_result("defect", empty, Receipt(), failure)
+    return QueryAttempt.retry(
+        bamboohr_failure(
+            operation, FailureKind.AVAILABILITY, "connection credentials are temporarily unavailable"
+        )
+    )
+
+
 def _query_failure(exchange: Exchange, empty: Any, receipt: Receipt) -> QueryAttempt[Any] | None:
     if exchange.outcome == "succeeded":
         return None
@@ -238,9 +251,11 @@ class GetEmployeeOperation:
                 Receipt(),
                 bamboohr_failure("getEmployee", FailureKind.VALIDATION, str(error)),
             )
-        credentials, failure = await self.client.resolve_credentials(call, "getEmployee")
+        credentials, failure, is_terminal = await self.client.resolve_credentials_with_terminality(
+            call, "getEmployee"
+        )
         if failure is not None:
-            return QueryAttempt.branch_result("defect", empty, Receipt(), failure)
+            return _credential_query_failure("getEmployee", failure, is_terminal, empty)
         assert credentials is not None
         query = {"fields": ",".join(input.fields)}
         if input.include_future_values:
@@ -298,9 +313,11 @@ class FindEmployeeByEmailOperation:
                 Receipt(),
                 bamboohr_failure("findEmployeeByEmail", FailureKind.VALIDATION, str(error)),
             )
-        credentials, failure = await self.client.resolve_credentials(call, "findEmployeeByEmail")
+        credentials, failure, is_terminal = await self.client.resolve_credentials_with_terminality(
+            call, "findEmployeeByEmail"
+        )
         if failure is not None:
-            return QueryAttempt.branch_result("defect", empty, Receipt(), failure)
+            return _credential_query_failure("findEmployeeByEmail", failure, is_terminal, empty)
         assert credentials is not None
         fields = ["workEmail", "homeEmail"]
         fields.extend(field for field in input.fields if field not in fields and field not in _SUMMARY_FIELDS)
@@ -430,9 +447,11 @@ class ListEmployeeChangesOperation:
                 Receipt(),
                 bamboohr_failure("listEmployeeChanges", FailureKind.VALIDATION, str(error)),
             )
-        credentials, failure = await self.client.resolve_credentials(call, "listEmployeeChanges")
+        credentials, failure, is_terminal = await self.client.resolve_credentials_with_terminality(
+            call, "listEmployeeChanges"
+        )
         if failure is not None:
-            return QueryAttempt.branch_result("defect", empty, Receipt(), failure)
+            return _credential_query_failure("listEmployeeChanges", failure, is_terminal, empty)
         assert credentials is not None
         since = input.since.astimezone(UTC)
         query_instant = (
@@ -581,9 +600,11 @@ class ListTimeOffRequestsOperation:
                 Receipt(),
                 bamboohr_failure("listTimeOffRequests", FailureKind.VALIDATION, str(error)),
             )
-        credentials, failure = await self.client.resolve_credentials(call, "listTimeOffRequests")
+        credentials, failure, is_terminal = await self.client.resolve_credentials_with_terminality(
+            call, "listTimeOffRequests"
+        )
         if failure is not None:
-            return QueryAttempt.branch_result("defect", empty, Receipt(), failure)
+            return _credential_query_failure("listTimeOffRequests", failure, is_terminal, empty)
         assert credentials is not None
         query = {"filter": _time_off_filter(input), "page": str(page), "pageSize": str(page_size)}
         exchange = await self.client.exchange(

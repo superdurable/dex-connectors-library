@@ -3,7 +3,7 @@
 
 import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { newFence, CheckpointError, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
-import { DefiniteWriteStatuses, type BambooHRClient, type BambooHRExchange } from './client.js';
+import { DefiniteWriteStatuses, type BambooHRClient, type BambooHRCredentialResult, type BambooHRExchange } from './client.js';
 import { AddEmployeeDefinition, FindEmployeeByEmailDefinition, GetEmployeeDefinition, ListEmployeeChangesDefinition, ListTimeOffRequestsDefinition, UpdateEmployeeDefinition } from './generated/definitions.js';
 import type { AddEmployeeInput, AddEmployeeOutput, EmployeeChange, EmployeeRecord, EmployeeSummary, FindEmployeeByEmailInput, FindEmployeeByEmailOutput, GetEmployeeInput, ListEmployeeChangesInput, ListEmployeeChangesOutput, ListTimeOffRequestsInput, ListTimeOffRequestsOutput, TimeOffRequest, UpdateEmployeeInput, UpdateEmployeeOutput } from './generated/models.js';
 
@@ -29,7 +29,7 @@ export class GetEmployeeOperation implements Query<GetEmployeeInput, EmployeeRec
     try { requireEmployeeId(input.employeeId); validateRequestedFields(input.fields, 1, 400); }
     catch { return defectQuery('getEmployee', zeroRecord); }
     const credential = await this.client.resolveKey(call);
-    if (credential.kind !== 'resolved') return defectQuery('getEmployee', zeroRecord, 'AUTHENTICATION');
+    if (credential.kind !== 'resolved') return credentialFailureQuery('getEmployee', zeroRecord, credential);
     const key = credential.key;
     const query = new URLSearchParams({ fields: input.fields!.join(',') });
     if (input.includeFutureValues) query.set('onlyCurrent', 'false');
@@ -50,7 +50,7 @@ export class FindEmployeeByEmailOperation implements Query<FindEmployeeByEmailIn
     const emailField = input.emailField || 'workEmail';
     if (!isBareEmail(input.email) || !['workEmail', 'homeEmail'].includes(emailField) || (input.status && !['active', 'inactive'].includes(input.status)) || (input.fields?.length ?? 0) > 20 || input.fields?.some(field => !fieldNamePattern.test(field))) return defectQuery('findEmployeeByEmail', zeroFind);
     const credential = await this.client.resolveKey(call);
-    if (credential.kind !== 'resolved') return defectQuery('findEmployeeByEmail', zeroFind, 'AUTHENTICATION');
+    if (credential.kind !== 'resolved') return credentialFailureQuery('findEmployeeByEmail', zeroFind, credential);
     const key = credential.key;
     const fields = ['workEmail', 'homeEmail', ...(input.fields ?? []).filter(field => !summaryFields.has(field) && !['workEmail', 'homeEmail'].includes(field))];
     const query = new URLSearchParams({ [`filter[${emailField}]`]: input.email, fields: fields.join(','), sort: 'employeeId', 'page[limit]': '100' });
@@ -86,7 +86,7 @@ export class ListEmployeeChangesOperation implements Query<ListEmployeeChangesIn
     const sinceMs = Date.parse(input.since);
     if (!Number.isFinite(sinceMs) || sinceMs <= 0 || (input.afterEmployeeId && !employeeIdPattern.test(input.afterEmployeeId)) || (input.changeType && !['inserted', 'updated', 'deleted'].includes(input.changeType)) || !Number.isInteger(limit) || limit < 1 || limit > 1000) return defectQuery('listEmployeeChanges', zeroChanges);
     const credential = await this.client.resolveKey(call);
-    if (credential.kind !== 'resolved') return defectQuery('listEmployeeChanges', zeroChanges, 'AUTHENTICATION');
+    if (credential.kind !== 'resolved') return credentialFailureQuery('listEmployeeChanges', zeroChanges, credential);
     const key = credential.key;
     const query = new URLSearchParams({ since: isoSeconds(sinceMs - 1000) });
     if (input.changeType) query.set('type', input.changeType);
@@ -124,7 +124,7 @@ export class ListTimeOffRequestsOperation implements Query<ListTimeOffRequestsIn
     const pageSize = input.pageSize || 100;
     if (!isCivilDate(input.startDate) || !isCivilDate(input.endDate) || input.endDate < input.startDate || (input.employeeId && !employeeIdPattern.test(input.employeeId)) || input.statuses?.some(status => !['REQUESTED', 'APPROVED', 'DENIED', 'CANCELED'].includes(status)) || !Number.isInteger(page) || page < 1 || page > 2147483647 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 200) return defectQuery('listTimeOffRequests', zeroTimeOff);
     const credential = await this.client.resolveKey(call);
-    if (credential.kind !== 'resolved') return defectQuery('listTimeOffRequests', zeroTimeOff, 'AUTHENTICATION');
+    if (credential.kind !== 'resolved') return credentialFailureQuery('listTimeOffRequests', zeroTimeOff, credential);
     const key = credential.key;
     const query = new URLSearchParams({ filter: buildTimeOffRequestFilter(input), page: String(page), pageSize: String(pageSize) });
     const result = await this.client.exchange(call, 'listTimeOffRequests', key, 'GET', '/time-off/requests', query);
@@ -294,6 +294,11 @@ function resendOrSelectAddEmployeeUncertain(canResendUnknownOutcome: boolean, re
 
 function failure(operation: string, kind: Failure['kind'], message: string): Failure { return { kind, provider: 'bamboohr', operation, message }; }
 function defectQuery<Output>(operation: string, value: Output, kind: Failure['kind'] = 'VALIDATION'): QueryAttempt<Output> { return newQueryBranch('defect', value, {}, failure(operation, kind, kind === 'AUTHENTICATION' ? 'connection credentials are unavailable' : 'invalid input')); }
+/** Retry a transient credential failure and select defect for a terminal one. */
+function credentialFailureQuery<Output>(operation: string, value: Output, credential: BambooHRCredentialResult): QueryAttempt<Output> {
+  if (credential.kind === 'transient') return newQueryRetry(failure(operation, 'AVAILABILITY', 'connection credentials are temporarily unavailable'));
+  return defectQuery(operation, value, 'AUTHENTICATION');
+}
 function defectMutation<Output>(operation: string, value: Output, kind: Failure['kind'] = 'VALIDATION'): MutationAttempt<Output> { return newMutationBranch('defect', value, {}, failure(operation, kind, kind === 'AUTHENTICATION' ? 'connection credentials are unavailable' : 'invalid input')); }
 function invalidQuery<Output>(client: BambooHRClient, call: Call, operation: string, value: Output, objectId = ''): QueryAttempt<Output> { return newQueryBranch('invalidResponse', value, client.receipt(call, objectId), failure(operation, 'PROTOCOL', 'BambooHR returned an invalid response')); }
 function exchangeQuery<Output>(client: BambooHRClient, call: Call, result: BambooHRExchange, value: Output, objectId = '', hasNotFound = false): QueryAttempt<Output> | undefined {

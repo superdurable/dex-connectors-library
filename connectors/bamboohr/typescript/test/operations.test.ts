@@ -6,7 +6,7 @@ import { ReauthorizationRequiredError, SecretString, type Call, type CredentialP
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BambooHRClient } from '../src/client.js';
 import { buildTimeOffRequestFilter } from '../src/operations.js';
-import type { Credentials } from '../src/generated/models.js';
+import { CredentialMaterialError, type Credentials } from '../src/generated/models.js';
 
 const credentials = { resolve: async () => ({ apiKey: new SecretString('0123456789abcdef0123456789abcdef01234567') }) };
 const call = {
@@ -68,14 +68,20 @@ describe('BambooHR client', () => {
     }
   });
 
-  it.each(['getEmployee', 'findEmployeeByEmail', 'listEmployeeChanges', 'listTimeOffRequests'])('%s returns the Go authentication defect for terminal and transient credential failures', async operation => {
-    for (const error of [new ReauthorizationRequiredError(), new Error('temporary credential store failure')]) {
+  it.each(['getEmployee', 'findEmployeeByEmail', 'listEmployeeChanges', 'listTimeOffRequests'])('%s selects defect for a terminal credential failure and retries a transient one', async operation => {
+    const terminalErrors = [new ReauthorizationRequiredError(), new CredentialBrokerRejectedError(), new CredentialMaterialError('credential api_key is required'), new TypeError('project credential decoding failed')];
+    for (const error of terminalErrors) {
       const attempt = await invokeOperation(clientWithCredentialError(error), operation);
       expect(attempt.kind).toBe('branch');
       if (attempt.kind === 'branch') {
         expect(attempt.branch).toBe('defect');
         expect(attempt.failure?.kind).toBe('AUTHENTICATION');
       }
+    }
+    for (const error of [new Error('temporary credential store failure'), new CredentialBrokerUnavailableError(), new TypeError('unlisted')]) {
+      const attempt = await invokeOperation(clientWithCredentialError(error), operation);
+      expect(attempt.kind).toBe('retry');
+      if (attempt.kind === 'retry') expect(attempt.failure.kind).toBe('AVAILABILITY');
     }
   });
 

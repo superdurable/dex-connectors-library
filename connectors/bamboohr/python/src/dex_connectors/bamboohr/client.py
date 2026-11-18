@@ -180,7 +180,10 @@ class Client:
         try:
             credentials = await self._credentials.resolve(call)
         except Exception as error:
-            is_terminal = isinstance(
+            # Imported here because the generated connection module imports this module.
+            from ._generated.connection import is_credential_material_error
+
+            is_terminal = is_credential_material_error(error) or isinstance(
                 error,
                 ReauthorizationRequiredError
                 | ObjectNotFoundError

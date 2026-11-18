@@ -446,8 +446,8 @@ the API key is dropped. An oversized error body contributes no code.
 | oversized non-2xx other than 429 and 503 | by status | Retry | Retry below the send cap, then `uncertain` |
 | any failed read-back after an accepted updateEmployee write | | Retry | |
 | invalid input | `defect`, with no request | `defect`, with no request | `defect`, with no request |
-| reauthorization required or unusable connection credentials | `defect`, with no request | `defect`, with no request | `defect` after a `notSent` checkpoint, with no request; `uncertain` after an earlier possible send or while a saved employee ID awaits read-back |
-| transient credential resolution failure | `defect`, with no request | Retry, with no request | Retry after a `notSent` checkpoint, with no request; Retry without a checkpoint after an earlier possible send |
+| reauthorization required, a missing, unselected, broker-refused, or (in Python and TypeScript) malformed stored credential, or unusable connection credentials | `defect`, with no request | `defect`, with no request | `defect` after a `notSent` checkpoint, with no request; `uncertain` after an earlier possible send or while a saved employee ID awaits read-back |
+| any other credential resolution failure, such as a broker outage | Retry, with no request | Retry, with no request | Retry after a `notSent` checkpoint, with no request; Retry without a checkpoint after an earlier possible send |
 
 BambooHR returned 503 for rate limiting until September 16, 2026, and returns
 429 with `Retry-After` since; 503 now means the API is unavailable. The

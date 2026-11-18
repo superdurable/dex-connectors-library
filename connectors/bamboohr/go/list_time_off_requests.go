@@ -171,7 +171,10 @@ func (operation ListTimeOffRequestsOperation) Invoke(call sdkgo.Call, input List
 	if err := validateListTimeOffRequestsInput(input); err != nil {
 		return sdkgo.NewQueryBranch(ListTimeOffRequestsBranchDefect, ListTimeOffRequestsOutput{}, bambooHRFailurePointer(sdkgo.FailureValidation, listTimeOffRequestsOperation, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, listTimeOffRequestsOperation)
+	credentials, failure, isTransient := operation.client.resolveCredentials(call, listTimeOffRequestsOperation)
+	if isTransient {
+		return sdkgo.NewQueryRetry[ListTimeOffRequestsOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(ListTimeOffRequestsBranchDefect, ListTimeOffRequestsOutput{}, failure, sdkgo.Receipt{})
 	}

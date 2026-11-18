@@ -206,13 +206,16 @@ func (client *Client) UpdateEmployee() UpdateEmployeeOperation {
 // AddEmployee returns the addEmployee Mutation bound to this client.
 func (client *Client) AddEmployee() AddEmployeeOperation { return AddEmployeeOperation{client: client} }
 
-// resolveCredentials returns a header-safe API key, or a safe defect Failure.
-func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
+// resolveCredentials returns a header-safe API key, or a safe Failure and whether a later attempt may resolve it.
+func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure, bool) {
 	credentials, err := client.credentials.Resolve(call)
-	if err != nil || validateResolvedCredentials(credentials) != nil {
-		return Credentials{}, bambooHRFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
+	if err != nil && !isTerminalCredentialError(err) {
+		return Credentials{}, bambooHRFailurePointer(sdkgo.FailureAvailability, operation, "connection credentials are temporarily unavailable"), true
 	}
-	return credentials, nil
+	if err != nil || validateResolvedCredentials(credentials) != nil {
+		return Credentials{}, bambooHRFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), false
+	}
+	return credentials, nil, false
 }
 
 // exchange sends one authenticated request and classifies its response without deciding retry policy.
