@@ -235,10 +235,17 @@ class Client:
         query: str = "",
         body: bytes | None = None,
         allow_refresh: bool = True,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Send one API exchange and refresh an OAuth credential once after 401."""
+        """Send one API exchange and refresh an OAuth credential once after 401.
+
+        ``observed_statuses`` receives each response status as soon as its headers arrive, before
+        the body is read, so a caller whose write window cancels the body read still knows the status.
+        """
         credentials = self._attempt_credentials.get() or credentials
-        result = await self._exchange_once(call, operation, credentials, method, path, query, body)
+        result = await self._exchange_once(
+            call, operation, credentials, method, path, query, body, observed_statuses
+        )
         if (
             result.status == 401
             and allow_refresh
@@ -253,7 +260,9 @@ class Client:
                     and is_header_safe_credential(self._token(replacement))
                 ):
                     self._attempt_credentials.set(replacement)
-                    return await self._exchange_once(call, operation, replacement, method, path, query, body)
+                    return await self._exchange_once(
+                        call, operation, replacement, method, path, query, body, observed_statuses
+                    )
             except Exception:
                 pass
         return result
@@ -296,6 +305,7 @@ class Client:
         path: str,
         query: str,
         body: bytes | None,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
         token = self._token(credentials)
         base = (
@@ -317,6 +327,8 @@ class Client:
             )
             response, _ = await send_traced(self.http_client, request)
             status, response_headers = response.status_code, response.headers
+            if observed_statuses is not None:
+                observed_statuses.append(status)
             try:
                 content = await read_bounded_body(
                     response, self.max_response_bytes if 200 <= status < 300 else 65536

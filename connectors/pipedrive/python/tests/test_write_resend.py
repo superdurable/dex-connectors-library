@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of Pipedrive creates and retry of repeat-safe updates."""
 
+import asyncio
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
@@ -254,6 +255,56 @@ async def test_update_retries_an_accepted_update_with_an_unusable_body(body: obj
         "updateObject", UpdateObjectInput("deals", "42", {"stage_id": 3}), respond, AttemptContext()
     )
     assert isinstance(result, RetryError)
+
+
+class _SlowAcceptedBody(httpx.AsyncByteStream):
+    """Send 2xx headers, then hold the body past the write window."""
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        await asyncio.sleep(30)
+        yield b"{}"
+
+
+@pytest.mark.asyncio
+async def test_create_never_resends_when_the_write_deadline_cuts_an_accepted_body() -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(201, stream=_SlowAcceptedBody())
+
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=3)
+    result = await run("createObject", deal(), respond, context, CREATE_OBJECT_DEFINITION.max_sends)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_upsert_reads_back_when_the_write_deadline_cuts_an_accepted_body() -> None:
+    requests: list[httpx.Request] = []
+    created = False
+    search = {
+        "success": True,
+        "data": {"items": [{"item": {"id": 901, "name": "Jane Smith", "emails": ["jane@acme.example.com"]}}]},
+        "additional_data": {"next_cursor": None},
+    }
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        nonlocal created
+        requests.append(request)
+        if request.method == "POST":
+            created = True
+            return httpx.Response(201, stream=_SlowAcceptedBody())
+        if request.url.path.endswith("/search"):
+            return httpx.Response(200, json=search if created else EMPTY_SEARCH)
+        return httpx.Response(200, json=PERSON)
+
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=3)
+    result = await run("upsertObject", person(), respond, context, UPSERT_OBJECT_DEFINITION.max_sends)
+    assert isinstance(result, MutationResult) and result.branch == "upserted", result
+    assert [request.method for request in requests].count("POST") == 1
 
 
 @pytest.mark.asyncio

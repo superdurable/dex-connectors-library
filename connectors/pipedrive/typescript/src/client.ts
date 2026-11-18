@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { isIP } from 'node:net';
-import { AddressRefusal, BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { Authorization, CredentialFields } from './generated/refresh.js';
@@ -132,8 +132,8 @@ export class PipedriveClient {
         if (response.status >= 200 && response.status < 300) return { ...this.failed('invalid', operation, 'RESPONSE_TOO_LARGE', 'Pipedrive response exceeds the configured maxResponseBytes limit'), response };
       } else if (error instanceof AddressRefusal || error instanceof ProviderTransportError && error.isProvablyNotSent || error instanceof Error && 'code' in error && error.code === 'ECONNREFUSED') {
         return this.failed('notSent', operation, 'TRANSPORT', 'Pipedrive could not be reached; no request was sent');
-      } else if (error instanceof ProviderTransportError && error.status !== undefined && error.headers) {
-        // Keep the status so a create Pipedrive accepted is never resent.
+      } else if ((error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status !== undefined && error.headers) {
+        // Keep the status, including a body that stalled, so a create Pipedrive accepted is never resent.
         return { ...this.failed('unavailable', operation, 'TRANSPORT', 'Pipedrive response could not be read'), response: { status: error.status, headers: error.headers, body: new Uint8Array() } };
       } else return this.failed('unavailable', operation, 'TRANSPORT', 'Pipedrive request failed before a response arrived');
     }
