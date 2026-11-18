@@ -5,6 +5,7 @@ import { EventEmitter } from 'node:events';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import sql from 'mssql';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
 import { SQLServerClient } from '../src/client.js';
 import { ExecuteStatementDefinition, ExecuteStatementNonIdempotentDefinition } from '../src/generated/definitions.js';
 
@@ -107,9 +108,42 @@ describe('SQL Server writes', () => {
     const seeded = { callId, attempt: 2, state: 'canResend', sendCount: 1 };
     context.marker = seeded;
     context.attempt = 3;
-    expect(await lost.client.executeNonIdempotent().invoke(writeCall('executeNonIdempotent', context), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    // A transient failure returns Retry; the attempt after it still treats the earlier send as possible.
+    expect(await lost.client.executeNonIdempotent().invoke(writeCall('executeNonIdempotent', context), balanceInput)).toMatchObject({ kind: 'retry' });
     expect(lost.counts.commits).toBe(0);
     expect(context.marker).toBe(seeded);
+    context.attempt = 4;
+    const opensBefore = lost.counts.opens;
+    expect(await lost.client.executeNonIdempotent().invoke(writeCall('executeNonIdempotent', context), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    expect(lost.counts.opens).toBe(opensBefore);
+
+    const refused = fakeWriteSession({ statementError: serverError(547, 16) });
+    const refusedContext = new AttemptContext();
+    refusedContext.marker = seeded;
+    refusedContext.attempt = 3;
+    expect(await refused.client.executeNonIdempotent().invoke(writeCall('executeNonIdempotent', refusedContext), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    expect(refused.counts.commits).toBe(0);
+    expect(refusedContext.marker).toBe(seeded);
+  });
+
+  it('keeps a committed result when closing the pool fails afterwards', async () => {
+    const { client, counts } = fakeWriteSession();
+    vi.spyOn(client, 'open').mockImplementation(async () => { counts.opens++; return { connected: true, close: async () => { throw new Error('pool close failed'); } } as unknown as sql.ConnectionPool; });
+    const context = new AttemptContext();
+    expect(await client.executeNonIdempotent().invoke(writeCall('executeNonIdempotent', context), balanceInput)).toMatchObject({ kind: 'branch', branch: 'completed' });
+    expect(counts.commits).toBe(1);
+    expect(context.marker?.state).toBe('claimed');
+  });
+
+  it('returns Retry and records notSent when the credential broker is temporarily unavailable', async () => {
+    const unavailable = new SQLServerClient({ host: '127.0.0.1', database: 'master', user: 'sa', encrypt: 'disable' }, { resolve: async () => { throw new CredentialBrokerUnavailableError(); } });
+    const open = vi.spyOn(unavailable, 'open');
+    expect(await unavailable.query().invoke(writeCall('query', new AttemptContext()), { statement: 'SELECT 1 AS one' })).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(await unavailable.execute().invoke(writeCall('execute', new AttemptContext()), balanceInput)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    const context = new AttemptContext();
+    expect(await unavailable.executeNonIdempotent().invoke(writeCall('executeNonIdempotent', context), balanceInput)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(context.marker?.state).toBe('notSent');
+    expect(open).not.toHaveBeenCalled();
   });
 
   it('selects uncertain after a lost Worker and retries an unreadable checkpoint without connecting', async () => {
