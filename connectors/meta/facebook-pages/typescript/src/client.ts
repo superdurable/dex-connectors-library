@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { SecretString, definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type CallID, type CredentialProvider, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type CallID, type CredentialProvider, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderStalledError, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
 import { GetPostDefinition, ListPostsDefinition, PublishTextPostDefinition } from './generated/definitions.js';
@@ -80,7 +81,7 @@ export class FacebookPagesClient {
     try {
       const resolved = await this.credentials.resolve(call, call.context.cancellationSignal);
       accessToken = resolved.pageAccessToken instanceof SecretString ? resolved.pageAccessToken.reveal() : '';
-    } catch { return localPublishFailure(fence, hasPossibleEarlierSend, false, 'AUTHENTICATION', 'connection credentials are unavailable'); }
+    } catch (error) { return localPublishFailure(fence, hasPossibleEarlierSend, isTerminalCredentialError(error), 'AUTHENTICATION', 'connection credentials are unavailable'); }
     if (!accessToken || !isHeaderSafeCredential(accessToken)) return localPublishFailure(fence, hasPossibleEarlierSend, true, 'AUTHENTICATION', 'connection credentials are invalid');
     const form = new URLSearchParams({ message: input.message }).toString();
     const request: ProviderRequest = {
@@ -279,8 +280,13 @@ async function localPublishFailure(fence: ReturnType<typeof newFence>, hasPossib
   // notSent would hide the earlier possible send, so nothing is recorded.
   if (hasPossibleEarlierSend) return newMutationRetry(failure('publishTextPost', kind, `${message}; no post was sent in this attempt`));
   try { await fence.recordNotSent(); }
-  catch { /* The branch is terminal, so a lost notSent checkpoint cannot cause a resend. */ }
+  catch { /* No claim was made, so a lost notSent checkpoint cannot count a send. */ }
+  if (!isTerminal) return newMutationRetry(failure('publishTextPost', 'AVAILABILITY', `${message}; no post was sent`));
   return newMutationBranch('defect', emptyPublishedPost(), {}, failure('publishTextPost', kind, message));
+}
+/** Report a credential resolution failure that no retry fixes; broker outages and store reads are transient. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
 }
 function isObject(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
 function parseJSON(body: Uint8Array): unknown { try { return JSON.parse(Buffer.from(body).toString('utf8')) as unknown; } catch { return undefined; } }
