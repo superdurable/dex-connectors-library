@@ -486,7 +486,7 @@ var CreateIssueDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateIssueBranchCreated, Description: "Jira created the issue and returned its key and ID."},
 		{ID: CreateIssueBranchProviderRejected, Description: "Jira conclusively rejected the issue, such as a missing required field, an unknown project or issue type, or missing permission; nothing was created.", Optional: true},
-		{ID: CreateIssueBranchUncertain, Description: "The send cap is reached and read-back could not confirm the issue; it may exist and must not be created again automatically.", Optional: true},
+		{ID: CreateIssueBranchUncertain, Description: "The send cap is reached, or Jira accepted the create without a usable issue reference, and read-back could not confirm the issue; it may exist and must not be created again automatically.", Optional: true},
 		{ID: CreateIssueBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -576,8 +576,7 @@ var TransitionIssueDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
-	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
-	MaxSends:        3,
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type TransitionIssueResult = sdkgo.MutationResult[TransitionIssueOutput]
@@ -600,7 +599,7 @@ type TransitionIssueStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[TransitionIssueResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TransitionIssueOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
-	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
 	MaxSends int32 `connector:"maxSends"`
 }
 
@@ -640,7 +639,6 @@ func NewTransitionIssueStep[IN any](config TransitionIssueStepConfig[IN]) sdkgo.
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
-		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -656,7 +654,7 @@ var AddCommentDefinition = sdkgo.MutationDefinition{
 		{ID: AddCommentBranchAdded, Description: "Jira added the comment and returned its ID."},
 		{ID: AddCommentBranchNotFound, Description: "The issue does not exist or the connection cannot browse it; nothing was added.", Optional: true},
 		{ID: AddCommentBranchProviderRejected, Description: "Jira conclusively rejected the comment, such as missing Add comments permission or the per-issue comment limit; nothing was added.", Optional: true},
-		{ID: AddCommentBranchUncertain, Description: "The send cap is reached and read-back could not confirm the comment; it may exist and must not be added again automatically.", Optional: true},
+		{ID: AddCommentBranchUncertain, Description: "The send cap is reached, or Jira accepted the comment without a usable comment reference, and read-back could not confirm the comment; it may exist and must not be added again automatically.", Optional: true},
 		{ID: AddCommentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

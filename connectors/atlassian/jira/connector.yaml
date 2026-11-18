@@ -227,7 +227,7 @@ spec:
       branches:
         - {id: created, goName: Created, description: Jira created the issue and returned its key and ID.}
         - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the issue, such as a missing required field, an unknown project or issue type, or missing permission; nothing was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The send cap is reached and read-back could not confirm the issue; it may exist and must not be created again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap is reached, or Jira accepted the create without a usable issue reference, and read-back could not confirm the issue; it may exist and must not be created again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       # Jira has no idempotency key; the shared fence needs durable sync heartbeats before dispatch.
       execution:
@@ -264,6 +264,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Each attempt rereads the status and skips a transition the issue has already made.
+        repeatOnUnknown: safe
       mocks:
         - name: transitionedDefaultAnswer
           branch: transitioned
@@ -298,7 +300,7 @@ spec:
         - {id: added, goName: Added, description: Jira added the comment and returned its ID.}
         - {id: notFound, goName: NotFound, description: The issue does not exist or the connection cannot browse it; nothing was added., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the comment, such as missing Add comments permission or the per-issue comment limit; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The send cap is reached and read-back could not confirm the comment; it may exist and must not be added again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap is reached, or Jira accepted the comment without a usable comment reference, and read-back could not confirm the comment; it may exist and must not be added again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s

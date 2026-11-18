@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { JiraClient } from '../src/client.js';
 import { AddCommentDefinition, CreateIssueDefinition } from '../src/generated/definitions.js';
 
@@ -35,12 +35,30 @@ function emptyReadBackOr(status: number, body: string): Answer {
   };
 }
 
-function newClient(answer: Answer) {
+/** A scripted body that sends the status and headers, then breaks the connection. */
+const truncatedBody = '<truncated>';
+
+function newClient(answer: Answer, credentialSource: typeof source = source) {
   const requests: ProviderRequest[] = [];
-  const client = new JiraClient({ endpoint: 'http://127.0.0.1', cloudId }, source, {
-    send: async (request: ProviderRequest) => { requests.push(request); const { status, body } = answer(request); return { status, headers: {}, body: Buffer.from(body) }; },
+  const client = new JiraClient({ endpoint: 'http://127.0.0.1', cloudId }, credentialSource, {
+    send: async (request: ProviderRequest) => {
+      requests.push(request);
+      const { status, body } = answer(request);
+      if (body === truncatedBody) throw new ProviderTransportError(false, status, {});
+      return { status, headers: {}, body: Buffer.from(body) };
+    },
   });
   return { client, requests };
+}
+
+/** Answer read-backs with nothing and each write with the next scripted response. */
+function scriptedWrites(responses: { status: number; body: string }[]): Answer {
+  const remaining = [...responses];
+  return request => {
+    if (request.url.endsWith('/search/jql')) return { status: 200, body: '{"issues":[]}' };
+    if (request.method === 'GET') return { status: 200, body: '{"comments":[]}' };
+    return remaining.shift()!;
+  };
 }
 
 async function run(client: JiraClient, operation: 'createIssue' | 'addComment', context: AttemptContext, maxSendsOverride?: number): Promise<MutationResult<unknown> | RetryError> {
@@ -114,5 +132,60 @@ describe('Jira bounded resend of unconfirmed writes', () => {
     expect(branchOf(await run(client, 'createIssue', new AttemptContext(2, { callId: 'another-call', attempt: 1, state: 'claimed' })))).toBe('retry');
     expect(branchOf(await run(client, 'addComment', new AttemptContext(2, undefined, true)))).toBe('retry');
     expect(requests).toEqual([]);
+  });
+
+  it.each([
+    ['createIssue', '{"id":"10043","key":"OPS-43"}', 'created'],
+    ['addComment', '{"id":"10500"}', 'added'],
+  ] as const)('reads back %s before the third send after a canResend marker', async (operation, created, branch) => {
+    const { client, requests } = newClient(scriptedWrites([{ status: 500, body: '{}' }, { status: 429, body: '{}' }, { status: 201, body: created }]));
+    const context = new AttemptContext();
+    expect(branchOf(await run(client, operation, context))).toBe('retry');
+    context.attempt = 2;
+    expect(branchOf(await run(client, operation, context))).toBe('retry');
+    // Flat and per-call heartbeat formats both carry the marker state.
+    expect(JSON.stringify(context.marker)).toContain('"state":"canResend"');
+    context.attempt = 3;
+    requests.length = 0;
+    expect(branchOf(await run(client, operation, context))).toBe(branch);
+    expect(requests.map(request => request.method)).toEqual([operation === 'createIssue' ? 'POST' : 'GET', 'POST']);
+    expect(new URL(requests[0]!.url).pathname.endsWith(operation === 'createIssue' ? '/search/jql' : '/comment')).toBe(true);
+  });
+
+  it.each([
+    ['createIssue', truncatedBody], ['createIssue', '{}'], ['addComment', truncatedBody], ['addComment', '{}'],
+  ] as const)('never resends an accepted %s whose body is %s', async (operation, body) => {
+    const { client, requests } = newClient(emptyReadBackOr(201, body));
+    expect(branchOf(await run(client, operation, new AttemptContext()))).toBe('uncertain');
+    expect(requests.filter(request => request.method === 'POST' && !request.url.endsWith('/search/jql'))).toHaveLength(1);
+  });
+
+  it('selects uncertain when the read-back of an accepted issue without an ID is rate limited', async () => {
+    const { client, requests } = newClient(request => request.url.endsWith('/search/jql') ? { status: 429, body: '{}' } : { status: 201, body: '{}' });
+    expect(branchOf(await run(client, 'createIssue', new AttemptContext()))).toBe('uncertain');
+    expect(posts(requests, '/issue')).toBe(1);
+  });
+
+  it('records no notSent marker for a credential failure after a possible send', async () => {
+    let mode: 'ready' | 'transient' | 'invalid' = 'ready';
+    const resolve = async () => {
+      if (mode === 'transient') throw new Error('credential broker unavailable');
+      return mode === 'invalid' ? { ...credentials, accessToken: new SecretString('') } : credentials;
+    };
+    const { client, requests } = newClient(scriptedWrites([{ status: 500, body: '{}' }, { status: 429, body: '{}' }]), { resolve, resolveWithRefresh: resolve });
+    const context = new AttemptContext();
+    for (const attempt of [1, 2]) {
+      context.attempt = attempt;
+      expect(branchOf(await run(client, 'createIssue', context))).toBe('retry');
+    }
+    const marker = context.marker;
+    mode = 'transient';
+    context.attempt = 3;
+    expect(branchOf(await run(client, 'createIssue', context))).toBe('retry');
+    expect(context.marker).toBe(marker);
+    mode = 'invalid';
+    context.attempt = 4;
+    expect(branchOf(await run(client, 'createIssue', context))).toBe('uncertain');
+    expect(posts(requests, '/issue')).toBe(2);
   });
 });

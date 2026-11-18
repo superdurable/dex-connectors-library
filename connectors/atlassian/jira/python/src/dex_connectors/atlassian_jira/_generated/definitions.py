@@ -72,7 +72,7 @@ CREATE_ISSUE_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Jira created the issue and returned its key and ID.", False),
         BranchDefinition(PROVIDER_REJECTED, "Jira conclusively rejected the issue, such as a missing required field, an unknown project or issue type, or missing permission; nothing was created.", True),
-        BranchDefinition(UNCERTAIN, "The send cap is reached and read-back could not confirm the issue; it may exist and must not be created again automatically.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached, or Jira accepted the create without a usable issue reference, and read-back could not confirm the issue; it may exist and must not be created again automatically.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -99,8 +99,7 @@ TRANSITION_ISSUE_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
-    repeat_on_unknown=RepeatOnUnknown.LIMITED,
-    max_sends=3,
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 ADD_COMMENT_DEFINITION = MutationDefinition(
@@ -109,7 +108,7 @@ ADD_COMMENT_DEFINITION = MutationDefinition(
         BranchDefinition(ADDED, "Jira added the comment and returned its ID.", False),
         BranchDefinition(NOT_FOUND, "The issue does not exist or the connection cannot browse it; nothing was added.", True),
         BranchDefinition(PROVIDER_REJECTED, "Jira conclusively rejected the comment, such as missing Add comments permission or the per-issue comment limit; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "The send cap is reached and read-back could not confirm the comment; it may exist and must not be added again automatically.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached, or Jira accepted the comment without a usable comment reference, and read-back could not confirm the comment; it may exist and must not be added again automatically.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

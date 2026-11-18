@@ -213,7 +213,8 @@ export class CreateIssueOperation implements Mutation<CreateIssueInput, CreateIs
     let session: JiraSession;
     try { session = await this.client.startSession(call, 'createIssue'); }
     catch (error) {
-      if (decision.kind === 'sendAllowed') {
+      // notSent after a possible earlier send would hide it, so only a first send records it.
+      if (!needsReadBack(decision)) {
         try { await fence.recordNotSent(); }
         catch { return newMutationRetry(jiraFailure('createIssue', 'AVAILABILITY', 'Jira setup failed and the not-sent checkpoint could not be recorded')); }
       }
@@ -223,8 +224,8 @@ export class CreateIssueOperation implements Mutation<CreateIssueInput, CreateIs
     const marker = { key: propertyKey, value: createHash('sha256').update(call.id).digest('hex') };
     const receipt = this.client.receipt(session);
     const savedProviderId = decision.marker?.providerId ?? '';
-    if (decision.kind === 'readBackRequired' || (decision.kind === 'readBackThenResendAllowed' && savedProviderId)) return this.reconcile(session, requested, marker.value, savedProviderId, neverResend, jiraFailure('createIssue', 'AVAILABILITY', 'Jira issue dispatch may have succeeded'), receipt);
-    if (decision.kind === 'readBackThenResendAllowed') { const found = await this.find(session, requested, marker.value, '', receipt); if (found) return found; }
+    if (decision.kind === 'readBackRequired' || savedProviderId) return this.reconcile(session, requested, marker.value, savedProviderId, neverResend, jiraFailure('createIssue', 'AVAILABILITY', 'Jira issue dispatch may have succeeded'), receipt);
+    if (needsReadBack(decision)) { const found = await this.find(session, requested, marker.value, '', receipt); if (found) return found; }
     let exchange: JiraExchange;
     try { exchange = await fence.dispatch(signal => this.client.exchangeFencedWrite(session, 'POST', '/issue', { fields, properties: [marker] }, signal)); }
     catch { return newMutationRetry(jiraFailure('createIssue', 'AVAILABILITY', 'Jira dispatch checkpoint or request budget is unavailable')); }
@@ -238,6 +239,7 @@ export class CreateIssueOperation implements Mutation<CreateIssueInput, CreateIs
     }
     if (classified.kind === 'defect') return defectOrSelectUncertain(policy, requested, writeReceipt, classified.failure);
     if (classified.kind === 'uncertain') return this.reconcile(session, requested, marker.value, '', policy, classified.failure, writeReceipt);
+    if (classified.kind === 'acceptedUnreadable') return this.reconcile(session, requested, marker.value, '', acceptedWritePolicy(false), classified.failure, writeReceipt);
     if (classified.kind === 'rejected' || classified.kind === 'notFound') {
       if (response?.status === 401 && await this.client.refreshRejectedCredential(session)) {
         try { await fence.recordCanResend(); } catch { return newMutationRetry(jiraFailure('createIssue', 'AVAILABILITY', 'Jira credential retry checkpoint could not be recorded')); }
@@ -248,17 +250,19 @@ export class CreateIssueOperation implements Mutation<CreateIssueInput, CreateIs
     try {
       const created = decodeObject(response!.body); const id = requireString(created.id);
       if (numericId.test(id)) {
-        try { await fence.recordProviderId(id); } catch { /* An accepted write remains accepted when its read-back checkpoint fails. */ }
-        const key = requireString(created.key);
+        // Without the identity checkpoint, reconciliation never retries.
+        let hasRecordedProviderId = true;
+        try { await fence.recordProviderId(id); } catch { hasRecordedProviderId = false; }
+        const key = typeof created.key === 'string' ? created.key : '';
         if (issueKey.test(key)) return newMutationBranch('created', { ...requested, issueId: id, issueKey: key }, { ...writeReceipt, providerObjectId: key });
-        return this.reconcile(session, requested, marker.value, id, policy, jiraFailure('createIssue', 'PROTOCOL', 'Jira accepted the issue but returned an unusable issue key'), writeReceipt);
+        return this.reconcile(session, requested, marker.value, id, acceptedWritePolicy(hasRecordedProviderId), jiraFailure('createIssue', 'PROTOCOL', 'Jira accepted the issue but returned an unusable issue key'), writeReceipt);
       }
     } catch { /* Read-back resolves an accepted response with an unusable reference. */ }
-    return this.reconcile(session, requested, marker.value, '', policy, jiraFailure('createIssue', 'PROTOCOL', 'Jira accepted the issue but returned an unusable issue reference'), writeReceipt);
+    return this.reconcile(session, requested, marker.value, '', acceptedWritePolicy(false), jiraFailure('createIssue', 'PROTOCOL', 'Jira accepted the issue but returned an unusable issue reference'), writeReceipt);
   }
   /** Read back a possible create; a missing issue resends while the policy allows, unless Jira already identified it. */
   private async reconcile(session: JiraSession, requested: CreateIssueOutput, marker: string, providerId: string, policy: SendCapPolicy, failure: Failure, receipt: ReceiptDraft): Promise<MutationAttempt<CreateIssueOutput>> {
-    return await this.find(session, requested, marker, providerId, receipt) ?? (providerId ? newMutationUncertain(requested, failure, receipt) : resendOrSelectUncertain(policy, requested, receipt, failure));
+    return reconciledAttempt(await this.find(session, requested, marker, providerId, receipt), policy, requested, providerId, failure, receipt);
   }
   /** Return the found issue or a read-back Retry, or undefined when read-back finds nothing. */
   private async find(session: JiraSession, requested: CreateIssueOutput, marker: string, providerId: string, receipt: ReceiptDraft): Promise<MutationAttempt<CreateIssueOutput> | undefined> {
@@ -312,7 +316,8 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
     let session: JiraSession;
     try { session = await this.client.startSession(call, 'addComment'); }
     catch (error) {
-      if (decision.kind === 'sendAllowed') {
+      // notSent after a possible earlier send would hide it, so only a first send records it.
+      if (!needsReadBack(decision)) {
         try { await fence.recordNotSent(); } catch { return newMutationRetry(jiraFailure('addComment', 'AVAILABILITY', 'Jira setup failed and the not-sent checkpoint could not be recorded')); }
       }
       if (error instanceof JiraSessionFailure && error.retry) return newMutationRetry(error.failure, error.retryAfterMs);
@@ -321,8 +326,8 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
     const marker = createHash('sha256').update(call.id).digest('hex');
     const receipt = this.client.receipt(session);
     const savedProviderId = decision.marker?.providerId ?? '';
-    if (decision.kind === 'readBackRequired' || (decision.kind === 'readBackThenResendAllowed' && savedProviderId)) return this.reconcile(session, requested, marker, savedProviderId, neverResend, jiraFailure('addComment', 'AVAILABILITY', 'Jira comment dispatch may have succeeded'), receipt);
-    if (decision.kind === 'readBackThenResendAllowed') { const found = await this.find(session, requested, marker, '', receipt); if (found) return found; }
+    if (decision.kind === 'readBackRequired' || savedProviderId) return this.reconcile(session, requested, marker, savedProviderId, neverResend, jiraFailure('addComment', 'AVAILABILITY', 'Jira comment dispatch may have succeeded'), receipt);
+    if (needsReadBack(decision)) { const found = await this.find(session, requested, marker, '', receipt); if (found) return found; }
     let exchange: JiraExchange;
     try { exchange = await fence.dispatch(signal => this.client.exchangeFencedWrite(session, 'POST', `/issue/${pathEscape(issue)}/comment`, { body: plainTextDocument(input.body), properties: [{ key: propertyKey, value: marker }] }, signal)); }
     catch { return newMutationRetry(jiraFailure('addComment', 'AVAILABILITY', 'Jira dispatch checkpoint or request budget is unavailable')); }
@@ -334,6 +339,7 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
     }
     if (classified.kind === 'defect') return defectOrSelectUncertain(policy, requested, writeReceipt, classified.failure);
     if (classified.kind === 'uncertain') return this.reconcile(session, requested, marker, '', policy, classified.failure, writeReceipt);
+    if (classified.kind === 'acceptedUnreadable') return this.reconcile(session, requested, marker, '', acceptedWritePolicy(false), classified.failure, writeReceipt);
     if (classified.kind === 'notFound') return rejectOrSelectUncertain(fence, policy, 'addComment', 'notFound', requested, writeReceipt, classified.failure);
     if (classified.kind === 'rejected') {
       if (response?.status === 401 && await this.client.refreshRejectedCredential(session)) {
@@ -344,7 +350,7 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
     }
     try { const item = decodeObject(response!.body), id = requireString(item.id); if (numericId.test(id)) { try { await fence.recordProviderId(id); } catch { /* The provider accepted this comment; read-back remains safe. */ } return this.added(requested, item, writeReceipt); } }
     catch { /* Read-back resolves an accepted response with an unusable comment reference. */ }
-    return this.reconcile(session, requested, marker, '', policy, jiraFailure('addComment', 'PROTOCOL', 'Jira accepted the comment but returned an unusable comment reference'), writeReceipt);
+    return this.reconcile(session, requested, marker, '', acceptedWritePolicy(false), jiraFailure('addComment', 'PROTOCOL', 'Jira accepted the comment but returned an unusable comment reference'), writeReceipt);
   }
   private added(requested: AddCommentOutput, item: Record<string, unknown>, receipt: ReceiptDraft): MutationAttempt<AddCommentOutput> {
     const id = requireString(item.id), author = item.author == null ? {} : requireObject(item.author);
@@ -353,7 +359,7 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
   }
   /** Read back a possible comment; a missing comment resends while the policy allows, unless Jira already identified it. */
   private async reconcile(session: JiraSession, requested: AddCommentOutput, marker: string, providerId: string, policy: SendCapPolicy, failure: Failure, receipt: ReceiptDraft): Promise<MutationAttempt<AddCommentOutput>> {
-    return await this.find(session, requested, marker, providerId, receipt) ?? (providerId ? newMutationUncertain(requested, failure, receipt) : resendOrSelectUncertain(policy, requested, receipt, failure));
+    return reconciledAttempt(await this.find(session, requested, marker, providerId, receipt), policy, requested, providerId, failure, receipt);
   }
   /** Return the found comment or a read-back Retry, or undefined when read-back finds nothing. */
   private async find(session: JiraSession, requested: AddCommentOutput, marker: string, providerId: string, receipt: ReceiptDraft): Promise<MutationAttempt<AddCommentOutput> | undefined> {
@@ -382,8 +388,29 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
 }
 
 /** One fenced attempt's send-cap facts from its Fence decision. */
-interface SendCapPolicy { readonly canResendUnknownOutcome: boolean; readonly hasPossibleEarlierSend: boolean }
+interface SendCapPolicy {
+  readonly canResendUnknownOutcome: boolean;
+  readonly hasPossibleEarlierSend: boolean;
+  /** Jira accepted this send without a recorded provider ID, so reconciliation never retries. */
+  readonly hasUncheckpointedAcceptance?: boolean;
+}
 const neverResend: SendCapPolicy = { canResendUnknownOutcome: false, hasPossibleEarlierSend: true };
+
+/** Reconcile a write Jira accepted in this attempt; it is never sent again. */
+function acceptedWritePolicy(hasRecordedProviderId: boolean): SendCapPolicy {
+  return { canResendUnknownOutcome: false, hasPossibleEarlierSend: true, hasUncheckpointedAcceptance: !hasRecordedProviderId };
+}
+
+/** Report a possible earlier send, including `sendAllowed` after a canResend marker. */
+function needsReadBack(decision: Decision): boolean {
+  return decision.kind !== 'sendAllowed' || (decision.priorSendUpperBound ?? 0) > 0 || !!decision.marker?.providerId;
+}
+
+/** Turn a read-back Retry into `uncertain` when a retry could no longer tell the write was accepted. */
+function reconciledAttempt<T>(found: MutationAttempt<T> | undefined, policy: SendCapPolicy, requested: T, providerId: string, failure: Failure, receipt: ReceiptDraft): MutationAttempt<T> {
+  if (found && !(found.kind === 'retry' && policy.hasUncheckpointedAcceptance)) return found;
+  return found || providerId ? newMutationUncertain(requested, failure, receipt) : resendOrSelectUncertain(policy, requested, receipt, failure);
+}
 
 function sendCapPolicy(call: Call, operationMaxSends: number, decision: Decision): SendCapPolicy {
   // The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins.
@@ -424,14 +451,16 @@ function validatePlainText(value: string, field: string, required: boolean): voi
 function plainTextDocument(value: string): Record<string, unknown> { const normalized = value.replace(/\r\n?/g, '\n').replace(/^\n+|\n+$/g, ''); return { type: 'doc', version: 1, ...(normalized ? { content: normalized.split(/\n[ \t]*\n+/).map(paragraph => ({ type: 'paragraph', content: paragraph.split('\n').flatMap((line, index) => [...(index ? [{ type: 'hardBreak' }] : []), ...(line ? [{ type: 'text', text: line }] : [])]) })).filter(paragraph => paragraph.content.length) } : {}) }; }
 function matchesMarker(value: unknown, expected: string): boolean { if (typeof value === 'string') return value.toLowerCase() === expected; if (value && typeof value === 'object' && !Array.isArray(value)) return typeof (value as Record<string, unknown>).value === 'string' && ((value as Record<string, unknown>).value as string).toLowerCase() === expected; return false; }
 function readbackState(exchange: JiraExchange): 'found' | 'missing' | 'retry' { if ('error' in exchange) return 'retry'; const status = exchange.response.status; if (status === 408 || status === 429 || status >= 500) return 'retry'; return status === 200 && !exchange.isTooLarge && !exchange.reflectsSecret ? 'found' : 'missing'; }
-type WriteClassification = { kind: 'accepted' } | { kind: 'retry' | 'uncertain' | 'rejected' | 'notFound' | 'defect'; failure: Failure; fields: string[]; retryAfterMs: number };
+/** `acceptedUnreadable` is a 2xx whose body cannot be used: the write happened and is never resent. */
+type WriteClassification = { kind: 'accepted' } | { kind: 'retry' | 'uncertain' | 'acceptedUnreadable' | 'rejected' | 'notFound' | 'defect'; failure: Failure; fields: string[]; retryAfterMs: number };
 function classifyWrite(operation: string, subject: string, exchange: JiraExchange): WriteClassification {
   const result = (kind: Exclude<WriteClassification['kind'], 'accepted'>, failure: Failure, fields: string[] = [], retryAfterMs = 0): WriteClassification => ({ kind, failure, fields, retryAfterMs });
+  if ('error' in exchange && exchange.acceptedStatus !== undefined) return result('acceptedUnreadable', jiraFailure(operation, 'TRANSPORT', `Jira accepted the ${subject} but its response was interrupted`));
   if ('error' in exchange) return exchange.isProvablyNotSent ? result('retry', jiraFailure(operation, 'TRANSPORT', `Jira could not be reached, so no ${subject} was written`)) : result('uncertain', jiraFailure(operation, 'TRANSPORT', `Jira ${subject} outcome is unknown`));
   const { response } = exchange, status = response.status;
   if (status >= 200 && status < 300) {
-    if (exchange.isTooLarge) return result('uncertain', jiraFailure(operation, 'RESPONSE_TOO_LARGE', `Jira accepted the ${subject} but its response exceeds the configured size limit`));
-    if (exchange.reflectsSecret) return result('uncertain', jiraFailure(operation, 'PROTOCOL', `Jira accepted the ${subject} but its response contains credential material`));
+    if (exchange.isTooLarge) return result('acceptedUnreadable', jiraFailure(operation, 'RESPONSE_TOO_LARGE', `Jira accepted the ${subject} but its response exceeds the configured size limit`));
+    if (exchange.reflectsSecret) return result('acceptedUnreadable', jiraFailure(operation, 'PROTOCOL', `Jira accepted the ${subject} but its response contains credential material`));
     return { kind: 'accepted' };
   }
   if (status === 429) return result('retry', jiraFailure(operation, 'RATE_LIMIT', `Jira rate limited the ${subject} before writing it`), [], retryAfter(response));
