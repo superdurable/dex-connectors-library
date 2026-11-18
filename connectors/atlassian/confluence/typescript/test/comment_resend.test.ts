@@ -7,6 +7,7 @@ import { MaxErrorBodyBytes, ProviderTransportError, type ProviderRequest, type P
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ConfluenceClient } from '../src/client.js';
 import { AddCommentDefinition } from '../src/generated/definitions.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const callId = '1d4a9b66-087a-52c9-aee1-005513d3b6ac';
 const connection = { provider: 'atlassian', name: 'confluence-site' };
@@ -196,6 +197,8 @@ describe('Confluence bounded resend of unconfirmed comments', () => {
     ['not selected', () => new ConnectionNotSelectedError(), 'defect'],
     ['broker rejected', () => new CredentialBrokerRejectedError(), 'defect'],
     ['object not found', () => new ObjectNotFoundError(), 'defect'],
+    ['malformed stored material', () => new CredentialMaterialError('stored credential does not match the connector credential fields'), 'defect'],
+    ['SDK decoding failure', () => new TypeError('project credential decoding failed'), 'defect'],
   ])('classifies a credential failure (%s) before any send', async (_name, newError, expected) => {
     const error = newError();
     const client = new ConfluenceClient({ endpoint: 'http://127.0.0.1:12345', cloudId: '11223344-a1b2-4b33-8c44-def123456789' },

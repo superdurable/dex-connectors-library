@@ -6,7 +6,7 @@ import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfter
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { SearchPagesOperation, GetPageOperation, CreatePageOperation, UpdatePageOperation, AddCommentOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.atlassian.com';
@@ -224,7 +224,7 @@ export class ConfluenceClient {
 /** Report a credential failure that no retry fixes; others, such as broker outages, may pass. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError ||
-    error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
+    error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError || isCredentialMaterialError(error);
 }
 
 function classified(outcome: ConfluenceClassification['outcome'], failure?: Failure, retryAfterMs = 0): ConfluenceClassification { return { outcome, ...(failure ? { failure } : {}), retryAfterMs }; }

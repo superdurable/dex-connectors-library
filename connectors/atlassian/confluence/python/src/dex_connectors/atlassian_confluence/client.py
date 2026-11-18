@@ -111,7 +111,10 @@ class Classification:
 
 def _is_terminal_credential_error(error: BaseException) -> bool:
     """Report a credential failure no retry fixes; others, such as broker outages, may pass."""
-    return isinstance(
+    # Imported here because the generated connection module imports this module.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
         error,
         (
             ReauthorizationRequiredError,
