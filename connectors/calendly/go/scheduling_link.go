@@ -39,7 +39,7 @@ func (CreateSchedulingLinkOperation) Definition() sdkgo.MutationDefinition {
 }
 
 // IdempotencyKey returns the call ID. Calendly accepts no idempotency key for scheduling links, which is
-// why the operation runs with sync durability and reports an unknown outcome as uncertain.
+// why the operation runs with sync durability and resends an unknown outcome only below the send cap.
 func (CreateSchedulingLinkOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateSchedulingLinkInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
