@@ -728,16 +728,16 @@ async def test_reply_empty_body_is_local_defect_without_provider_io() -> None:
 
 
 @pytest.mark.asyncio
-async def test_reply_missing_credentials_is_authentication_defect() -> None:
-    """A missing logical connection never reaches Gmail."""
+async def test_reply_missing_credentials_retries_without_reaching_gmail() -> None:
+    """An untyped credential lookup failure is transient, so the attempt retries before any send."""
     run = execution("replyToMessage")
     provider = GmailProvider(Config(), StaticCredentialProvider({}))
     try:
         result = await SendService(provider).reply_to_message(run, ReplyToMessageInput("source-1", "Answer"))
     finally:
         await provider.close()
-    assert result.branch == "defect" and result.failure is not None
-    assert result.failure.kind == FailureKind.AUTHENTICATION
+    assert result.kind == "retry" and result.failure is not None
+    assert result.failure.kind == FailureKind.AVAILABILITY
 
 
 @pytest.mark.asyncio

@@ -13,6 +13,11 @@ from functools import partial
 import httpx
 from dex_connectors.sdk import Call, Failure, FailureKind, MutationAttempt, Receipt
 from dex_connectors.sdk.credentials import ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.singledispatch import (
     CheckpointError,
     DecisionKind,
@@ -78,6 +83,14 @@ _SEND = _SendOutcome("sendMessage", "send", "Gmail rejected the message")
 _REPLY = _SendOutcome("replyToMessage", "reply", "Gmail rejected the reply")
 # Statuses that prove Gmail refused the POST before processing it.
 _REFUSED_BEFORE_PROCESSING_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+# Credential failures that only reconnection repairs; any other failure is transient.
+_PERMANENT_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    GmailCredentialMaterialError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
 
 
 class _SendBudget:
@@ -176,11 +189,6 @@ def _accepted_message_identity(body: bytes) -> dict[str, str] | None:
     return {"id": decoded["id"], "threadId": thread_id if isinstance(thread_id, str) else ""}
 
 
-def _has_accepted_message_id(body: bytes) -> bool:
-    """Report a refusal body that still names a Gmail message, which contradicts the status."""
-    return _accepted_message_identity(body) is not None
-
-
 def _raw_message_size(payload: bytes) -> int:
     encoded = json.loads(payload)["raw"]
     return len(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
@@ -271,6 +279,17 @@ class SendService:
                 execution, _REPLY, FailureKind.VALIDATION, "message ID and text body are required"
             )
         if execution.attempt > 1 or fence_result == DecisionKind.READ_BACK_REQUIRED:
+            saved = await self._read_saved_message(execution, budget, credential)
+            if saved:
+                return await self._sent(
+                    execution,
+                    budget,
+                    credential,
+                    _REPLY,
+                    _OutgoingMessage(b"", [], message_id_address),
+                    saved,
+                    _receipt(execution, None, saved["id"]),
+                )
             try:
                 async with asyncio.timeout_at(budget.pre_send_end):
                     found, credential = await self._provider.find_sent_message(
@@ -440,14 +459,24 @@ class SendService:
 
         After an earlier possible send, any failure, even one that needs
         reconnection, returns Retry without notSent, so later attempts still
-        read back. Only a clean first attempt selects defect.
+        read back. On a clean first attempt a transient failure records
+        notSent and returns Retry; only a permanent one selects defect.
         """
+        is_permanent = isinstance(error, _PERMANENT_CREDENTIAL_ERRORS)
         if await self._is_earlier_send_possible(execution):
-            is_permanent = isinstance(error, (ReauthorizationRequiredError, GmailCredentialMaterialError))
             reason = "need reconnection" if is_permanent else "are temporarily unavailable"
             return _retry(
                 outcome, FailureKind.AUTHENTICATION,
                 f"Gmail credentials {reason}; an earlier send may still be delivered",
+            )
+        if not is_permanent:
+            try:
+                await self._record_not_sent(execution)
+            except Exception:  # noqa: BLE001
+                pass  # A missing notSent leaves the attempt counted, which only forces read-back.
+            return _retry(
+                outcome, FailureKind.AVAILABILITY,
+                "Gmail credentials are temporarily unavailable; nothing was sent",
             )
         return _branch(
             execution, outcome, "defect", FailureKind.AUTHENTICATION, "connection credentials are unavailable"
@@ -531,6 +560,11 @@ class SendService:
         self, execution: SendExecution, budget: _SendBudget, credential: Credentials,
         outcome: _SendOutcome, message: _OutgoingMessage,
     ) -> MutationAttempt[SendMessageOutput]:
+        saved = await self._read_saved_message(execution, budget, credential)
+        if saved:
+            return await self._sent(
+                execution, budget, credential, outcome, message, saved, _receipt(execution, None, saved["id"])
+            )
         try:
             async with asyncio.timeout_at(budget.pre_send_end):
                 found, credential = await self._provider.find_sent_message(
@@ -547,6 +581,74 @@ class SendService:
             outcome, FailureKind.AVAILABILITY,
             "Gmail sent-mail search found no message; prior dispatch cannot be repeated",
         )
+
+    async def _read_saved_message(
+        self, execution: SendExecution, budget: _SendBudget, credential: Credentials
+    ) -> dict[str, str] | None:
+        """Read back the message an earlier attempt saved by ID, as Go does before searching Sent Mail."""
+        if execution.fence is None:
+            return None
+        decision = await execution.fence.decide()
+        if decision.kind == DecisionKind.SEND_ALLOWED or decision.marker is None:
+            return None
+        if not decision.marker.provider_id:
+            return None
+        return await self._read_message_by_id(execution, budget, credential, decision.marker.provider_id)
+
+    async def _read_message_by_id(
+        self, execution: SendExecution, budget: _SendBudget, credential: Credentials, message_id: str
+    ) -> dict[str, str] | None:
+        """Return the message with this ID, or None when Gmail does not confirm it."""
+        try:
+            async with asyncio.timeout_at(budget.attempt_end):
+                response, _ = await self._provider.read_message(
+                    execution.call, credential, message_id, "minimal"
+                )
+            resource = json.loads(response.body)
+        except Exception:  # noqa: BLE001
+            return None  # An unconfirmed read-back never resends; the caller retries.
+        if not 200 <= response.status_code < 300 or not isinstance(resource, dict):
+            return None
+        if resource.get("id") != message_id:
+            return None
+        thread_id = resource.get("threadId")
+        return {"id": message_id, "threadId": thread_id if isinstance(thread_id, str) else ""}
+
+    async def _confirm_refusal_naming_message(
+        self,
+        execution: SendExecution,
+        budget: _SendBudget,
+        credential: Credentials,
+        outcome: _SendOutcome,
+        message: _OutgoingMessage,
+        message_id: str,
+        receipt: Receipt,
+    ) -> MutationAttempt[SendMessageOutput]:
+        """Read back a message a refusal body names, because Gmail may have sent it.
+
+        The saved ID makes later attempts read back only, so the message is never resent.
+        """
+        await self._record_provider_id(execution, message_id)
+        confirmed = await self._read_message_by_id(execution, budget, credential, message_id)
+        if confirmed:
+            return await self._sent(execution, budget, credential, outcome, message, confirmed, receipt)
+        return _retry(
+            outcome,
+            FailureKind.PROTOCOL,
+            f"Gmail refused the {outcome.request_name} but named a message that read-back has not confirmed",
+        )
+
+    async def _record_provider_id(self, execution: SendExecution, message_id: str) -> None:
+        """Save an accepted message ID.
+
+        A failed checkpoint leaves the claim, so the send cap still bounds resends.
+        """
+        if execution.fence is None:
+            return
+        try:
+            await execution.fence.record_provider_id(message_id)
+        except Exception:  # noqa: BLE001
+            pass
 
     async def _post_message(
         self, call: Call, credential: Credentials, payload: bytes, observed_statuses: list[int],
@@ -636,7 +738,7 @@ class SendService:
                 _receipt(execution),
             )
         except TimeoutError:
-            if not observed_statuses or not 200 <= observed_statuses[-1] < 300:
+            if not observed_statuses:
                 return await self._confirm_possible(
                     execution,
                     budget,
@@ -647,7 +749,7 @@ class SendService:
                     f"Gmail {outcome.request_name} outcome is unknown",
                     _receipt(execution),
                 )
-            # Gmail accepted the send before the deadline cut its body, so it is never resent.
+            # Gmail answered before the deadline cut its body; classify that status as Go does.
             status = observed_statuses[-1]
         receipt = _receipt(execution, headers)
         if status == 429:
@@ -663,8 +765,8 @@ class SendService:
             # Gmail documents 5xx as processing failures and Sent Mail search can lag, so the claim stays.
             found, _ = await self._poll_sent(execution, budget, credential, message)
             if found:
-                if execution.fence is not None and found.get("id"):
-                    await execution.fence.record_provider_id(found["id"])
+                if found.get("id"):
+                    await self._record_provider_id(execution, found["id"])
                 return await self._sent(execution, budget, credential, outcome, message, found, receipt)
             return _retry_after(
                 headers,
@@ -684,6 +786,11 @@ class SendService:
                 receipt,
             )
         if not 200 <= status < 300:
+            named = _accepted_message_identity(response.body) if response is not None else None
+            if named is not None:
+                return await self._confirm_refusal_naming_message(
+                    execution, budget, credential, outcome, message, named["id"], receipt
+                )
             if execution.attempt > 1:
                 try:
                     async with asyncio.timeout_at(budget.attempt_end):
@@ -695,11 +802,7 @@ class SendService:
                     found = None
                 if found:
                     return await self._sent(execution, budget, credential, outcome, message, found, receipt)
-            is_definite_refusal = (
-                status in _REFUSED_BEFORE_PROCESSING_STATUSES
-                and response is not None
-                and not _has_accepted_message_id(response.body)
-            )
+            is_definite_refusal = status in _REFUSED_BEFORE_PROCESSING_STATUSES and response is not None
             return await self._reject_refused_send(
                 execution,
                 outcome,
@@ -714,8 +817,8 @@ class SendService:
         else:
             found, _ = await self._poll_sent(execution, budget, credential, message)
             sent = found or {"threadId": message.requested_thread_id}
-        if execution.fence is not None and sent.get("id"):
-            await execution.fence.record_provider_id(sent["id"])
+        if sent.get("id"):
+            await self._record_provider_id(execution, sent["id"])
         return await self._sent(execution, budget, credential, outcome, message, sent, receipt)
 
     async def _confirm_possible(
@@ -731,8 +834,8 @@ class SendService:
     ) -> MutationAttempt[SendMessageOutput]:
         found, has_lookup_error = await self._poll_sent(execution, budget, credential, message)
         if found:
-            if execution.fence is not None and found.get("id"):
-                await execution.fence.record_provider_id(found["id"])
+            if found.get("id"):
+                await self._record_provider_id(execution, found["id"])
             return await self._sent(execution, budget, credential, outcome, message, found, receipt)
         suffix = (
             "; the sent-mail search did not answer"

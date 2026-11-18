@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call, type CredentialRefreshDriver } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { GmailHTTPClient } from '../src/http.js';
 import { GmailClient } from '../src/client.js';
@@ -142,12 +143,36 @@ describe('Gmail send and reply classification', () => {
     expect(await rejected.sendMessage(operationCall('sendMessage'), sendInput, new Date(Date.now() + 30_000))).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'AUTHORIZATION' } });
   });
 
-  it('returns an authentication defect before a send when connection credentials are unavailable', async () => {
+  it.each([
+    { name: 'reauthorization', error: () => new ReauthorizationRequiredError() },
+    { name: 'missing project object', error: () => new ObjectNotFoundError() },
+    { name: 'unselected connection', error: () => new ConnectionNotSelectedError() },
+    { name: 'broker rejection', error: () => new CredentialBrokerRejectedError() },
+  ])('returns an authentication defect before a send for a $name credential failure', async ({ error }) => {
     let posts = 0;
-    const http = new GmailHTTPClient({ endpoint: 'http://127.0.0.1:8080' }, { resolve: async () => { throw new Error('private token is unavailable'); }, resolveWithRefresh: async () => { throw new Error('private token is unavailable'); } }, driver, async () => { posts++; return response(200, {}); });
+    const http = new GmailHTTPClient({ endpoint: 'http://127.0.0.1:8080' }, { resolve: async () => { throw error(); }, resolveWithRefresh: async () => { throw error(); } }, driver, async () => { posts++; return response(200, {}); });
     const operation = new GmailSender(http, new GmailProvider(http));
     expect(await operation.sendMessage(operationCall('sendMessage'), sendInput, new Date(Date.now() + 30_000))).toMatchObject({ branch: 'defect', failure: { kind: 'AUTHENTICATION', message: 'connection credentials are unavailable' } });
     expect(await operation.replyToMessage(operationCall('replyToMessage'), replyInput, new Date(Date.now() + 30_000))).toMatchObject({ branch: 'defect', failure: { kind: 'AUTHENTICATION' } });
+    expect(posts).toBe(0);
+  });
+
+  it.each([
+    { name: 'an untyped store failure', error: () => new Error('private token is unavailable') },
+    { name: 'an unavailable broker', error: () => new CredentialBrokerUnavailableError() },
+  ])('retries and records notSent before a send for $name', async ({ error }) => {
+    let posts = 0;
+    const http = new GmailHTTPClient({ endpoint: 'http://127.0.0.1:8080' }, { resolve: async () => { throw error(); }, resolveWithRefresh: async () => { throw error(); } }, driver, async () => { posts++; return response(200, {}); });
+    const operation = new GmailSender(http, new GmailProvider(http));
+    for (const operationId of ['sendMessage', 'replyToMessage'] as const) {
+      const checkpoint: { value?: unknown } = {};
+      const call = operationCall(operationId, 1, checkpoint);
+      const result = operationId === 'sendMessage'
+        ? await operation.sendMessage(call, sendInput, new Date(Date.now() + 30_000))
+        : await operation.replyToMessage(call, replyInput, new Date(Date.now() + 30_000));
+      expect(result).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY', message: 'Gmail credentials are temporarily unavailable; nothing was sent' } });
+      expect(checkpoint.value).toMatchObject({ state: 'notSent', attempt: 1 });
+    }
     expect(posts).toBe(0);
   });
 
@@ -298,7 +323,10 @@ describe('Gmail send and reply classification', () => {
       // Even a failure that needs reconnection never selects defect after a possible send.
       expect(await invoke(failingSender(new ReauthorizationRequiredError()), operationCall(operationId, 2, claimed())))
         .toMatchObject({ kind: 'retry', failure: { kind: 'AUTHENTICATION', message: 'Gmail credentials need reconnection; an earlier send may still be delivered' } });
+      // Before any send, a transient failure retries; only a permanent one selects defect.
       expect(await invoke(failingSender(new Error('store unavailable')), operationCall(operationId)))
+        .toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+      expect(await invoke(failingSender(new ReauthorizationRequiredError()), operationCall(operationId)))
         .toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'AUTHENTICATION' } });
     }
     expect(requests).toBe(0);
@@ -337,17 +365,45 @@ describe('Gmail send and reply classification', () => {
     expect(posts).toBe(0);
   });
 
-  it('retries an allowlisted refusal whose body names a message', async () => {
+  it('reads back by ID a refusal whose body names a message', async () => {
     const checkpoint: { value?: unknown } = {};
-    const operation = sender(async request => request.method === 'GET' ? response(200, { messages: [] }) : response(400, { id: 'sent-1', threadId: 'thread-1' }));
+    const methods: string[] = [];
+    const operation = sender(async request => {
+      methods.push(request.method);
+      if (request.method === 'POST') return response(400, { id: 'sent-1', threadId: 'thread-1' });
+      return request.url.includes('/users/me/messages/sent-1?format=minimal') ? response(200, { id: 'sent-1', threadId: 'thread-1' }) : response(200, { messages: [] });
+    });
     expect(await operation.sendMessage(operationCall('sendMessage', 1, checkpoint), sendInput, new Date(Date.now() + 30_000)))
-      .toMatchObject({ kind: 'retry', failure: { message: 'Gmail rejected the message; Gmail may still have processed the request' } });
-    expect(checkpoint.value).toMatchObject({ state: 'claimed', attempt: 1 });
+      .toMatchObject({ kind: 'branch', branch: 'sent', value: { messageId: 'sent-1', threadId: 'thread-1' } });
+    expect(methods).toEqual(['POST', 'GET']);
+    expect(checkpoint.value).toMatchObject({ state: 'claimed', attempt: 1, providerId: 'sent-1' });
+  });
+
+  it('never resends a refusal-named message that read-back cannot confirm', async () => {
+    for (const operationId of ['sendMessage', 'replyToMessage'] as const) {
+      const checkpoint: { value?: unknown } = {};
+      let posts = 0;
+      const operation = sender(async request => {
+        if (request.method === 'POST') { posts++; return response(400, { id: 'sent-1' }); }
+        if (request.url.includes('/users/me/messages/source-1')) return response(200, { id: 'source-1', threadId: 'thread-1', internalDate: '1772615700000', payload: { headers: [{ name: 'From', value: 'ada@example.com' }, { name: 'Message-ID', value: '<source@example.com>' }, { name: 'Subject', value: 'Question' }] } });
+        if (request.url.includes('/users/me/messages/sent-1')) return response(404, {});
+        return response(200, { messages: [] });
+      });
+      for (let attempt = 1; attempt <= 4; attempt++) {
+        const call = operationCall(operationId, attempt, checkpoint);
+        const result = operationId === 'sendMessage'
+          ? await operation.sendMessage(call, sendInput, new Date(Date.now() + 30_000))
+          : await operation.replyToMessage(call, replyInput, new Date(Date.now() + 30_000));
+        expect(result).toMatchObject({ kind: 'retry' });
+      }
+      expect(posts).toBe(1);
+      expect(checkpoint.value).toMatchObject({ providerId: 'sent-1' });
+    }
   });
 
   it.each([
     { status: 200, body: { id: 'sent-1', threadId: 7 }, expected: { kind: 'branch', branch: 'sent', value: { messageId: 'sent-1', threadId: 'thread-1' } } },
-    { status: 400, body: { id: 'sent-1', threadId: 7 }, expected: { kind: 'retry' } },
+    { status: 400, body: { id: 'sent-1', threadId: 7 }, expected: { kind: 'branch', branch: 'sent', value: { messageId: 'sent-1', threadId: 'thread-1' } } },
     { status: 400, body: { id: 7 }, expected: { kind: 'branch', branch: 'providerRejected' } },
   ])('accepts any body whose id is a non-empty string: $status $body', async ({ status, body, expected }) => {
     let searches = 0;
@@ -547,8 +603,8 @@ describe('Gmail send and reply classification', () => {
     expect(checkpoint.value).toMatchObject({ state: 'claimed', attempt: 2, sendCount: 2, providerId: 'sent-after-503' });
   });
 
-  it('never checkpoints an ID from a 500 or 400 error body', async () => {
-    for (const status of [500, 400]) {
+  it('never checkpoints an ID from a 500 error body', async () => {
+    for (const status of [500]) {
       const checkpoint: { value?: unknown } = {};
       let posts = 0;
       let searches = 0;
@@ -558,7 +614,7 @@ describe('Gmail send and reply classification', () => {
         return response(status, { id: 'not-a-message' });
       });
       const first = await operation.sendMessage(operationCall('sendMessage', 1, checkpoint), sendInput, new Date(Date.now() + 30_000));
-      // A 400 body naming a message contradicts the refusal, so it repeats like a 500.
+      // A 5xx body is never read, so a resend stays allowed below the cap.
       expect(first).toMatchObject({ kind: 'retry' });
       expect(checkpoint.value).not.toHaveProperty('providerId');
       expect(checkpoint.value).toMatchObject({ state: 'claimed', attempt: 1 });

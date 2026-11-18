@@ -159,7 +159,12 @@ unreadable or untrusted checkpoint, leaves the outcome unknown: it returns
 Retry and keeps the claim, so the next attempt reads back Sent Mail and resends
 below the cap. After an earlier possible send, `defect` is never selected: a
 credential failure, even one that needs reconnection, and invalid input also
-return Retry. A 503 is treated like any other 5xx. A definite 429 refusal, or a
+return Retry. From 0.4.1, a refusal body that names a Gmail message is read
+back by that ID, which is checkpointed so later attempts never resend it, and a
+transient credential failure before any send records `notSent` and returns
+Retry instead of selecting `defect`. A Step write window that cuts the POST
+body after its headers keeps the observed status for classification.
+A 503 is treated like any other 5xx. A definite 429 refusal, or a
 transport failure proven to precede dispatch, permits a later send. The
 manifest limits sends and replies to seven attempts within five minutes;
 `max_sends_override` on the generated Step factory changes one Step's cap.

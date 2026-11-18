@@ -176,9 +176,18 @@ uses that header for Sent Mail read-back:
   it, unless its body names a Gmail message. With no earlier possible send, it
   records `canResend` and selects `providerRejected`, and is never resent. Any
   other 4xx except 429, such as 408 or 409, an allowlisted status whose body is
-  unreadable or names a message, or an unreadable or untrusted checkpoint,
+  unreadable, or an unreadable or untrusted checkpoint,
   leaves the outcome unknown: it returns Retry and keeps the claim,
-  so the next attempt reads back Sent Mail and resends below the cap. After an
+  so the next attempt reads back Sent Mail and resends below the cap. From Go
+  v0.27.1, Python v0.4.1, and TypeScript v0.4.1, a non-2xx body whose `id` is a
+  non-empty string means Gmail may have sent the message: the ID is
+  checkpointed and read back with `format=minimal`, a match selects `sent`, and
+  otherwise the attempt returns Retry; later attempts read that ID back and
+  search Sent Mail but never resend it. Every attempt with a checkpointed ID
+  reads it back by ID before searching Sent Mail. Before any possible send, a
+  transient credential failure records `notSent` and returns Retry; only
+  reauthorization, invalid credential material, a missing project object, an
+  unselected connection, or a broker rejection selects `defect`. After an
   earlier possible send, an allowlisted 4xx on the resend, or a reply source read
   that is rejected or unusable, returns Retry instead, because the earlier send
   may still be delivered; the claim stays, so later attempts read back and the

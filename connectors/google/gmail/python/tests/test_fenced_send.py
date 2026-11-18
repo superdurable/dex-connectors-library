@@ -19,6 +19,12 @@ from dex_connectors.sdk.credentials import (
     SecretString,
     StaticCredentialProvider,
 )
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.singledispatch import Marker, State
 
 from dex_connectors.google_gmail import (
@@ -520,18 +526,49 @@ async def test_invalid_input_after_possible_send_retries(operation_id: str) -> N
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
-async def test_allowlisted_refusal_with_message_id_retries(operation_id: str) -> None:
-    """A 400 body that names a Gmail message contradicts the refusal, so the claim stays."""
+async def test_refusal_naming_message_is_read_back_by_id(operation_id: str) -> None:
+    """A 400 body that names a Gmail message contradicts the refusal, so the ID is read back."""
     context = HeartbeatContext()
-    attempt, _ = await _invoke(
-        _call(context, operation_id=operation_id),
-        httpx.MockTransport(_gmail(
-            httpx.Response(200, json={"messages": []}), httpx.Response(400, json={"id": "sent-1"}),
-        )),
-    )
-    assert attempt.kind == "retry" and attempt.failure is not None
-    assert "Gmail may still have processed the request" in attempt.failure.message
-    assert context.heartbeats[-1].state == State.CLAIMED
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(400, json={"id": "sent-1", "threadId": "thread-1"})
+        if request.url.path.endswith("/messages/source-1"):
+            return _source_message()
+        if request.url.path.endswith("/messages/sent-1"):
+            return httpx.Response(200, json={"id": "sent-1", "threadId": "thread-1"})
+        return httpx.Response(200, json={"messages": []})
+
+    attempt, requests = await _invoke(_call(context, operation_id=operation_id), httpx.MockTransport(answer))
+    assert attempt.branch == "sent" and attempt.value.message_id == "sent-1"
+    assert attempt.value.thread_id == "thread-1"
+    assert _methods(requests) == ["POST", "GET"]
+    assert context.heartbeats[-1].provider_id == "sent-1"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+async def test_unconfirmed_refusal_naming_message_is_never_resent(operation_id: str) -> None:
+    """A named message that read-back cannot confirm keeps retrying read-back without a POST."""
+    context = HeartbeatContext()
+    call = _call(context, operation_id=operation_id)
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(400, json={"id": "sent-1"})
+        if request.url.path.endswith("/messages/source-1"):
+            return _source_message()
+        if request.url.path.endswith("/messages/sent-1"):
+            return httpx.Response(404)
+        return httpx.Response(200, json={"messages": []})
+
+    attempt, requests = await _invoke(call, httpx.MockTransport(answer))
+    assert attempt.kind == "retry"
+    assert context.heartbeats[-1].provider_id == "sent-1"
+    context.attempt, context.previous = 2, context.heartbeats[-1]
+    attempt, later_requests = await _invoke(call, httpx.MockTransport(answer))
+    assert attempt.kind == "retry"
+    assert [request.method for request in requests + later_requests].count("POST") == 1
 
 
 @pytest.mark.asyncio
@@ -540,7 +577,7 @@ async def test_allowlisted_refusal_with_message_id_retries(operation_id: str) ->
     ("status", "body", "expected_kind", "expected_branch"),
     [
         (200, {"id": "sent-1", "threadId": 7}, "branch", "sent"),
-        (400, {"id": "sent-1", "threadId": 7}, "retry", ""),
+        (400, {"id": "sent-1", "threadId": 7}, "branch", "sent"),
         (400, {"id": 7}, "branch", "providerRejected"),
     ],
 )
@@ -620,7 +657,8 @@ class _SlowAcceptedBody(httpx.AsyncByteStream):
 
 
 @pytest.mark.asyncio
-async def test_deadline_after_accepted_headers_is_never_resent() -> None:
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+async def test_deadline_after_accepted_headers_is_never_resent(operation_id: str) -> None:
     """A write window that ends after Gmail answered 2xx still means the send was accepted."""
     context = HeartbeatContext()
     context.deadline = datetime.now(UTC) + timedelta(seconds=3)
@@ -628,20 +666,55 @@ async def test_deadline_after_accepted_headers_is_never_resent() -> None:
     def answer(request: httpx.Request) -> httpx.Response:
         if request.method == "POST":
             return httpx.Response(200, stream=_SlowAcceptedBody())
+        if request.url.path.endswith("/messages/source-1"):
+            return _source_message()
         return httpx.Response(200, json={"messages": []})
 
-    attempt, requests = await _invoke(_call(context), httpx.MockTransport(answer))
+    call = _call(context, operation_id=operation_id)
+    attempt, requests = await _invoke(call, httpx.MockTransport(answer))
     assert attempt.branch == "sent"
     assert [request.method for request in requests].count("POST") == 1
+    assert context.heartbeats[-1].state == State.CLAIMED
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
-async def test_transient_credential_failure_on_first_attempt_is_defect(operation_id: str) -> None:
-    """A clean first attempt keeps selecting defect on a credential failure."""
+@pytest.mark.parametrize(
+    "error", [RuntimeError("store unavailable"), CredentialBrokerUnavailableError(), TimeoutError()]
+)
+async def test_transient_credential_failure_on_first_attempt_retries(
+    operation_id: str, error: Exception
+) -> None:
+    """A clean first attempt records notSent and retries a transient credential failure."""
+    context = HeartbeatContext()
+    attempt, requests = await _invoke(
+        _call(context, operation_id=operation_id), httpx.MockTransport(lambda _: httpx.Response(200)), error
+    )
+    assert attempt.kind == "retry"
+    assert requests == []
+    assert [value.state for value in context.heartbeats] == [State.NOT_SENT]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+@pytest.mark.parametrize(
+    "error",
+    [
+        ReauthorizationRequiredError(),
+        GmailCredentialMaterialError("invalid"),
+        ObjectNotFoundError(),
+        ConnectionNotSelectedError(),
+        CredentialBrokerRejectedError(),
+    ],
+)
+async def test_permanent_credential_failure_on_first_attempt_is_defect(
+    operation_id: str, error: Exception
+) -> None:
+    """A clean first attempt selects defect when only reconnection repairs the credentials."""
     attempt, requests = await _invoke(
         _call(HeartbeatContext(), operation_id=operation_id),
-        httpx.MockTransport(lambda _: httpx.Response(200)), RuntimeError("store unavailable"),
+        httpx.MockTransport(lambda _: httpx.Response(200)),
+        error,
     )
     assert attempt.branch == "defect"
     assert requests == []

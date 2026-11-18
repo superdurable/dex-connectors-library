@@ -7,6 +7,7 @@ import {
   BodyTooLargeError, isHeaderSafeCredential, sendProviderRequest, validateBaseURL,
   type AddressPolicy, type ProviderRequest, type ProviderResponse,
 } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, CredentialSource, Credentials } from './models.js';
 import { GoogleOAuthAuthMethodID, WorkspaceDomainDelegationAuthMethodID } from './models.js';
 import { parseMailbox } from './message.js';
@@ -47,6 +48,12 @@ export class GmailCredentialError extends Error {
   constructor(isPermanent = true) { super('connection credentials are unavailable'); this.name = 'GmailCredentialError'; this.isPermanent = isPermanent; }
 }
 
+/** Report a credential failure that only reconnection repairs; any other failure is transient. */
+function isPermanentCredentialFailure(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+}
+
 /** Credential-safe HTTP client shared by all three operations. */
 export class GmailHTTPClient {
   readonly #settings: GmailClientSettings;
@@ -70,7 +77,7 @@ export class GmailHTTPClient {
   async resolveCredentials(call: Call, signal?: AbortSignal): Promise<Credentials> {
     let credentials: Credentials;
     try { credentials = await resolveCredential(this.#credentials, call, this.#refreshDriver, signal); }
-    catch (error) { throw new GmailCredentialError(error instanceof ReauthorizationRequiredError); }
+    catch (error) { throw new GmailCredentialError(isPermanentCredentialFailure(error)); }
     try { validateCredentials(credentials); }
     catch { throw new GmailCredentialError(); }
     return credentials;
