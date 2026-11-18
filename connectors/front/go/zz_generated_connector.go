@@ -359,10 +359,10 @@ var ReplyToConversationDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "replyToConversation"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: ReplyToConversationBranchReplied, Description: "Front accepted the reply for delivery or created the comment."},
-		{ID: ReplyToConversationBranchNotFound, Description: "The conversation does not exist, was merged, or is not visible to the API token; nothing was sent.", Optional: true},
+		{ID: ReplyToConversationBranchNotFound, Description: "The conversation does not exist or is not visible to the API token (HTTP 404); nothing was sent. A merged conversation's 301 is an unknown outcome instead.", Optional: true},
 		{ID: ReplyToConversationBranchProviderRejected, Description: "Front conclusively rejected the reply or comment, such as a token without send permission or an unknown author; nothing was sent.", Optional: true},
-		{ID: ReplyToConversationBranchUncertain, Description: "The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, an unlisted status, an ambiguous server error, or a 2xx without a provider ID, or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows.", Optional: true},
-		{ID: ReplyToConversationBranchDefect, Description: "Local input, connection credentials that require reauthorization or are unusable before sending, or the connector definition is invalid; transient credential failures Retry.", Optional: true},
+		{ID: ReplyToConversationBranchUncertain, Description: "The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, a 3xx such as a merged conversation's 301, an unlisted status, an ambiguous server error, or a refusal with an unreadable body; Front accepted it with a 2xx that carries no usable provider ID; a refusal or a reconnection requirement follows a possible earlier send; or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows; a 2xx is never resent.", Optional: true},
+		{ID: ReplyToConversationBranchDefect, Description: "Local input, connection credentials that require reauthorization or are unusable before a first send, or the connector definition is invalid; transient credential failures Retry.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -446,7 +446,7 @@ var UpdateConversationDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateConversationBranchNotFound, Description: "The conversation does not exist, was merged, or is not visible to the API token.", Optional: true},
 		{ID: UpdateConversationBranchProviderRejected, Description: "Front conclusively rejected a change, such as an unknown teammate, tag, or ticket status; changes sent before it stay applied.", Optional: true},
 		{ID: UpdateConversationBranchInvalidResponse, Description: "Front returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing.", Optional: true},
-		{ID: UpdateConversationBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+		{ID: UpdateConversationBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid, or the connection needs reconnection on the first attempt; a transient credential failure, or one after an earlier attempt, Retries.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(60000000000), HeartbeatTimeout: time.Duration(0),

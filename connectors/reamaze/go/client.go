@@ -122,6 +122,8 @@ type reamazeResponse struct {
 	header     http.Header
 	body       []byte
 	requestID  string
+	// hasOversizedBody marks a non-2xx answer whose body exceeded maxResponseBytes and was not read.
+	hasOversizedBody bool
 }
 
 // exchangeOutcome is the provider-neutral meaning of one Re:amaze request that each operation maps to a branch.
@@ -280,7 +282,8 @@ func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operati
 	}
 	body, readErr := providerhttp.ReadBoundedBody(httpResponse.Body, client.maxResponseBytes)
 	closeErr := httpResponse.Body.Close()
-	response := reamazeResponse{statusCode: httpResponse.StatusCode, header: httpResponse.Header, requestID: safeRequestID(httpResponse.Header)}
+	response := reamazeResponse{statusCode: httpResponse.StatusCode, header: httpResponse.Header, requestID: safeRequestID(httpResponse.Header),
+		hasOversizedBody: errors.Is(readErr, providerhttp.ErrBodyTooLarge)}
 	isSuccess := httpResponse.StatusCode >= 200 && httpResponse.StatusCode < 300
 	switch {
 	case errors.Is(readErr, providerhttp.ErrBodyTooLarge) && isSuccess:

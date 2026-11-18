@@ -78,11 +78,11 @@ export const CreateTicketBranch = {
   Uncertain: "uncertain",
   Defect: "defect",
 } as const;
-/** Freshdesk created the ticket and returned it. */
+/** Freshdesk created the ticket and returned it, or the ticket was read back by the ID Freshdesk returned. */
 export const CreateTicketBranchCreated = CreateTicketBranch.Created;
 /** Freshdesk conclusively rejected the ticket, such as an unknown status, group, or agent; no ticket was created. */
 export const CreateTicketBranchProviderRejected = CreateTicketBranch.ProviderRejected;
-/** The ticket may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Freshdesk returned the ticket ID with an invalid ticket. The Step does not send it again. */
+/** The ticket may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, an oversized refusal, or another server error besides 503; or Freshdesk accepted the ticket with an unusable answer and the ticket could not be read back by its ID. The Step does not send it again. */
 export const CreateTicketBranchUncertain = CreateTicketBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateTicketBranchDefect = CreateTicketBranch.Defect;
@@ -90,9 +90,9 @@ export const CreateTicketBranchDefect = CreateTicketBranch.Defect;
 export const CreateTicketDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "createTicket" },
   branches: [
-    { id: "created", description: "Freshdesk created the ticket and returned it." },
+    { id: "created", description: "Freshdesk created the ticket and returned it, or the ticket was read back by the ID Freshdesk returned." },
     { id: "providerRejected", description: "Freshdesk conclusively rejected the ticket, such as an unknown status, group, or agent; no ticket was created.", optional: true },
-    { id: "uncertain", description: "The ticket may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Freshdesk returned the ticket ID with an invalid ticket. The Step does not send it again.", optional: true },
+    { id: "uncertain", description: "The ticket may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, an oversized refusal, or another server error besides 503; or Freshdesk accepted the ticket with an unusable answer and the ticket could not be read back by its ID. The Step does not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },
@@ -144,13 +144,13 @@ export const AddNoteBranch = {
   Uncertain: "uncertain",
   Defect: "defect",
 } as const;
-/** Freshdesk added the note or reply and returned it. */
+/** Freshdesk added the note or reply and returned it, or the ticket's conversation list shows it by the ID Freshdesk returned. */
 export const AddNoteBranchAdded = AddNoteBranch.Added;
 /** The ticket does not exist or is not visible to the connection's agent; nothing was added. */
 export const AddNoteBranchNotFound = AddNoteBranch.NotFound;
 /** Freshdesk conclusively rejected the note or reply; nothing was added. */
 export const AddNoteBranchProviderRejected = AddNoteBranch.ProviderRejected;
-/** The note or reply may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Freshdesk returned the conversation ID with an invalid conversation. The Step does not send it again. */
+/** The note or reply may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, an oversized refusal, or another server error besides 503; or Freshdesk accepted it with an unusable answer and the ticket's conversation list did not show it by its ID. The Step does not send it again. */
 export const AddNoteBranchUncertain = AddNoteBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const AddNoteBranchDefect = AddNoteBranch.Defect;
@@ -158,10 +158,10 @@ export const AddNoteBranchDefect = AddNoteBranch.Defect;
 export const AddNoteDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "addNote" },
   branches: [
-    { id: "added", description: "Freshdesk added the note or reply and returned it." },
+    { id: "added", description: "Freshdesk added the note or reply and returned it, or the ticket's conversation list shows it by the ID Freshdesk returned." },
     { id: "notFound", description: "The ticket does not exist or is not visible to the connection's agent; nothing was added.", optional: true },
     { id: "providerRejected", description: "Freshdesk conclusively rejected the note or reply; nothing was added.", optional: true },
-    { id: "uncertain", description: "The note or reply may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Freshdesk returned the conversation ID with an invalid conversation. The Step does not send it again.", optional: true },
+    { id: "uncertain", description: "The note or reply may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, an oversized refusal, or another server error besides 503; or Freshdesk accepted it with an unusable answer and the ticket's conversation list did not show it by its ID. The Step does not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },

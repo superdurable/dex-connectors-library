@@ -82,7 +82,7 @@ export const CreateConversationBranch = {
 export const CreateConversationBranchCreated = CreateConversationBranch.Created;
 /** Re:amaze conclusively rejected the conversation, such as an unknown channel or an invalid status; no conversation was created. */
 export const CreateConversationBranchProviderRejected = CreateConversationBranch.ProviderRejected;
-/** The send cap is reached, and no conversation carries the Step's key after sends whose outcome could not be confirmed, so one may still appear. Below the cap, an unconfirmed send is read back and then resent. */
+/** No conversation carrying the Step's key could be confirmed after a send that may have created one: the send cap is reached, Re:amaze accepted the create with an unusable answer, or the read-back was refused, so one may still appear. Below the cap, a send whose outcome is unknown is read back and then resent. */
 export const CreateConversationBranchUncertain = CreateConversationBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateConversationBranchDefect = CreateConversationBranch.Defect;
@@ -92,7 +92,7 @@ export const CreateConversationDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "The conversation exists; a retried attempt that found the conversation an earlier attempt created reports it instead of sending again." },
     { id: "providerRejected", description: "Re:amaze conclusively rejected the conversation, such as an unknown channel or an invalid status; no conversation was created.", optional: true },
-    { id: "uncertain", description: "The send cap is reached, and no conversation carries the Step's key after sends whose outcome could not be confirmed, so one may still appear. Below the cap, an unconfirmed send is read back and then resent.", optional: true },
+    { id: "uncertain", description: "No conversation carrying the Step's key could be confirmed after a send that may have created one: the send cap is reached, Re:amaze accepted the create with an unusable answer, or the read-back was refused, so one may still appear. Below the cap, a send whose outcome is unknown is read back and then resent.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },
@@ -116,7 +116,7 @@ export const UpdateConversationBranchUpdated = UpdateConversationBranch.Updated;
 export const UpdateConversationBranchNotFound = UpdateConversationBranch.NotFound;
 /** Re:amaze conclusively rejected the change, such as an assignee email that is not a staff user. */
 export const UpdateConversationBranchProviderRejected = UpdateConversationBranch.ProviderRejected;
-/** Re:amaze returned an invalid or oversized conversation on the read before the change, so this attempt changed nothing. */
+/** Kept for existing Flows and mocks; the connector no longer selects it. An invalid or oversized conversation, on the read before the change or in answer to it, returns Retry, because an earlier attempt may have applied the change and repeating it is safe. */
 export const UpdateConversationBranchInvalidResponse = UpdateConversationBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateConversationBranchDefect = UpdateConversationBranch.Defect;
@@ -127,7 +127,7 @@ export const UpdateConversationDefinition: MutationDefinition = {
     { id: "updated", description: "The conversation holds the requested status, assignee, and tags, written now or by an earlier attempt." },
     { id: "notFound", description: "The conversation does not exist in the brand or is not visible to the connection's user.", optional: true },
     { id: "providerRejected", description: "Re:amaze conclusively rejected the change, such as an assignee email that is not a staff user.", optional: true },
-    { id: "invalidResponse", description: "Re:amaze returned an invalid or oversized conversation on the read before the change, so this attempt changed nothing.", optional: true },
+    { id: "invalidResponse", description: "Kept for existing Flows and mocks; the connector no longer selects it. An invalid or oversized conversation, on the read before the change or in answer to it, returns Retry, because an earlier attempt may have applied the change and repeating it is safe.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
@@ -150,7 +150,7 @@ export const ReplyToConversationBranchReplied = ReplyToConversationBranch.Replie
 export const ReplyToConversationBranchNotFound = ReplyToConversationBranch.NotFound;
 /** Re:amaze conclusively rejected the message; nothing was added. */
 export const ReplyToConversationBranchProviderRejected = ReplyToConversationBranch.ProviderRejected;
-/** The send cap is reached, and the conversation shows no message with the Step's origin_id after sends whose outcome could not be confirmed, so one may still appear. Below the cap, an unconfirmed send is read back and then resent. */
+/** No message with the Step's origin_id could be confirmed after a send that may have added one: the send cap is reached, Re:amaze accepted the message with an unusable answer, or the read-back was refused or found no conversation, so one may still appear. Below the cap, a send whose outcome is unknown is read back and then resent. */
 export const ReplyToConversationBranchUncertain = ReplyToConversationBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const ReplyToConversationBranchDefect = ReplyToConversationBranch.Defect;
@@ -161,7 +161,7 @@ export const ReplyToConversationDefinition: MutationDefinition = {
     { id: "replied", description: "The reply or note is in the conversation; a retried attempt that found its own earlier message reports it instead of sending again." },
     { id: "notFound", description: "The conversation does not exist in the brand or is not visible to the connection's user; nothing was added.", optional: true },
     { id: "providerRejected", description: "Re:amaze conclusively rejected the message; nothing was added.", optional: true },
-    { id: "uncertain", description: "The send cap is reached, and the conversation shows no message with the Step's origin_id after sends whose outcome could not be confirmed, so one may still appear. Below the cap, an unconfirmed send is read back and then resent.", optional: true },
+    { id: "uncertain", description: "No message with the Step's origin_id could be confirmed after a send that may have added one: the send cap is reached, Re:amaze accepted the message with an unusable answer, or the read-back was refused or found no conversation, so one may still appear. Below the cap, a send whose outcome is unknown is read back and then resent.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },

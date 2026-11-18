@@ -215,7 +215,7 @@ func ReplyToConversationUncertain(value intercom.ReplyToConversationOutput, fail
 	return connectormock.Uncertain(value, failure)
 }
 
-// ReplyToConversationInvalidResponse selects the invalidResponse branch: Intercom shows the reply in the conversation, but its part is invalid, such as a part without an ID; the reply exists, so do not send it again.
+// ReplyToConversationInvalidResponse selects the invalidResponse branch: No longer selected. A reply whose part is invalid may exist, so the connector selects uncertain instead; the branch stays declared for compatibility.
 func ReplyToConversationInvalidResponse(value intercom.ReplyToConversationOutput, failure *sdkgo.Failure) connectormock.Case[intercom.ReplyToConversationOutput] {
 	return connectormock.Branch(intercom.ReplyToConversationBranchInvalidResponse, value, failure)
 }

@@ -99,10 +99,12 @@ func (CreateTicketOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateTicketI
 }
 
 // Invoke creates the ticket under the call's Idempotency-Key. Only HTTP 400, 401, 403, 404, 411,
-// 413, 414, 415, or 422 selects providerRejected. Every other outcome, including a lost response,
-// a 409 from a concurrent attempt with the same key, a rate limit, a 5xx, a redirect, or an
-// invalid, oversized, or credential-reflecting 2xx, retries the identical request, and Zendesk
-// answers a repeated key and body with the ticket it already created.
+// 413, 414, 415, or 422 with a readable body that carries no ticket selects providerRejected.
+// Every other outcome, including a lost response, a 409 from a concurrent attempt with the same
+// key, a rate limit, a 5xx, a redirect, an oversized error body, or an invalid, oversized, or
+// credential-reflecting 2xx, retries the identical request, and Zendesk answers a repeated key
+// and body with the ticket it already created. A credential failure selects defect only when it
+// is terminal on the first attempt; otherwise it retries.
 func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicketInput) sdkgo.MutationAttempt[CreateTicketOutput] {
 	if err := validateCreateTicketInput(input); err != nil {
 		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, CreateTicketOutput{}, zendeskFailurePointer(sdkgo.FailureValidation, createTicketOperation, err.Error()), sdkgo.Receipt{})
@@ -110,10 +112,10 @@ func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicke
 	if call.IdempotencyKey == "" {
 		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, CreateTicketOutput{}, zendeskFailurePointer(sdkgo.FailureLocalDefect, createTicketOperation, "connector call has no idempotency key"), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, createTicketOperation)
+	credentials, failure, isTerminal := operation.client.resolveWriteCredentials(call, createTicketOperation)
 	if failure != nil {
-		if call.Context.Attempt() > 1 {
-			// defect would hide a ticket an earlier attempt may have created.
+		if call.Context.Attempt() > 1 || !isTerminal {
+			// defect would hide a ticket an earlier attempt may have created; createTicket declares no uncertain branch.
 			return sdkgo.NewMutationRetry[CreateTicketOutput](*failure, 0)
 		}
 		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, CreateTicketOutput{}, failure, sdkgo.Receipt{})
@@ -127,7 +129,7 @@ func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicke
 	case result.outcome == exchangeSucceeded:
 	case result.outcome == exchangeDefect:
 		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, CreateTicketOutput{}, &result.failure, receipt)
-	case (result.outcome == exchangeRejected || result.outcome == exchangeNotFound) && isDefiniteRefusalStatus(result.response.statusCode):
+	case isDefiniteRefusal(result):
 		return sdkgo.NewMutationBranch(CreateTicketBranchProviderRejected, CreateTicketOutput{}, &result.failure, receipt)
 	default:
 		// The keyed request is safe to repeat, and its outcome is unknown.

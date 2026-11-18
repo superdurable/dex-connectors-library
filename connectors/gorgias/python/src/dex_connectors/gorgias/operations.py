@@ -442,7 +442,10 @@ class UpdateTicketOperation:
             return MutationAttempt.branch_result(
                 defs.DEFECT, zero, Receipt(), failure(FailureKind.VALIDATION, operation, str(error))
             )
-        credentials, credential_failure = await self.client.resolve_credentials(call, operation)
+        resolved = await self.client.resolve_write_credentials(call, operation)
+        credentials, credential_failure, is_terminal = resolved
+        if credential_failure and not is_terminal:
+            return MutationAttempt.retry(credential_failure)
         if credential_failure:
             return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), credential_failure)
         assert credentials is not None
@@ -543,9 +546,32 @@ class UpdateTicketOperation:
 
 def _is_conclusive_write_failure(exchange: Exchange) -> bool:
     """Report a definite refusal or a request that was never built."""
-    if exchange.outcome in ("notFound", "defect"):
+    if exchange.outcome == "defect":
         return True
-    return exchange.outcome == "rejected" and exchange.status in _DEFINITE_REFUSAL_STATUSES
+    return exchange.outcome in ("notFound", "rejected") and _is_definite_refusal(exchange)
+
+
+def _is_definite_refusal(exchange: Exchange) -> bool:
+    """Report a refusal status whose body was read, which proves Gorgias applied nothing."""
+    return exchange.status in _DEFINITE_REFUSAL_STATUSES and not exchange.body_too_large
+
+
+def _is_accepted_write(exchange: Exchange) -> bool:
+    """Report a 2xx, or any answer naming a created object: Gorgias applied the write."""
+    return 200 <= exchange.status < 300 or exchange.object_id > 0
+
+
+def _accepted_object_id(exchange: Exchange, external_id: str, ticket_id: int = 0) -> int:
+    """Return the ID an accepted answer names for this Step's write.
+
+    Zero means the answer names no object or another object. ticket_id zero skips the ticket check.
+    """
+    is_other_external_id = bool(exchange.object_external_id) and exchange.object_external_id != external_id
+    object_ticket_id = exchange.object_ticket_id
+    is_other_ticket = bool(ticket_id) and bool(object_ticket_id) and object_ticket_id != ticket_id
+    if exchange.object_id < 1 or is_other_external_id or is_other_ticket:
+        return 0
+    return exchange.object_id
 
 
 def _after_write_exchange(exchange: Exchange, receipt: Receipt, value: Any) -> MutationAttempt[Any] | None:
@@ -569,17 +595,30 @@ class _WritePermit:
     decision: Decision
 
     @property
-    def is_first_send(self) -> bool:
-        return self.decision.prior_send_upper_bound == 0
+    def saved_provider_id(self) -> str:
+        """The Gorgias ID an earlier attempt checkpointed after Gorgias accepted the write, or empty."""
+        return self.decision.marker.provider_id if self.decision.marker is not None else ""
 
     @property
-    def needs_read_back(self) -> bool:
-        return self.decision.kind != DecisionKind.SEND_ALLOWED or self.decision.prior_send_upper_bound > 0
+    def has_possible_earlier_send(self) -> bool:
+        """An earlier attempt may have sent, so Gorgias is searched first and nothing is refused."""
+        return (
+            self.decision.kind != DecisionKind.SEND_ALLOWED
+            or self.decision.prior_send_upper_bound > 0
+            or bool(self.saved_provider_id)
+        )
 
     @property
     def can_send_after_unconfirmed_read_back(self) -> bool:
-        has_saved_id = self.decision.marker is not None and bool(self.decision.marker.provider_id)
-        return self.decision.kind != DecisionKind.READ_BACK_REQUIRED and not has_saved_id
+        return self.decision.kind != DecisionKind.READ_BACK_REQUIRED and not self.saved_provider_id
+
+    def saved_provider_number(self) -> int:
+        """Return the saved provider ID as a number, or zero when it is unreadable."""
+        try:
+            provider_id = int(self.saved_provider_id)
+        except ValueError:
+            return 0
+        return provider_id if self.saved_provider_id.isdigit() and provider_id > 0 else 0
 
 
 async def _begin_write(
@@ -609,17 +648,30 @@ async def _begin_write(
 
 
 async def _credential_failure_attempt(
-    permit: _WritePermit, operation: str, reason: Failure, zero: Any
+    permit: _WritePermit, operation: str, reason: Failure, is_terminal: bool, zero: Any
 ) -> MutationAttempt[Any]:
-    if not permit.is_first_send:
+    """Map unusable credentials before any send in this attempt.
+
+    After a possible earlier send nothing is recorded: a transient failure retries and a terminal one
+    selects uncertain.
+    """
+    if permit.has_possible_earlier_send:
         # notSent would hide the earlier possible send, so nothing is recorded.
+        if not is_terminal:
+            return MutationAttempt.retry(
+                failure(
+                    FailureKind.AVAILABILITY,
+                    operation,
+                    "connection credentials could not be read; nothing was sent in this attempt",
+                )
+            )
         return MutationAttempt.uncertain(
             zero,
             failure(
                 reason.kind,
                 operation,
                 "an earlier attempt of this Step may have sent the request and the connection "
-                "credentials are unavailable to read it back",
+                "credentials are unusable to read it back; reconnect the connection",
             ),
             Receipt(),
         )
@@ -629,6 +681,8 @@ async def _credential_failure_attempt(
         return MutationAttempt.retry(
             failure(FailureKind.AVAILABILITY, operation, "Dex did not record the not-sent checkpoint")
         )
+    if not is_terminal:
+        return MutationAttempt.retry(reason)
     return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), reason)
 
 
@@ -641,13 +695,17 @@ def _read_back_attempt(
     resource: str,
     zero: Any,
 ) -> MutationAttempt[Any] | None:
-    """Map an external-ID lookup; None means this attempt may send."""
+    """Map an external-ID lookup; None means this attempt may send.
+
+    Only a readable answer, valid or not, permits a resend: a refused lookup, such as a missing ticket or an
+    auth error, selects uncertain.
+    """
     if exchange.outcome == "success" and found is not None:
         return found
     if exchange.outcome in _RETRY_OUTCOMES:
         assert exchange.failure is not None
         return MutationAttempt.retry(exchange.failure, _reconcile_delay(exchange.retry_after, 15))
-    if permit.can_send_after_unconfirmed_read_back:
+    if exchange.outcome in ("success", "invalid") and permit.can_send_after_unconfirmed_read_back:
         return None
     if exchange.outcome == "success":
         reason = failure(
@@ -661,14 +719,50 @@ def _read_back_attempt(
         reason = failure(
             exchange.failure.kind,
             operation,
-            "earlier attempts of this Step may have sent the request, the send cap is reached, "
-            "and Gorgias could not confirm it: " + exchange.failure.message,
+            "earlier attempts of this Step may have sent the request, and Gorgias could not confirm it: "
+            + exchange.failure.message,
+        )
+    return MutationAttempt.uncertain(zero, reason, receipt)
+
+
+def _accepted_write_attempt(
+    is_provider_id_saved: bool,
+    exchange: Exchange,
+    found: MutationAttempt[Any] | None,
+    receipt: Receipt,
+    operation: str,
+    resource: str,
+    zero: Any,
+) -> MutationAttempt[Any]:
+    """Map the read-back of a write Gorgias accepted; it never permits a resend.
+
+    A transient failure retries only when the provider ID is checkpointed, so the next attempt reads
+    back by it.
+    """
+    if exchange.outcome == "success" and found is not None:
+        return found
+    if is_provider_id_saved and exchange.outcome in _RETRY_OUTCOMES:
+        assert exchange.failure is not None
+        return MutationAttempt.retry(exchange.failure, _reconcile_delay(exchange.retry_after, 15))
+    if exchange.outcome == "success":
+        reason = failure(
+            FailureKind.PROTOCOL,
+            operation,
+            f"Gorgias accepted the request, but reading the {resource} back did not confirm it",
+        )
+    else:
+        assert exchange.failure is not None
+        reason = failure(
+            exchange.failure.kind,
+            operation,
+            f"Gorgias accepted the request, but the {resource} could not be read back: "
+            + exchange.failure.message,
         )
     return MutationAttempt.uncertain(zero, reason, receipt)
 
 
 async def _pre_send_retry(permit: _WritePermit, reason: Failure, retry_after: float) -> MutationAttempt[Any]:
-    if permit.decision.kind == DecisionKind.SEND_ALLOWED:
+    if not permit.has_possible_earlier_send:
         try:
             await permit.fence.record_not_sent()
         except Exception:
@@ -711,8 +805,11 @@ async def _send_write(
 async def _write_attempt(
     permit: _WritePermit, exchange: Exchange, receipt: Receipt, zero: Any, not_found_branch: str
 ) -> MutationAttempt[Any] | None:
-    """Map a sent write; any outcome but a definite refusal retries, and the next attempt reads back."""
-    if exchange.outcome == "success":
+    """Map a sent write; None means Gorgias accepted it, even with an unusable answer.
+
+    Any outcome but a definite refusal retries, and the next attempt reads back.
+    """
+    if _is_accepted_write(exchange):
         return None
     assert exchange.failure is not None
     if exchange.outcome in ("rateLimited", "notSent") or (
@@ -724,16 +821,17 @@ async def _write_attempt(
             pass  # A lost checkpoint leaves the claim, so the next attempt counts this send and reads back.
         return MutationAttempt.retry(exchange.failure, exchange.retry_after)
     branch = ""
-    if exchange.outcome == "notFound":
+    if exchange.outcome == "notFound" and _is_definite_refusal(exchange):
         branch = not_found_branch
-    elif exchange.outcome == "defect" and permit.is_first_send:
+    elif exchange.outcome == "defect":
+        # The request was never built; after a possible earlier send this selects uncertain.
         branch, receipt = defs.DEFECT, Receipt()
-    elif exchange.outcome == "rejected" and exchange.status in _DEFINITE_REFUSAL_STATUSES:
+    elif exchange.outcome == "rejected" and _is_definite_refusal(exchange):
         branch = defs.PROVIDER_REJECTED
     if not branch:
-        # A 3xx, 408, 409, other 5xx, unlisted status, or unusable 2xx may follow an applied write.
+        # A 3xx, 408, 409, other 5xx, unlisted status, or unread refusal body may follow an applied write.
         return MutationAttempt.retry(exchange.failure, _reconcile_delay(exchange.retry_after, 2))
-    if not permit.is_first_send:
+    if permit.has_possible_earlier_send:
         return MutationAttempt.uncertain(zero, exchange.failure, receipt)
     try:
         await permit.fence.record_can_resend()
@@ -748,11 +846,13 @@ async def _write_attempt(
     return MutationAttempt.branch_result(branch, zero, receipt, exchange.failure)
 
 
-async def _record_accepted_write(permit: _WritePermit, provider_id: int) -> None:
+async def _record_accepted_write(permit: _WritePermit, provider_id: int) -> bool:
+    """Checkpoint the accepted provider ID and report whether Dex saved it."""
     try:
         await permit.fence.record_provider_id(str(provider_id))
     except Exception:
-        pass  # The accepted response already identifies the write.
+        return False
+    return True
 
 
 def _html_body(value: str) -> str:
@@ -806,11 +906,15 @@ class CreateTicketOperation:
         if ended is not None:
             return ended
         assert permit is not None
-        credentials, credential_failure = await self.client.resolve_credentials(call, operation)
+        resolved = await self.client.resolve_write_credentials(call, operation)
+        credentials, credential_failure, is_terminal = resolved
         if credential_failure:
-            return await _credential_failure_attempt(permit, operation, credential_failure, zero)
+            return await _credential_failure_attempt(permit, operation, credential_failure, is_terminal, zero)
         assert credentials is not None
-        if permit.needs_read_back:
+        if permit.saved_provider_id:
+            # Gorgias accepted an earlier attempt's ticket, so it is read back by ID and never sent again.
+            return await self._confirm_ticket(call, credentials, permit.saved_provider_number(), True, True)
+        if permit.has_possible_earlier_send:
             ticket, lookup, receipt = await self._look_up_ticket(call, credentials)
             found = (
                 MutationAttempt.branch_result(defs.CREATED, CreateTicketOutput(ticket, True), receipt)
@@ -864,20 +968,75 @@ class CreateTicketOperation:
         terminal = await _write_attempt(permit, result, receipt, zero, defs.PROVIDER_REJECTED)
         if terminal is not None:
             return terminal
-        try:
-            created = decode_ticket(json.loads(result.body))
-        except (ValueError, TypeError, KeyError, AttributeError) as error:
-            return MutationAttempt.retry(
-                failure(
-                    FailureKind.PROTOCOL,
-                    operation,
-                    "Gorgias accepted the ticket but returned an invalid ticket: " + str(error),
-                ),
-                2,
-            )
+        created: Ticket | None = None
+        if result.outcome == "success":
+            try:
+                created = decode_ticket(json.loads(result.body))
+            except (ValueError, TypeError, KeyError, AttributeError):
+                created = None
+        if created is None:
+            return await self._confirm_accepted_ticket(call, credentials, permit, result)
+        # The answer already proves acceptance, so a lost checkpoint changes nothing.
         await _record_accepted_write(permit, created.id)
         return MutationAttempt.branch_result(
             defs.CREATED, CreateTicketOutput(created), self.client.receipt(call, result, created.id)
+        )
+
+    async def _confirm_accepted_ticket(
+        self, call: Call, credentials: Any, permit: _WritePermit, result: Exchange
+    ) -> MutationAttempt[CreateTicketOutput]:
+        """Read back a ticket Gorgias accepted with an unusable answer; it never resends.
+
+        The read is by ID when the answer names this Step's ticket, otherwise once by external ID.
+        """
+        ticket_id = _accepted_object_id(result, str(call.idempotency_key))
+        if ticket_id:
+            is_saved = await _record_accepted_write(permit, ticket_id)
+            return await self._confirm_ticket(call, credentials, ticket_id, is_saved, False)
+        ticket, lookup, receipt = await self._look_up_ticket(call, credentials)
+        found = (
+            MutationAttempt.branch_result(defs.CREATED, CreateTicketOutput(ticket), receipt)
+            if ticket is not None
+            else None
+        )
+        operation, zero = defs.CREATE_TICKET_OPERATION_ID, CreateTicketOutput(_ZERO_TICKET)
+        return _accepted_write_attempt(False, lookup, found, receipt, operation, "ticket", zero)
+
+    async def _confirm_ticket(
+        self,
+        call: Call,
+        credentials: Any,
+        ticket_id: int,
+        is_provider_id_saved: bool,
+        was_created_by_earlier_attempt: bool,
+    ) -> MutationAttempt[CreateTicketOutput]:
+        """Read GET /api/tickets/{id} and confirm it is this Step's ticket by its external ID."""
+        operation = defs.CREATE_TICKET_OPERATION_ID
+        zero = CreateTicketOutput(_ZERO_TICKET)
+        if ticket_id < 1:
+            return MutationAttempt.uncertain(
+                zero,
+                failure(
+                    FailureKind.PROTOCOL,
+                    operation,
+                    "Gorgias accepted the ticket, but the checkpointed ticket ID is unreadable",
+                ),
+                Receipt(),
+            )
+        result = await self.client.exchange(call, credentials, operation, "GET", f"/tickets/{ticket_id}")
+        receipt = self.client.receipt(call, result, ticket_id)
+        found = None
+        if result.outcome == "success":
+            try:
+                ticket = decode_ticket(json.loads(result.body), ticket_id)
+            except (ValueError, TypeError, KeyError, AttributeError):
+                ticket = None
+            if ticket is not None and ticket.external_id == str(call.idempotency_key):
+                found = MutationAttempt.branch_result(
+                    defs.CREATED, CreateTicketOutput(ticket, was_created_by_earlier_attempt), receipt
+                )
+        return _accepted_write_attempt(
+            is_provider_id_saved, result, found, receipt, operation, "ticket", zero
         )
 
     async def _look_up_ticket(self, call: Call, credentials: Any) -> tuple[Ticket | None, Exchange, Receipt]:
@@ -945,12 +1104,18 @@ class AddNoteOperation:
         if ended is not None:
             return ended
         assert permit is not None
-        credentials, credential_failure = await self.client.resolve_credentials(call, operation)
+        resolved = await self.client.resolve_write_credentials(call, operation)
+        credentials, credential_failure, is_terminal = resolved
         if credential_failure:
-            return await _credential_failure_attempt(permit, operation, credential_failure, zero)
+            return await _credential_failure_attempt(permit, operation, credential_failure, is_terminal, zero)
         assert credentials is not None
         path = f"/tickets/{input.ticket_id}"
-        if permit.needs_read_back:
+        if permit.saved_provider_id:
+            # Gorgias accepted an earlier attempt's message, so it is read back by ID and never sent again.
+            return await self._confirm_message(
+                call, credentials, input.ticket_id, permit.saved_provider_number(), True, True
+            )
+        if permit.has_possible_earlier_send:
             message, lookup, receipt = await self._look_up_message(call, credentials, input.ticket_id)
             found = (
                 MutationAttempt.branch_result(defs.ADDED, AddNoteOutput(message, True), receipt)
@@ -1029,32 +1194,84 @@ class AddNoteOperation:
         terminal = await _write_attempt(permit, result, receipt, zero, defs.NOT_FOUND)
         if terminal is not None:
             return terminal
-        try:
-            record = json.loads(result.body)
-            message = decode_message(record)
-            if message.ticket_id and message.ticket_id != input.ticket_id:
-                raise ValueError("message response is for another ticket")
-            if message.external_id and message.external_id != str(call.idempotency_key):
-                raise ValueError("message response is another message")
-            message = replace(message, ticket_id=input.ticket_id)
-        except (ValueError, TypeError, KeyError, AttributeError) as error:
-            return MutationAttempt.retry(
+        added: TicketMessage | None = None
+        if result.outcome == "success":
+            try:
+                record = json.loads(result.body)
+                added = decode_message(record)
+                if added.ticket_id and added.ticket_id != input.ticket_id:
+                    raise ValueError("message response is for another ticket")
+                if added.external_id and added.external_id != str(call.idempotency_key):
+                    raise ValueError("message response is another message")
+                added = replace(added, ticket_id=input.ticket_id)
+            except (ValueError, TypeError, KeyError, AttributeError):
+                added = None
+        if added is None:
+            return await self._confirm_accepted_message(call, credentials, input.ticket_id, permit, result)
+        # The answer already proves acceptance, so a lost checkpoint changes nothing.
+        await _record_accepted_write(permit, added.id)
+        return MutationAttempt.branch_result(
+            defs.ADDED, AddNoteOutput(added), self.client.receipt(call, result, added.id)
+        )
+
+    async def _confirm_accepted_message(
+        self, call: Call, credentials: Any, ticket_id: int, permit: _WritePermit, result: Exchange
+    ) -> MutationAttempt[AddNoteOutput]:
+        """Read back a message Gorgias accepted with an unusable answer; it never resends.
+
+        The read is by ID when the answer names this Step's message, otherwise once by external ID.
+        """
+        message_id = _accepted_object_id(result, str(call.idempotency_key), ticket_id)
+        if message_id:
+            is_saved = await _record_accepted_write(permit, message_id)
+            return await self._confirm_message(call, credentials, ticket_id, message_id, is_saved, False)
+        message, lookup, receipt = await self._look_up_message(call, credentials, ticket_id)
+        found = (
+            MutationAttempt.branch_result(defs.ADDED, AddNoteOutput(message), receipt)
+            if message is not None
+            else None
+        )
+        return _accepted_write_attempt(
+            False, lookup, found, receipt, defs.ADD_NOTE_OPERATION_ID, "message", AddNoteOutput()
+        )
+
+    async def _confirm_message(
+        self,
+        call: Call,
+        credentials: Any,
+        ticket_id: int,
+        message_id: int,
+        is_provider_id_saved: bool,
+        was_created_by_earlier_attempt: bool,
+    ) -> MutationAttempt[AddNoteOutput]:
+        """Read the ticket and confirm the message with message_id carries this Step's external ID."""
+        operation = defs.ADD_NOTE_OPERATION_ID
+        if message_id < 1:
+            return MutationAttempt.uncertain(
+                AddNoteOutput(),
                 failure(
                     FailureKind.PROTOCOL,
                     operation,
-                    "Gorgias accepted the message but returned an invalid message: " + str(error),
+                    "Gorgias accepted the message, but the checkpointed message ID is unreadable",
                 ),
-                2,
+                Receipt(),
             )
-        await _record_accepted_write(permit, message.id)
-        return MutationAttempt.branch_result(
-            defs.ADDED, AddNoteOutput(message), self.client.receipt(call, result, message.id)
+        message, lookup, receipt = await self._look_up_message(call, credentials, ticket_id, message_id)
+        found = (
+            MutationAttempt.branch_result(
+                defs.ADDED, AddNoteOutput(message, was_created_by_earlier_attempt), receipt
+            )
+            if message is not None
+            else None
+        )
+        return _accepted_write_attempt(
+            is_provider_id_saved, lookup, found, receipt, operation, "message", AddNoteOutput()
         )
 
     async def _look_up_message(
-        self, call: Call, credentials: Any, ticket_id: int
+        self, call: Call, credentials: Any, ticket_id: int, message_id: int = 0
     ) -> tuple[TicketMessage | None, Exchange, Receipt]:
-        """Find the message an earlier attempt may have added, by the external ID it wrote."""
+        """Find this Step's message among the ticket's messages by external ID and, when given, by ID."""
         operation = defs.ADD_NOTE_OPERATION_ID
         result = await self.client.exchange(call, credentials, operation, "GET", f"/tickets/{ticket_id}")
         receipt = self.client.receipt(call, result, ticket_id)
@@ -1064,7 +1281,9 @@ class AddNoteOperation:
             record = json.loads(result.body)
             decode_ticket(record, ticket_id)
             for wire in record.get("messages") or ():
-                if wire.get("external_id") == str(call.idempotency_key):
+                if wire.get("external_id") == str(call.idempotency_key) and (
+                    not message_id or wire.get("id") == message_id
+                ):
                     try:
                         message = decode_message(wire, ticket_id)
                         return message, result, self.client.receipt(call, result, message.id)
@@ -1084,7 +1303,7 @@ def _reply_route_failure(
     permit: _WritePermit, branch: str, reason: Failure, receipt: Receipt, zero: AddNoteOutput
 ) -> MutationAttempt[AddNoteOutput]:
     """Select `branch` on a first send; after a possible earlier send, select uncertain."""
-    if not permit.is_first_send:
+    if permit.has_possible_earlier_send:
         return MutationAttempt.uncertain(
             zero,
             failure(

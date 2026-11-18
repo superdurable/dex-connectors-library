@@ -92,12 +92,13 @@ export class CreateTicketOperation implements Mutation<CreateTicketInput, Create
   async invoke(call: Call, input: CreateTicketInput): Promise<MutationAttempt<CreateTicketOutput>> {
     try { validateCreate(input); } catch (error) { return mutationDefect('createTicket', zeroCreate, error); }
     if (!call.idempotencyKey) return mutationDefect('createTicket', zeroCreate, 'connector call has no idempotency key', 'LOCAL_DEFECT');
-    const credentials = await this.client.resolveCredentials(call);
-    if (!credentials) {
-      // defect would hide a ticket an earlier attempt may have created.
-      if (call.context.attempt > 1) return newMutationRetry(zendeskFailure('createTicket', 'AUTHENTICATION', 'connection credentials are unavailable'));
-      return mutationDefect('createTicket', zeroCreate, 'connection credentials are unavailable', 'AUTHENTICATION');
+    const resolved = await this.client.resolveWriteCredentials(call, 'createTicket');
+    if (resolved.kind !== 'resolved') {
+      // defect would hide a ticket an earlier attempt may have created; createTicket declares no uncertain branch.
+      if (call.context.attempt > 1 || resolved.kind === 'transient') return newMutationRetry(resolved.failure);
+      return newMutationBranch('defect', zeroCreate, zeroReceipt(), resolved.failure);
     }
+    const credentials = resolved.credentials;
     const ticket = { subject: input.subject, comment: { body: input.comment.body, public: !input.comment.isInternalNote },
       ...(input.requester ? { requester: { email: input.requester.email, ...(input.requester.name ? { name: input.requester.name } : {}) } } : {}),
       ...(input.priority ? { priority: input.priority } : {}), ...(input.type ? { type: input.type } : {}),
@@ -108,7 +109,7 @@ export class CreateTicketOperation implements Mutation<CreateTicketInput, Create
     const receipt = this.client.receipt(call, result.response);
     if (result.outcome !== 'success') {
       if (result.outcome === 'defect') return newMutationBranch('defect', zeroCreate, receipt, result.failure);
-      if ((result.outcome === 'rejected' || result.outcome === 'notFound') && definiteRefusalStatuses.has(result.response.status)) return newMutationBranch('providerRejected', zeroCreate, receipt, result.failure);
+      if (isDefiniteRefusal(result)) return newMutationBranch('providerRejected', zeroCreate, receipt, result.failure);
       // The keyed request is safe to repeat, and its outcome is unknown.
       return newMutationRetry(result.failure, result.retryAfterMs);
     }
@@ -138,13 +139,11 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
     // FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
     if (decision.kind === 'failClosed') return newMutationRetry(zendeskFailure('updateTicket', 'AVAILABILITY', 'the single-dispatch checkpoint could not be read; nothing was sent in this attempt'));
     const permit = new TicketWritePermit(fence, decision, effectiveMaxSends(call, definitionMaxSends(UpdateTicketDefinition)));
-    const credentials = await this.client.resolveCredentials(call);
-    if (!credentials) {
-      const unavailable = zendeskFailure('updateTicket', 'AUTHENTICATION', 'connection credentials are unavailable');
-      if (!permit.isFirstSend) return newMutationUncertain(zeroUpdate, unavailable, zeroReceipt());
-      try { await fence.recordNotSent(); } catch { return newMutationRetry(zendeskFailure('updateTicket', 'AVAILABILITY', 'Dex did not record the not-sent checkpoint')); }
-      return newMutationBranch('defect', zeroUpdate, zeroReceipt(), unavailable);
-    }
+    const resolved = await this.client.resolveWriteCredentials(call, 'updateTicket');
+    if (resolved.kind !== 'resolved') return permit.credentialFailureAttempt(resolved.failure, resolved.kind === 'terminal');
+    const credentials = resolved.credentials;
+    // Zendesk accepted an earlier attempt's PUT, so this attempt only reads it back.
+    if (permit.hasAcceptedWrite) return new AcceptedTicketWrite(this.client, call, credentials, input, true, true).readBack();
     const path = `/tickets/${input.ticketId}`;
     const read = await this.client.exchange(call, credentials, 'updateTicket', 'GET', path);
     let receipt = this.client.receipt(call, read.response, input.ticketId);
@@ -163,9 +162,7 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
       const auditTerminal = await permit.readAttempt(audits, receipt, currentOutput);
       if (auditTerminal) return auditTerminal;
       try {
-        const page = objectJSON(audits.response.body);
-        const hasEarlierChange = array(page.audits).some(raw => { const audit = object(raw); const metadata = audit.metadata == null ? {} : object(audit.metadata); const custom = metadata.custom == null ? {} : object(metadata.custom); return custom.dex_idempotency_key === call.idempotencyKey; });
-        if (hasEarlierChange) return newMutationBranch('updated', { ticket: current.ticket, wasAlreadyApplied: true }, receipt);
+        if (hasAuditWithIdempotencyKey(audits.response.body, call.idempotencyKey)) return newMutationBranch('updated', { ticket: current.ticket, wasAlreadyApplied: true }, receipt);
       } catch (error) {
         if (!permit.isFirstSend) return permit.unconfirmedRead(currentOutput, invalidFailure('updateTicket', 'Zendesk returned an invalid audit page', error), receipt);
         return mutationInvalid('updateTicket', currentOutput, receipt, 'Zendesk returned an invalid audit page', error);
@@ -177,15 +174,7 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
       if (!permit.isFirstSend) return permit.unconfirmedRead(currentOutput, conflict, receipt);
       return newMutationBranch('conflict', currentOutput, receipt, conflict);
     }
-    const change: Record<string, unknown> = { metadata: { dex_idempotency_key: call.idempotencyKey }, safe_update: true, updated_stamp: current.updatedStamp };
-    if (input.status && input.status !== current.ticket.status) change.status = input.status;
-    if (input.priority && input.priority !== current.ticket.priority) change.priority = input.priority;
-    if (input.assigneeId && input.assigneeId !== current.ticket.assigneeId) change.assignee_id = input.assigneeId;
-    if (input.groupId && input.groupId !== current.ticket.groupId) change.group_id = input.groupId;
-    const tags = (current.ticket.tags ?? []).filter(tag => !input.removeTags?.includes(tag));
-    for (const tag of input.addTags ?? []) if (!tags.includes(tag)) tags.push(tag);
-    if (JSON.stringify(tags) !== JSON.stringify(current.ticket.tags ?? [])) change.tags = tags;
-    if (input.comment) change.comment = { body: input.comment.body, public: !input.comment.isInternalNote };
+    const change = planTicketChange(input, current, call.idempotencyKey);
     if (Object.keys(change).length === 3) return newMutationBranch('updated', { ticket: current.ticket, wasAlreadyApplied: true }, receipt);
     if (permit.isAtSendCap) return newMutationUncertain(currentOutput, zendeskFailure('updateTicket', 'TRANSPORT', 'earlier attempts may have written the change and the send cap is reached, and the latest audit page shows no change by this Step'), receipt);
     let write: ZendeskExchange;
@@ -193,12 +182,97 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
     // Dispatch refused before sending, so nothing reached Zendesk in this attempt.
     catch { return newMutationRetry(zendeskFailure('updateTicket', 'AVAILABILITY', 'Zendesk write was not sent before the attempt deadline or checkpoint')); }
     receipt = this.client.receipt(call, write.response, input.ticketId);
-    const writeTerminal = await permit.writeAttempt(write, receipt, currentOutput);
-    if (writeTerminal) return writeTerminal;
-    try { const decoded = decodeTicketEnvelope(write.response.body, this.client.agentTicketURL).ticket; if (decoded.id !== input.ticketId) throw new Error('ticket response is for another ticket'); return newMutationBranch('updated', { ticket: decoded }, receipt); }
-    catch (error) { return permit.resendOrUncertain(currentOutput, invalidFailure('updateTicket', 'Zendesk returned an invalid updated ticket', error), 0, receipt); }
+    if (write.response.status < 200 || write.response.status >= 300) return permit.writeAttempt(write, receipt, currentOutput);
+    const updated = write.outcome === 'success' ? decodeTicketFor(write.response.body, this.client.agentTicketURL, input.ticketId) : undefined;
+    if (updated) return newMutationBranch('updated', { ticket: updated }, receipt);
+    // Zendesk accepted the PUT, so it is never resent; the saved ticket ID makes later attempts only read back.
+    let isTicketIdRecorded = true;
+    try { await fence.recordProviderId(String(input.ticketId)); } catch { isTicketIdRecorded = false; }
+    return new AcceptedTicketWrite(this.client, call, credentials, input, isTicketIdRecorded, false).readBack();
   }
 }
+
+/** Confirms a PUT that Zendesk answered with an unusable 2xx, or that an earlier attempt saved; it never sends. */
+class AcceptedTicketWrite {
+  /**
+   * Bind one read-back. canRetryTransientRead means the ticket ID is checkpointed, so a Retry can only read back
+   * again; isFromEarlierAttempt reports a confirmed change as already applied.
+   */
+  constructor(private readonly client: ZendeskClient, private readonly call: Call, private readonly credentials: { email: string; apiToken: string },
+    private readonly input: UpdateTicketInput, private readonly canRetryTransientRead: boolean, private readonly isFromEarlierAttempt: boolean) {}
+
+  /** Confirm the change by this Step's audit, or by no pending field change without a comment. */
+  async readBack(): Promise<MutationAttempt<UpdateTicketOutput>> {
+    const path = `/tickets/${this.input.ticketId}`;
+    const read = await this.client.exchange(this.call, this.credentials, 'updateTicket', 'GET', path);
+    let receipt = this.client.receipt(this.call, read.response, this.input.ticketId);
+    const readTerminal = this.readAttempt(read, receipt, zeroUpdate);
+    if (readTerminal) return readTerminal;
+    let current: { ticket: Ticket; updatedStamp: string };
+    try { current = decodeTicketEnvelope(read.response.body, this.client.agentTicketURL); if (current.ticket.id !== this.input.ticketId) throw new Error('ticket response is for another ticket'); }
+    catch (error) { return this.unconfirmed(zeroUpdate, 'PROTOCOL', `Zendesk returned an invalid ticket: ${errorMessage(error)}`, receipt); }
+    const currentOutput = { ticket: current.ticket };
+    if (this.input.comment || this.input.expectedUpdatedAt) {
+      const audits = await this.client.exchange(this.call, this.credentials, 'updateTicket', 'GET', `${path}/audits`, { sort_order: 'desc' });
+      receipt = this.client.receipt(this.call, audits.response, this.input.ticketId);
+      const auditTerminal = this.readAttempt(audits, receipt, currentOutput);
+      if (auditTerminal) return auditTerminal;
+      try { if (hasAuditWithIdempotencyKey(audits.response.body, this.call.idempotencyKey)) return this.confirmed(current.ticket, receipt); }
+      catch (error) { return this.unconfirmed(currentOutput, 'PROTOCOL', `Zendesk returned an invalid audit page: ${errorMessage(error)}`, receipt); }
+    }
+    if (!this.input.comment && Object.keys(planTicketChange(this.input, current, this.call.idempotencyKey)).length === 3) return this.confirmed(current.ticket, receipt);
+    return this.unconfirmed(currentOutput, 'TRANSPORT', 'the ticket and its latest audit page show no change by this Step', receipt);
+  }
+
+  /** Retry a transient read only when that cannot resend; any other failed read is uncertain. */
+  private readAttempt(result: ZendeskExchange, receipt: ReceiptDraft, value: UpdateTicketOutput): MutationAttempt<UpdateTicketOutput> | undefined {
+    if (result.outcome === 'success') return undefined;
+    if ((result.outcome === 'retry' || result.outcome === 'notSent') && this.canRetryTransientRead) return newMutationRetry(result.failure, result.retryAfterMs);
+    return this.unconfirmed(value, result.failure.kind, result.failure.message, receipt);
+  }
+
+  private confirmed(ticket: Ticket, receipt: ReceiptDraft): MutationAttempt<UpdateTicketOutput> {
+    return newMutationBranch('updated', { ticket, ...(this.isFromEarlierAttempt ? { wasAlreadyApplied: true } : {}) }, receipt);
+  }
+
+  private unconfirmed(value: UpdateTicketOutput, kind: Failure['kind'], reason: string, receipt: ReceiptDraft): MutationAttempt<UpdateTicketOutput> {
+    return newMutationUncertain(value, zendeskFailure('updateTicket', kind, `Zendesk accepted an update by this Step that could not be confirmed: ${reason}`), receipt);
+  }
+}
+
+/** Return the safe update with only fields that differ; three entries mean nothing to write. */
+function planTicketChange(input: UpdateTicketInput, current: { ticket: Ticket; updatedStamp: string }, idempotencyKey: string | undefined): Record<string, unknown> {
+  const change: Record<string, unknown> = { metadata: { dex_idempotency_key: idempotencyKey }, safe_update: true, updated_stamp: current.updatedStamp };
+  if (input.status && input.status !== current.ticket.status) change.status = input.status;
+  if (input.priority && input.priority !== current.ticket.priority) change.priority = input.priority;
+  if (input.assigneeId && input.assigneeId !== current.ticket.assigneeId) change.assignee_id = input.assigneeId;
+  if (input.groupId && input.groupId !== current.ticket.groupId) change.group_id = input.groupId;
+  const tags = (current.ticket.tags ?? []).filter(tag => !input.removeTags?.includes(tag));
+  for (const tag of input.addTags ?? []) if (!tags.includes(tag)) tags.push(tag);
+  if (JSON.stringify(tags) !== JSON.stringify(current.ticket.tags ?? [])) change.tags = tags;
+  if (input.comment) change.comment = { body: input.comment.body, public: !input.comment.isInternalNote };
+  return change;
+}
+
+/** Scan one page of the newest audits for this call's metadata entry. */
+function hasAuditWithIdempotencyKey(body: Uint8Array, idempotencyKey: string | undefined): boolean {
+  const page = objectJSON(body);
+  return array(page.audits).some(raw => { const audit = object(raw); const metadata = audit.metadata == null ? {} : object(audit.metadata); const custom = metadata.custom == null ? {} : object(metadata.custom); return custom.dex_idempotency_key === idempotencyKey; });
+}
+
+/** Return the ticket of a response for ticketId, or undefined when it is unusable. */
+function decodeTicketFor(body: Uint8Array, agentTicketURL: string, ticketId: number): Ticket | undefined {
+  try { const decoded = decodeTicketEnvelope(body, agentTicketURL).ticket; return decoded.id === ticketId ? decoded : undefined; }
+  catch { return undefined; }
+}
+
+/** Report a refusal status whose readable body carries no ticket, proving Zendesk applied nothing. */
+function isDefiniteRefusal(result: ZendeskExchange): boolean {
+  return (result.outcome === 'rejected' || result.outcome === 'notFound') && definiteRefusalStatuses.has(result.response.status)
+    && !result.response.hasOversizedBody && !result.response.hasTicketIdentity;
+}
+
+function errorMessage(error: unknown): string { return error instanceof Error ? error.message : String(error); }
 
 /** Only these statuses prove Zendesk applied nothing; any other non-2xx answer may have been applied. */
 const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
@@ -212,13 +286,27 @@ function effectiveMaxSends(call: Call, operationMaxSends: number): number {
 class TicketWritePermit {
   /** No earlier attempt of this call may have sent. */ readonly isFirstSend: boolean;
   /** Earlier sends reached the cap, so this attempt only reads back. */ readonly isAtSendCap: boolean;
+  /** An earlier attempt saved the ticket ID after Zendesk accepted its PUT. */ readonly hasAcceptedWrite: boolean;
   /** This attempt's send leaves room under the cap for one more. */ readonly canResendUnknownOutcome: boolean;
 
   constructor(private readonly fence: Fence, decision: Decision, maxSends: number) {
     const priorSends = decision.priorSendUpperBound ?? 0;
-    this.isFirstSend = priorSends === 0;
+    this.hasAcceptedWrite = Boolean(decision.marker?.providerId);
+    // sendAllowed after a canResend marker can still carry earlier possible sends.
+    this.isFirstSend = decision.kind === 'sendAllowed' && priorSends === 0 && !this.hasAcceptedWrite;
     this.isAtSendCap = decision.kind === 'readBackRequired';
     this.canResendUnknownOutcome = priorSends + 1 < maxSends;
+  }
+
+  /** Map unusable credentials before any request of this attempt. */
+  async credentialFailureAttempt(cause: Failure, isTerminal: boolean): Promise<MutationAttempt<UpdateTicketOutput>> {
+    if (!this.isFirstSend) {
+      // notSent would hide the earlier possible send, so nothing is recorded.
+      if (isTerminal) return newMutationUncertain(zeroUpdate, zendeskFailure('updateTicket', cause.kind, 'an earlier attempt may have written the change, and the connection credentials are unusable; reconnect the connection'), zeroReceipt());
+      return newMutationRetry(cause);
+    }
+    try { await this.fence.recordNotSent(); } catch { return newMutationRetry(zendeskFailure('updateTicket', 'AVAILABILITY', 'Dex did not record the not-sent checkpoint')); }
+    return isTerminal ? newMutationBranch('defect', zeroUpdate, zeroReceipt(), cause) : newMutationRetry(cause);
   }
 
   /** Record notSent only on a first send; otherwise the claim stays counted. */
@@ -242,21 +330,24 @@ class TicketWritePermit {
     return mutationExchange(result, receipt, value);
   }
 
-  /** Map the PUT; only a definite refusal of a first send selects a refusal branch. */
-  async writeAttempt<T>(result: ZendeskExchange, receipt: ReceiptDraft, value: T): Promise<MutationAttempt<T> | undefined> {
-    if (result.outcome === 'success') return undefined;
+  /** Map a PUT that Zendesk did not answer with 2xx; only a definite refusal of a first send selects a refusal branch. */
+  async writeAttempt<T>(result: ZendeskExchange, receipt: ReceiptDraft, value: T): Promise<MutationAttempt<T>> {
+    if (result.outcome === 'success') throw new TypeError('a 2xx write is mapped as accepted');
     const status = result.response.status;
     if (result.outcome === 'notSent' || status === 429 || status === 503) {
       // A lost checkpoint leaves the claim, so the next attempt counts this send toward the cap.
       try { await this.fence.recordCanResend(); } catch { /* counted as a possible send */ }
       return newMutationRetry(result.failure, result.retryAfterMs);
     }
-    if ((result.outcome === 'defect' && this.isFirstSend) || ((result.outcome === 'rejected' || result.outcome === 'notFound') && definiteRefusalStatuses.has(status))) {
+    // The PUT could not be built, and an earlier send may have applied.
+    if (result.outcome === 'defect' && !this.isFirstSend) return newMutationUncertain(value, result.failure, receipt);
+    if (result.outcome === 'defect' || isDefiniteRefusal(result)) {
       if (!this.isFirstSend) return newMutationUncertain(value, result.failure, receipt);
       try { await this.fence.recordCanResend(); } catch { return newMutationRetry(zendeskFailure('updateTicket', 'AVAILABILITY', 'Dex did not record the refusal checkpoint')); }
-      return mutationExchange(result, receipt, value);
+      return mutationExchange(result, receipt, value) ?? newMutationRetry(result.failure);
     }
-    // A 3xx, 408, 409, 410, other 5xx, unlisted status, lost answer, or unusable 2xx may follow an applied write.
+    // A 3xx, 408, 409, 410, other 5xx, unlisted status, lost answer, oversized error body, or error body
+    // carrying a ticket may follow an applied write.
     return this.resendOrUncertain(value, result.failure, result.retryAfterMs ?? 0, receipt);
   }
 

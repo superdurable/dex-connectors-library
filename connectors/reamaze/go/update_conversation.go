@@ -94,7 +94,8 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 	}
 	current, err := decodeConversationBody(readResult.response.body, input.ConversationID)
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpdateConversationBranchInvalidResponse, UpdateConversationOutput{}, reamazeFailurePointer(sdkgo.FailureProtocol, updateConversationOperation, "Re:amaze returned an invalid conversation: "+err.Error()), receipt)
+		// An earlier attempt's PUT may have applied, and repeating this safe write is harmless.
+		return sdkgo.NewMutationRetry[UpdateConversationOutput](reamazeFailure(sdkgo.FailureProtocol, updateConversationOperation, "Re:amaze returned an invalid conversation: "+err.Error()), 0)
 	}
 	currentOutput := UpdateConversationOutput{Conversation: current}
 	change, hasEffect := planConversationChange(input, current)
@@ -105,8 +106,9 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 		method: http.MethodPut, path: conversationPath(input.ConversationID), payload: updateConversationRequestWire{Conversation: change},
 	})
 	receipt = operation.client.receipt(call, writeResult.response, input.ConversationID)
-	if writeResult.outcome == exchangeInvalid || (writeResult.outcome == exchangeRejected && !isDefiniteRefusalStatus(writeResult.response.statusCode)) {
-		// The PUT sets final values, so an unknown outcome repeats it.
+	isRefusal := writeResult.outcome == exchangeRejected || writeResult.outcome == exchangeNotFound
+	if writeResult.outcome == exchangeInvalid || (isRefusal && !writeResult.isDefiniteRefusal()) {
+		// The PUT sets final values, so an unknown outcome, including an oversized answer, repeats it.
 		return sdkgo.NewMutationRetry[UpdateConversationOutput](writeResult.failure, writeResult.retryAfter)
 	}
 	if attempt, isTerminal := updateConversationAttemptForExchange(writeResult, receipt, currentOutput); isTerminal {
@@ -125,12 +127,11 @@ func updateConversationAttemptForExchange(result reamazeExchange, receipt sdkgo.
 	switch {
 	case result.outcome == exchangeSucceeded:
 		return sdkgo.MutationAttempt[UpdateConversationOutput]{}, false
-	case result.isRetryableRead():
+	case result.isRetryableRead(), result.outcome == exchangeInvalid:
+		// An oversized or credential-reflecting answer is unknown, so the safe write repeats; invalidResponse stays declared.
 		return sdkgo.NewMutationRetry[UpdateConversationOutput](result.failure, result.retryAfter), true
 	case result.outcome == exchangeNotFound:
 		return sdkgo.NewMutationBranch(UpdateConversationBranchNotFound, value, &result.failure, receipt), true
-	case result.outcome == exchangeInvalid:
-		return sdkgo.NewMutationBranch(UpdateConversationBranchInvalidResponse, value, &result.failure, receipt), true
 	case result.outcome == exchangeDefect:
 		return sdkgo.NewMutationBranch(UpdateConversationBranchDefect, value, &result.failure, receipt), true
 	default:

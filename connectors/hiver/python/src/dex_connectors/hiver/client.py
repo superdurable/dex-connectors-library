@@ -11,7 +11,19 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import quote, urlencode, urlsplit
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -59,6 +71,17 @@ MINIMUM_POLL_PAGES_PER_POLL = 2
 """Leaves room for the list's first page plus one sweep page in each conversationReceived poll."""
 MAXIMUM_POLL_PAGES_PER_POLL = 5
 """Keeps one conversationReceived poll within the poll kit's 500 events per page."""
+
+
+@dataclass(slots=True)
+class ResponseObservation:
+    """The status of a fenced write's response, set as soon as its headers arrive.
+
+    It survives a write-window timeout that cancels the body read, so an accepted
+    write is never mistaken for an unknown outcome.
+    """
+
+    status: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -177,14 +200,30 @@ class Client:
 
     async def token(self, call: Call) -> str | None:
         """Resolve a current, header-safe key for one attempt."""
+        token, _ = await self.resolve_token(call)
+        return token
+
+    async def resolve_token(self, call: Call) -> tuple[str | None, bool]:
+        """Resolve a header-safe key, or None and whether the failure is terminal.
+
+        A revoked, absent, or malformed credential is terminal; any other
+        resolution error may clear on a later attempt.
+        """
         try:
             credentials = await self.credentials.resolve(call)
-            if not isinstance(credentials, Credentials):
-                return None
-            token = credentials.api_key.reveal()
-            return token if is_header_safe_credential(token) else None
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
+            return None, True
         except Exception:
-            return None
+            return None, False
+        if not isinstance(credentials, Credentials):
+            return None, True
+        token = credentials.api_key.reveal()
+        return (token, False) if is_header_safe_credential(token) else (None, True)
 
     async def _wait_for_slot(self) -> None:
         async with self._pacer_lock:
@@ -238,6 +277,7 @@ class Client:
         payload: object | None,
         fields: list[tuple[str, str]] | None,
         fenced: bool,
+        observation: ResponseObservation | None = None,
     ) -> Exchange:
         target = self.api_base_url + path
         if query:
@@ -284,6 +324,8 @@ class Client:
                 ),
             )
         status = response.status_code
+        if observation is not None:
+            observation.status = status
         retry_after = parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC))
         if status == 429:
             self._rate_limit_penalty = min(60, max(self.request_interval * 4, self._rate_limit_penalty * 2))

@@ -85,8 +85,13 @@ export class UpdateConversationOperation implements Mutation<UpdateConversationI
   /** Invoke one repeat-safe change. */
   async invoke(call: Call, input: UpdateConversationInput): Promise<MutationAttempt<UpdateConversationOutput>> {
     try { validateUpdate(input); } catch (error) { return mutationDefect('updateConversation', emptyUpdate, error); }
-    const key = await this.client.resolveKey(call);
-    if (!key) return mutationCredentialFailure('updateConversation', emptyUpdate);
+    const credential = await this.client.resolveKeyOrFailure(call);
+    if (credential.kind !== 'resolved') {
+      // defect would hide an earlier possible PATCH; repeating the absolute change is harmless.
+      if (credential.kind === 'transient' || call.context.attempt > 1) return newMutationRetry(failure('updateConversation', 'AUTHENTICATION', 'connection credentials are unavailable'));
+      return mutationCredentialFailure('updateConversation', emptyUpdate);
+    }
+    const key = credential.key;
     const output: UpdateConversationOutput = { conversation: emptyDetails.conversation };
     if (input.assigneeEmail) {
       const result = await this.client.exchange(call, 'updateConversation', key, { method: 'GET', path: `${inboxPath(input.inboxId)}/users/search`, query: new URLSearchParams({ email: input.assigneeEmail }) });
@@ -260,14 +265,16 @@ async function invokeFenced<T>(call: Call, client: HiverClient, definition: Muta
   const decision = fence.decide();
   // FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
   if (decision.kind === 'failClosed') return newMutationRetry(failure(operation, 'AVAILABILITY', 'the single-dispatch checkpoint could not be read; nothing was sent in this attempt'));
-  if (decision.kind === 'readBackRequired') return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'earlier attempts may have sent the request and the send cap is reached, so it is not sent again'), client.receipt(call, undefined, decision.marker?.providerId ?? ''));
-  // A saved provider ID proves Hiver accepted the write, so it is never resent.
-  if (decision.kind === 'readBackThenResendAllowed' && decision.marker?.providerId) return newMutationUncertain(zero, failure(operation, 'TRANSPORT', "Hiver accepted an earlier attempt's write, and its answer was lost"), client.receipt(call, undefined, decision.marker.providerId));
+  // A saved provider ID proves Hiver accepted the write; Hiver has no note or draft read by ID.
+  if (decision.marker?.providerId) return newMutationUncertain(zero, failure(operation, 'TRANSPORT', "Hiver accepted an earlier attempt's write, and its answer was lost"), client.receipt(call, undefined, decision.marker.providerId));
+  if (decision.kind === 'readBackRequired') return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'earlier attempts may have sent the request and the send cap is reached, so it is not sent again'), client.receipt(call));
   const priorSends = decision.priorSendUpperBound ?? 0;
-  const isFirstSend = priorSends === 0;
+  // sendAllowed after a canResend marker can still count earlier possible sends.
+  const isFirstSend = decision.kind === 'sendAllowed' && priorSends === 0;
   const canResendUnknownOutcome = priorSends + 1 < effectiveMaxSends(call, operationMaxSends);
-  const key = await client.resolveKey(call);
-  if (!key) return retryBeforeDispatch(fence, isFirstSend, failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'));
+  const credential = await client.resolveKeyOrFailure(call);
+  if (credential.kind !== 'resolved') return credentialFailureBeforeDispatch(client, call, fence, isFirstSend, credential.kind === 'terminal', zero, failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'));
+  const key = credential.key;
   if (!await client.waitForSlot(call.context.cancellationSignal, Date.now() + 15_000)) {
     return retryBeforeDispatch(fence, isFirstSend, failure(operation, 'AVAILABILITY', "the wait for the connection's next Hiver request slot ended; no request was sent"));
   }
@@ -277,13 +284,14 @@ async function invokeFenced<T>(call: Call, client: HiverClient, definition: Muta
   catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'Hiver write was not dispatched')); }
   const receipt = client.receipt(call, result.response);
   if (result.kind !== 'success') {
+    // Hiver accepted the write, but its answer is oversized, unreadable, or untrusted.
+    if (result.status !== undefined && result.status >= 200 && result.status < 300) return newMutationUncertain(zero, result.failure, receipt);
     if (result.kind === 'rateLimited' || result.kind === 'notSent' || result.status === 503) {
       // A lost checkpoint leaves the claim, so the next attempt counts this send toward the cap.
       try { await fence.recordCanResend(); } catch { /* counted as a possible send */ }
       return newMutationRetry(result.failure, result.retryAfterMs);
     }
-    // defect would hide an earlier possible send.
-    if (result.kind === 'defect' && !isFirstSend) return resendOrUncertain(canResendUnknownOutcome, zero, result.failure, 0, receipt);
+    // A request that could not be built would fail the same way if resent.
     if (result.kind === 'notFound' || result.kind === 'defect' || (result.kind === 'rejected' && definiteRefusalStatuses.has(result.status ?? 0))) {
       if (!isFirstSend) return newMutationUncertain(zero, result.failure, receipt);
       try { await fence.recordCanResend(); } catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'Dex did not record the refusal checkpoint')); }
@@ -296,9 +304,8 @@ async function invokeFenced<T>(call: Call, client: HiverClient, definition: Muta
   catch (error) {
     const invalid = failure(operation, 'PROTOCOL', `${invalidMessage}: ${message(error)}`);
     const providerId = acceptedProviderId(result.response.body, providerIdField);
-    if (!providerId) return resendOrUncertain(canResendUnknownOutcome, zero, invalid, 0, receipt);
-    // A decoded provider ID proves acceptance, so this write is never resent.
-    try { await fence.recordProviderId(providerId); } catch { /* Accepted result is known even if the optional identity checkpoint is lost. */ }
+    // The 2xx proves acceptance, so this write is never resent.
+    if (providerId) { try { await fence.recordProviderId(providerId); } catch { /* The claim marker already forbids a resend. */ } }
     return newMutationUncertain(zero, invalid, client.receipt(call, result.response, providerId));
   }
   try { await fence.recordProviderId(objectId(output)); } catch { /* Accepted result is known even if the optional identity checkpoint is lost. */ }
@@ -319,6 +326,15 @@ async function retryBeforeDispatch<T>(fence: ReturnType<typeof newFence>, isFirs
     try { await fence.recordNotSent(); } catch { return newMutationRetry(failure(cause.operation, 'AVAILABILITY', 'Dex did not record the not-sent checkpoint')); }
   }
   return newMutationRetry(cause);
+}
+
+/** Retry a transient credential failure; a terminal one selects defect only on a first send. */
+async function credentialFailureBeforeDispatch<T>(client: HiverClient, call: Call, fence: ReturnType<typeof newFence>, isFirstSend: boolean, isTerminal: boolean, zero: T, cause: Failure): Promise<MutationAttempt<T>> {
+  if (!isTerminal) return retryBeforeDispatch(fence, isFirstSend, cause);
+  // defect would hide the earlier possible send, so nothing is recorded.
+  if (!isFirstSend) return newMutationUncertain(zero, failure(cause.operation, cause.kind, 'an earlier attempt may have sent the request and the connection credentials are unusable'), client.receipt(call));
+  try { await fence.recordNotSent(); } catch { return newMutationRetry(failure(cause.operation, 'AVAILABILITY', 'Dex did not record the not-sent checkpoint')); }
+  return newMutationBranch('defect', zero, {}, cause);
 }
 
 /** Retry an unknown outcome while the send cap allows another send, else select uncertain. */

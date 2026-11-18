@@ -171,12 +171,12 @@ func TestReplyToConversationTerminalOutcomes(t *testing.T) {
 		require.Equal(t, want, result.Branch)
 		require.NotContains(t, result.Failure.Message, "SENTINEL")
 	}
-	_, err := sdkgo.RunMutation(newReamazeDexContext("note-accepted-invalid"), client.ReplyToConversation(), reamazeConnection, input)
-	var retry *sdkgo.RetryError
-	require.ErrorAs(t, err, &retry, "an unconfirmed accepted write with no origin_id match resends below the cap")
-	result, err := sdkgo.RunMutation(newReamazeDexContext("note-accepted-invalid-at-cap"), client.ReplyToConversation(), reamazeConnection, input, sendCapOfOne)
+	result, err := sdkgo.RunMutation(newReamazeDexContext("note-accepted-invalid"), client.ReplyToConversation(), reamazeConnection, input)
 	require.NoError(t, err)
-	require.Equal(t, reamaze.ReplyToConversationBranchUncertain, result.Branch, "at the cap, an unconfirmed accepted write resolves in this attempt")
+	require.Equal(t, reamaze.ReplyToConversationBranchUncertain, result.Branch, "an accepted reply is never resent, even below the cap")
+	result, err = sdkgo.RunMutation(newReamazeDexContext("note-accepted-invalid-at-cap"), client.ReplyToConversation(), reamazeConnection, input, sendCapOfOne)
+	require.NoError(t, err)
+	require.Equal(t, reamaze.ReplyToConversationBranchUncertain, result.Branch)
 	for _, invalid := range []reamaze.ReplyToConversationInput{
 		{ConversationID: "../x", Text: "Note."},
 		{ConversationID: "double-charge", Text: " "},

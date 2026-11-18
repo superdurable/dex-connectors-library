@@ -67,9 +67,10 @@ object keys in sorted order instead of Go's struct order.
 
 The checked-in [search example](examples/search_tickets/README.md) and
 [ticket change example](examples/ticket_changed/README.md) run through a Dex Worker.
-The 60 Go-recorded provider scenarios cover the five operations, including retries,
-resends below the send cap, uncertainty at the cap, and single-dispatch fence
-checkpoints. They are replayed by
+The 65 Go-recorded provider scenarios cover the five operations, including retries,
+resends below the send cap, uncertainty at the cap, read-back of an accepted or
+checkpointed ticket or conversation ID, and single-dispatch fence checkpoints.
+They are replayed by
 `uv run pytest tests/test_conformance.py`. The search example's integration test uses
 a real local Dex stack with the generated mock; the ticket change example's
 integration tests poll a stateful ticket-list fake into a real Dex Worker and cover

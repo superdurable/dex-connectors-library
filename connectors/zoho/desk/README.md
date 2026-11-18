@@ -379,7 +379,9 @@ positions:
   values computed from a fresh read, so a second dispatch sends the same values
   or finds them applied. It keeps async durability, and every unknown outcome of
   the `PATCH`, including a 5xx, a 409, a lost response, or an invalid or oversized
-  answer, is retried. `invalidResponse` covers only the read before the change.
+  answer, is retried. An invalid or oversized answer to the read before the
+  change retries too, because an earlier attempt may have sent the change;
+  `invalidResponse` stays declared but is not selected.
 - **createTicket** and **addComment** are `limited` with the default send cap of
   three, and run with sync durability under the SDK single-dispatch fence, so
   Dex never sends a second attempt while the first is in flight. Before sending,
@@ -388,26 +390,37 @@ positions:
   later attempt after an unknown outcome resends while the possible sends stay
   below the cap, and selects `uncertain` once the cap is reached. Each resend
   below the cap may create another ticket or add another comment. The fence is
-  read before credentials, so a revoked authorization after a possible send
-  reports `uncertain`, not "nothing was created". A 2xx that carries a ticket
-  or comment ID is checkpointed and never resent, even when the rest of the
-  answer is invalid; it selects `uncertain`.
+  read before credentials, and every attempt after a possible send, including
+  one after a 429 recorded `canResend`, counts that send: a revoked
+  authorization reports `uncertain`, not "nothing was created", and a
+  credential outage retries without recording anything.
+- A 2xx is accepted and never resent. A ticket or comment ID in the answer is
+  checkpointed, even when the rest of the answer is invalid, and read back in
+  the same attempt with `GET /api/v1/tickets/{id}` or
+  `GET /api/v1/tickets/{ticketId}/comments/{commentId}`, selecting `created` or
+  `added`. A later attempt that finds the checkpointed ID, even at the send cap,
+  reads it back the same way. A 429, 503, 5xx, or lost answer to that read
+  retries the read, only when the ID was checkpointed; a 404, 401, 403, or
+  another unconfirmed answer selects `uncertain`. A 2xx without a readable ID,
+  such as an oversized or credential-reflecting answer or one whose body breaks
+  after the headers, selects `uncertain`. A comment stored with another
+  visibility selects `uncertain`.
 - A 429 or 503 is retried, as required by the connector retry contract. A DNS,
   connect, or TLS failure before any connection was obtained (traced with
   `httptrace`) and an operation deadline before sending are retried too. The
   fence records `canResend` first, so the retry may send.
 - A 401 on createTicket or addComment is not resent inside the attempt. The
   connector forces one credential refresh; a changed access token records
-  `canResend` and retries with it, and otherwise the 401 selects
-  `providerRejected`. Reads and updateTicket refresh and resend once inside the
-  attempt.
+  `canResend` and retries with it. A transient refresh failure retries, and
+  records `canResend` only on a first send. A revoked refresh selects
+  `providerRejected` on a first send and `uncertain` after an earlier possible
+  send. Reads and updateTicket refresh and resend once inside the attempt.
 - A definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422) of a
   first send records `canResend` and selects its branch. After an earlier
   possible send the same refusal selects `uncertain`, because the earlier send
   may have created the ticket or comment.
-- A 408, 409, other 5xx, an unlisted status, a 3xx, a lost or unreadable
-  response, and an ID-less, oversized, or credential-reflecting 2xx are unknown
-  outcomes and are resent within the cap. The example leaves `uncertain`
+- A 408, 409, other 5xx, an unlisted status, a 3xx, and a response lost before
+  its status arrived are unknown outcomes and are resent within the cap. The example leaves `uncertain`
   unwired, so the Flow fails and a person can check Zoho Desk before another run.
 - A dispatch checkpoint that cannot be read or trusted sends nothing and
   retries. Markers written by v0.25.0 and earlier, and by Python and TypeScript
@@ -433,7 +446,7 @@ write; "at the cap" means this send is the third possible one.
 | Response | Reads and updateTicket | createTicket and addComment |
 | --- | --- | --- |
 | 400, 411, 413, 414, 415, 422 (`INVALID_DATA`, `UNPROCESSABLE_ENTITY`) | `providerRejected`, `VALIDATION` for 400 and 422 | `providerRejected` on a first send, otherwise `uncertain` |
-| 401 (`INVALID_OAUTH`) | `providerRejected`, `AUTHENTICATION`, after one refresh and resend | Retry after a refresh that changed the token; otherwise `providerRejected` on a first send, or `uncertain` |
+| 401 (`INVALID_OAUTH`) | `providerRejected`, `AUTHENTICATION`, after one refresh and resend | Retry after a refresh that changed the token or failed transiently; otherwise `providerRejected` on a first send, or `uncertain` |
 | 403 (`OAUTH_ORG_MISMATCH`, `SCOPE_MISMATCH`, `FORBIDDEN`, `LICENSE_ACCESS_LIMITED`) | `providerRejected`, `AUTHORIZATION` | `providerRejected` on a first send, otherwise `uncertain` |
 | 404 (`URL_NOT_FOUND`) | `notFound` where declared, otherwise `providerRejected` | `notFound` or `providerRejected` on a first send, otherwise `uncertain` |
 | 405, 409, other 4xx | `providerRejected` for a read; Retry for updateTicket's change | Retry, or `uncertain` at the cap |
@@ -441,8 +454,9 @@ write; "at the cap" means this send is the third possible one.
 | 429 (`THRESHOLD_EXCEEDED`, `TOO_MANY_REQUESTS`) | Retry, after `Retry-After` when present | Retry, after `Retry-After` when present |
 | 503 | Retry, after `Retry-After` when present | Retry, after `Retry-After` when present |
 | DNS, connect, or TLS failure before a connection, or the deadline passed before sending | Retry | Retry |
-| 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | Retry, or `uncertain` at the cap |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for a read; Retry for updateTicket's change | Retry, or `uncertain` at the cap; `uncertain` when the answer carries a valid ID |
+| 408, other 5xx, response lost before its status | Retry, after `Retry-After` when present | Retry, or `uncertain` at the cap |
+| oversized, malformed, credential-reflecting, or unreadable 2xx | `invalidResponse` for a Query; Retry for updateTicket's read and change | never resent: a valid ID is read back and selects `created` or `added`, otherwise `uncertain` |
+| saved ticket or comment ID from an earlier attempt | not applicable | read back by ID, never resent: `created` or `added`, Retry on a 429, 5xx, or lost read, otherwise `uncertain` |
 | unreadable or untrusted dispatch checkpoint | not applicable | Retry, with no request |
 | revoked authorization (`invalid_code` on refresh) | `providerRejected`, `AUTHENTICATION` | `providerRejected` on a first send, otherwise `uncertain` |
 | token refresh outage | Retry | Retry |

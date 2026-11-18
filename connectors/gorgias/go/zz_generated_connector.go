@@ -483,7 +483,7 @@ var CreateTicketDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateTicketBranchCreated, Description: "The ticket exists: Gorgias created it now, or a retried attempt found the ticket an earlier attempt of this Step created."},
 		{ID: CreateTicketBranchProviderRejected, Description: "Gorgias conclusively rejected the ticket, such as an unknown assignee or an over-long subject; no ticket was created.", Optional: true},
-		{ID: CreateTicketBranchUncertain, Description: "The send cap is reached, and Gorgias shows no ticket with the Step's external ID after sends whose outcome could not be confirmed, so one may still appear. Below the cap, an unconfirmed send is read back and then resent.", Optional: true},
+		{ID: CreateTicketBranchUncertain, Description: "A ticket may exist that this Step cannot confirm: the send cap is reached and Gorgias shows no ticket with the Step's external ID, Gorgias accepted the ticket but reading it back failed, or after a possible send the read-back was refused or the credentials became unusable. Below the cap, an unconfirmed send is read back and then resent; an accepted ticket is never resent.", Optional: true},
 		{ID: CreateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -641,7 +641,7 @@ var AddNoteDefinition = sdkgo.MutationDefinition{
 		{ID: AddNoteBranchAdded, Description: "The note or reply exists: Gorgias added it now, or a retried attempt found the message an earlier attempt of this Step added."},
 		{ID: AddNoteBranchNotFound, Description: "The ticket does not exist or is not visible to the connection's user; nothing was added.", Optional: true},
 		{ID: AddNoteBranchProviderRejected, Description: "Gorgias conclusively rejected the note or reply, or a reply's ticket could not be read, has no customer email to answer, or shows no address known to be the helpdesk's; nothing was added.", Optional: true},
-		{ID: AddNoteBranchUncertain, Description: "The send cap is reached, and the ticket shows no message with the Step's external ID after sends whose outcome could not be confirmed, so the note or reply may still appear. Below the cap, an unconfirmed send is read back and then resent.", Optional: true},
+		{ID: AddNoteBranchUncertain, Description: "A note or reply may exist that this Step cannot confirm: the send cap is reached and the ticket shows no message with the Step's external ID, Gorgias accepted the message but reading it back failed, or after a possible send the read-back was refused, the ticket could not be read to route a reply, or the credentials became unusable. Below the cap, an unconfirmed send is read back and then resent; an accepted message is never resent.", Optional: true},
 		{ID: AddNoteBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

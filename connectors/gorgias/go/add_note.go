@@ -102,6 +102,8 @@ func (AddNoteOperation) IdempotencyKey(callID sdkgo.CallID, _ AddNoteInput) sdkg
 // send cap; a reply first reads the ticket to route it. A 429, 503, or connection that never opened
 // is retried and sends again. Any other unconfirmed outcome is retried; the next attempt first looks
 // for the message by external_id, resends while the cap allows, and selects uncertain at the cap.
+// A 2xx is never resent: when its answer is unusable, the ticket is read back for the message, and
+// uncertain is selected when that read cannot confirm it.
 func (operation AddNoteOperation) Invoke(call sdkgo.Call, input AddNoteInput) sdkgo.MutationAttempt[AddNoteOutput] {
 	if err := validateAddNoteInput(input); err != nil {
 		return sdkgo.NewMutationBranch(AddNoteBranchDefect, AddNoteOutput{}, gorgiasFailurePointer(sdkgo.FailureValidation, addNoteOperation, err.Error()), sdkgo.Receipt{})
@@ -111,11 +113,15 @@ func (operation AddNoteOperation) Invoke(call sdkgo.Call, input AddNoteInput) sd
 	if endedAttempt != nil {
 		return *endedAttempt
 	}
-	credentials, failure := operation.client.resolveCredentials(call, addNoteOperation)
+	credentials, failure, isTerminal := operation.client.resolveWriteCredentials(call, addNoteOperation)
 	if failure != nil {
-		return credentialFailureAttempt[AddNoteOutput](permit, *failure, AddNoteBranchDefect)
+		return credentialFailureAttempt[AddNoteOutput](permit, *failure, isTerminal, AddNoteBranchDefect)
 	}
-	if permit.needsReadBack() {
+	if messageID, hasSavedID := permit.savedProviderID(); hasSavedID {
+		// Gorgias accepted an earlier attempt's message, so it is read back by ID and never sent again.
+		return operation.confirmMessage(call, credentials, input.TicketID, messageID, true, true)
+	}
+	if permit.hasPossibleEarlierSend() {
 		if attempt, isTerminal := operation.findEarlierMessage(call, credentials, input.TicketID, permit); isTerminal {
 			return attempt
 		}
@@ -146,12 +152,34 @@ func (operation AddNoteOperation) Invoke(call sdkgo.Call, input AddNoteInput) sd
 		return attempt
 	}
 	message, err := decodeAddedMessage(result.response.body, input.TicketID, string(call.IdempotencyKey))
-	if err != nil {
-		return sdkgo.NewMutationRetry[AddNoteOutput](gorgiasFailure(sdkgo.FailureProtocol, addNoteOperation,
-			"Gorgias accepted the message but returned an invalid message: "+err.Error()), reconcileDelay)
+	if result.outcome == exchangeSucceeded && err == nil {
+		// The answer already proves acceptance, so a lost checkpoint changes nothing.
+		_ = recordAcceptedWrite(permit, message.ID)
+		return sdkgo.NewMutationBranch(AddNoteBranchAdded, AddNoteOutput{Message: message}, nil, operation.client.receipt(call, result.response, message.ID))
 	}
-	recordAcceptedWrite(permit, message.ID)
-	return sdkgo.NewMutationBranch(AddNoteBranchAdded, AddNoteOutput{Message: message}, nil, operation.client.receipt(call, result.response, message.ID))
+	return operation.confirmAcceptedMessage(call, credentials, input.TicketID, permit, result)
+}
+
+// confirmAcceptedMessage reads back a message Gorgias accepted with an unusable answer: by ID when the answer
+// names this Step's message, otherwise once by external ID. It never resends.
+func (operation AddNoteOperation) confirmAcceptedMessage(call sdkgo.Call, credentials Credentials, ticketID int64, permit gorgiasWritePermit, result gorgiasExchange) sdkgo.MutationAttempt[AddNoteOutput] {
+	if messageID := acceptedObjectID(result.response, string(call.IdempotencyKey), ticketID); messageID > 0 {
+		return operation.confirmMessage(call, credentials, ticketID, messageID, recordAcceptedWrite(permit, messageID), false)
+	}
+	message, isFound, lookup, receipt := operation.lookUpMessage(call, credentials, ticketID, 0)
+	found := sdkgo.NewMutationBranch(AddNoteBranchAdded, AddNoteOutput{Message: message}, nil, receipt)
+	return acceptedWriteAttempt(false, lookup, isFound, found, receipt, addNoteOperation, "message")
+}
+
+// confirmMessage reads the ticket and confirms the message with messageID carries this Step's external ID.
+func (operation AddNoteOperation) confirmMessage(call sdkgo.Call, credentials Credentials, ticketID int64, messageID int64, isProviderIDSaved bool, wasCreatedByEarlierAttempt bool) sdkgo.MutationAttempt[AddNoteOutput] {
+	if messageID < 1 {
+		return sdkgo.NewMutationUncertain(AddNoteOutput{}, gorgiasFailure(sdkgo.FailureProtocol, addNoteOperation,
+			"Gorgias accepted the message, but the checkpointed message ID is unreadable"), sdkgo.Receipt{})
+	}
+	message, isFound, lookup, receipt := operation.lookUpMessage(call, credentials, ticketID, messageID)
+	found := sdkgo.NewMutationBranch(AddNoteBranchAdded, AddNoteOutput{Message: message, WasCreatedByEarlierAttempt: wasCreatedByEarlierAttempt}, nil, receipt)
+	return acceptedWriteAttempt(isProviderIDSaved, lookup, isFound, found, receipt, addNoteOperation, "message")
 }
 
 // findReplyRoute reads the ticket and answers its customer's newest email from the address that email reached.
@@ -184,7 +212,7 @@ func (operation AddNoteOperation) findReplyRoute(call sdkgo.Call, credentials Cr
 
 // replyRouteFailureAttempt selects branch on a first send; after a possible earlier send it selects uncertain.
 func replyRouteFailureAttempt(permit gorgiasWritePermit, branch sdkgo.BranchID, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[AddNoteOutput] {
-	if !permit.isFirstSend {
+	if permit.hasPossibleEarlierSend() {
 		return sdkgo.NewMutationUncertain(AddNoteOutput{}, gorgiasFailure(failure.Kind, addNoteOperation,
 			"an earlier attempt of this Step may have sent the reply, and the ticket could not be read to route it again: "+failure.Message), receipt)
 	}
@@ -193,13 +221,14 @@ func replyRouteFailureAttempt(permit gorgiasWritePermit, branch sdkgo.BranchID, 
 
 // findEarlierMessage looks for the message an earlier attempt may have added, by the external ID it wrote.
 func (operation AddNoteOperation) findEarlierMessage(call sdkgo.Call, credentials Credentials, ticketID int64, permit gorgiasWritePermit) (sdkgo.MutationAttempt[AddNoteOutput], bool) {
-	message, isFound, result, receipt := operation.lookUpMessageByExternalID(call, credentials, ticketID)
+	message, isFound, result, receipt := operation.lookUpMessage(call, credentials, ticketID, 0)
 	found := sdkgo.NewMutationBranch(AddNoteBranchAdded, AddNoteOutput{Message: message, WasCreatedByEarlierAttempt: true}, nil, receipt)
 	return readBackAttempt(permit, result, isFound, found, receipt, addNoteOperation, "message")
 }
 
-// lookUpMessageByExternalID reads the ticket's embedded messages; an unreadable ticket returns an exchangeInvalid result.
-func (operation AddNoteOperation) lookUpMessageByExternalID(call sdkgo.Call, credentials Credentials, ticketID int64) (TicketMessage, bool, gorgiasExchange, sdkgo.Receipt) {
+// lookUpMessage finds this Step's message among the ticket's embedded messages by external ID and, when
+// messageID is positive, by ID; an unreadable ticket returns an exchangeInvalid result.
+func (operation AddNoteOperation) lookUpMessage(call sdkgo.Call, credentials Credentials, ticketID int64, messageID int64) (TicketMessage, bool, gorgiasExchange, sdkgo.Receipt) {
 	externalID := string(call.IdempotencyKey)
 	result := operation.client.exchange(call, credentials, addNoteOperation, gorgiasRequest{method: http.MethodGet, path: ticketPath(ticketID)})
 	receipt := operation.client.receipt(call, result.response, ticketID)
@@ -212,7 +241,7 @@ func (operation AddNoteOperation) lookUpMessageByExternalID(call sdkgo.Call, cre
 			failure: gorgiasFailure(sdkgo.FailureProtocol, addNoteOperation, "Gorgias returned an invalid ticket: "+err.Error())}, receipt
 	}
 	for _, wire := range ticketWire.Messages {
-		if stringValue(wire.ExternalID) != externalID {
+		if stringValue(wire.ExternalID) != externalID || (messageID > 0 && wire.ID != messageID) {
 			continue
 		}
 		message, err := decodeMessageWire(wire)

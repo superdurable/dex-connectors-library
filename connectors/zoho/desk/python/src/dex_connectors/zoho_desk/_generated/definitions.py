@@ -71,7 +71,7 @@ CREATE_TICKET_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Zoho Desk created the ticket and returned it.", False),
         BranchDefinition(PROVIDER_REJECTED, "Zoho Desk conclusively rejected the ticket, such as an unknown department, status, or assignee; no ticket was created.", True),
-        BranchDefinition(UNCERTAIN, "The ticket may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, a later attempt was refused after an earlier possible send, or Zoho Desk returned the ticket ID with an invalid ticket. The Step does not send it again.", True),
+        BranchDefinition(UNCERTAIN, "The ticket may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; a later attempt was refused, or its credentials were revoked, after an earlier possible send; Zoho Desk accepted the ticket with a 2xx that had no readable ticket ID; or reading back the accepted ticket ID did not confirm it. The Step does not send it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -89,7 +89,7 @@ UPDATE_TICKET_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "Zoho Desk accepted the requested values now or already held them; the returned ticket shows any change its automations made.", False),
         BranchDefinition(NOT_FOUND, "The ticket does not exist or is not visible to the connection's agent.", True),
         BranchDefinition(PROVIDER_REJECTED, "Zoho Desk conclusively rejected the change, such as an unknown status, an assignee outside the department, or a blueprint that forbids the transition.", True),
-        BranchDefinition(INVALID_RESPONSE, "The ticket read before the change was invalid or oversized, so this attempt sent no change. An invalid answer after the change is sent repeats the absolute change instead.", True),
+        BranchDefinition(INVALID_RESPONSE, "Not selected by this release: an invalid or oversized answer to the ticket read or to the change retries, because the change is absolute and an earlier attempt may have sent it.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -106,7 +106,7 @@ ADD_COMMENT_DEFINITION = MutationDefinition(
         BranchDefinition(ADDED, "Zoho Desk added the comment and returned it.", False),
         BranchDefinition(NOT_FOUND, "The ticket does not exist or is not visible to the connection's agent; nothing was added.", True),
         BranchDefinition(PROVIDER_REJECTED, "Zoho Desk conclusively rejected the comment; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "The comment may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, a later attempt was refused after an earlier possible send, or Zoho Desk returned the comment ID with an invalid comment or another visibility. The Step does not send it again.", True),
+        BranchDefinition(UNCERTAIN, "The comment may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; a later attempt was refused, or its credentials were revoked, after an earlier possible send; Zoho Desk accepted the comment with a 2xx that had no readable comment ID or another visibility; or reading back the accepted comment ID did not confirm it. The Step does not send it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

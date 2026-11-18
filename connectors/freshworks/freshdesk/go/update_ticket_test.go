@@ -5,6 +5,7 @@ package freshdesk_test
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -67,6 +68,12 @@ func TestUpdateTicketRetriesEveryUnconfirmedWrite(t *testing.T) {
 		"reflected key": func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusOK, `{"id":20,"subject":"`+testAPIKey+`"}`)
 		},
+		"oversized written ticket": func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"id":20,"description_text":"`+strings.Repeat("x", 4096)+`"}`)
+		},
+		"oversized refusal": func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusBadRequest, `{"errors":"`+strings.Repeat("x", 4096)+`"}`)
+		},
 	} {
 		provider := newRecordingFreshdesk(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 			if request.Method == http.MethodGet {
@@ -75,7 +82,9 @@ func TestUpdateTicketRetriesEveryUnconfirmedWrite(t *testing.T) {
 			}
 			reply(response)
 		})
-		_, err := sdkgo.RunMutation(newFreshdeskDexContext("update-retry"), newFreshdeskClient(t, provider.URL).UpdateTicket(), freshdeskConnection, freshdesk.UpdateTicketInput{
+		client, err := freshdesk.New(freshdesk.Config{Domain: testDomain, MaxResponseBytes: 2048}, testCredentialProvider(), freshdesk.WithAPIBaseURL(provider.URL+"/api/v2"))
+		require.NoError(t, err)
+		_, err = sdkgo.RunMutation(newFreshdeskDexContext("update-retry"), client.UpdateTicket(), freshdeskConnection, freshdesk.UpdateTicketInput{
 			TicketID: 20, Status: freshdesk.TicketStatusOpen,
 		})
 		var retry *sdkgo.RetryError

@@ -203,6 +203,20 @@ func TestLostCreateResponseIsResentWithinTheSendCapWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.count("comment"))
 }
 
+// TestAcceptedCreateWithAnInvalidAnswerIsReadBackByIDWithRealDex covers a 2xx that carries only the
+// ticket ID: the Step reads the ticket back by ID and never resends the create.
+func TestAcceptedCreateWithAnInvalidAnswerIsReadBackByIDWithRealDex(t *testing.T) {
+	provider := newFakeZohoDesk(t)
+	provider.answersFirstCreateWithOnlyTheID = true
+	harness := newTriageHarness(t, provider, defaultRequestTimeout)
+
+	outcome := harness.runTriage(t, "create-read-back", integrationIssueInput())
+	require.Equal(t, TriageTicketOpened, outcome.Action)
+	require.Equal(t, 1, provider.count("create"), "an accepted create is never resent")
+	require.Equal(t, 1, provider.ticketCount())
+	require.Equal(t, 1, provider.count("comment"))
+}
+
 func TestCreateFailingAtEverySendIsUncertainAtTheSendCapWithRealDex(t *testing.T) {
 	provider := newFakeZohoDesk(t)
 	provider.createFailureStatus = http.StatusInternalServerError
@@ -393,17 +407,19 @@ type fakeZohoDesk struct {
 	counts                          map[string]int
 	requests                        map[string][]fakeRecordedRequest
 
-	losesFirstCreateResponse  bool
-	losesFirstUpdateResponse  bool
-	losesFirstCommentResponse bool
-	rateLimitsFirstCreate     bool
-	firstCreateFailureStatus  int
-	firstCommentFailureStatus int
+	losesFirstCreateResponse bool
+	// answersFirstCreateWithOnlyTheID accepts the first create with a 2xx that carries only the ticket ID.
+	answersFirstCreateWithOnlyTheID bool
+	losesFirstUpdateResponse        bool
+	losesFirstCommentResponse       bool
+	rateLimitsFirstCreate           bool
+	firstCreateFailureStatus        int
+	firstCommentFailureStatus       int
 	// createFailureStatus answers every create with this status, so resends reach the send cap.
 	createFailureStatus int
 	rejectsCreate       bool
-	holdsFirstCreate          chan struct{}
-	holdsFirstUpdate          chan struct{}
+	holdsFirstCreate    chan struct{}
+	holdsFirstUpdate    chan struct{}
 }
 
 type fakeTicket struct {
@@ -658,6 +674,10 @@ func (provider *fakeZohoDesk) createTicket(response http.ResponseWriter, request
 	}
 	if provider.losesFirstCreateResponse && attempt == 1 {
 		provider.dropConnection(response)
+		return
+	}
+	if provider.answersFirstCreateWithOnlyTheID && attempt == 1 {
+		provider.writeValue(response, http.StatusOK, map[string]any{"id": ticket.id})
 		return
 	}
 	provider.writeValue(response, http.StatusOK, value)

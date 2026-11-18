@@ -17,7 +17,8 @@ Gorgias has no idempotency key. `createTicket` and `addNote` write a stable
 external ID and send under the SDK single-dispatch fence with the manifest
 send cap of three. After an unknown outcome the next attempt reads the
 resource back by that external ID, resends while the cap allows, and selects
-`uncertain` only at the cap; the
+`uncertain` only at the cap. A 2xx is never resent, even when its body is
+unusable or breaks while it is read; it is read back once instead. The
 [connector README](../README.md#duplicate-safety) has the full rules. Markers
 written by `0.2.0` are untrusted by the SDK fence, so a write in flight during
 the upgrade retries without sending until its retry budget runs out. Ticket

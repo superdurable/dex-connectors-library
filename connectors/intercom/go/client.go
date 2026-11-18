@@ -131,6 +131,8 @@ type intercomResponse struct {
 	header     http.Header
 	body       []byte
 	requestID  string
+	// isBodyTooLarge means the body exceeded maxResponseBytes, so only its first bytes were kept.
+	isBodyTooLarge bool
 }
 
 // exchangeOutcome is the provider-neutral meaning of one Intercom request that each operation maps to a branch.
@@ -166,6 +168,22 @@ func (result intercomExchange) isRetryableRead() bool {
 	default:
 		return false
 	}
+}
+
+// hasSuccessStatus reports a 2xx answer, which proves Intercom accepted a write even when its body is unusable.
+func (result intercomExchange) hasSuccessStatus() bool {
+	return result.response.statusCode >= 200 && result.response.statusCode < 300
+}
+
+// withOversizedRefusalAsUnknown treats a refusal whose body was too large to inspect as an unknown write outcome.
+func (result intercomExchange) withOversizedRefusalAsUnknown(operation string) intercomExchange {
+	if !result.response.isBodyTooLarge || (result.outcome != exchangeRejected && result.outcome != exchangeNotFound) {
+		return result
+	}
+	result.outcome = exchangeUnconfirmed
+	result.failure = intercomFailure(sdkgo.FailureResponseTooLarge, operation, fmt.Sprintf(
+		"Intercom answered HTTP %d with a body larger than maxResponseBytes, so the outcome is unknown", result.response.statusCode))
+	return result
 }
 
 // New validates configuration and constructs an Intercom client. Credentials are resolved before every
@@ -293,11 +311,30 @@ func (client *Client) conversationEventWebhookEndpoint(
 
 // resolveCredentials returns a header-safe access token, or a safe defect Failure.
 func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
-	credentials, err := client.credentials.Resolve(call)
-	if err != nil || validateResolvedCredentials(credentials) != nil {
-		return Credentials{}, intercomFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
+	credentials, failure := client.resolveWriteCredentials(call, operation)
+	if failure != nil {
+		return Credentials{}, &failure.failure
 	}
 	return credentials, nil
+}
+
+// credentialFailure is a safe credential Failure and whether a later attempt may resolve it.
+type credentialFailure struct {
+	failure sdkgo.Failure
+	// isTransient means the credential provider failed for a reason other than unusable credentials.
+	isTransient bool
+}
+
+// resolveWriteCredentials classifies an unusable or revoked token as terminal and any other resolve error as transient.
+func (client *Client) resolveWriteCredentials(call sdkgo.Call, operation string) (Credentials, *credentialFailure) {
+	credentials, err := client.credentials.Resolve(call)
+	if err == nil && validateResolvedCredentials(credentials) == nil {
+		return credentials, nil
+	}
+	return Credentials{}, &credentialFailure{
+		failure:     intercomFailure(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"),
+		isTransient: err != nil && !sdkgo.IsReauthorizationRequired(err),
+	}
 }
 
 // exchange sends one authenticated request and classifies its response without deciding retry policy.
@@ -324,6 +361,7 @@ func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operati
 		return intercomExchange{outcome: exchangeUnconfirmed, response: response, failure: intercomFailure(sdkgo.FailureTransport, operation, "Intercom response could not be read")}
 	}
 	response.body = body
+	response.isBodyTooLarge = errors.Is(readErr, providerhttp.ErrBodyTooLarge)
 	if isSuccess {
 		if bytes.Contains(body, []byte(credentials.AccessToken.Reveal())) {
 			response.body = nil

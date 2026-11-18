@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { GorgiasClient, isBareEmail } from '../src/client.js';
 import { decodeTicket } from '../src/wire.js';
 
@@ -26,6 +26,19 @@ function mutationCall(attempt: number, previousHeartbeat?: unknown): Call {
     },
   } as Call;
 }
+
+/** A mutation call whose Fence heartbeats are appended to heartbeats. */
+function recordingMutationCall(attempt: number, heartbeats: unknown[], previousHeartbeat?: unknown): Call {
+  const recorded = mutationCall(attempt, previousHeartbeat);
+  return { ...recorded, context: { ...recorded.context, recordHeartbeat: async (value: unknown) => { heartbeats.push(value); } } } as Call;
+}
+
+/** A transient credential read failure and the terminal ones another attempt cannot repair. */
+const credentialFailures = [
+  ['transient credential read failure', async () => { throw new Error('credential store unavailable'); }, false],
+  ['reauthorization requirement', async () => { throw new ReauthorizationRequiredError(); }, true],
+  ['unusable credential', async () => ({ email: 'not an address', apiKey: new SecretString('testKey0123456789') }), true],
+] as const;
 
 /** A claim after three possible sends, which reaches the manifest send cap of three. */
 const claimAtSendCap = { callId: mutationCallID, attempt: 3, state: 'claimed', sendCount: 3 };
@@ -101,15 +114,15 @@ describe('Gorgias retry and routing parity', () => {
   it.each([
     ['createTicket', createInput],
     ['addNote', noteInput],
-  ] as const)('resends below the cap after an invalid %s lookup and retries an unusable answer', async (operation, input) => {
+  ] as const)('resends below the cap after an invalid %s lookup and never resends an unusable accepted answer', async (operation, input) => {
     const methods: string[] = [];
     const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async request => { methods.push(request.method); return response(200, { malformed: true }); } });
     const attempt = operation === 'createTicket'
       ? await client.createTicket().invoke(mutationCall(2), input)
       : await client.addNote().invoke(mutationCall(2), input);
-    expect(attempt.kind).toBe('retry');
+    expect(attempt.kind).toBe('uncertain');
     expect(attempt.failure?.kind).toBe('PROTOCOL');
-    expect(methods).toEqual(['GET', 'POST']);
+    expect(methods).toEqual(['GET', 'POST', 'GET']);
   });
 
   it.each([
@@ -122,15 +135,76 @@ describe('Gorgias retry and routing parity', () => {
       ? await client.createTicket().invoke(mutationCall(4, claimAtSendCap), input)
       : await client.addNote().invoke(mutationCall(4, claimAtSendCap), input);
     expect(attempt.kind).toBe('uncertain');
-    expect(attempt.failure?.message).toContain('the send cap is reached, and Gorgias could not confirm it:');
+    expect(attempt.failure?.message).toContain('Gorgias could not confirm it:');
     expect(requestCount).toBe(1);
   });
 
-  it('reports unavailable credentials after a possible earlier send as uncertain', async () => {
-    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => { throw new Error('unavailable'); } });
-    const attempt = await client.createTicket().invoke(mutationCall(2, { callId: mutationCallID, attempt: 1, state: 'claimed', sendCount: 1 }), createInput);
+  it.each(credentialFailures)('maps a %s after a possible earlier send without recording a checkpoint', async (_name, resolve, isTerminal) => {
+    const heartbeats: unknown[] = [];
+    const attempt = await new GorgiasClient({ domain: 'acme' }, { resolve }).createTicket()
+      .invoke(recordingMutationCall(2, heartbeats, { callId: mutationCallID, attempt: 1, state: 'claimed', sendCount: 1 }), createInput);
+    expect(heartbeats).toEqual([]);
+    expect(attempt.kind).toBe(isTerminal ? 'uncertain' : 'retry');
+    if (isTerminal) expect(attempt.failure?.message).toContain('credentials are unusable to read it back');
+  });
+
+  it.each(credentialFailures)('maps a %s on a first send after recording notSent', async (_name, resolve, isTerminal) => {
+    const heartbeats: unknown[] = [];
+    const attempt = await new GorgiasClient({ domain: 'acme' }, { resolve }).addNote().invoke(recordingMutationCall(1, heartbeats), noteInput);
+    expect(JSON.stringify(heartbeats)).toContain('"state":"notSent"');
+    if (!isTerminal) { expect(attempt.kind).toBe('retry'); return; }
+    expect(attempt.kind).toBe('branch');
+    if (attempt.kind === 'branch') expect(attempt.branch).toBe('defect');
+  });
+
+  it.each([
+    ['transport failure', () => new ProviderTransportError(false, 201, {})],
+    ['stall', () => new ProviderStalledError(201, {})],
+  ] as const)('reads back a ticket whose 2xx body breaks with a %s and never resends it', async (_name, bodyFailure) => {
+    const methods: string[] = [];
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async request => {
+      methods.push(request.method);
+      if (request.method === 'POST') throw bodyFailure();
+      return response(200, { data: [{ id: 7001, status: 'open', created_datetime: '2026-10-20T09:00:00Z', external_id: `dex-${mutationCallID}` }] });
+    } });
+    const attempt = await client.createTicket().invoke(mutationCall(1), createInput);
+    expect(methods).toEqual(['POST', 'GET']);
+    expect(attempt.kind).toBe('branch');
+    if (attempt.kind === 'branch') expect(attempt.branch).toBe('created');
+  });
+
+  it('reads back a note whose 2xx body breaks and selects uncertain when it is absent', async () => {
+    const methods: string[] = [];
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async request => {
+      methods.push(request.method);
+      if (request.method === 'POST') throw new ProviderTransportError(false, 201, {});
+      return response(200, { id: 7001, status: 'open', created_datetime: '2026-10-20T09:00:00Z', messages: [] });
+    } });
+    const attempt = await client.addNote().invoke(mutationCall(1), noteInput);
+    expect(methods).toEqual(['POST', 'GET']);
     expect(attempt.kind).toBe('uncertain');
-    expect(attempt.failure?.message).toContain('credentials are unavailable to read it back');
+  });
+
+  it('treats a write refusal with an oversized body as an unknown outcome', async () => {
+    const heartbeats: unknown[] = [];
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async () => { throw new BodyTooLargeError(400, {}); } });
+    const attempt = await client.createTicket().invoke(recordingMutationCall(1, heartbeats), createInput);
+    expect(attempt.kind).toBe('retry');
+    expect(JSON.stringify(heartbeats.at(-1))).toContain('"state":"claimed"');
+  });
+
+  it('retries an updateTicket refusal with an oversized body', async () => {
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async request => {
+      if (request.method === 'GET') return response(200, { id: 7001, status: 'open', created_datetime: '2026-10-20T09:00:00Z' });
+      throw new BodyTooLargeError(400, {});
+    } });
+    const attempt = await client.updateTicket().invoke(mutationCall(1), { ticketId: 7001, status: 'closed' });
+    expect(attempt.kind).toBe('retry');
+  });
+
+  it.each(credentialFailures)('maps an updateTicket %s', async (_name, resolve, isTerminal) => {
+    const attempt = await new GorgiasClient({ domain: 'acme' }, { resolve }).updateTicket().invoke(mutationCall(1), { ticketId: 7001, status: 'closed' });
+    expect(attempt.kind).toBe(isTerminal ? 'branch' : 'retry');
   });
 
   it('retries without sending after a marker the previous release wrote', async () => {

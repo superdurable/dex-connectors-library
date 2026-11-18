@@ -243,12 +243,26 @@ Dex retries a Step after a lost Worker, so the operations take these positions:
   send that reaches the cap selects `uncertain`, and the fence refuses any
   further send. Each resend below the cap can add a duplicate ticket, note, or
   customer email. An unreadable or untrusted checkpoint returns Retry without
-  sending. A 2xx whose ticket or conversation ID decodes is never resent, even
-  when another field is invalid.
+  sending. A 429 or 503 resend keeps the earlier unknown send in the count, so
+  a later refusal or credential failure still selects `uncertain`.
+- A 2xx is never resent, even when its body breaks off, exceeds
+  `maxResponseBytes`, reflects the credential, or does not decode. When the
+  body yields the ticket or conversation ID, the connector checkpoints it and
+  reads the write back in the same attempt: `createTicket` with
+  `GET /api/v2/tickets/{id}`, and `addNote` by paging
+  `GET /api/v2/tickets/{id}/conversations` 100 at a time through the first
+  1,000 conversations, because Freshdesk has no single-conversation read. A
+  confirmed read selects `created` or `added`; a 429, 503, 5xx, or lost read
+  returns Retry only when the ID checkpoint was recorded; a 404, a refusal, an
+  invalid page, or a missing conversation selects `uncertain`. Without an ID
+  the 2xx selects `uncertain`. A later attempt that finds a saved ID reads it
+  back the same way and never resends. A non-2xx body that carries a
+  top-level `id` is treated the same way.
 - A definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422) of a
   first send records `canResend` and selects its branch. After a possible
   earlier send it selects `uncertain`, because the earlier send may have been
-  applied.
+  applied. A refusal whose body exceeds `maxResponseBytes` cannot be checked
+  for acceptance, so it is an unknown outcome.
 - A write starts only when its request window retains at least one tenth of
   the attempt budget, capped by the 30-second Execute timeout. A full attempt
   therefore needs at least three seconds for the request, plus one second
@@ -304,7 +318,8 @@ token that contains the API key is dropped.
 | connection refused before sending | Retry | Retry with `canResend` checkpoint |
 | 503 | Retry, after `Retry-After` when present | Retry with `canResend` checkpoint |
 | 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | resend within the send cap, then `uncertain` |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for reads, including the read before the `PUT`; Retry after the `PUT` | `uncertain` when the ticket or conversation ID decodes; otherwise resend within the send cap, then `uncertain` |
+| refusal status with an oversized body | the status's branch for reads; Retry for the `PUT` | resend within the send cap, then `uncertain` |
+| oversized, malformed, broken-off, or credential-reflecting 2xx | `invalidResponse` for reads, including the read before the `PUT`; Retry after the `PUT` | read back by the decoded ticket or conversation ID, never resent; `uncertain` without an ID |
 | unreadable or untrusted fence checkpoint | not applicable | Retry without sending |
 | invalid input | `defect`, with no request | `defect`, with no request |
 | terminal connection credentials | `defect`, with no request | `notSent` checkpoint and `defect` on a first send; `uncertain` after a possible send |

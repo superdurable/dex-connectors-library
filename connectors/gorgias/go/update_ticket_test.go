@@ -5,6 +5,7 @@ package gorgias_test
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -153,5 +154,36 @@ func TestUpdateTicketRejectsInvalidInputBeforeAnyRequest(t *testing.T) {
 		result, err := sdkgo.RunMutation(newGorgiasDexContext("invalid"), newGorgiasClient(t, provider.URL).UpdateTicket(), gorgiasConnection, input)
 		require.NoError(t, err, name)
 		require.Equal(t, gorgias.UpdateTicketBranchDefect, result.Branch, name)
+	}
+}
+
+func TestUpdateTicketRefusalWithAnOversizedBodyRetries(t *testing.T) {
+	provider := newRecordingGorgias(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodGet {
+			writeValue(t, response, http.StatusOK, ticketJSON(5512, "closed", nil, nil))
+			return
+		}
+		writeJSON(t, response, http.StatusBadRequest, `{"error":{"msg":"`+strings.Repeat("x", 8192)+`"}}`)
+	})
+	client, err := gorgias.New(gorgias.Config{Domain: testDomain, MaxResponseBytes: 4096}, testCredentialProvider(), gorgias.WithAPIBaseURL(provider.URL+"/api"))
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(newGorgiasDexContext("update-oversized"), client.UpdateTicket(), gorgiasConnection,
+		gorgias.UpdateTicketInput{TicketID: 5512, Status: gorgias.TicketStatusOpen})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an unread refusal body cannot prove the absolute change was refused")
+}
+
+func TestUpdateTicketCredentialFailureRetriesOnlyWhenTransient(t *testing.T) {
+	for _, test := range credentialFailureCases {
+		provider := newRecordingGorgias(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+		result, err := sdkgo.RunMutation(newGorgiasDexContext("update-credentials"), newGorgiasClientWithCredentials(t, provider.URL, test.credentials).UpdateTicket(),
+			gorgiasConnection, gorgias.UpdateTicketInput{TicketID: 5512, Status: gorgias.TicketStatusOpen})
+		if !test.isTerminal {
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, test.name)
+			continue
+		}
+		require.NoError(t, err, test.name)
+		require.Equal(t, gorgias.UpdateTicketBranchDefect, result.Branch, test.name)
 	}
 }

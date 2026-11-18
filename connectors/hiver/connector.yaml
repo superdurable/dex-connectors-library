@@ -244,13 +244,13 @@ spec:
       inputType: AddNoteInput
       outputType: AddNoteOutput
       kind: mutation
-      description: "Add one internal note, visible only to Hiver users, to a conversation. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Hiver documents no idempotency key or note read-back, so an unknown outcome resends the note while the send cap allows and selects uncertain at the cap."
+      description: "Add one internal note, visible only to Hiver users, to a conversation. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Hiver documents no idempotency key or note read-back, so an unknown outcome resends the note while the send cap allows and selects uncertain at the cap. A 2xx answer is never resent: one without a usable note selects uncertain."
       idempotency: required
       branches:
         - {id: added, goName: Added, description: "Hiver added the note and returned it."}
         - {id: notFound, goName: NotFound, description: "The conversation or shared inbox does not exist or is not visible to the API key; nothing was added.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Hiver conclusively rejected the note; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The note may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Hiver returned the note ID with an invalid note. The Step does not send it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The note may exist: Hiver answered 2xx with an unreadable, oversized, or invalid note; the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -276,13 +276,13 @@ spec:
       inputType: CreateSharedDraftInput
       outputType: SharedDraft
       kind: mutation
-      description: "Create one shared reply draft for a Hiver user to review and send. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Hiver documents no idempotency key or draft read-back, so an unknown outcome resends the draft while the send cap allows and selects uncertain at the cap."
+      description: "Create one shared reply draft for a Hiver user to review and send. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Hiver documents no idempotency key or draft read-back, so an unknown outcome resends the draft while the send cap allows and selects uncertain at the cap. A 2xx answer is never resent: one without a usable draft selects uncertain."
       idempotency: required
       branches:
         - {id: created, goName: Created, description: "Hiver created the shared draft and returned its ID."}
         - {id: notFound, goName: NotFound, description: "The message or shared inbox does not exist or is not visible to the API key; no draft was created.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Hiver conclusively rejected the draft; no draft was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The draft may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Hiver returned the draft ID with an invalid draft. The Step does not send it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The draft may exist: Hiver answered 2xx with an unreadable, oversized, or invalid draft; the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s

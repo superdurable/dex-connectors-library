@@ -73,7 +73,8 @@ func (CreateSharedDraftOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateSh
 // Invoke sends POST /v1/inboxes/{inbox_id}/conversations/shared-drafts as multipart/form-data
 // through the shared fence. Hiver never sends the draft to the customer; a Hiver
 // user does. Hiver has no draft read-back, so an unknown outcome resends while the
-// send cap allows and selects uncertain at the cap. Definite 429, 503, and proven
+// send cap allows and selects uncertain at the cap. A 2xx answer without a usable
+// draft is never resent and selects uncertain. Definite 429, 503, and proven
 // unsent outcomes retry after a stored checkpoint.
 func (operation CreateSharedDraftOperation) Invoke(call sdkgo.Call, input CreateSharedDraftInput) sdkgo.MutationAttempt[SharedDraft] {
 	if err := validateCreateSharedDraftInput(input); err != nil {
@@ -83,9 +84,9 @@ func (operation CreateSharedDraftOperation) Invoke(call sdkgo.Call, input Create
 	if priorAttempt != nil {
 		return *priorAttempt
 	}
-	credentials, failure := operation.client.resolveCredentials(call, createSharedDraftOperation)
+	credentials, failure, isTerminal := operation.client.resolveWriteCredentials(call, createSharedDraftOperation)
 	if failure != nil {
-		return retryBeforeSingleDispatch[SharedDraft](permit, *failure)
+		return credentialFailureBeforeSingleDispatch[SharedDraft](call, operation.client, permit, *failure, isTerminal, CreateSharedDraftBranchDefect)
 	}
 	fields := []hiverFormField{{name: "body", value: input.Body}}
 	if input.HiverMessageID != "" {

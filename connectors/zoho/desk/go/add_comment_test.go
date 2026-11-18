@@ -114,6 +114,66 @@ func TestAddCommentWithAReturnedIDIsNeverResent(t *testing.T) {
 	require.Equal(t, "4000000529001", recordedMarker(t, ctx).ProviderID)
 	result, err = sdkgo.RunMutation(ctx.nextAttempt(), client.AddComment(), deskConnection, input)
 	require.NoError(t, err)
+	require.Equal(t, desk.AddCommentBranchUncertain, result.Branch, "the read-back finds the other visibility")
+	require.Equal(t, 2, provider.requestCount())
+	require.Equal(t, http.MethodGet, provider.request(1).method, "a saved comment ID is read back, never resent")
+	require.Equal(t, "/api/v1/tickets/"+testTicketID+"/comments/4000000529001", provider.request(1).path)
+}
+
+// TestAddCommentReadsBackAnAcceptedCommentByID covers a 2xx whose comment does not decode but carries
+// its ID, and a later attempt that finds the saved ID: both read back and never resend.
+func TestAddCommentReadsBackAnAcceptedCommentByID(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		switch {
+		case request.Method == http.MethodPost:
+			writeJSON(t, response, http.StatusCreated, `{"id":"4000000529001","content":"SENTINEL"}`)
+		case index == 1:
+			writeJSON(t, response, http.StatusServiceUnavailable, `{"errorCode":"SERVICE_UNAVAILABLE"}`)
+		default:
+			writeValue(t, response, http.StatusOK, commentJSON("4000000529001", false, "Triaged."))
+		}
+	})
+	client := newDeskClient(t, provider.URL)
+	input := desk.AddCommentInput{TicketID: testTicketID, Content: "Triaged."}
+	ctx := newDeskDexContext("comment-read-back")
+	_, err := sdkgo.RunMutation(ctx, client.AddComment(), deskConnection, input)
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Equal(t, "4000000529001", recordedMarker(t, ctx).ProviderID)
+
+	result, err := sdkgo.RunMutation(ctx.nextAttempt(), client.AddComment(), deskConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, desk.AddCommentBranchAdded, result.Branch)
+	require.Equal(t, "4000000529001", result.Value.Comment.ID)
+	require.Equal(t, 3, provider.requestCount())
+	require.Equal(t, http.MethodGet, provider.request(2).method)
+}
+
+// TestAddCommentReadsBackASavedIDAtTheSendCap covers finding 39 for comments.
+func TestAddCommentReadsBackASavedIDAtTheSendCap(t *testing.T) {
+	input := desk.AddCommentInput{TicketID: testTicketID, Content: "Triaged."}
+	ctx := capClaimWithSavedProviderID(t, "comment-saved-id", func(client *desk.Client, ctx *deskDexContext) {
+		_, err := sdkgo.RunMutation(ctx, client.AddComment(), deskConnection, input)
+		require.NoError(t, err)
+	}, mustJSON(t, commentJSON("4000000529001", false, "Triaged.")))
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeValue(t, response, http.StatusOK, commentJSON("4000000529001", false, "Triaged."))
+	})
+	result, err := sdkgo.RunMutation(ctx, newDeskClient(t, provider.URL).AddComment(), deskConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, desk.AddCommentBranchAdded, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+	require.Equal(t, http.MethodGet, provider.request(0).method)
+}
+
+// TestAddCommentNeverResendsA2xxWithoutAnID covers an accepted comment whose answer has no ID.
+func TestAddCommentNeverResendsA2xxWithoutAnID(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusOK, `{}`)
+	})
+	ctx := newDeskDexContext("comment-2xx-no-id")
+	result, err := sdkgo.RunMutation(ctx, newDeskClient(t, provider.URL).AddComment(), deskConnection,
+		desk.AddCommentInput{TicketID: testTicketID, Content: "Triaged."})
+	require.NoError(t, err)
 	require.Equal(t, desk.AddCommentBranchUncertain, result.Branch)
 	require.Equal(t, 1, provider.requestCount())
 }

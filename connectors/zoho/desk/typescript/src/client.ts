@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ReauthorizationRequiredError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { Authorization, CredentialFields } from './generated/refresh.js';
@@ -145,6 +145,11 @@ export class ZohoDeskClient {
           const responseWithoutBody = status === 0 ? undefined : { status, headers: error.headers ?? observedHeaders, body: new Uint8Array() };
           if (responseWithoutBody && (responseWithoutBody.status < 200 || responseWithoutBody.status >= 300)) return { outcome: classifyStatus(responseWithoutBody, operation, this.now()) };
           return { outcome: this.failure('invalid', operation, 'RESPONSE_TOO_LARGE', 'Zoho Desk response exceeds the configured maxResponseBytes limit', 0, responseWithoutBody) };
+        }
+        // Keep a status whose headers arrived, so an accepted write is never resent.
+        if (observedStatus === 0 && (error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status !== undefined) {
+          observedStatus = error.status;
+          observedHeaders = error.headers ?? {};
         }
         if (observedStatus !== 0) {
           const partialResponse = { status: observedStatus, headers: observedHeaders, body: new Uint8Array() };

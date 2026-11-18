@@ -31,7 +31,7 @@ from dex_connectors.sdk.singledispatch import (
 )
 
 from ._generated import definitions
-from .client import Client, Exchange, _is_ascii_decimal
+from .client import Client, Exchange, ResponseHead, _is_ascii_decimal
 from .decode import (
     array_value,
     conversation,
@@ -153,8 +153,8 @@ def _mutation_exchange(
     return MutationAttempt.branch_result(branch, value, client.receipt(call, object_id, request_id), failure)
 
 
-# Only these statuses prove Help Scout applied nothing; it documents 412 and 423 as a locked conversation.
-DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 412, 413, 414, 415, 422, 423})
+# Only these statuses prove Help Scout applied nothing; 412, 423, and every other 4xx are unknown.
+DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
 
 
 def _is_unknown_write_outcome(exchange: Exchange) -> bool:
@@ -795,40 +795,22 @@ class ReplyToConversationOperation:
                     "the dispatch checkpoint could not be read; nothing was sent in this attempt",
                 )
             )
-        if decision.kind == DecisionKind.READ_BACK_REQUIRED or (
-            decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
-            and decision.marker is not None
-            and decision.marker.provider_id
-        ):
-            # Help Scout returns a thread ID only for a created thread, so a saved one is never resent.
+        saved_provider_id = decision.marker.provider_id if decision.marker is not None else ""
+        # Help Scout reads a thread back only by its ID, which it returns only for a created thread.
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED or saved_provider_id:
             return await self._read_back(call, output, decision.marker)
-        is_first_send = decision.prior_send_upper_bound == 0
+        is_earlier_send_possible = (
+            decision.kind != DecisionKind.SEND_ALLOWED
+            or decision.prior_send_upper_bound > 0
+            or bool(saved_provider_id)
+        )
+        is_first_send = not is_earlier_send_possible
         can_resend = decision.prior_send_upper_bound + 1 < call.max_sends
         token, resolve_error = await self.client.resolve_token(call)
         if resolve_error:
-            if resolve_error == "retry":
-                # After a possible earlier send, notSent would hide that send, so nothing is recorded.
-                if is_first_send:
-                    try:
-                        await fence.record_not_sent()
-                    except (CheckpointError, DispatchNotAllowedError):
-                        pass  # A failed checkpoint cannot authorize another send.
-                return MutationAttempt.retry(
-                    _failure(
-                        "replyToConversation",
-                        FailureKind.AVAILABILITY,
-                        "the Help Scout access token could not be loaded or obtained yet",
-                    )
-                )
-            if not is_first_send:
-                return self._uncertain(
-                    call,
-                    output,
-                    "an earlier attempt may have sent the thread, and authorization failed before a resend",
-                )
-            return _credential_mutation("replyToConversation", resolve_error, output)
+            return await self._credential_failure(call, output, fence, is_first_send, resolve_error)
         if not input.is_internal_note and input.customer_id == 0:
-            result = await self._read_primary_customer(call, token, output, fence)
+            result = await self._read_primary_customer(call, token, output, fence, is_first_send)
             if isinstance(result, MutationAttempt):
                 if result.kind == "branch" and not is_first_send:
                     return self._uncertain(
@@ -847,10 +829,17 @@ class ReplyToConversationOperation:
             payload["status"] = input.status
         if not input.is_internal_note:
             payload["customer"] = {"id": output.customer_id}
+        response_head = ResponseHead()
         try:
             exchange = await fence.dispatch(
                 lambda _: self.client.exchange(
-                    call, token, "POST", path, payload=payload, allow_refresh=False
+                    call,
+                    token,
+                    "POST",
+                    path,
+                    payload=payload,
+                    allow_refresh=False,
+                    response_head=response_head,
                 )
             )
         except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
@@ -863,23 +852,28 @@ class ReplyToConversationOperation:
                 )
             )
         except TimeoutError:
-            return self._resend_or_uncertain(
-                call,
-                output,
-                can_resend,
-                self._lost_answer(),
-                0,
-                self.client.receipt(call, output.conversation_id),
+            if not response_head.status:
+                return self._resend_or_uncertain(
+                    call,
+                    output,
+                    can_resend,
+                    self._lost_answer(),
+                    0,
+                    self.client.receipt(call, output.conversation_id),
+                )
+            # The write window cut off the body after the status arrived, so the status decides.
+            is_accepted = 200 <= response_head.status < 300
+            exchange = Exchange(
+                response_head.status,
+                response_head.headers,
+                error="bodyRead" if is_accepted else "",
+                token=token,
             )
         if exchange.error == "notBuilt":
             built = _failure(
                 "replyToConversation", FailureKind.LOCAL_DEFECT, "Help Scout request could not be built"
             )
-            if not is_first_send:
-                # defect would hide an earlier possible send.
-                return self._resend_or_uncertain(
-                    call, output, can_resend, built, 0, self.client.receipt(call, output.conversation_id)
-                )
+            # _reject selects uncertain after a possible earlier send, because defect would hide it.
             return await self._reject(call, output, fence, is_first_send, "defect", built, Receipt())
         if exchange.error == "beforeSend":
             try:
@@ -906,24 +900,21 @@ class ReplyToConversationOperation:
             raw_id = exchange.headers.get("Resource-Id", "").strip()
             thread_id = int(raw_id) if _is_ascii_decimal(raw_id) else 0
             if thread_id < 1:
-                # Without a thread ID the answer cannot be read back, so it counts as an unknown outcome.
-                return self._resend_or_uncertain(
-                    call,
+                # Help Scout accepted the thread, and without its ID no read-back can confirm it.
+                return MutationAttempt.uncertain(
                     output,
-                    can_resend,
                     _failure(
                         "replyToConversation",
-                        FailureKind.TRANSPORT,
-                        "Help Scout answered the thread without a valid Resource-Id; the thread may exist",
+                        FailureKind.PROTOCOL,
+                        "Help Scout accepted the thread without a valid Resource-Id; the thread may exist",
                     ),
-                    0,
                     self.client.receipt(call, output.conversation_id),
                 )
             output = replace(output, thread_id=thread_id)
             try:
                 await fence.record_provider_id(str(thread_id))
             except (CheckpointError, DispatchNotAllowedError):
-                pass  # An unrecorded ID still forbids a second send.
+                pass  # The 2xx confirms the thread; a lost ID leaves only the claim for a later attempt.
             return MutationAttempt.branch_result("replied", output, self.client.receipt(call, thread_id))
         retry, failure, delay, request_id = self.client.classify_failure("replyToConversation", exchange)
         receipt = self.client.receipt(call, output.conversation_id, request_id)
@@ -998,8 +989,33 @@ class ReplyToConversationOperation:
             )
         return MutationAttempt.branch_result(branch, output, receipt, problem)
 
+    async def _credential_failure(
+        self, call: Call, output: ConversationReply, fence: Fence, is_first_send: bool, resolve_error: str
+    ) -> MutationAttempt[ConversationReply]:
+        """Send nothing; after a possible earlier send, record nothing and never select defect."""
+        is_transient = resolve_error == "retry"
+        if not is_first_send:
+            if is_transient:
+                return MutationAttempt.retry(
+                    _failure(
+                        "replyToConversation",
+                        FailureKind.AVAILABILITY,
+                        "the Help Scout access token could not be loaded or obtained yet",
+                    )
+                )
+            return self._uncertain(
+                call,
+                output,
+                "an earlier attempt may have sent the thread, and authorization failed before a resend",
+            )
+        try:
+            await fence.record_not_sent()
+        except (CheckpointError, DispatchNotAllowedError):
+            pass  # A failed checkpoint cannot authorize another send.
+        return _credential_mutation("replyToConversation", resolve_error, output)
+
     async def _read_primary_customer(
-        self, call: Call, token: str, output: ConversationReply, fence: Fence
+        self, call: Call, token: str, output: ConversationReply, fence: Fence, is_first_send: bool
     ) -> int | MutationAttempt[ConversationReply]:
         exchange = await self.client.exchange(
             call, token, "GET", f"/v2/conversations/{output.conversation_id}"
@@ -1026,7 +1042,8 @@ class ReplyToConversationOperation:
             "notFound",
         )
         if terminal:
-            if terminal.kind == "retry":
+            # After a possible earlier send, notSent would hide that send, so nothing is recorded.
+            if terminal.kind == "retry" and is_first_send:
                 try:
                     await fence.record_not_sent()
                 except (CheckpointError, DispatchNotAllowedError):
