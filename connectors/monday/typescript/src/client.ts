@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { ReauthorizationRequiredError, RetryError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
@@ -42,6 +42,7 @@ export interface MondayExchangeEvidence {
   /** A rate limit, 503, or unsent request that monday.com never processed. */ provenNotProcessed?: boolean;
   /** A listed refusal status or error code, or a request never sent. */ definiteRefusal?: boolean;
   /** The response echoed the connection credential. */ credentialReflected?: boolean;
+  /** A 2xx whose body broke after its headers, so a write may have been accepted. */ successBodyUnreadable?: boolean;
 }
 /** Classified provider exchange, including safe response metadata. */
 export interface MondayExchange extends MondayExchangeEvidence {
@@ -181,7 +182,11 @@ export class MondayClient {
         response = { status: error.status, headers: error.headers, body: new Uint8Array() };
         if (response.status >= 200 && response.status < 300) return failureExchange(operation, 'invalid', 'RESPONSE_TOO_LARGE', 'monday.com response exceeds the configured maxResponseBytes limit', response.status, '', headerValue(response.headers['idempotency-replayed']).trim().toLowerCase() === 'true');
       } else if (error instanceof ProviderTransportError && error.isProvablyNotSent) return failureExchange(operation, 'retry', 'TRANSPORT', 'monday.com could not be reached; no request was sent', 0, '', false, { provenNotProcessed: true });
-      else return failureExchange(operation, request.isMutation ? 'uncertain' : 'retry', 'TRANSPORT', 'monday.com request failed before a response arrived');
+      else if ((error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status !== undefined && error.status >= 200 && error.status < 300) {
+        // Keep the status: monday.com may have accepted the write, so it is never resent.
+        const isReplayed = headerValue(error.headers?.['idempotency-replayed']).trim().toLowerCase() === 'true';
+        return failureExchange(operation, request.isMutation ? 'invalid' : 'retry', 'TRANSPORT', 'monday.com response could not be read', error.status, '', isReplayed, { successBodyUnreadable: true });
+      } else return failureExchange(operation, request.isMutation ? 'uncertain' : 'retry', 'TRANSPORT', 'monday.com request failed before a response arrived');
     }
     const body = response.body;
     const status = response.status;

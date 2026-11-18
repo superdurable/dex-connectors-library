@@ -173,6 +173,8 @@ type mondayExchange struct {
 	isDefiniteRefusal bool
 	// isCredentialReflected marks a response that echoed the connection credential.
 	isCredentialReflected bool
+	// isSuccessBodyUnreadable marks a 2xx whose body broke after its headers, so a write may have been accepted.
+	isSuccessBodyUnreadable bool
 }
 
 // graphQLErrorSummary holds only machine-readable tokens from monday.com's errors array.
@@ -345,7 +347,8 @@ func (client *Client) send(ctx context.Context, call sdkgo.Call, credentials Cre
 		if request.isMutation && isSuccess {
 			outcome = exchangeInvalid
 		}
-		return mondayExchange{outcome: outcome, response: response, failure: mondayFailure(sdkgo.FailureTransport, operation, "monday.com response could not be read")}
+		return mondayExchange{outcome: outcome, response: response, isSuccessBodyUnreadable: isSuccess,
+			failure: mondayFailure(sdkgo.FailureTransport, operation, "monday.com response could not be read")}
 	}
 	token := credentials.authorizationToken().Reveal()
 	if bytes.Contains(body, []byte(token)) {

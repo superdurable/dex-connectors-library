@@ -128,20 +128,9 @@ func TestFencedWritesResendUnknownOutcomesUpToTheSendCap(t *testing.T) {
 		{"item without an ID", func(t *testing.T, response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusOK, `{"data":{"create_item":null}}`)
 		}, sdkgo.FailureProtocol},
-		{"refusal beside an item value", func(t *testing.T, response http.ResponseWriter) {
-			writeJSON(t, response, http.StatusOK, `{"data":{"create_item":{"id":"SENTINEL"}},"errors":[{"extensions":{"code":"ColumnValueException"}}]}`)
-		}, sdkgo.FailureValidation},
 		{"reflected token", func(t *testing.T, response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusOK, `{"data":{"create_item":{"id":"1","name":"`+testAPIToken+`"}}}`)
 		}, sdkgo.FailureProtocol},
-		{"interrupted accepted response", func(t *testing.T, response http.ResponseWriter) {
-			response.Header().Set("Content-Length", "1000")
-			response.WriteHeader(http.StatusOK)
-			_, err := response.Write([]byte(`{"data":{"create_item":`))
-			require.NoError(t, err)
-			response.(http.Flusher).Flush()
-			dropConnection(t, response)
-		}, sdkgo.FailureTransport},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingMonday(t, func(response http.ResponseWriter, _ recordedRequest, _ int) { test.reply(t, response) })
@@ -172,6 +161,93 @@ func TestFencedWritesResendUnknownOutcomesUpToTheSendCap(t *testing.T) {
 			require.Equal(t, 3, provider.requestCount(), "nothing is sent at the cap")
 		})
 	}
+}
+
+func TestFencedWritesNeverResendAPossiblyAcceptedWrite(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		reply func(*testing.T, http.ResponseWriter)
+		kind  sdkgo.FailureKind
+	}{
+		{"refusal beside an item value", func(t *testing.T, response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"data":{"create_item":{"id":"SENTINEL"}},"errors":[{"extensions":{"code":"ColumnValueException"}}]}`)
+		}, sdkgo.FailureValidation},
+		{"item value without an ID", func(t *testing.T, response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"data":{"create_item":{"name":"Item"}}}`)
+		}, sdkgo.FailureProtocol},
+		{"2xx body broken after its headers", func(t *testing.T, response http.ResponseWriter) {
+			response.Header().Set("Content-Length", "1000")
+			response.WriteHeader(http.StatusOK)
+			_, err := response.Write([]byte(`{"data":{"create_item":`))
+			require.NoError(t, err)
+			response.(http.Flusher).Flush()
+			dropConnection(t, response)
+		}, sdkgo.FailureTransport},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingMonday(t, func(response http.ResponseWriter, _ recordedRequest, _ int) { test.reply(t, response) })
+			client := newMondayClient(t, provider.URL)
+			stepContext := newMondayDexContext("accepted-" + test.name)
+			result, err := createItemForTest(t, stepContext, client)
+			require.NoError(t, err)
+			require.Equal(t, monday.CreateItemBranchUncertain, result.Branch)
+			require.Equal(t, test.kind, result.Failure.Kind)
+			require.Equal(t, 1, provider.requestCount())
+		})
+	}
+}
+
+func TestFencedWritesKeepCountingAfterARateLimitedResend(t *testing.T) {
+	provider := newRecordingMonday(t, func(response http.ResponseWriter, _ recordedRequest, index int) {
+		if index == 1 {
+			writeJSON(t, response, http.StatusTooManyRequests, `{"errors":[{"extensions":{"code":"RATE_LIMIT_EXCEEDED"}}]}`)
+			return
+		}
+		writeJSON(t, response, http.StatusInternalServerError, `{"errors":[{"message":"SENTINEL"}]}`)
+	})
+	client := newMondayClient(t, provider.URL)
+	stepContext := newMondayDexContext("rate-limited-resend")
+	// Attempt one is unknown, attempt two is rate limited, and attempt three is unknown again.
+	for attempt := int32(1); attempt <= 3; attempt++ {
+		stepContext.attemptNo = attempt
+		_, err := createItemForTest(t, stepContext, client)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "attempt %d", attempt)
+	}
+	stepContext.attemptNo = 4
+	result, err := createItemForTest(t, stepContext, client)
+	require.NoError(t, err)
+	require.Equal(t, monday.CreateItemBranchUncertain, result.Branch)
+	require.Equal(t, 4, provider.requestCount())
+}
+
+func TestFencedWritesCredentialFailureAfterARateLimitedResendNeverRecordsNotSent(t *testing.T) {
+	provider := newRecordingMonday(t, func(response http.ResponseWriter, _ recordedRequest, index int) {
+		if index == 1 {
+			writeJSON(t, response, http.StatusTooManyRequests, `{"errors":[{"extensions":{"code":"RATE_LIMIT_EXCEEDED"}}]}`)
+			return
+		}
+		writeJSON(t, response, http.StatusInternalServerError, `{"errors":[{"message":"SENTINEL"}]}`)
+	})
+	client := newMondayClient(t, provider.URL)
+	stepContext := newMondayDexContext("credential-after-rate-limit")
+	for attempt := int32(1); attempt <= 2; attempt++ {
+		stepContext.attemptNo = attempt
+		_, err := addUpdateForTest(t, stepContext, client)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "attempt %d", attempt)
+	}
+	before := dispatchMarkerForTest(t, stepContext)
+	require.Equal(t, singledispatch.StateCanResend, before.State)
+	// The canResend marker gives sendAllowed with one possible earlier send.
+	broken, err := monday.New(monday.Config{}, sdkgo.StaticCredentialProvider[monday.Credentials]{}, monday.WithAPIURL(provider.URL+"/v2"))
+	require.NoError(t, err)
+	stepContext.attemptNo = 3
+	result, err := addUpdateForTest(t, stepContext, broken)
+	require.NoError(t, err)
+	require.Equal(t, monday.AddUpdateBranchUncertain, result.Branch)
+	require.Equal(t, before, dispatchMarkerForTest(t, stepContext))
+	require.Equal(t, 2, provider.requestCount())
 }
 
 func TestFencedWritesHonorTheApplicationSendCap(t *testing.T) {
