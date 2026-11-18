@@ -152,9 +152,9 @@ export interface CreateInvoiceStepConfig<StepInput, OperationInput = CreateInvoi
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was created; the Receipt carries retryAfterSeconds. */
   dailyLimitReached?: StepTarget<MutationResult<OperationOutput>>;
-  /** Kept for compatibility and never selected: an internal error or an unusable invoice repeats the identical keyed request until the retry budget runs out. */
+  /** On a later attempt, which may follow a created invoice, Xero refused the credentials or the connection became unusable, so the outcome cannot be confirmed; read back with listInvoices by reference. An internal error or an unusable invoice repeats the identical keyed request instead. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
-  /** Local input, connection configuration, or connector definition is invalid. */
+  /** Local input, connection configuration, or connector definition is invalid on the Step's first attempt. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
   /** Accepted for compatibility; ignored because the operation is safe to repeat. */
   maxSends?: number;
@@ -186,9 +186,9 @@ export interface RecordPaymentStepConfig<StepInput, OperationInput = RecordPayme
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was recorded; the Receipt carries retryAfterSeconds. */
   dailyLimitReached?: StepTarget<MutationResult<OperationOutput>>;
-  /** Kept for compatibility and never selected: an internal error or an unusable payment repeats the identical keyed request until the retry budget runs out. */
+  /** On a later attempt, which may follow a recorded payment, Xero refused the credentials or the connection became unusable, so the outcome cannot be confirmed; read the invoice back with getInvoice. An internal error or an unusable payment repeats the identical keyed request instead. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
-  /** Local input, connection configuration, or connector definition is invalid. */
+  /** Local input, connection configuration, or connector definition is invalid on the Step's first attempt. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
   /** Accepted for compatibility; ignored because the operation is safe to repeat. */
   maxSends?: number;

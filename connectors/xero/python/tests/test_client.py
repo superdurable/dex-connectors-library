@@ -197,3 +197,37 @@ def test_write_retries_a_status_that_does_not_prove_a_refusal(status: int, kind:
     assert attempt is not None and attempt.kind == kind
     if kind == "branch":
         assert attempt.branch == "providerRejected"
+
+
+class _LaterAttemptContext:
+    attempt = 2
+
+
+@pytest.mark.parametrize(
+    ("outcome", "status", "failure_kind", "expected_branch"),
+    [
+        ("rejected", 403, FailureKind.AUTHORIZATION, "uncertain"),
+        ("rejected", 401, FailureKind.AUTHENTICATION, "uncertain"),
+        ("rejected", 0, FailureKind.AUTHENTICATION, "uncertain"),
+        ("defect", 0, FailureKind.AUTHENTICATION, "uncertain"),
+        ("rejected", 400, FailureKind.VALIDATION, "providerRejected"),
+    ],
+)
+def test_later_write_attempt_selects_uncertain_for_a_credential_or_local_failure(
+    outcome: str, status: int, failure_kind: FailureKind, expected_branch: str
+) -> None:
+    """Xero checks credentials before replaying the key, so a later attempt proves nothing."""
+    from dataclasses import replace
+
+    from dex_connectors.sdk import Failure
+
+    from dex_connectors.xero.client import Exchange
+    from dex_connectors.xero.operations import _mutation_outcome
+
+    client = Client(Config(), _FailedCredentials(ValueError()))
+    result = Exchange(outcome, status, error=Failure(failure_kind, "xero", "createInvoice", "refused"))
+    later_call = replace(_call(), context=_LaterAttemptContext())  # type: ignore[arg-type]
+    attempt = _mutation_outcome(client, later_call, result, None)
+    assert attempt is not None and attempt.branch == expected_branch
+    first = _mutation_outcome(client, _call(), result, None)
+    assert first is not None and first.branch != "uncertain"
