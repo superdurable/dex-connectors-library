@@ -108,7 +108,7 @@ export interface UpdateConversationStepConfig<StepInput, OperationInput = Update
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Kept for existing Flows and mocks; the connector no longer selects it. An invalid or oversized conversation, on the read before the change or in answer to it, returns Retry, because an earlier attempt may have applied the change and repeating it is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** Local input, connection configuration, or connector definition is invalid. */
+  /** Local input, connection configuration, or connector definition is invalid; unusable credentials select it only on the first attempt, because a later attempt retries a change an earlier attempt may have sent. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
   /** Accepted for compatibility; ignored because the operation is safe to repeat. */
   maxSends?: number;

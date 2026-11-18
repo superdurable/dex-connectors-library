@@ -192,6 +192,18 @@ func TestUpdateConversationOutcomes(t *testing.T) {
 			reply:   func(t *testing.T, response http.ResponseWriter, _ *http.Request) { dropConnection(t, response) },
 			isRetry: true,
 		},
+		"not found with a cut-off body repeats the absolute change": {
+			reply: func(t *testing.T, response http.ResponseWriter, _ *http.Request) {
+				cutOffBody(t, response, http.StatusNotFound)
+			},
+			isRetry: true,
+		},
+		"refusal with an oversized body repeats the absolute change": {
+			reply: func(_ *testing.T, response http.ResponseWriter, _ *http.Request) {
+				writeOversizedBody(response, http.StatusBadRequest)
+			},
+			isRetry: true,
+		},
 		"invalid read-back repeats the absolute change": {
 			reply: func(t *testing.T, response http.ResponseWriter, request *http.Request) {
 				if request.Method == http.MethodPatch {

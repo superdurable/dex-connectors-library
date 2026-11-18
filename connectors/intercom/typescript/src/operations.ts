@@ -746,7 +746,7 @@ export class ReplyToConversationOperation
     exchange = withOversizedRefusalAsUnknown(this.client, exchange, operation);
     if (exchange.outcome !== "succeeded" && hasSuccessStatus(exchange))
       // An oversized, credential-reflecting, or unreadable 2xx still means Intercom accepted the reply.
-      return this.confirmAccepted(call, input, token, exchange.failure);
+      return this.confirmAccepted(call, fence, input, token, exchange.failure);
     const terminal = await classifySentReply(
       this.client,
       exchange,
@@ -772,6 +772,7 @@ export class ReplyToConversationOperation
     } catch (error) {
       return this.confirmAccepted(
         call,
+        fence,
         input,
         token,
         this.client.failure(
@@ -788,6 +789,7 @@ export class ReplyToConversationOperation
     } catch (error) {
       return this.confirmAccepted(
         call,
+        fence,
         input,
         token,
         this.client.failure(
@@ -802,9 +804,10 @@ export class ReplyToConversationOperation
       metadata: { partId: output.part.id },
     });
   }
-  /** Read back once after a 2xx; with no provider ID to guard a resend, never Retry. */
+  /** Never resend a 2xx; a retryable read-back saves an acceptance marker and retries. */
   private async confirmAccepted(
     call: Call,
+    fence: ReturnType<typeof newFence>,
     input: ReplyToConversationInput,
     accessToken: string,
     answerFailure: Failure,
@@ -812,6 +815,24 @@ export class ReplyToConversationOperation
     const readBack = await this.readBack(call, input, accessToken);
     if (readBack.outcome === "found")
       return newMutationBranch("replied", readBack.output, readBack.receipt);
+    if (readBack.outcome === "retryable") {
+      let isAcceptanceRecorded = true;
+      try {
+        await fence.recordProviderId(acceptedReplyWithoutPartId);
+      } catch {
+        // Without the marker a later attempt could resend, so this one selects uncertain.
+        isAcceptanceRecorded = false;
+      }
+      if (isAcceptanceRecorded)
+        return newMutationRetry(
+          this.client.failure(
+            "replyToConversation",
+            readBack.failure.kind,
+            `${answerFailure.message}; the reply was accepted and is never resent, and ${readBack.failure.message}`,
+          ),
+          readBack.retryAfterMs,
+        );
+    }
     return newMutationUncertain(
       readBack.output,
       this.client.failure(
@@ -1013,6 +1034,8 @@ async function replyCredentialFailureAttempt(
 
 /** The reply read-back tolerates a difference between the Worker's and Intercom's clocks, in seconds. */
 const replyReconciliationSkewSeconds = 300;
+/** The checkpoint provider ID of a reply Intercom accepted without a usable part. */
+const acceptedReplyWithoutPartId = "dex:acceptedWithoutPartId";
 /** Only these statuses prove Intercom applied nothing; any other non-2xx answer may have been applied. */
 const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 

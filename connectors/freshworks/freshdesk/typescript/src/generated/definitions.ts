@@ -118,7 +118,7 @@ export const UpdateTicketBranchNotFound = UpdateTicketBranch.NotFound;
 export const UpdateTicketBranchProviderRejected = UpdateTicketBranch.ProviderRejected;
 /** Freshdesk returned an invalid or oversized ticket on the read before the change, so this attempt sent no change. An invalid answer after the change is sent repeats the absolute change instead. */
 export const UpdateTicketBranchInvalidResponse = UpdateTicketBranch.InvalidResponse;
-/** Local input, connection configuration, or connector definition is invalid. */
+/** Local input, connection configuration, or connector definition is invalid, or the connection credentials are unusable on the first attempt; a transient credential failure, or one after an earlier attempt, Retries. */
 export const UpdateTicketBranchDefect = UpdateTicketBranch.Defect;
 /** Manifest definition for updateTicket. */
 export const UpdateTicketDefinition: MutationDefinition = {
@@ -128,7 +128,7 @@ export const UpdateTicketDefinition: MutationDefinition = {
     { id: "notFound", description: "The ticket does not exist or is not visible to the connection's agent.", optional: true },
     { id: "providerRejected", description: "Freshdesk conclusively rejected the change, such as an unknown status, a missing required field, or a spam or deleted ticket.", optional: true },
     { id: "invalidResponse", description: "Freshdesk returned an invalid or oversized ticket on the read before the change, so this attempt sent no change. An invalid answer after the change is sent repeats the absolute change instead.", optional: true },
-    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
+    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid, or the connection credentials are unusable on the first attempt; a transient credential failure, or one after an earlier attempt, Retries.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
   repeatOnUnknown: "safe",

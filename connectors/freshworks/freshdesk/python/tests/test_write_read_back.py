@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Freshdesk writes that were accepted, possibly sent, or cut off are never sent beyond the cap."""
 
+import asyncio
 from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -364,6 +365,67 @@ async def test_the_write_window_expiring_after_dispatch_is_an_unknown_outcome(
         assert isinstance(result, RetryError)
     else:
         assert isinstance(result, MutationResult) and result.branch == branch
+
+
+class StalledBodyStream(httpx.AsyncByteStream):
+    """Send the first body bytes, then never send the rest."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        yield b'{"id":'
+        await asyncio.sleep(30)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_name", ["createTicket", "addNote"])
+@pytest.mark.parametrize("max_sends", [3, 1])
+async def test_2xx_headers_then_the_write_deadline_cuts_the_body_is_never_resent(
+    monkeypatch: pytest.MonkeyPatch, operation_name: str, max_sends: int
+) -> None:
+    original_dispatch = Fence.dispatch
+
+    async def cut_at_the_write_deadline(
+        fence: Fence, send: Callable[[datetime], Awaitable[object]]
+    ) -> object:
+        async def send_until_the_window_closes(deadline: datetime) -> object:
+            return await asyncio.wait_for(send(deadline), 0.3)
+
+        return await original_dispatch(fence, send_until_the_window_closes)
+
+    monkeypatch.setattr(Fence, "dispatch", cut_at_the_write_deadline)
+    requests: list[httpx.Request] = []
+    operation_input: Any = (
+        ticket_input() if operation_name == "createTicket" else AddNoteInput(ticket_id=1201, body="Hello")
+    )
+    result = await run(
+        operation_name,
+        operation_input,
+        AttemptContext(),
+        requests,
+        lambda request, index: httpx.Response(201, stream=StalledBodyStream()),
+        max_sends=max_sends,
+    )
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_terminal_credential_failure_selects_update_defect_only_on_the_first_attempt() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    credentials = FailingCredentials(ReauthorizationRequiredError("reconnect"))
+    update = UpdateTicketInput(ticket_id=1207, status=2)
+    first = await run(
+        "updateTicket", update, context, requests, lambda request, index: json_response(200, TICKET),
+        credentials=credentials,
+    )
+    assert isinstance(first, MutationResult) and first.branch == "defect"
+    context.attempt = 2
+    second = await run(
+        "updateTicket", update, context, requests, lambda request, index: json_response(200, TICKET),
+        credentials=credentials,
+    )
+    assert isinstance(second, RetryError), "an earlier attempt may have sent the change"
+    assert not requests
 
 
 @pytest.mark.asyncio

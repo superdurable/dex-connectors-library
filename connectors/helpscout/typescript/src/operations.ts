@@ -238,6 +238,15 @@ export class ReplyToConversationOperation implements Mutation<ReplyToConversatio
     }
     // reject selects uncertain after a possible earlier send, because defect would hide it.
     if ('error' in exchange && exchange.isNotBuilt) return reject('defect', failure('replyToConversation', 'LOCAL_DEFECT', 'Help Scout request could not be built'), {});
+    const answer = 'response' in exchange ? exchange.response : { status: exchange.status ?? 0, headers: exchange.headers ?? {}, body: new Uint8Array() };
+    const namedThreadId = answer.status > 0 && (answer.status < 200 || answer.status >= 300) ? resourceThreadId(answer.headers) : 0;
+    if (namedThreadId) {
+      // A non-2xx that names a thread: save its ID so later attempts read it back, never resend.
+      const cause = this.client.classifyFailure('replyToConversation', answer, credentials.token).failure;
+      const named = { ...cause, message: `${cause.message}; the answer names thread ${namedThreadId}, so the thread may exist` };
+      try { await fence.recordProviderId(String(namedThreadId)); } catch { return newMutationUncertain(output, named, receipt); }
+      return newMutationRetry(named);
+    }
     if ('error' in exchange && !(exchange.status !== undefined && exchange.status >= 200 && exchange.status < 300)) {
       if (isProvablyUnsent(exchange.error)) {
         try { await fence.recordCanResend(); } catch { /* A lost checkpoint leaves the claim, so the next attempt counts this send. */ }
@@ -247,16 +256,18 @@ export class ReplyToConversationOperation implements Mutation<ReplyToConversatio
     }
     const response = 'response' in exchange ? exchange.response : { status: exchange.status!, headers: exchange.headers ?? {}, body: new Uint8Array() };
     if (response.status >= 200 && response.status < 300) {
-      const raw = String(response.headers['resource-id'] ?? '').trim();
-      const threadId = /^[1-9]\d*$/.test(raw) ? Number(raw) : 0;
+      const threadId = resourceThreadId(response.headers);
       // Help Scout accepted the thread, and without its ID no read-back can confirm it, so it is never resent.
-      if (!positiveId(threadId)) return newMutationUncertain(output, failure('replyToConversation', 'PROTOCOL', 'Help Scout accepted the thread without a valid Resource-Id; the thread may exist'), receipt);
+      if (!threadId) return newMutationUncertain(output, failure('replyToConversation', 'PROTOCOL', 'Help Scout accepted the thread without a valid Resource-Id; the thread may exist'), receipt);
       output.threadId = threadId;
       try { await fence.recordProviderId(String(threadId)); } catch { /* The 2xx confirms the thread; a lost ID leaves only the claim for a later attempt. */ }
       return newMutationBranch('replied', output, this.client.receipt(call, threadId));
     }
     const outcome = this.client.classifyFailure('replyToConversation', response, credentials.token);
     const status = response.status;
+    // A refusal whose body was not read in full may hide an applied write.
+    if ('response' in exchange && exchange.isErrorBodyIncomplete && definiteRefusalStatuses.has(status))
+      return resendOrUncertain({ ...outcome.failure, message: `${outcome.failure.message}; the error body could not be read in full, so the thread may exist` });
     if ([429, 503].includes(status)) {
       try { await fence.recordCanResend(); } catch { /* A lost checkpoint leaves the claim, so the next attempt counts this send. */ }
       return newMutationRetry(outcome.failure, outcome.retryAfterMs);
@@ -362,9 +373,16 @@ const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415,
 /** Report an answer to a sent write that neither confirms nor definitely refuses it; classifyMutation retries 408, 429, and 5xx. */
 function isUnknownWriteOutcome(exchange: HelpScoutExchange | CredentialResolution): boolean {
   if ('kind' in exchange || 'error' in exchange) return false;
-  if (exchange.isTooLarge || exchange.isMalformed) return true;
+  if (exchange.isTooLarge || exchange.isMalformed || exchange.isErrorBodyIncomplete) return true;
   const status = exchange.response.status;
   return (status < 200 || status >= 300) && status !== 408 && status !== 429 && status < 500 && !definiteRefusalStatuses.has(status);
+}
+
+/** The positive thread ID in a Resource-Id header, or zero when Help Scout omits or garbles it. */
+function resourceThreadId(headers: ProviderResponse['headers']): number {
+  const raw = String(headers['resource-id'] ?? '').trim();
+  const threadId = /^[1-9]\d*$/.test(raw) ? Number(raw) : 0;
+  return positiveId(threadId) ? threadId : 0;
 }
 
 /** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */

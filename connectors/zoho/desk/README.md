@@ -405,7 +405,8 @@ positions:
   such as an oversized or credential-reflecting answer or one whose body breaks
   after the headers, selects `uncertain`. A comment stored with another
   visibility selects `uncertain`.
-- A 429 or 503 is retried, as required by the connector retry contract. A DNS,
+- A 429 or 503 is retried, as required by the connector retry contract, even
+  when its body breaks while reading. A DNS,
   connect, or TLS failure before any connection was obtained (traced with
   `httptrace`) and an operation deadline before sending are retried too. The
   fence records `canResend` first, so the retry may send.
@@ -418,7 +419,12 @@ positions:
 - A definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422) of a
   first send records `canResend` and selects its branch. After an earlier
   possible send the same refusal selects `uncertain`, because the earlier send
-  may have created the ticket or comment.
+  may have created the ticket or comment. A refusal status is definite only
+  when its body is trusted: one whose body exceeds the 64 KiB error body
+  limit, breaks while reading, or contains the access token is an unknown
+  outcome, resent within the cap (updateTicket repeats its change). A refusal
+  whose body carries a ticket or comment `id` is treated as accepted: the ID is
+  checkpointed and read back by ID, never resent.
 - A 408, 409, other 5xx, an unlisted status, a 3xx, and a response lost before
   its status arrived are unknown outcomes and are resent within the cap. The example leaves `uncertain`
   unwired, so the Flow fails and a person can check Zoho Desk before another run.
@@ -456,9 +462,11 @@ write; "at the cap" means this send is the third possible one.
 | DNS, connect, or TLS failure before a connection, or the deadline passed before sending | Retry | Retry |
 | 408, other 5xx, response lost before its status | Retry, after `Retry-After` when present | Retry, or `uncertain` at the cap |
 | oversized, malformed, credential-reflecting, or unreadable 2xx | `invalidResponse` for a Query; Retry for updateTicket's read and change | never resent: a valid ID is read back and selects `created` or `added`, otherwise `uncertain` |
+| refusal status (400, 401, 403, 404, 411, 413, 414, 415, 422) whose body is oversized, broken, or contains the token | as above for a read; Retry for updateTicket's change | Retry, or `uncertain` at the cap |
+| refusal status whose body carries a ticket or comment `id` | Retry for updateTicket's change | read back by ID, never resent, as for an accepted 2xx |
 | saved ticket or comment ID from an earlier attempt | not applicable | read back by ID, never resent: `created` or `added`, Retry on a 429, 5xx, or lost read, otherwise `uncertain` |
 | unreadable or untrusted dispatch checkpoint | not applicable | Retry, with no request |
-| revoked authorization (`invalid_code` on refresh) | `providerRejected`, `AUTHENTICATION` | `providerRejected` on a first send, otherwise `uncertain` |
+| revoked authorization (`invalid_code` on refresh) | `providerRejected`, `AUTHENTICATION`; updateTicket retries after its first attempt, because an earlier `PATCH` may have applied | `providerRejected` on a first send, otherwise `uncertain` |
 | token refresh outage | Retry | Retry |
 | invalid input, unknown data center, or unusable token | `defect`, with no request | `defect` on a first send, otherwise `uncertain`, with no request |
 

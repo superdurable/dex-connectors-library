@@ -29,7 +29,10 @@ export interface HelpScoutWebhookSettings {
 
 /** One response or sanitized transport failure from the Help Scout API. */
 export type HelpScoutExchange =
-  | { response: ProviderResponse; accessToken: string; isTooLarge?: boolean; isMalformed?: boolean }
+  | {
+      response: ProviderResponse; accessToken: string; isTooLarge?: boolean; isMalformed?: boolean;
+      /** A write's non-2xx body exceeded MaxErrorBodyBytes, so a refusal status is not conclusive. */ isErrorBodyIncomplete?: boolean;
+    }
   | { error: unknown; status?: number; headers?: ProviderResponse['headers']; isNotBuilt?: boolean };
 
 /** Resolve the renewable credential before a provider request. */
@@ -103,20 +106,35 @@ export class HelpScoutClient {
     try { if (payload !== undefined) body = Buffer.from(JSON.stringify(payload)); }
     catch { return { error: new TypeError('Help Scout request could not be built'), isNotBuilt: true }; }
     let token = accessToken;
+    // A write's error body must be read in full, so its truncation and read failures stay visible.
+    const isWrite = method !== 'GET';
     for (let attempt = 0; attempt < 2; attempt++) {
       const request: ProviderRequest = {
         url, method, headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json; charset=UTF-8' } : {}) },
-        ...(body ? { body } : {}), maxResponseBytes: this.#maxResponseBytes, maxErrorResponseBytes: MaxErrorBodyBytes,
-        ignoreErrorBodyReadFailure: true, addressPolicy: 'publicHTTPS', timeoutMs: requestTimeoutMs,
+        ...(body ? { body } : {}), maxResponseBytes: this.#maxResponseBytes,
+        ...(isWrite ? {} : { maxErrorResponseBytes: MaxErrorBodyBytes, ignoreErrorBodyReadFailure: true }),
+        addressPolicy: 'publicHTTPS', timeoutMs: requestTimeoutMs,
         signal: signal ?? call.context.cancellationSignal,
       };
-      let exchange: { response: ProviderResponse; accessToken: string; isTooLarge?: boolean; isMalformed?: boolean };
+      let exchange: Extract<HelpScoutExchange, { response: ProviderResponse }>;
       let observedStatus = 0;
       let observedHeaders: ProviderResponse['headers'] = {};
-      request.onResponseChunk = (_chunk, status, headers) => { observedStatus = status; observedHeaders = headers; };
-      try { exchange = { response: await this.#send(request), accessToken: token }; }
-      catch (error) {
-        if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers) exchange = { response: { status: error.status, headers: error.headers, body: new Uint8Array() }, accessToken: token, ...(error.status >= 200 && error.status < 300 ? { isTooLarge: true as const } : {}) };
+      let errorBodyBytes = 0;
+      let isErrorBodyIncomplete = false;
+      request.onResponseChunk = (chunk, status, headers) => {
+        observedStatus = status; observedHeaders = headers;
+        if (!isWrite || (status >= 200 && status < 300)) return;
+        errorBodyBytes += chunk.length;
+        if (errorBodyBytes <= MaxErrorBodyBytes) return;
+        isErrorBodyIncomplete = true;
+        return false;
+      };
+      try {
+        exchange = { response: await this.#send(request), accessToken: token };
+        if (isErrorBodyIncomplete) exchange.isErrorBodyIncomplete = true;
+      } catch (error) {
+        const isErrorStatus = error instanceof BodyTooLargeError && error.status !== undefined && (error.status < 200 || error.status >= 300);
+        if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers) exchange = { response: { status: error.status, headers: error.headers, body: new Uint8Array() }, accessToken: token, ...(error.status >= 200 && error.status < 300 ? { isTooLarge: true as const } : {}), ...(isErrorStatus ? { isErrorBodyIncomplete: true } : {}) };
         else if ((error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status) {
           // The status arrived before the body broke, so a 2xx write was accepted.
           return { error, status: error.status, headers: error.headers ?? observedHeaders };

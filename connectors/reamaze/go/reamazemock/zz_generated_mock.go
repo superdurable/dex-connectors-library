@@ -280,7 +280,7 @@ func UpdateConversationInvalidResponse(value reamaze.UpdateConversationOutput, f
 	return connectormock.Branch(reamaze.UpdateConversationBranchInvalidResponse, value, failure)
 }
 
-// UpdateConversationDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+// UpdateConversationDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid; unusable credentials select it only on the first attempt, because a later attempt retries a change an earlier attempt may have sent.
 func UpdateConversationDefect(value reamaze.UpdateConversationOutput, failure *sdkgo.Failure) connectormock.Case[reamaze.UpdateConversationOutput] {
 	return connectormock.Branch(reamaze.UpdateConversationBranchDefect, value, failure)
 }

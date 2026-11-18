@@ -245,7 +245,8 @@ Dex retries a Step after a lost Worker, so the operations take these positions:
   customer email. An unreadable or untrusted checkpoint returns Retry without
   sending. A 429 or 503 resend keeps the earlier unknown send in the count, so
   a later refusal or credential failure still selects `uncertain`.
-- A 2xx is never resent, even when its body breaks off, exceeds
+- A 2xx is never resent, even when its body breaks off, is cut off by the
+  fence's write window after the status arrived, exceeds
   `maxResponseBytes`, reflects the credential, or does not decode. When the
   body yields the ticket or conversation ID, the connector checkpoints it and
   reads the write back in the same attempt: `createTicket` with
@@ -322,7 +323,7 @@ token that contains the API key is dropped.
 | oversized, malformed, broken-off, or credential-reflecting 2xx | `invalidResponse` for reads, including the read before the `PUT`; Retry after the `PUT` | read back by the decoded ticket or conversation ID, never resent; `uncertain` without an ID |
 | unreadable or untrusted fence checkpoint | not applicable | Retry without sending |
 | invalid input | `defect`, with no request | `defect`, with no request |
-| terminal connection credentials | `defect`, with no request | `notSent` checkpoint and `defect` on a first send; `uncertain` after a possible send |
+| terminal connection credentials | `defect`, with no request, on the first attempt; Retry on a later one, which may follow an applied `PUT` | `notSent` checkpoint and `defect` on a first send; `uncertain` after a possible send |
 | transient credential-store failure | Retry, with no request | Retry with no request; `notSent` checkpoint only on a first send |
 
 The Receipt carries the Call ID, the ticket or conversation ID, and

@@ -293,6 +293,12 @@ async function invokeFenced<T>(call: Call, client: HiverClient, definition: Muta
     }
     // A request that could not be built would fail the same way if resent.
     if (result.kind === 'notFound' || result.kind === 'defect' || (result.kind === 'rejected' && definiteRefusalStatuses.has(result.status ?? 0))) {
+      const refusedProviderId = result.response ? acceptedProviderId(result.response.body, providerIdField) : '';
+      if (refusedProviderId) {
+        // The created object's ID shows the write may have been applied, so it is never resent.
+        try { await fence.recordProviderId(refusedProviderId); } catch { /* The claim marker already forbids a resend. */ }
+        return newMutationUncertain(zero, failure(operation, 'PROTOCOL', `Hiver answered HTTP ${result.status} with the ID of a created object, so the write may have been applied`), client.receipt(call, result.response, refusedProviderId));
+      }
       if (!isFirstSend) return newMutationUncertain(zero, result.failure, receipt);
       try { await fence.recordCanResend(); } catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'Dex did not record the refusal checkpoint')); }
       return newMutationBranch(result.kind === 'notFound' ? 'notFound' : result.kind === 'defect' ? 'defect' : 'providerRejected', zero, receipt, result.failure);
@@ -343,7 +349,7 @@ function resendOrUncertain<T>(canResendUnknownOutcome: boolean, zero: T, cause: 
   return canResendUnknownOutcome ? newMutationRetry(cause, retryAfterMs) : newMutationUncertain(zero, cause, receipt);
 }
 
-/** Return the valid ID field of a 2xx single-data body, or an empty string. */
+/** Return the valid ID field of a single-data body, or an empty string. */
 function acceptedProviderId(body: Uint8Array, field: string): string {
   try {
     const providerId = wireID(decodeSingleData(body)[field]);

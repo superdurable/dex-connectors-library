@@ -68,6 +68,10 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 	}
 	session, cancel, failure := operation.client.startSession(call, updateTicketOperation)
 	if failure != nil {
+		if call.Context.Attempt() > 1 {
+			// A refusal branch would hide an earlier attempt's possible PATCH; repeating it is harmless.
+			return sdkgo.NewMutationRetry[UpdateTicketOutput](failure.failure, 0)
+		}
 		return updateTicketAttemptForSession(failure)
 	}
 	defer cancel()
@@ -90,7 +94,8 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 		method: http.MethodPatch, path: ticketPath(input.TicketID), payload: change,
 	})
 	receipt = operation.client.receipt(call, writeResult.response, input.TicketID)
-	if writeResult.outcome == exchangeRejected && !isDefiniteRefusalStatus(writeResult.response.statusCode) {
+	if writeResult.isErrorBodyUnreadable || writeResult.acceptedProviderID != "" ||
+		(writeResult.outcome == exchangeRejected && !isDefiniteRefusalStatus(writeResult.response.statusCode)) {
 		// The PATCH sets final values, so an unknown outcome repeats it.
 		return sdkgo.NewMutationRetry[UpdateTicketOutput](writeResult.failure, writeResult.retryAfter)
 	}

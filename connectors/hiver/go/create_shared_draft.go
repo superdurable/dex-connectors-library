@@ -96,7 +96,7 @@ func (operation CreateSharedDraftOperation) Invoke(call sdkgo.Call, input Create
 	}
 	result, attempt := sendOnce[SharedDraft](call, operation.client, credentials, createSharedDraftOperation, hiverRequest{
 		method: http.MethodPost, path: inboxPath(input.InboxID) + "/conversations/shared-drafts", formFields: fields,
-	}, singleDispatchBranches{notFound: CreateSharedDraftBranchNotFound, providerRejected: CreateSharedDraftBranchProviderRejected, defect: CreateSharedDraftBranchDefect}, permit)
+	}, singleDispatchBranches{notFound: CreateSharedDraftBranchNotFound, providerRejected: CreateSharedDraftBranchProviderRejected, defect: CreateSharedDraftBranchDefect, providerIDField: "shared_draft_id"}, permit)
 	if attempt != nil {
 		return *attempt
 	}

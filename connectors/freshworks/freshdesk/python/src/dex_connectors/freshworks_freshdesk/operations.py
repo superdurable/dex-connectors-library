@@ -654,8 +654,9 @@ async def _send_write(
 ) -> tuple[Exchange | None, MutationAttempt[Output] | None]:
     """Dispatch one POST under the fence; a refused dispatch returns its Retry attempt.
 
-    The write window expiring after dispatch is an unknown outcome.
+    The write window expiring after dispatch is an unknown outcome, unless a 2xx status arrived.
     """
+    observed_statuses: list[int] = []
     try:
         exchange = await permit.fence.dispatch(
             lambda deadline: client.exchange(
@@ -667,6 +668,7 @@ async def _send_write(
                 payload=payload,
                 write_budget=write_budget,
                 deadline=deadline,
+                on_response_status=observed_statuses.append,
             )
         )
     except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
@@ -675,6 +677,18 @@ async def _send_write(
             client.failure(operation, "AVAILABILITY", "Freshdesk write was not dispatched")
         )
     except TimeoutError:
+        if observed_statuses and 200 <= observed_statuses[0] < 300:
+            # Freshdesk accepted the write, and the cut body carries no ID to read it back by.
+            return None, MutationAttempt.uncertain(
+                zero,
+                client.failure(
+                    operation,
+                    "TRANSPORT",
+                    "Freshdesk accepted the write, but its answer did not arrive within the "
+                    "single-dispatch write window; it is not sent again",
+                ),
+                client.receipt(call),
+            )
         # The claim was recorded and the request may have reached Freshdesk.
         failure = client.failure(
             operation, "TRANSPORT", "Freshdesk did not answer within the single-dispatch write window"
@@ -1008,12 +1022,11 @@ class UpdateTicketOperation:
                 "defect", zero, Receipt(), self.client.failure(operation, "VALIDATION", str(error))
             )
         key, failure, transient = await self.client.resolve_credentials(call, operation)
+        if failure and (transient or (call.context is not None and call.context.attempt > 1)):
+            # defect would hide a change an earlier attempt may have sent; repeating it is safe.
+            return MutationAttempt.retry(failure)
         if failure:
-            return (
-                MutationAttempt.retry(failure)
-                if transient
-                else MutationAttempt.branch_result("defect", zero, Receipt(), failure)
-            )
+            return MutationAttempt.branch_result("defect", zero, Receipt(), failure)
         path = f"/tickets/{input.ticket_id}"
         first = await self.client.exchange(call, operation, key, "GET", path)
         terminal = _mutation_terminal(self.client, call, first, zero, input.ticket_id)

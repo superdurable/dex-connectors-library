@@ -166,7 +166,11 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
     try { validateId('ticketId', input.ticketId); for (const value of [input.status, input.priority]) if (value) validatePicklist('status or priority', value); validateId('assigneeId', input.assigneeId, true); validateId('departmentId', input.departmentId, true); if (!input.status && !input.priority && !input.assigneeId && !input.departmentId) throw new Error('at least one of status, priority, assigneeId, or departmentId is required'); }
     catch (error) { return newMutationBranch('defect', zeroUpdated, {}, validation(operation, errorMessage(error))); }
     const session = await this.client.startSession(call, operation);
-    if ('disposition' in session) return sessionFailure(session, zeroUpdated, true) as MutationAttempt<UpdateTicketOutput>;
+    if ('disposition' in session) {
+      // A refusal branch would hide an earlier attempt's possible PATCH; repeating it is harmless.
+      if (call.context.attempt > 1) return newMutationRetry(session.failure);
+      return sessionFailure(session, zeroUpdated, true) as MutationAttempt<UpdateTicketOutput>;
+    }
     const read = await this.client.exchange(call, operation, session, 'GET', ticketPath(input.ticketId));
     let receipt = exchangeReceipt(this.client, call, read, input.ticketId);
     // The write is absolute and an earlier attempt may have sent it, so an unusable read retries.
@@ -187,7 +191,8 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
     if ('outcome' in write) {
       const { disposition, response } = write.outcome;
       // The PATCH sets final values, so an unknown outcome repeats it.
-      if (disposition === 'invalid' || (disposition === 'rejected' && !definiteRefusalStatuses.has(response?.status ?? 0))) return newMutationRetry(write.outcome.failure, write.outcome.retryAfterMs);
+      if (disposition === 'invalid' || write.outcome.isErrorBodyUnreadable || (response && acceptedProviderId(response.body)) ||
+        (disposition === 'rejected' && !definiteRefusalStatuses.has(response?.status ?? 0))) return newMutationRetry(write.outcome.failure, write.outcome.retryAfterMs);
       return mutationOutcome(write.outcome, { ticket: current }, receipt, 'providerRejected', 'notFound');
     }
     try { return newMutationBranch('updated', { ticket: decodeTicket(decodeObject(write.response.body), input.ticketId).ticket }, receipt); }
@@ -333,7 +338,7 @@ async function invokeFencedWrite<T>(client: ZohoDeskClient, call: Call, write: F
   try { result = await fence.dispatch(signal => client.exchange(call, operation, session, 'POST', write.path, undefined, write.body, signal)); }
   catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'Dex did not record the dispatch checkpoint; nothing was sent')); }
   const receipt = exchangeReceipt(client, call, result);
-  if ('outcome' in result) return writeAttemptForExchange(permit, client, call, session.credentials, result.outcome, receipt, zero, write.notFound);
+  if ('outcome' in result) return writeAttemptForExchange(permit, client, call, session.credentials, result.outcome, receipt, zero, write.notFound, readBack);
   let decoded: { output: T; providerId: string };
   try { decoded = write.decode(result.response.body); }
   catch (error) {
@@ -386,7 +391,7 @@ async function sessionWriteAttempt<T>(permit: WritePermit, session: ExchangeFail
 }
 
 /** Map a sent write. Only a definite refusal selects a refusal branch; any other outcome may have been applied. */
-async function writeAttemptForExchange<T>(permit: WritePermit, client: ZohoDeskClient, call: Call, credentials: Credentials, outcome: ExchangeFailure, receipt: ReceiptDraft, zero: T, notFound: string): Promise<MutationAttempt<T>> {
+async function writeAttemptForExchange<T>(permit: WritePermit, client: ZohoDeskClient, call: Call, credentials: Credentials, outcome: ExchangeFailure, receipt: ReceiptDraft, zero: T, notFound: string, readBack: ReadBack<T>): Promise<MutationAttempt<T>> {
   const status = outcome.response?.status ?? 0;
   // A 2xx accepted the write; with no readable ID it is never resent. The client reports 'invalid' only for a 2xx.
   if (outcome.disposition === 'invalid' || (status >= 200 && status < 300)) return newMutationUncertain(zero, outcome.failure, receipt);
@@ -394,6 +399,12 @@ async function writeAttemptForExchange<T>(permit: WritePermit, client: ZohoDeskC
     // A lost checkpoint leaves the claim, so the next attempt counts this send toward the cap.
     try { await permit.fence.recordCanResend(); } catch { /* counted as a possible send */ }
     return newMutationRetry(outcome.failure, outcome.retryAfterMs);
+  }
+  if (outcome.disposition === 'notFound' || (outcome.disposition === 'rejected' && definiteRefusalStatuses.has(status))) {
+    // A refusal is definite only with a trusted body that carries no created id.
+    const refusedProviderId = outcome.response ? acceptedProviderId(outcome.response.body) : '';
+    if (refusedProviderId) return readBack(refusedProviderId, await recordAcceptedWrite(permit, refusedProviderId));
+    if (outcome.isErrorBodyUnreadable) return resendOrUncertain(permit, failure(outcome.failure.operation, 'TRANSPORT', `Zoho Desk answered HTTP ${status}, but its oversized or untrusted body may hide an accepted write`), outcome.retryAfterMs, receipt, zero);
   }
   if (outcome.disposition === 'notFound') return rejectWrite(permit, outcome.failure, receipt, zero, notFound);
   // rejectWrite selects uncertain after an earlier possible send.
@@ -437,7 +448,7 @@ async function recordAcceptedWrite(permit: WritePermit, providerId: string): Pro
   try { await permit.fence.recordProviderId(providerId); return true; } catch { /* Acceptance is already known if this extra checkpoint fails. */ return false; }
 }
 
-/** Return the valid id of a 2xx object body, or an empty string. */
+/** Return the valid id of an object body, or an empty string. */
 function acceptedProviderId(body: Uint8Array): string {
   try {
     const value = decodeObject(body).id;

@@ -6,6 +6,7 @@ package hiver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -19,6 +20,8 @@ type singleDispatchBranches struct {
 	notFound         sdkgo.BranchID
 	providerRejected sdkgo.BranchID
 	defect           sdkgo.BranchID
+	// providerIDField is the body field holding the created object's ID.
+	providerIDField string
 }
 
 // singleDispatchPermit is a fence that allows this attempt to send, with its send-cap facts.
@@ -159,13 +162,13 @@ func singleDispatchAttemptForExchange[OUT any](result hiverExchange, receipt sdk
 	case exchangeRateLimited, exchangeNotSent:
 		return retryAfterSingleDispatch[OUT](result, permit), true
 	case exchangeNotFound:
-		return rejectAfterSingleDispatch[OUT](result, receipt, branches.notFound, permit), true
+		return refusalAfterSingleDispatch[OUT](result, receipt, branches.notFound, branches, permit), true
 	case exchangeDefect:
 		// The request could not be built, so a resend would fail the same way.
 		return rejectAfterSingleDispatch[OUT](result, receipt, branches.defect, permit), true
 	case exchangeRejected:
 		if isDefiniteRefusalStatus(result.response.statusCode) {
-			return rejectAfterSingleDispatch[OUT](result, receipt, branches.providerRejected, permit), true
+			return refusalAfterSingleDispatch[OUT](result, receipt, branches.providerRejected, branches, permit), true
 		}
 	default:
 		if result.response.statusCode == http.StatusServiceUnavailable {
@@ -194,6 +197,23 @@ func retryAfterSingleDispatch[OUT any](result hiverExchange, permit singleDispat
 	return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter)
 }
 
+// refusalAfterSingleDispatch treats a refusal status as unknown when its body is unreadable,
+// and as accepted when its body carries the created object's ID.
+func refusalAfterSingleDispatch[OUT any](result hiverExchange, receipt sdkgo.Receipt, branch sdkgo.BranchID,
+	branches singleDispatchBranches, permit singleDispatchPermit) sdkgo.MutationAttempt[OUT] {
+	status := result.response.statusCode
+	if result.isErrorBodyUnreadable {
+		return resendOrSelectUncertain[OUT](permit, hiverFailure(sdkgo.FailureTransport, result.failure.Operation,
+			fmt.Sprintf("Hiver answered HTTP %d, but its oversized or unreadable body may hide an accepted write", status)), 0, receipt)
+	}
+	if providerID := acceptedProviderID(result.response.body, branches.providerIDField); providerID != "" {
+		receipt.ProviderObjectID = providerID
+		return acceptedWriteAttempt[OUT](permit, providerID, hiverFailure(sdkgo.FailureProtocol, result.failure.Operation,
+			fmt.Sprintf("Hiver answered HTTP %d with the ID of a created object, so the write may have been applied", status)), receipt)
+	}
+	return rejectAfterSingleDispatch[OUT](result, receipt, branch, permit)
+}
+
 // rejectAfterSingleDispatch selects a refusal branch only when no earlier send may have applied.
 func rejectAfterSingleDispatch[OUT any](result hiverExchange, receipt sdkgo.Receipt, branch sdkgo.BranchID, permit singleDispatchPermit) sdkgo.MutationAttempt[OUT] {
 	if !permit.isFirstSend {
@@ -218,7 +238,7 @@ func resendOrSelectUncertain[OUT any](permit singleDispatchPermit, failure sdkgo
 	return sdkgo.NewMutationUncertain(zero, failure, receipt)
 }
 
-// acceptedProviderID returns the valid ID field of a 2xx single-data body, or "" when it has none.
+// acceptedProviderID returns the valid ID field of a single-data body, or "" when it has none.
 func acceptedProviderID(body []byte, field string) string {
 	raw, err := decodeSingleData(body)
 	if err != nil {

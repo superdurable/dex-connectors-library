@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """updateTicket and createTicket outcomes after a possible or accepted write."""
 
+import asyncio
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
 
@@ -60,10 +61,10 @@ def ticket(status: str = "pending", tags: list[str] | None = None) -> dict[str, 
 class AttemptContext:
     """Keep the last heartbeat across Execute attempts like Dex does."""
 
-    def __init__(self) -> None:
+    def __init__(self, deadline_seconds: float = 30) -> None:
         self.attempt = 1
         self.run_id = "run"
-        self.deadline = datetime.now(UTC) + timedelta(seconds=30)
+        self.deadline = datetime.now(UTC) + timedelta(seconds=deadline_seconds)
         self.heartbeat_value: object = None
         self.heartbeat_count = 0
 
@@ -108,10 +109,15 @@ class SwitchableCredentials(CredentialProvider[Credentials]):
 
 
 class BrokenBody(httpx.AsyncByteStream):
-    """Yield part of a body, then lose the connection."""
+    """Yield part of a body, then lose the connection, or stall until cancelled."""
+
+    def __init__(self, stalls: bool = False) -> None:
+        self.stalls = stalls
 
     async def __aiter__(self) -> AsyncIterator[bytes]:
         yield b'{"ticket":{"id":5512,'
+        if self.stalls:
+            await asyncio.sleep(30)
         raise httpx.ReadError("connection lost")
 
 
@@ -358,8 +364,8 @@ async def test_refusal_with_an_unreadable_or_contradictory_body_is_an_unknown_ou
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(("prior_sends", "branch"), [(0, None), (2, "uncertain")])
-async def test_write_window_timeout_is_an_unknown_outcome(prior_sends: int, branch: str | None) -> None:
+@pytest.mark.parametrize("prior_sends", [0, 2], ids=["first send", "last allowed send"])
+async def test_write_window_timeout_is_an_unknown_outcome(prior_sends: int) -> None:
     def answer(request: httpx.Request, _: int) -> httpx.Response:
         if request.method == "PUT":
             raise TimeoutError
@@ -372,11 +378,47 @@ async def test_write_window_timeout_is_an_unknown_outcome(prior_sends: int, bran
         context.attempt = prior_sends + 1
         context.heartbeat_value = Marker(CALL_ID, prior_sends, "claimed", "", prior_sends)
     result = await run("updateTicket", answer, context, [])
-    if branch is None:
-        assert isinstance(result, RetryError), "the claim stays, so the next attempt reads back first"
-        assert context.marker is not None and context.marker.state == "claimed"
-    else:
-        assert isinstance(result, MutationResult) and result.branch == branch
+    assert isinstance(result, RetryError), "the claim stays, so the next attempt reads back first"
+    assert context.marker is not None and context.marker.state == "claimed"
+    assert context.marker.send_count == prior_sends + 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("is_change_found", [True, False], ids=["audit found", "audit missing"])
+async def test_unknown_outcome_of_the_last_allowed_send_reads_back_before_selecting_uncertain(
+    is_change_found: bool,
+) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    answer = update_answers(
+        lambda write: json_answer((502, 409, 500)[write - 1], {"error": "x"}),
+        lambda audit: KEYED_AUDITS if is_change_found and audit == 4 else EMPTY_AUDITS,
+    )
+    for attempt in (1, 2, 3):
+        context.attempt = attempt
+        result = await run("updateTicket", answer, context, requests)
+        assert isinstance(result, RetryError), f"attempt {attempt} retries an unknown outcome"
+    assert [request.method for request in requests].count("PUT") == 3
+    context.attempt = 4
+    result = await run("updateTicket", answer, context, requests)
+    assert isinstance(result, MutationResult)
+    assert result.branch == ("updated" if is_change_found else "uncertain")
+    assert len(requests) == 11
+    assert [request.method for request in requests[9:]] == ["GET", "GET"], "at the cap it only reads back"
+
+
+@pytest.mark.asyncio
+async def test_2xx_headers_then_the_write_deadline_cuts_the_body_reads_back_without_resending() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext(deadline_seconds=1)
+    answer = update_answers(
+        lambda _: httpx.Response(200, stream=BrokenBody(stalls=True)),
+        lambda audit: KEYED_AUDITS if audit == 2 else EMPTY_AUDITS,
+    )
+    result = await run("updateTicket", answer, context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "updated"
+    assert [request.method for request in requests] == ["GET", "GET", "PUT", "GET", "GET"]
+    assert context.marker is not None and context.marker.provider_id == "5512"
 
 
 @pytest.mark.asyncio

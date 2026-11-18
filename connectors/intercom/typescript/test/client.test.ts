@@ -319,12 +319,15 @@ function conversationBody(isFound: boolean): Uint8Array {
   }));
 }
 
-it.each([
-  ["body breaks after the headers", () => new ProviderTransportError(false, 200, {})],
-  ["body stalls after the headers", () => new ProviderStalledError(200, {})],
-  ["body exceeds the limit", () => new BodyTooLargeError(200, {})],
-] as const)("reads back a 2xx whose %s and never resends it", async (_name, bodyError) => {
-  for (const [readBack, expectedBranch] of [["found", "replied"], ["absent", "uncertain"], ["rateLimited", "uncertain"]] as const) {
+const unusableReplyAnswers = [
+  ["body breaks after the headers", () => { throw new ProviderTransportError(false, 200, {}); }],
+  ["body stalls after the headers", () => { throw new ProviderStalledError(200, {}); }],
+  ["body exceeds the limit", () => { throw new BodyTooLargeError(200, {}); }],
+  ["body reflects the credential", () => ({ status: 200, headers: {}, body: Buffer.from('{"token":"test-token"}') })],
+] as const;
+
+it.each(unusableReplyAnswers)("reads back a 2xx whose %s and never resends it", async (_name, answer) => {
+  for (const [readBack, expectedBranch] of [["found", "replied"], ["absent", "uncertain"]] as const) {
     const methods: string[] = [];
     const { replyCall } = fencedReplyCall();
     const client = new IntercomClient({}, validCredentials, {
@@ -332,8 +335,7 @@ it.each([
       now: () => new Date("2026-10-30T00:00:00Z"),
       send: async (request) => {
         methods.push(request.method);
-        if (request.method === "POST") throw bodyError();
-        if (readBack === "rateLimited") return { status: 429, headers: {}, body: Buffer.from("{}") };
+        if (request.method === "POST") return answer();
         return { status: 200, headers: {}, body: conversationBody(readBack === "found") };
       },
     });
@@ -343,6 +345,29 @@ it.each([
     else expect(attempt.kind).toBe(expectedBranch);
     if (attempt.kind === "branch") expect(attempt.value.wasAlreadyApplied ?? false).toBe(false);
     expect(methods).toEqual(["POST", "GET"]);
+  }
+});
+
+it.each(unusableReplyAnswers)("keeps reading back a 2xx whose %s when the read-back is rate limited", async (_name, answer) => {
+  for (const [laterReadBack, expectedBranch] of [["found", "replied"], ["absent", "uncertain"]] as const) {
+    const methods: string[] = [];
+    const { replyCall, state } = fencedReplyCall();
+    const client = new IntercomClient({}, validCredentials, {
+      endpoint: "http://127.0.0.1:0",
+      now: () => new Date("2026-10-30T00:00:00Z"),
+      send: async (request) => {
+        methods.push(request.method);
+        if (request.method === "POST") return answer();
+        if (methods.length === 2) return { status: 429, headers: {}, body: Buffer.from("{}") };
+        return { status: 200, headers: {}, body: conversationBody(laterReadBack === "found") };
+      },
+    });
+    expect((await client.replyToConversation().invoke(replyCall, replyInput)).kind).toBe("retry");
+    state.attempt = 2;
+    const attempt = await client.replyToConversation().invoke(replyCall, replyInput);
+    if (attempt.kind === "branch") expect(attempt.branch).toBe(expectedBranch);
+    else expect(attempt.kind).toBe(expectedBranch);
+    expect(methods, "the accepted reply is only read back").toEqual(["POST", "GET", "GET"]);
   }
 });
 

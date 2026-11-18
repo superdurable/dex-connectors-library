@@ -652,7 +652,7 @@ var CreateTicketDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateTicketBranchCreated, Description: "Zoho Desk created the ticket and returned it."},
 		{ID: CreateTicketBranchProviderRejected, Description: "Zoho Desk conclusively rejected the ticket, such as an unknown department, status, or assignee; no ticket was created.", Optional: true},
-		{ID: CreateTicketBranchUncertain, Description: "The ticket may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; a later attempt was refused, or its credentials were revoked, after an earlier possible send; Zoho Desk accepted the ticket with a 2xx that had no readable ticket ID; or reading back the accepted ticket ID did not confirm it. The Step does not send it again.", Optional: true},
+		{ID: CreateTicketBranchUncertain, Description: "The ticket may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal whose body was oversized or untrusted, or another server error besides 503; a later attempt was refused, or its credentials were revoked, after an earlier possible send; Zoho Desk accepted the ticket with a 2xx that had no readable ticket ID; or reading back the accepted ticket ID did not confirm it. The Step does not send it again.", Optional: true},
 		{ID: CreateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -814,7 +814,7 @@ var AddCommentDefinition = sdkgo.MutationDefinition{
 		{ID: AddCommentBranchAdded, Description: "Zoho Desk added the comment and returned it."},
 		{ID: AddCommentBranchNotFound, Description: "The ticket does not exist or is not visible to the connection's agent; nothing was added.", Optional: true},
 		{ID: AddCommentBranchProviderRejected, Description: "Zoho Desk conclusively rejected the comment; nothing was added.", Optional: true},
-		{ID: AddCommentBranchUncertain, Description: "The comment may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; a later attempt was refused, or its credentials were revoked, after an earlier possible send; Zoho Desk accepted the comment with a 2xx that had no readable comment ID or another visibility; or reading back the accepted comment ID did not confirm it. The Step does not send it again.", Optional: true},
+		{ID: AddCommentBranchUncertain, Description: "The comment may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal whose body was oversized or untrusted, or another server error besides 503; a later attempt was refused, or its credentials were revoked, after an earlier possible send; Zoho Desk accepted the comment with a 2xx that had no readable comment ID or another visibility; or reading back the accepted comment ID did not confirm it. The Step does not send it again.", Optional: true},
 		{ID: AddCommentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

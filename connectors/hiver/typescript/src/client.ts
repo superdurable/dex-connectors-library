@@ -22,6 +22,9 @@ export type HiverCredentialResult = { kind: 'resolved'; key: string } | { kind: 
 /** One HTTP request's payload. */
 export interface HiverRequest { method: string; path: string; query?: URLSearchParams; json?: unknown; form?: ReadonlyArray<readonly [string, string]>; correlationCallId?: string }
 
+/** Statuses that prove Hiver applied nothing when their body reads cleanly without a created ID; operations.ts keeps the same set. */
+const definiteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
 /** Hiver's largest list page, which every conversationReceived poll request asks for. */
 export const MaximumPageSize = 100;
 /** The fewest pages one conversationReceived poll reads: the list's first page plus one sweep page. */
@@ -140,18 +143,28 @@ export class HiverClient {
     if (request.form) { const multipart = encodeMultipart(request.form); body = multipart.body; headers['Content-Type'] = multipart.contentType; }
     const query = request.query?.toString();
     const url = this.baseURL + request.path + (query ? `?${query}` : '');
+    const isWrite = request.method !== 'GET';
     let response: ProviderResponse;
+    // A write reads its whole error body, because only a readable refusal is definite.
+    let isErrorBodyUnreadable = false;
     try {
       response = await this.send({ url, method: request.method, headers, ...(body ? { body } : {}), maxResponseBytes: this.maxResponseBytes,
-        maxErrorResponseBytes: 0, ignoreErrorBodyReadFailure: true, timeoutMs: 12_000, signal,
+        ...(isWrite ? {} : { maxErrorResponseBytes: 0, ignoreErrorBodyReadFailure: true }), timeoutMs: 12_000, signal,
         addressPolicy: 'privateNetworkHTTP' });
     } catch (error) {
+      const errorStatus = error instanceof BodyTooLargeError || error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.status : undefined;
+      const errorHeaders = error instanceof BodyTooLargeError || error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.headers : undefined;
+      const isErrorStatus = errorStatus !== undefined && errorStatus > 0 && (errorStatus < 200 || errorStatus >= 300);
       if (error instanceof BodyTooLargeError) {
         if (error.status !== undefined && error.status >= 200 && error.status < 300) return this.failure('invalid', operation, 'RESPONSE_TOO_LARGE', 'Hiver response exceeds the configured maxResponseBytes limit', 0, error.status);
-        if (error.status !== undefined && error.headers) response = { status: error.status, headers: error.headers, body: Buffer.alloc(0) };
+        if (error.status !== undefined && error.headers) { response = { status: error.status, headers: error.headers, body: Buffer.alloc(0) }; isErrorBodyUnreadable = true; }
         else return this.failure('unavailable', operation, 'TRANSPORT', 'Hiver response could not be read');
       } else if (error instanceof ProviderTransportError && error.isProvablyNotSent) return this.failure('notSent', operation, 'TRANSPORT', 'Hiver could not be reached; no request was sent');
-      else if ((error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status !== undefined && error.status > 0 && error.headers) {
+      else if (isErrorStatus && errorHeaders) {
+        // The status still classifies a 429 or 5xx; a refusal status becomes unknown below.
+        response = { status: errorStatus, headers: errorHeaders, body: Buffer.alloc(0) };
+        isErrorBodyUnreadable = true;
+      } else if ((error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status !== undefined && error.status > 0 && error.headers) {
         // Keep the status so a write Hiver accepted is never resent.
         return this.failure('unavailable', operation, 'TRANSPORT', 'Hiver response could not be read', 0, error.status, { status: error.status, headers: error.headers, body: Buffer.alloc(0) });
       } else return this.failure('unavailable', operation, 'TRANSPORT', 'Hiver request failed before a response arrived');
@@ -166,6 +179,9 @@ export class HiverClient {
     }
     this.rateLimitPenalty = 0;
     if (status === 408 || status >= 500) return this.failure('unavailable', operation, 'AVAILABILITY', `Hiver could not complete the request (HTTP ${status})`, retryAfterMs, status, response);
+    if (isWrite && isErrorBodyUnreadable && definiteRefusalStatuses.has(status)) {
+      return this.failure('unavailable', operation, 'TRANSPORT', `Hiver answered HTTP ${status}, but its oversized or unreadable body may hide an accepted write`, 0, status, response);
+    }
     if (status === 404) return this.failure('notFound', operation, 'NOT_FOUND', 'Hiver found no such resource (HTTP 404)', 0, status, response);
     if (status >= 300 && status < 400) return this.failure('rejected', operation, 'PROTOCOL', `Hiver redirected the request (HTTP ${status}), which the connector never follows`, 0, status, response);
     if (status < 200 || status >= 300) {

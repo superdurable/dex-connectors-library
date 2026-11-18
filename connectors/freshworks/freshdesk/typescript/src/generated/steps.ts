@@ -108,7 +108,7 @@ export interface UpdateTicketStepConfig<StepInput, OperationInput = UpdateTicket
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Freshdesk returned an invalid or oversized ticket on the read before the change, so this attempt sent no change. An invalid answer after the change is sent repeats the absolute change instead. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** Local input, connection configuration, or connector definition is invalid. */
+  /** Local input, connection configuration, or connector definition is invalid, or the connection credentials are unusable on the first attempt; a transient credential failure, or one after an earlier attempt, Retries. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
   /** Accepted for compatibility; ignored because the operation is safe to repeat. */
   maxSends?: number;

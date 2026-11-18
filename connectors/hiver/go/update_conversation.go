@@ -235,6 +235,10 @@ func (operation UpdateConversationOperation) resolveTags(call sdkgo.Call, creden
 
 // updateConversationWriteAttemptForExchange repeats the absolute PATCH on every outcome except a definite refusal.
 func updateConversationWriteAttemptForExchange(result hiverExchange, receipt sdkgo.Receipt) (sdkgo.MutationAttempt[UpdateConversationOutput], bool) {
+	if result.isErrorBodyUnreadable {
+		// An unreadable refusal body may hide an applied change, so the absolute PATCH repeats.
+		return sdkgo.NewMutationRetry[UpdateConversationOutput](result.failure, result.retryAfter), true
+	}
 	switch result.outcome {
 	case exchangeSucceeded, exchangeNotFound, exchangeDefect:
 		return updateConversationAttemptForExchange(result, receipt)

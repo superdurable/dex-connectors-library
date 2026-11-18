@@ -138,7 +138,7 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
     const decision = fence.decide();
     // FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
     if (decision.kind === 'failClosed') return newMutationRetry(zendeskFailure('updateTicket', 'AVAILABILITY', 'the single-dispatch checkpoint could not be read; nothing was sent in this attempt'));
-    const permit = new TicketWritePermit(fence, decision, effectiveMaxSends(call, definitionMaxSends(UpdateTicketDefinition)));
+    const permit = new TicketWritePermit(fence, decision);
     const resolved = await this.client.resolveWriteCredentials(call, 'updateTicket');
     if (resolved.kind !== 'resolved') return permit.credentialFailureAttempt(resolved.failure, resolved.kind === 'terminal');
     const credentials = resolved.credentials;
@@ -277,25 +277,18 @@ function errorMessage(error: unknown): string { return error instanceof Error ? 
 /** Only these statuses prove Zendesk applied nothing; any other non-2xx answer may have been applied. */
 const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 
-/** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */
-function effectiveMaxSends(call: Call, operationMaxSends: number): number {
-  return operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
-}
-
 /** Maps updateTicket reads and its fenced PUT under the fence decision's send-cap facts. */
 class TicketWritePermit {
   /** No earlier attempt of this call may have sent. */ readonly isFirstSend: boolean;
   /** Earlier sends reached the cap, so this attempt only reads back. */ readonly isAtSendCap: boolean;
   /** An earlier attempt saved the ticket ID after Zendesk accepted its PUT. */ readonly hasAcceptedWrite: boolean;
-  /** This attempt's send leaves room under the cap for one more. */ readonly canResendUnknownOutcome: boolean;
 
-  constructor(private readonly fence: Fence, decision: Decision, maxSends: number) {
+  constructor(private readonly fence: Fence, decision: Decision) {
     const priorSends = decision.priorSendUpperBound ?? 0;
     this.hasAcceptedWrite = Boolean(decision.marker?.providerId);
     // sendAllowed after a canResend marker can still carry earlier possible sends.
     this.isFirstSend = decision.kind === 'sendAllowed' && priorSends === 0 && !this.hasAcceptedWrite;
     this.isAtSendCap = decision.kind === 'readBackRequired';
-    this.canResendUnknownOutcome = priorSends + 1 < maxSends;
   }
 
   /** Map unusable credentials before any request of this attempt. */
@@ -348,14 +341,16 @@ class TicketWritePermit {
     }
     // A 3xx, 408, 409, 410, other 5xx, unlisted status, lost answer, oversized error body, or error body
     // carrying a ticket may follow an applied write.
-    return this.resendOrUncertain(value, result.failure, result.retryAfterMs ?? 0, receipt);
+    return retryUnknownWriteOutcome(result.failure, result.retryAfterMs ?? 0);
   }
+}
 
-  /** Retry an unknown write outcome while the send cap allows another send. */
-  resendOrUncertain<T>(value: T, cause: Failure, retryAfterMs: number, receipt: ReceiptDraft): MutationAttempt<T> {
-    // The claim stays the last marker, so the next attempt reads back before it resends.
-    return this.canResendUnknownOutcome ? newMutationRetry(cause, retryAfterMs) : newMutationUncertain(value, cause, receipt);
-  }
+/**
+ * Retry an unknown write outcome, also after the last allowed send. The claim stays the last marker, so the next
+ * attempt reads the audit back; it resends only below the cap and selects uncertain at the cap.
+ */
+function retryUnknownWriteOutcome<T>(cause: Failure, retryAfterMs: number): MutationAttempt<T> {
+  return newMutationRetry(cause, retryAfterMs);
 }
 
 /** Build the exact Zendesk export search query from typed filters. */

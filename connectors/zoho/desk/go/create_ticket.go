@@ -117,7 +117,7 @@ func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicke
 		return *dispatchAttempt
 	}
 	receipt := operation.client.receipt(call, result.response, "")
-	if attempt, isTerminal := deskWriteAttemptForExchange[CreateTicketOutput](permit, call, operation.client, session, result, receipt, branches); isTerminal {
+	if attempt, isTerminal := deskWriteAttemptForExchange[CreateTicketOutput](permit, call, operation.client, session, result, receipt, branches, readBack); isTerminal {
 		return attempt
 	}
 	ticket, _, err := decodeTicketBody(result.response.body, "")

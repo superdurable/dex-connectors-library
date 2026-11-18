@@ -140,6 +140,90 @@ async def test_write_window_timeout_after_success_headers_is_uncertain() -> None
     assert marker_state(context) == "claimed"
 
 
+async def test_write_window_timeout_after_draft_success_headers_is_uncertain() -> None:
+    provider = Provider(lambda: httpx.Response(200, stream=StalledBody()))
+    context = new_context()
+    context.deadline = datetime.now(UTC) + timedelta(milliseconds=1200)
+    attempt = await invoke(provider, context, "createSharedDraft")
+    assert attempt.kind == "uncertain"
+    assert marker_state(context) == "claimed"
+    assert provider.request_count == 1
+
+
+def marker_provider_id(context: HeartbeatContext) -> str:
+    """Read this call's saved provider ID from a flat marker or a per-call checkpoint map."""
+    payload = context.heartbeat_payload
+    assert isinstance(payload, dict)
+    markers = payload.get("singleDispatchMarkers")
+    marker = markers.get(context.call_id, payload) if isinstance(markers, dict) else payload
+    return str(marker.get("providerId", ""))
+
+
+async def test_refusal_with_an_unreadable_body_resends_below_the_cap_and_is_uncertain_at_the_cap() -> None:
+    for status in (400, 404):
+        provider = Provider(lambda status=status: httpx.Response(status, stream=BrokenBody()))
+        context = new_context()
+        for _ in range(2):
+            assert (await invoke(provider, context)).kind == "retry"
+            assert marker_state(context) == "claimed"
+            advance(context)
+        attempt = await invoke(provider, context)
+        assert attempt.kind == "uncertain"
+        assert provider.request_count == 3
+
+
+async def test_refusal_with_an_oversized_body_resends_below_the_cap() -> None:
+    provider = Provider(lambda: httpx.Response(422, content=b'{"Message":"' + b"x" * 5_000_000 + b'"}'))
+    context = new_context()
+    attempt = await invoke(provider, context, "createSharedDraft")
+    assert attempt.kind == "retry"
+    assert marker_state(context) == "claimed"
+
+
+async def test_write_window_timeout_after_refusal_headers_resends_below_the_cap() -> None:
+    provider = Provider(lambda: httpx.Response(400, stream=StalledBody()))
+    context = new_context()
+    context.deadline = datetime.now(UTC) + timedelta(milliseconds=1200)
+    attempt = await invoke(provider, context)
+    assert attempt.kind == "retry"
+    assert marker_state(context) == "claimed"
+
+
+async def test_refusal_whose_body_carries_the_created_id_is_never_resent() -> None:
+    for operation_name, body, provider_id in (
+        ("addNote", b'{"data":{"id":"35042650"}}', "35042650"),
+        ("createSharedDraft", b'{"data":{"id":573741352,"shared_draft_id":901}}', "901"),
+    ):
+        provider = Provider(lambda body=body: httpx.Response(400, content=body))
+        context = new_context()
+        attempt = await invoke(provider, context, operation_name)
+        assert attempt.kind == "uncertain"
+        assert attempt.receipt.provider_object_id == provider_id
+        assert marker_provider_id(context) == provider_id
+        advance(context)
+        assert (await invoke(provider, context, operation_name)).kind == "uncertain"
+        assert provider.request_count == 1
+
+
+async def test_update_conversation_refusal_with_an_unreadable_body_repeats_the_change() -> None:
+    update = hiver.UpdateConversationInput("105902", "573741352", status="open")
+    provider = Provider(lambda: httpx.Response(404, stream=BrokenBody()))
+    async with httpx.AsyncClient(transport=httpx.MockTransport(provider.answer)) as http_client:
+        client = hiver.Client(
+            hiver.Config(request_interval_milliseconds=1), static_credentials(), http_client,
+            "http://127.0.0.1:12345/v1",
+        )
+        call = sdk.Call(
+            sdk.CallID("update"),
+            CONNECTION,
+            sdk.OperationRef("hiver", "updateConversation"),
+            context=new_context(),
+        )
+        attempt = await client.update_conversation().invoke(call, update)
+    assert attempt.kind == "retry"
+    assert provider.request_count == 1
+
+
 async def test_write_window_timeout_before_a_response_resends_below_the_cap() -> None:
     async def never_answers(_request: httpx.Request) -> httpx.Response:
         await asyncio.sleep(60)

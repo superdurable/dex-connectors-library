@@ -523,7 +523,7 @@ class UpdateTicketOperation:
                     "the single-dispatch checkpoint could not be read; nothing was sent in this attempt",
                 )
             )
-        permit = _TicketWritePermit(fence, decision, call.max_sends)
+        permit = _TicketWritePermit(fence, decision)
         credentials, credential_failure, is_terminal = await self.client.resolve_write_credentials(
             call, operation
         )
@@ -607,10 +607,18 @@ class UpdateTicketOperation:
                 ),
                 receipt,
             )
+        observed_statuses: list[int] = []
         try:
             exchange = await fence.dispatch(
                 lambda _deadline: self.client.exchange(
-                    call, credentials, operation, "PUT", path, payload={"ticket": change}, fenced=True
+                    call,
+                    credentials,
+                    operation,
+                    "PUT",
+                    path,
+                    payload={"ticket": change},
+                    fenced=True,
+                    on_response_status=observed_statuses.append,
                 )
             )
         except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
@@ -623,10 +631,18 @@ class UpdateTicketOperation:
                 )
             )
         except TimeoutError:
-            # The write window ended after the claim, so the PUT may have applied.
+            # The write window ended after the claim, so the PUT may have applied; 2xx headers prove it did.
+            observed_status = observed_statuses[0] if observed_statuses else 0
             exchange = Exchange(
                 "retry",
-                failure(FailureKind.TRANSPORT, operation, "Zendesk request failed before a response arrived"),
+                failure(
+                    FailureKind.TRANSPORT,
+                    operation,
+                    "Zendesk answered, but its response did not arrive within the write window"
+                    if observed_status
+                    else "Zendesk request failed before a response arrived",
+                ),
+                status=observed_status,
             )
         receipt = self.client.receipt(call, exchange, input.ticket_id)
         if not 200 <= exchange.status < 300:
@@ -656,7 +672,7 @@ _DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 
 class _TicketWritePermit:
     """Map updateTicket reads and its fenced PUT under the fence decision's send-cap facts."""
 
-    def __init__(self, fence: Fence, decision: Decision, max_sends: int) -> None:
+    def __init__(self, fence: Fence, decision: Decision) -> None:
         self.fence = fence
         # An earlier attempt saved the ticket ID after Zendesk accepted its PUT.
         self.has_accepted_write = decision.marker is not None and bool(decision.marker.provider_id)
@@ -668,8 +684,6 @@ class _TicketWritePermit:
         )
         # Earlier sends reached the cap, so this attempt only reads back.
         self.is_at_send_cap = decision.kind == DecisionKind.READ_BACK_REQUIRED
-        # This attempt's send leaves room under the cap for one more.
-        self.can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < max_sends
 
     async def credential_failure_attempt(self, problem: Failure, is_terminal: bool) -> MutationAttempt[Any]:
         """Map unusable credentials before any request of this attempt."""
@@ -773,16 +787,16 @@ class _TicketWritePermit:
             return refusal
         # A 3xx, 408, 409, 410, other 5xx, unlisted status, lost answer, oversized error body, or error body
         # carrying a ticket may follow an applied write.
-        return self.resend_or_uncertain(value, exchange.failure, exchange.retry_after, receipt)
+        return _retry_unknown_write_outcome(exchange.failure, exchange.retry_after)
 
-    def resend_or_uncertain(
-        self, value: Any, problem: Failure, retry_after: float, receipt: Receipt
-    ) -> MutationAttempt[Any]:
-        """Retry an unknown write outcome while the send cap allows another send."""
-        if self.can_resend_unknown_outcome:
-            # The claim stays the last marker, so the next attempt reads back before it resends.
-            return MutationAttempt.retry(problem, retry_after)
-        return MutationAttempt.uncertain(value, problem, receipt)
+
+def _retry_unknown_write_outcome(problem: Failure, retry_after: float) -> MutationAttempt[Any]:
+    """Retry an unknown write outcome, also after the last allowed send.
+
+    The claim stays the last marker, so the next attempt reads the audit back; it resends only
+    below the cap and selects uncertain at the cap.
+    """
+    return MutationAttempt.retry(problem, retry_after)
 
 
 class _AcceptedTicketWrite:

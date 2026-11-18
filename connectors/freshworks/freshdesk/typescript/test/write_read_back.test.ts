@@ -158,4 +158,15 @@ describe('Freshdesk accepted and possibly sent writes', () => {
     const updated = new AttemptSequence(request => { if (request.method === 'GET') return json(200, { ...ticketWire, status: 3 }); throw new BodyTooLargeError(400, {}); });
     expect((await updated.run('updateTicket', { ticketId: 1207, status: 2 })).kind).toBe('retry');
   });
+
+  it('selects defect for a terminal credential failure only on the first update attempt', async () => {
+    const reconnect: CredentialProvider<Credentials> = { resolve: async () => { throw new ReauthorizationRequiredError(); } };
+    const sequence = new AttemptSequence(() => { throw new Error('no request is expected'); });
+    const first = await sequence.run('updateTicket', { ticketId: 1207, status: 2 }, reconnect);
+    expect(first.kind === 'branch' && first.branch).toBe('defect');
+    // A later attempt may follow a PUT that took effect, so it retries instead.
+    const second = await sequence.run('updateTicket', { ticketId: 1207, status: 2 }, reconnect);
+    expect(second.kind).toBe('retry');
+    expect(sequence.requests).toHaveLength(0);
+  });
 });

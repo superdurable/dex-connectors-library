@@ -44,6 +44,8 @@ export interface ExchangeFailure {
   retryAfterMs: number;
   /** Response metadata for the receipt. */
   response?: ProviderResponse;
+  /** A non-2xx body was oversized or reflected the credential, so it cannot prove a refusal. */
+  isErrorBodyUnreadable?: boolean;
 }
 
 /** Complete Zoho Desk response or classified failure. */
@@ -143,7 +145,7 @@ export class ZohoDeskClient {
         if (error instanceof BodyTooLargeError) {
           const status = error.status ?? observedStatus;
           const responseWithoutBody = status === 0 ? undefined : { status, headers: error.headers ?? observedHeaders, body: new Uint8Array() };
-          if (responseWithoutBody && (responseWithoutBody.status < 200 || responseWithoutBody.status >= 300)) return { outcome: classifyStatus(responseWithoutBody, operation, this.now()) };
+          if (responseWithoutBody && (responseWithoutBody.status < 200 || responseWithoutBody.status >= 300)) return { outcome: { ...classifyStatus(responseWithoutBody, operation, this.now()), isErrorBodyUnreadable: true } };
           return { outcome: this.failure('invalid', operation, 'RESPONSE_TOO_LARGE', 'Zoho Desk response exceeds the configured maxResponseBytes limit', 0, responseWithoutBody) };
         }
         // Keep a status whose headers arrived, so an accepted write is never resent.
@@ -153,7 +155,8 @@ export class ZohoDeskClient {
         }
         if (observedStatus !== 0) {
           const partialResponse = { status: observedStatus, headers: observedHeaders, body: new Uint8Array() };
-          if (observedStatus === 503) return { outcome: classifyStatus(partialResponse, operation, this.now()) };
+          // A 429 or 503 status proves Zoho Desk did not process the request, even when its body broke.
+          if (observedStatus === 503 || observedStatus === 429) return { outcome: classifyStatus(partialResponse, operation, this.now()) };
           return { outcome: this.failure('unavailable', operation, 'TRANSPORT', 'Zoho Desk response could not be read', 0, partialResponse) };
         }
         if (error instanceof ProviderTransportError && error.isProvablyNotSent) return { outcome: this.failure('notSent', operation, 'TRANSPORT', 'Zoho Desk could not be reached; no request was sent') };
@@ -166,12 +169,16 @@ export class ZohoDeskClient {
           if (this.hasValidCredentials(replacement) && replacement.authMethodId === session.credentials.authMethodId) { session.credentials = replacement; continue; }
         } catch { /* The original 401 remains authoritative when refresh fails. */ }
       }
+      // The SDK truncates an error body at the limit without an error, so a full-length body counts as oversized.
+      let isErrorBodyUnreadable = response.body.length >= MaxErrorBodyBytes;
       if (token && Buffer.from(response.body).includes(Buffer.from(token))) {
         if (response.status >= 200 && response.status < 300) return { outcome: this.failure('invalid', operation, 'PROTOCOL', 'Zoho Desk response reflected the connection credential', 0, response) };
         response = { ...response, body: new Uint8Array() };
+        isErrorBodyUnreadable = true;
       }
       if (response.status >= 200 && response.status < 300) return { response };
-      return { outcome: classifyStatus(response, operation, this.now()) };
+      const classified = classifyStatus(response, operation, this.now());
+      return { outcome: isErrorBodyUnreadable ? { ...classified, isErrorBodyUnreadable } : classified };
     }
     throw new Error('Zoho Desk credential retry exhausted');
   }

@@ -232,7 +232,9 @@ require.Equal(t, TriageConversationOpened, outcome.Action)
 ## Duplicate safety
 
 `updateConversation` sets absolute values, declares `repeatOnUnknown: safe`,
-and retries every unknown outcome. `createConversation` and
+and retries every unknown outcome. An earlier attempt's change may have
+applied before this attempt reads, so on its first read as on the `PUT`
+only a definite refusal selects a branch. `createConversation` and
 `replyToConversation` use the shared `sdkgo/singledispatch` fence with sync
 Execute durability and the manifest send cap (`maxSends`, 3 by default). The
 fence checks the prior attempt's heartbeat before credentials are loaded,
@@ -250,8 +252,10 @@ while fewer sends than the cap may have taken effect, and selects `uncertain`
 once the cap is reached. A read-back that is refused, finds no conversation
 (404), or returns an invalid page cannot prove the write absent and selects
 `uncertain`. A 2xx means Re:amaze accepted the write, so it is never resent:
-when its body is unreadable, oversized, or malformed, the connector reads back
-in the same attempt and selects the happy path when it finds the record, and
+when its body is unreadable, oversized, or malformed, including a body the
+fence write window cuts off after the 2xx headers arrived, the connector
+reads back in the same attempt, ending that read one second before the
+attempt deadline, and selects the happy path when it finds the record, and
 `uncertain` otherwise. A create answer that still names a valid conversation
 slug saves that slug in the fence first and reads the conversation by it; only
 then may a transient read failure retry, because every later attempt reads
@@ -294,11 +298,11 @@ the HTTP status, such as `Re:amaze rejected the request (HTTP 422)`.
 | 401, 403 | `providerRejected`, `AUTHENTICATION` or `AUTHORIZATION` | same |
 | 404 | `notFound` where declared, otherwise `providerRejected` | same on a first send; `uncertain` after a possible earlier send |
 | 404, 401, 403, or another refusal during read-back | N/A | `uncertain`; it cannot prove the write absent |
-| refusal status whose body exceeds `maxResponseBytes` | the refusal branch for reads; Retry for the PUT | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
-| 409 | `providerRejected`, `CONFLICT`, for reads; Retry for the `updateConversation` PUT | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
+| refusal status whose body exceeds `maxResponseBytes` | the refusal branch for reads; Retry for both requests of `updateConversation` | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
+| 409 | `providerRejected`, `CONFLICT`, for reads; Retry for both requests of `updateConversation` | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
 | 411, 413, 414, 415 | `providerRejected` | `providerRejected` on a first send; `uncertain` after a possible earlier send |
-| other 4xx | `providerRejected` for reads; Retry for the `updateConversation` PUT | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
-| 3xx | `providerRejected`, `PROTOCOL`, for reads; Retry for the PUT; redirects are never followed | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
+| other 4xx | `providerRejected` for reads; Retry for both requests of `updateConversation` | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
+| 3xx | `providerRejected`, `PROTOCOL`, for reads; Retry for both requests of `updateConversation`; redirects are never followed | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
 | 429 | Retry after `Retry-After`, or after one minute without it | Retry after `Retry-After` or one minute, then send |
 | connection refused before sending | Retry | Retry, then send |
 | 503 | Retry, after `Retry-After` when present | Retry with the next attempt’s fence marker |
@@ -308,6 +312,11 @@ the HTTP status, such as `Re:amaze rejected the request (HTTP 422)`.
 | unreadable or foreign fence checkpoint | N/A | Retry without sending |
 | connection credentials that cannot be read yet, such as a storage outage | Retry, with no request | Retry, with no request; after a possible send nothing is recorded |
 | invalid input or unusable connection credentials | `defect`, with no request | `defect`, `AUTHENTICATION` with a reconnect hint before send; `uncertain` with a reconnect hint after a possible send |
+| a connection that needs reconnecting, is missing, is no longer selected, or that the credential broker refuses | Go and Python reads: `defect` for reconnecting, otherwise Retry; TypeScript reads and `updateConversation`: `defect` | same as unusable connection credentials |
+
+Unusable credentials select `defect` for `updateConversation` only on its
+first attempt. A later attempt returns Retry instead, because an earlier
+attempt's `PUT` may have applied and `defect` would hide it.
 
 The Receipt carries the Call ID and idempotency key. It includes a conversation
 slug when the connector knows one, including a saved slug on a read-back

@@ -135,11 +135,11 @@ export interface UpdateTicketStepConfig<StepInput, OperationInput = UpdateTicket
   updated: StepTarget<MutationResult<OperationOutput>>;
   /** The ticket does not exist or is not visible to the connection's user. */
   notFound?: StepTarget<MutationResult<OperationOutput>>;
-  /** Gorgias conclusively rejected the change, such as an unknown user or team, or a merged ticket; a tag change made before the rejection stays applied, and the Ticket shows it when it can be read again. */
+  /** Gorgias conclusively rejected the ticket read or the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as for an unknown user or team; a tag change made before the rejection stays applied, and the Ticket shows it when it can be read again. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Gorgias returned an invalid or oversized ticket on the read before the change, so this attempt changed nothing. */
+  /** Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so an invalid or oversized ticket on any read is retried. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** Local input, connection configuration, or connector definition is invalid. */
+  /** Local input, connection configuration, or connector definition is invalid; revoked or unusable credentials select it only on the first attempt, because a later attempt retries a change an earlier attempt may have sent. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
   /** Accepted for compatibility; ignored because the operation is safe to repeat. */
   maxSends?: number;

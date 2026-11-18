@@ -73,11 +73,35 @@ func TestUpdateTicketReadsBackAnEarlierWriteBeforeResending(t *testing.T) {
 	require.Equal(t, 5, provider.requestCount(), "the found audit is never written again")
 }
 
-func TestUpdateTicketSelectsUncertainAtTheSendCap(t *testing.T) {
+func TestUpdateTicketReadsBackAfterTheLastAllowedSendBeforeSelectingUncertain(t *testing.T) {
 	provider := fencedUpdateZendesk(t, emptyAuditPage, http.StatusBadGateway, http.StatusConflict, http.StatusInternalServerError)
 	dexContext := newZendeskDexContext("update-cap")
 	client := newZendeskClient(t, provider.URL)
-	for attempt := 1; attempt < 3; attempt++ {
+	for attempt := 1; attempt <= 3; attempt++ {
+		_, err := sdkgo.RunMutation(dexContext, client.UpdateTicket(), zendeskConnection, followUpInput())
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "attempt %d: an unknown outcome retries, also on the last allowed send", attempt)
+		dexContext.advanceAttempt()
+	}
+	require.Equal(t, 9, provider.requestCount(), "three sends reach the default cap of 3")
+	result, err := sdkgo.RunMutation(dexContext, client.UpdateTicket(), zendeskConnection, followUpInput())
+	require.NoError(t, err)
+	require.Equal(t, support.UpdateTicketBranchUncertain, result.Branch)
+	require.Equal(t, 11, provider.requestCount(), "at the cap an attempt only reads back")
+	require.NotContains(t, mustJSON(t, result), "SENTINEL")
+}
+
+func TestUpdateTicketReadBackAfterTheLastAllowedSendFindsTheChange(t *testing.T) {
+	dexContext := newZendeskDexContext("update-cap-found")
+	key := stepIdempotencyKey(t, dexContext)
+	provider := fencedUpdateZendesk(t, func(attempt int) string {
+		if attempt < 3 {
+			return `{"audits":[]}`
+		}
+		return `{"audits":[{"id":10,"metadata":{"custom":{"dex_idempotency_key":"` + key + `"}}}]}`
+	}, http.StatusBadGateway, http.StatusConflict, http.StatusInternalServerError)
+	client := newZendeskClient(t, provider.URL)
+	for attempt := 1; attempt <= 3; attempt++ {
 		_, err := sdkgo.RunMutation(dexContext, client.UpdateTicket(), zendeskConnection, followUpInput())
 		var retry *sdkgo.RetryError
 		require.ErrorAs(t, err, &retry, "attempt %d", attempt)
@@ -85,15 +109,9 @@ func TestUpdateTicketSelectsUncertainAtTheSendCap(t *testing.T) {
 	}
 	result, err := sdkgo.RunMutation(dexContext, client.UpdateTicket(), zendeskConnection, followUpInput())
 	require.NoError(t, err)
-	require.Equal(t, support.UpdateTicketBranchUncertain, result.Branch)
-	require.Equal(t, 9, provider.requestCount(), "three sends reach the default cap of 3")
-	require.NotContains(t, mustJSON(t, result), "SENTINEL")
-
-	dexContext.advanceAttempt()
-	result, err = sdkgo.RunMutation(dexContext, client.UpdateTicket(), zendeskConnection, followUpInput())
-	require.NoError(t, err)
-	require.Equal(t, support.UpdateTicketBranchUncertain, result.Branch)
-	require.Equal(t, 11, provider.requestCount(), "at the cap an attempt only reads back")
+	require.Equal(t, support.UpdateTicketBranchUpdated, result.Branch, "the last send applied, and its audit confirms it")
+	require.True(t, result.Value.WasAlreadyApplied)
+	require.Equal(t, 11, provider.requestCount())
 }
 
 func TestUpdateTicketNeverResendsADefiniteRefusalAndRecordsCanResend(t *testing.T) {

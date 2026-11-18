@@ -9,7 +9,7 @@ import ipaddress
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import quote_plus, urlsplit
@@ -59,6 +59,10 @@ class Exchange:
     failure: Failure | None = None
     retry_after_seconds: float = 0
     field_errors: tuple[str, ...] = ()
+    is_error_body_unreadable: bool = False
+    """A non-2xx body was oversized or reflected the credential."""
+    accepted_provider_id: str = ""
+    """A created object's id carried by a non-2xx body."""
 
 
 @dataclass
@@ -110,6 +114,19 @@ def _summary(body: bytes) -> tuple[str, list[str]]:
                 name += "=" + error_type
             details.append(name)
     return code, sorted(details)[:5]
+
+
+def accepted_provider_id(body: bytes) -> str:
+    """Return the valid numeric id of a JSON object body, or an empty string."""
+    try:
+        document = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return ""
+    value = document.get("id") if isinstance(document, dict) else None
+    if isinstance(value, bool) or not isinstance(value, (int, str)):
+        return ""
+    text = str(value)
+    return text if _ID.fullmatch(text) else ""
 
 
 def _with_summary(message: str, body: bytes) -> str:
@@ -339,6 +356,7 @@ class Client:
         }
         if payload is not None:
             headers["Content-Type"] = "application/json"
+        is_error_body_unreadable = False
         try:
             request = self.http_client.build_request(
                 method,
@@ -369,14 +387,19 @@ class Client:
                             "Zoho Desk response exceeds the configured maxResponseBytes limit",
                         ),
                     )
-                body = b""
+                body, is_error_body_unreadable = b"", True
             except (httpx.HTTPError, ProviderTransportError):
-                return Exchange(
-                    "unavailable",
-                    status,
-                    headers=response_headers,
-                    failure=failure(operation, FailureKind.TRANSPORT, "Zoho Desk response could not be read"),
-                )
+                if status != 429:
+                    return Exchange(
+                        "unavailable",
+                        status,
+                        headers=response_headers,
+                        failure=failure(
+                            operation, FailureKind.TRANSPORT, "Zoho Desk response could not be read"
+                        ),
+                    )
+                # A 429 status proves Zoho Desk did not process the request, even when its body broke.
+                body = b""
         except ProviderTransportError as error:
             outcome = "not_sent" if error.provably_not_sent else "unavailable"
             message = (
@@ -404,9 +427,21 @@ class Client:
                         "Zoho Desk response reflected the connection credential",
                     ),
                 )
-            body = b""
+            body, is_error_body_unreadable = b"", True
         if 200 <= status < 300:
             return Exchange("success", status, body, response_headers)
+        classified = self._classify_error_status(operation, status, body, response_headers)
+        # A write refusal is definite only with a trusted body and no created id; write callers check both.
+        return replace(
+            classified,
+            is_error_body_unreadable=is_error_body_unreadable,
+            accepted_provider_id=accepted_provider_id(body),
+        )
+
+    def _classify_error_status(
+        self, operation: str, status: int, body: bytes, response_headers: httpx.Headers
+    ) -> Exchange:
+        """Classify a non-2xx status by its errorCode and field errors, never its message text."""
         code, field_errors = _summary(body)
         delay = parse_retry_after(response_headers.get("Retry-After", ""), self._now())
         if status == 429:

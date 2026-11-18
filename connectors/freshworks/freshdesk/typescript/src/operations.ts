@@ -388,7 +388,8 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
       if (!input.status && !input.priority && !input.groupId && !input.responderId && !input.addTags?.length && !input.removeTags?.length) throw new TypeError('no ticket change');
     } catch { return mutationFailure(this.client, call, operation, 'defect', zero, 'VALIDATION', 'Freshdesk update input is invalid'); }
     const resolved = await credential(this.client, call, operation);
-    if ('failure' in resolved) return resolved.transient ? newMutationRetry(resolved.failure) : newMutationBranch('defect', zero, {}, resolved.failure);
+    // defect would hide a change an earlier attempt may have sent; repeating it is safe.
+    if ('failure' in resolved) return resolved.transient || call.context.attempt > 1 ? newMutationRetry(resolved.failure) : newMutationBranch('defect', zero, {}, resolved.failure);
     const path = `/tickets/${input.ticketId}`;
     const read = await this.client.exchange(call, operation, resolved.key, 'GET', path);
     const readTerminal = updateExchange(this.client, call, read, zero, input.ticketId); if (readTerminal) return readTerminal;
