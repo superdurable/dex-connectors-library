@@ -29,6 +29,8 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk import OperationRef as OperationRef
 from dex_connectors.sdk import SecretString as SecretString
 from dex_connectors.sdk import StepDefaults as StepDefaults
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -131,10 +133,25 @@ class Client:
         """Build one authenticated JSON request, or return the defect Failure."""
         try:
             credentials = await self.credentials.resolve(call)
-        except (ValueError, LookupError, OSError, ReauthorizationRequiredError):
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
             credentials = None
-        key = "" if credentials is None else credentials.api_key.reveal()
-        if not key or not is_header_safe_credential(key):
+        except Exception:
+            # AVAILABILITY tells callers to Retry; nothing was sent.
+            return _failure(
+                operation,
+                FailureKind.AVAILABILITY,
+                "Brevo connection credentials are temporarily unavailable",
+            )
+        try:
+            key = "" if credentials is None else credentials.api_key.reveal()
+        except AttributeError:
+            key = ""
+        if not isinstance(key, str) or not key or not is_header_safe_credential(key):
             return _failure(
                 operation,
                 FailureKind.AUTHENTICATION,
@@ -188,6 +205,8 @@ class CreateOrUpdateContactOperation:
         if len(body) > _MAX_PAYLOAD_BYTES:
             return _mutation_branch(DEFECT, FailureKind.VALIDATION, "contact payload is invalid or too large")
         request = await self.client.build_request(call, operation, "POST", "/contacts", body)
+        if isinstance(request, Failure) and request.kind == FailureKind.AVAILABILITY:
+            return MutationAttempt.retry(request)
         if isinstance(request, Failure):
             return MutationAttempt.branch_result(DEFECT, ContactWriteResult(), Receipt(), request)
         try:
@@ -259,6 +278,8 @@ class GetContactOperation:
         request = await self.client.build_request(
             call, operation, "GET", "/contacts/" + quote(input.email, safe=""), None
         )
+        if isinstance(request, Failure) and request.kind == FailureKind.AVAILABILITY:
+            return QueryAttempt.retry(request)
         if isinstance(request, Failure):
             return QueryAttempt.branch_result(DEFECT, Contact(), Receipt(), request)
         try:

@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call, type CredentialProvider, type Failure } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import emailAddresses from 'email-addresses';
+import { z } from 'zod';
 import type { Config, Credentials } from './generated/models.js';
 import { CreateOrUpdateContactOperation, GetContactOperation } from './operations.js';
 
@@ -57,15 +59,16 @@ export class BrevoClient {
 
   /** Send one authenticated request and classify transport failures. */
   async exchange(call: Call, operation: string, method: string, path: string, body?: Uint8Array): Promise<BrevoExchange> {
-    let apiKey: string;
-    try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      if (!(credentials.apiKey instanceof SecretString)) throw new TypeError('missing key');
-      apiKey = credentials.apiKey.reveal();
-      if (!isHeaderSafeCredential(apiKey)) throw new TypeError('invalid key');
-    } catch {
-      return { failure: brevoFailure(operation, 'AUTHENTICATION', 'Brevo connection credentials are unavailable or invalid'), classification: 'defect', retryAfterMs: 0 };
+    const unusable: BrevoExchange = { failure: brevoFailure(operation, 'AUTHENTICATION', 'Brevo connection credentials are unavailable or invalid'), classification: 'defect', retryAfterMs: 0 };
+    let credentials: Credentials;
+    try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
+    catch (error) {
+      if (isTerminalCredentialError(error)) return unusable;
+      return { failure: brevoFailure(operation, 'AVAILABILITY', 'Brevo connection credentials are temporarily unavailable'), classification: 'retry', retryAfterMs: 0 };
     }
+    if (!(credentials?.apiKey instanceof SecretString)) return unusable;
+    const apiKey = credentials.apiKey.reveal();
+    if (!isHeaderSafeCredential(apiKey)) return unusable;
     try {
       const response = await this.send({
         url: this.baseUrl + path, method,
@@ -92,6 +95,12 @@ export class BrevoClient {
     const value = response.headers['retry-after'];
     return parseRetryAfter(Array.isArray(value) ? value[0] ?? '' : value ?? '', this.now());
   }
+}
+
+/** Report a resolve failure no later attempt clears; a ZodError is stored material the decoder rejected. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof z.ZodError;
 }
 
 /** Produce a secret-safe operation failure. */

@@ -4,8 +4,9 @@
 import { describe, expect, it } from 'vitest';
 import { once } from 'node:events';
 import { createServer } from 'node:http';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BrevoClient, isPlainEmail } from '../src/client.js';
 
 const credentials = { resolve: async () => ({ apiKey: new SecretString('brevo-test-key') }) };
@@ -23,6 +24,20 @@ describe('Brevo client configuration', () => {
     const result = await client.createOrUpdateContact().invoke(call, { email: 'member@meridian.example' });
     expect(result.kind).toBe('branch');
     if (result.kind === 'branch') expect(result.branch).toBe('providerRejected');
+  });
+
+  it('retries only transient credential resolve failures', async () => {
+    const call = { context: { cancellationSignal: new AbortController().signal } } as Call;
+    for (const [error, kind] of [
+      [new Error('connection is not configured'), 'retry'], [new CredentialBrokerUnavailableError(), 'retry'], [new RangeError('unlisted'), 'retry'],
+      [new ReauthorizationRequiredError(), 'branch'], [new ObjectNotFoundError(), 'branch'], [new ConnectionNotSelectedError(), 'branch'],
+      [new CredentialBrokerRejectedError(), 'branch'], [new TypeError('fetch failed'), 'retry'],
+    ] as const) {
+      const client = new BrevoClient({}, { resolve: async () => { throw error; } }, { send: async () => { throw new Error('unexpected request'); } });
+      const result = await client.createOrUpdateContact().invoke(call, { email: 'member@meridian.example' });
+      expect(result.kind, error.name).toBe(kind);
+      if (result.kind === 'branch') expect(result.branch).toBe('defect');
+    }
   });
 
   it('accepts plain email addresses and rejects display names', () => {

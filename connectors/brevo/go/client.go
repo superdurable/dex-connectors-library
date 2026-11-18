@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -131,6 +132,9 @@ func (operation CreateOrUpdateContactOperation) Invoke(call sdkgo.Call, input Cr
 		return sdkgo.NewMutationBranch(CreateOrUpdateContactBranchDefect, ContactWriteResult{}, brevoFailure(name, sdkgo.FailureValidation, "contact payload is invalid or too large"), sdkgo.Receipt{})
 	}
 	request, failure := operation.client.newRequest(call, http.MethodPost, "/contacts", payload, name)
+	if failure != nil && failure.Kind == sdkgo.FailureAvailability {
+		return sdkgo.NewMutationRetry[ContactWriteResult](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(CreateOrUpdateContactBranchDefect, ContactWriteResult{}, failure, sdkgo.Receipt{})
 	}
@@ -172,6 +176,9 @@ func (operation GetContactOperation) Invoke(call sdkgo.Call, input GetContactInp
 		return sdkgo.NewQueryBranch(GetContactBranchDefect, Contact{}, brevoFailure(name, sdkgo.FailureValidation, "a plain email address is required"), sdkgo.Receipt{})
 	}
 	request, failure := operation.client.newRequest(call, http.MethodGet, "/contacts/"+url.PathEscape(input.Email), nil, name)
+	if failure != nil && failure.Kind == sdkgo.FailureAvailability {
+		return sdkgo.NewQueryRetry[Contact](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(GetContactBranchDefect, Contact{}, failure, sdkgo.Receipt{})
 	}
@@ -205,6 +212,10 @@ func (operation GetContactOperation) Invoke(call sdkgo.Call, input GetContactInp
 
 func (client *Client) newRequest(call sdkgo.Call, method, path string, payload []byte, operation string) (*http.Request, *sdkgo.Failure) {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		// FailureAvailability tells callers to Retry; nothing was sent.
+		return nil, brevoFailure(operation, sdkgo.FailureAvailability, "Brevo connection credentials are temporarily unavailable")
+	}
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIKey.Reveal()) {
 		return nil, brevoFailure(operation, sdkgo.FailureAuthentication, "Brevo connection credentials are unavailable or invalid")
 	}
@@ -216,6 +227,13 @@ func (client *Client) newRequest(call sdkgo.Call, method, path string, payload [
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Content-Type", "application/json")
 	return request, nil
+}
+
+// isTerminalCredentialError reports a resolve failure no later attempt clears; every other resolve error is transient.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func validEmail(value string) bool {
