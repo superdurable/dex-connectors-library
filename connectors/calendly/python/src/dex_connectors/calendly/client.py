@@ -20,6 +20,11 @@ from dex_connectors.sdk import (
     resolve_credential_after_rejection,
 )
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -160,6 +165,13 @@ class Client:
                 None,
                 FailureKind.AUTHENTICATION,
                 "the Calendly connection needs reauthorization; authorize it again in Dex Web Connectors",
+            )
+        except (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError):
+            return (
+                None,
+                FailureKind.AUTHENTICATION,
+                "the Calendly connection is missing, not selected, or refused by the credential broker; "
+                "check it in Dex Web Connections",
             )
         except Exception:
             return (

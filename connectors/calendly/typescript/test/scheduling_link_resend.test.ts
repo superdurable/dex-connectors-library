@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { RetryError, runMutation, SecretString, StaticCredentialProvider, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, StaticCredentialProvider, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { CalendlyClient } from '../src/client.js';
 import { CreateSchedulingLinkDefinition } from '../src/generated/definitions.js';
@@ -128,5 +129,33 @@ describe('Calendly createSchedulingLink bounded resend', () => {
     context.marker = { callId: 'foreign', attempt: 1, state: 'claimed' };
     expect(await createLink(client, context)).toBeInstanceOf(RetryError);
     expect(requests).toHaveLength(0);
+  });
+
+  it.each([
+    ['reauthorization', new ReauthorizationRequiredError(), true],
+    ['object not found', new ObjectNotFoundError(), true],
+    ['connection not selected', new ConnectionNotSelectedError(), true],
+    ['broker rejected', new CredentialBrokerRejectedError(), true],
+    ['broker unavailable', new CredentialBrokerUnavailableError(), false],
+    ['static not configured', new Error('connection is not configured'), false],
+    ['unlisted error', new RangeError('credential store hiccup'), false],
+  ])('classifies a %s credential failure before and after a possible send', async (_name, error, isTerminal) => {
+    const failing = new CalendlyClient({}, { resolve: async () => { throw error; }, resolveWithRefresh: async () => { throw error; } }, {
+      send: async () => { throw new Error('no request may be sent'); },
+    });
+    const firstSend = new AttemptContext();
+    const first = await createLink(failing, firstSend);
+    if (isTerminal) expect(first).toMatchObject({ branch: 'defect' });
+    else expect(first).toBeInstanceOf(RetryError);
+    expect(firstSend.marker).toMatchObject({ state: 'notSent' });
+
+    const { client, requests } = newClient(() => ({ status: 502, body: { title: 'Bad Gateway' } }));
+    const afterSend = new AttemptContext();
+    expect(await createLink(client, afterSend)).toBeInstanceOf(RetryError);
+    afterSend.attempt = 2;
+    const later = await createLink(failing, afterSend);
+    if (isTerminal) expect(later).toMatchObject({ branch: 'uncertain' });
+    else expect(later).toBeInstanceOf(RetryError);
+    expect(requests).toHaveLength(1);
   });
 });
