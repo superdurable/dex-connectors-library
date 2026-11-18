@@ -105,6 +105,8 @@ it.each([
   ['object not found', new ObjectNotFoundError(), 'branch', 'defect'],
   ['connection not selected', new ConnectionNotSelectedError(), 'branch', 'defect'],
   ['broker rejected', new CredentialBrokerRejectedError(), 'branch', 'defect'],
+  // The SDK project provider replaces a malformed-material decoder error with this TypeError.
+  ['malformed stored material', new TypeError('project credential decoding failed'), 'branch', 'defect'],
 ])('classifies a %s credential failure on a write', async (_name, error, kind, branch) => {
   const failing = async () => { throw error; };
   const hubspot = new HubSpotClient({ endpoint: 'http://127.0.0.1:44721' }, { resolve: failing, resolveWithRefresh: failing }, { send: async () => { throw new Error('unexpected request'); } });

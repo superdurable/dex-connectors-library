@@ -15,8 +15,21 @@ from dex_connectors.sdk.projectconfig import (
 )
 
 import dex_connectors.hubspot as hubspot
+from dex_connectors.hubspot._generated.connection import CredentialMaterialError, decode_credentials
 
 CONNECTION = sdk.ConnectionRef("hubspot", "hubspot-crm")
+
+
+def sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError the SDK project provider raises after the generated decoder refuses material."""
+    try:
+        try:
+            decode_credentials({"unknown": "value"})
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed material decoded")
 
 
 def make_client(
@@ -151,6 +164,7 @@ async def test_write_retries_temporarily_unavailable_credentials(error: Exceptio
         (ObjectNotFoundError(), "defect"),
         (ConnectionNotSelectedError(), "defect"),
         (CredentialBrokerRejectedError(), "defect"),
+        (sdk_wrapped_material_error(), "defect"),
     ],
 )
 async def test_write_selects_a_terminal_branch_for_terminal_credentials(

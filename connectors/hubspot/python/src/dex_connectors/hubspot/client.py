@@ -194,7 +194,12 @@ class Client:
             )
         except (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError):
             return unavailable
-        except Exception:
+        except Exception as error:
+            # The generated connection module imports this module, so import it lazily.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return unavailable
             # A write may have applied in an earlier attempt, so a passing outage must not select defect.
             return Exchange(
                 disposition="retry",

@@ -6,7 +6,7 @@ import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oa
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { GetObjectOperation, SearchObjectsOperation, UpdateObjectOperation, UpsertObjectOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.hubapi.com';
@@ -95,7 +95,7 @@ export class HubSpotClient {
     } catch (error) {
       if (error instanceof ReauthorizationRequiredError) return { outcome: this.failure('rejected', operation, 'AUTHENTICATION', 'HubSpot authorization must be renewed') };
       if (error instanceof RetryError) return { outcome: this.failure('retry', operation, 'AVAILABILITY', 'HubSpot OAuth token refresh is temporarily unavailable') };
-      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError) {
+      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error)) {
         return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'HubSpot connection credentials are unavailable') };
       }
       // A write may have applied in an earlier attempt, so a passing outage must not select defect.
