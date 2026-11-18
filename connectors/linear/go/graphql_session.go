@@ -39,6 +39,9 @@ func (client *Client) openSession(call sdkgo.Call, operation string) (*graphQLSe
 	case errors.Is(err, errCredentialRefreshUnavailable), errors.Is(err, projectconfig.ErrRefreshFailed):
 		failed = &linearExchange{outcome: exchangeRetry,
 			failure: linearFailure(sdkgo.FailureAvailability, operation, "Linear OAuth token refresh is temporarily unavailable")}
+	case err != nil && !isTerminalCredentialError(err):
+		failed = &linearExchange{outcome: exchangeRetry,
+			failure: linearFailure(sdkgo.FailureAvailability, operation, "Linear connection credentials could not be read, so nothing was sent")}
 	case err != nil || validateResolvedCredentials(credentials) != nil:
 		failed = &linearExchange{outcome: exchangeDefect,
 			failure: linearFailure(sdkgo.FailureAuthentication, operation, "Linear connection credentials are unavailable or unusable")}
@@ -167,6 +170,13 @@ func (credentials Credentials) authorizationHeader() string {
 		return "Bearer " + credentials.AccessToken.Reveal()
 	}
 	return credentials.APIKey.Reveal()
+}
+
+// isTerminalCredentialError reports a credential resolution failure that no retry fixes; every other error is transient.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // validateResolvedCredentials checks only what a request needs, so credentials without renewal material pass.

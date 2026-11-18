@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { LinearClient } from '../src/client.js';
 
 const connection = { provider: 'linear', name: 'linear-test' };
@@ -17,6 +18,21 @@ describe('Linear input and configuration validation', () => {
     const attempt = await client.createIssue().invoke(call, { teamId: '2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4', title: 'Fix calendar', dueDate: '2026-02-29' });
     expect(attempt).toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'VALIDATION' } });
     expect(sent).toBe(false);
+  });
+
+  it.each([
+    ['not selected', () => new ConnectionNotSelectedError(), 'defect'],
+    ['broker rejected', () => new CredentialBrokerRejectedError(), 'defect'],
+    ['object not found', () => new ObjectNotFoundError(), 'defect'],
+    ['broker unavailable', () => new CredentialBrokerUnavailableError(), 'retry'],
+    ['not configured', () => new Error('connection is not configured'), 'retry'],
+    ['unlisted type error', () => new TypeError('unlisted'), 'retry'],
+  ])('classifies a credential resolve failure (%s) with the shared terminal set', async (_name, newError, expected) => {
+    const error = newError();
+    const failing = { resolve: async () => { throw error; }, resolveWithRefresh: async () => { throw error; } } as never;
+    const client = new LinearClient({}, failing, { send: async () => { throw new Error('unexpected request'); } });
+    const opened = await client.open(call, 'getIssue');
+    expect('failed' in opened ? opened.failed.disposition : 'opened').toBe(expected);
   });
 
   it('validates every declared connection limit', () => {

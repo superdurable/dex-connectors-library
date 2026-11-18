@@ -5,7 +5,13 @@
 import httpx
 import pytest
 from dex_connectors.sdk import Call, CallID, ConnectionRef, FailureKind, OperationRef, SecretString
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
 from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.linear import Client, Config, Credentials, ListWorkflowStatesInput
 from dex_connectors.linear.client import Exchange, _classify_failure
@@ -61,6 +67,35 @@ async def test_refresh_failure_retries_without_provider_request() -> None:
     assert isinstance(resolved, Exchange)
     assert resolved.outcome == "retry"
     assert resolved.failure is not None and resolved.failure.kind == FailureKind.AVAILABILITY
+
+
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: Call) -> Credentials:
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (ObjectNotFoundError("absent"), "defect"),
+        (ConnectionNotSelectedError(), "defect"),
+        (CredentialBrokerRejectedError(), "defect"),
+        (CredentialBrokerUnavailableError(), "retry"),
+        (ValueError("connection is not configured"), "retry"),
+        (LookupError("unlisted"), "retry"),
+    ],
+)
+async def test_credential_resolve_errors_use_the_shared_terminal_set(error: Exception, expected: str) -> None:
+    """Only the listed credential failures are terminal; every other one retries."""
+    client = Client(Config(), _FailingCredentials(error), api_url="http://127.0.0.1/graphql")
+    resolved = await client.resolve(CALL, "listWorkflowStates")
+    await client.aclose()
+    assert isinstance(resolved, Exchange)
+    assert resolved.outcome == expected
 
 
 @pytest.mark.parametrize(

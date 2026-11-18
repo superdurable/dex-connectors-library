@@ -21,7 +21,9 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
 from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -206,13 +208,22 @@ class Client:
                     "Linear OAuth token refresh is temporarily unavailable",
                 ),
             )
-        except (ValueError, LookupError, OSError):
+        except Exception as error:
+            if _is_terminal_credential_error(error):
+                return Exchange(
+                    "defect",
+                    failure=_failure(
+                        operation,
+                        FailureKind.AUTHENTICATION,
+                        "Linear connection credentials are unavailable or unusable",
+                    ),
+                )
             return Exchange(
-                "defect",
+                "retry",
                 failure=_failure(
                     operation,
-                    FailureKind.AUTHENTICATION,
-                    "Linear connection credentials are unavailable or unusable",
+                    FailureKind.AVAILABILITY,
+                    "Linear connection credentials could not be read, so nothing was sent",
                 ),
             )
         if not isinstance(credential, Credentials):
@@ -394,6 +405,19 @@ class Client:
                 failure=_failure(operation, FailureKind.PROTOCOL, "Linear returned neither data nor errors"),
             )
         return Exchange("succeeded", data=data, status=status, request_id=request_id)
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential resolution failure that no retry fixes; every other error is transient."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:

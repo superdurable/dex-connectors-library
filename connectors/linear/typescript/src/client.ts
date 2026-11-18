@@ -4,7 +4,7 @@
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { RefreshFailedError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError, RefreshFailedError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
 import { AddCommentOperation, CreateIssueOperation, FindUserByEmailOperation, GetIssueOperation, ListWorkflowStatesOperation, SearchIssuesOperation, UpdateIssueOperation } from './operations.js';
@@ -71,16 +71,20 @@ export class LinearClient {
 
   /** Resolve credentials once for an operation and classify host failures. */
   async open(call: Call, operation: string): Promise<{ credentials: Credentials } | { failed: LinearExchange }> {
+    const unusable = { failed: this.failed(operation, 'defect', 'AUTHENTICATION', 'Linear connection credentials are unavailable or unusable') };
+    let credentials: Credentials;
     try {
-      const credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
-      const token = credentials.authMethodId === 'linear-oauth' ? credentials.accessToken?.reveal() : credentials.apiKey?.reveal();
-      if (!['linear-oauth', 'personal-api-key'].includes(credentials.authMethodId ?? '') || !token || !isHeaderSafeCredential(token)) throw new TypeError('unusable Linear credential');
-      return { credentials };
+      credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
     } catch (error) {
       if (error instanceof ReauthorizationRequiredError) return { failed: this.failed(operation, 'rejected', 'AUTHENTICATION', 'Linear authorization must be renewed in Dex Web Connections') };
       if (error instanceof RefreshFailedError) return { failed: this.failed(operation, 'retry', 'AVAILABILITY', 'Linear OAuth token refresh is temporarily unavailable') };
-      return { failed: this.failed(operation, 'defect', 'AUTHENTICATION', 'Linear connection credentials are unavailable or unusable') };
+      if (error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError) return unusable;
+      return { failed: this.failed(operation, 'retry', 'AVAILABILITY', 'Linear connection credentials could not be read, so nothing was sent') };
     }
+    let token: string | undefined;
+    try { token = credentials.authMethodId === 'linear-oauth' ? credentials.accessToken?.reveal() : credentials.apiKey?.reveal(); } catch { /* A wrongly typed token is unusable material. */ }
+    if (!['linear-oauth', 'personal-api-key'].includes(credentials?.authMethodId ?? '') || !token || !isHeaderSafeCredential(token)) return unusable;
+    return { credentials };
   }
 
   /** Send one named GraphQL request, then refresh and resend a rejected OAuth token once. */
