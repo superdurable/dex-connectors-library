@@ -87,7 +87,10 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 	if err := validateUpdateTicketInput(input); err != nil {
 		return sdkgo.NewMutationBranch(UpdateTicketBranchDefect, UpdateTicketOutput{}, gorgiasFailurePointer(sdkgo.FailureValidation, updateTicketOperation, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, updateTicketOperation)
+	credentials, failure, isTerminal := operation.client.resolveWriteCredentials(call, updateTicketOperation)
+	if failure != nil && !isTerminal {
+		return sdkgo.NewMutationRetry[UpdateTicketOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(UpdateTicketBranchDefect, UpdateTicketOutput{}, failure, sdkgo.Receipt{})
 	}
@@ -198,10 +201,10 @@ func updateTicketAttemptForExchange(result gorgiasExchange, receipt sdkgo.Receip
 // isConclusiveWriteFailure reports a definite refusal or a request that was never built.
 func isConclusiveWriteFailure(result gorgiasExchange) bool {
 	switch result.outcome {
-	case exchangeNotFound, exchangeDefect:
+	case exchangeDefect:
 		return true
-	case exchangeRejected:
-		return isDefiniteRefusalStatus(result.response.statusCode)
+	case exchangeNotFound, exchangeRejected:
+		return isDefiniteRefusal(result)
 	default:
 		return false
 	}

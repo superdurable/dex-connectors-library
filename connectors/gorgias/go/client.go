@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -121,6 +122,17 @@ type gorgiasResponse struct {
 	body         []byte
 	requestID    string
 	apiCallLimit string
+	// isBodyTooLarge marks a body over maxResponseBytes, which was not read, so it cannot prove a refusal.
+	isBodyTooLarge bool
+	// object holds the top-level object fields of a readable body, kept after the body is cleared.
+	object gorgiasObjectMarker
+}
+
+// gorgiasObjectMarker is the identity a response body names: a write answer that carries one was accepted.
+type gorgiasObjectMarker struct {
+	ID         int64   `json:"id"`
+	ExternalID *string `json:"external_id"`
+	TicketID   int64   `json:"ticket_id"`
 }
 
 // exchangeOutcome is the provider-neutral meaning of one Gorgias request that each operation maps to a branch.
@@ -226,6 +238,26 @@ func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Cre
 	return credentials, nil
 }
 
+// resolveWriteCredentials returns header-safe credentials, or a safe Failure and whether it is terminal:
+// revoked, unselected, or unusable credentials rather than ones that could not be read this time.
+func (client *Client) resolveWriteCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure, bool) {
+	credentials, err := client.credentials.Resolve(call)
+	switch {
+	case err != nil && !isTerminalCredentialError(err):
+		return Credentials{}, gorgiasFailurePointer(sdkgo.FailureAvailability, operation, "connection credentials could not be read"), false
+	case err != nil || validateResolvedCredentials(credentials) != nil:
+		return Credentials{}, gorgiasFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), true
+	}
+	return credentials, nil, false
+}
+
+// isTerminalCredentialError reports a credential failure that another attempt cannot repair.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
 // exchange sends one authenticated request under the Step context of call.
 func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operation string, request gorgiasRequest) gorgiasExchange {
 	return client.exchangeWithContext(call.Context, credentials, operation, request)
@@ -260,6 +292,11 @@ func (client *Client) exchangeWithContext(ctx context.Context, credentials Crede
 		return gorgiasExchange{outcome: exchangeUnavailable, response: response, failure: gorgiasFailure(sdkgo.FailureTransport, operation, "Gorgias response could not be read")}
 	}
 	response.body = body
+	response.isBodyTooLarge = readErr != nil
+	if json.Unmarshal(body, &response.object) != nil {
+		// A body that is not one well-typed JSON object names no object.
+		response.object = gorgiasObjectMarker{}
+	}
 	if isSuccess {
 		if bytes.Contains(body, []byte(credentials.APIKey.Reveal())) {
 			response.body = nil

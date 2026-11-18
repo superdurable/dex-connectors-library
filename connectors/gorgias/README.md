@@ -258,29 +258,48 @@ these positions:
 - A 429, a 503, or a connection that failed before it opened proves Gorgias
   did not process the request. The fence records that, and the retry sends
   again without a lookup.
+- A 2xx proves Gorgias accepted the write, and it is never sent again. When
+  the 2xx body is invalid, oversized, credential-reflecting, or breaks while
+  it is read, the attempt reads the write back once: by the ID the body names
+  for this Step's ticket or message, which the fence saves first, or else by
+  `external_id`. A confirmed write selects `created` or `added`. A 429, 408,
+  5xx, or refused connection on that read returns Retry only when the fence
+  saved the ID; anything else selects `uncertain`.
+- An attempt that finds a saved ID reads the ticket back by that ID, or the
+  ticket's messages for that message ID, and never sends: a confirmed write
+  selects `created` or `added` with `wasCreatedByEarlierAttempt: true`, a
+  429, 408, 5xx, or refused connection returns Retry, and anything else
+  selects `uncertain`.
 - Every other outcome after a send is unknown: a 5xx other than 503, a 408,
-  409, 3xx, or unlisted status, a lost or unreadable response, and an invalid,
-  oversized, or credential-reflecting 2xx. The attempt returns Retry, after
-  Gorgias's `Retry-After` or two seconds, whichever is longer. The next
-  attempt, like any attempt after a possible earlier send, first reads
-  `GET /api/tickets?external_id=...` for a ticket, or the ticket's embedded
-  messages for a note or reply:
+  409, 3xx, or unlisted status, a refusal whose body exceeds
+  `maxResponseBytes`, and a response lost before its status arrived. The
+  attempt returns Retry, after Gorgias's `Retry-After` or two seconds,
+  whichever is longer. The next attempt, like any attempt after a possible
+  earlier send, including one after a resend that got a 429 or 503, first
+  reads `GET /api/tickets?external_id=...` for a ticket, or the ticket's
+  embedded messages for a note or reply:
   - the write is found, so it selects `created` or `added` with
     `wasCreatedByEarlierAttempt: true`;
   - the lookup gets a 429, 408, 5xx, or refused connection, so the attempt
     looks again after 15 seconds or Gorgias's `Retry-After`, capped at one
     minute, without sending;
-  - Gorgias shows no such write, or the lookup is rejected or unreadable:
-    below the cap the attempt sends again with the same `external_id`; at the
-    cap, or when the fence saved the ID of a write Gorgias accepted, it
-    selects `uncertain` and never sends. The example Flow fails on this
-    unwired branch; the application decides, for example by asking a person
-    to check Gorgias.
+  - Gorgias answers the lookup but shows no such write, or its answer is
+    unreadable: below the cap the attempt sends again with the same
+    `external_id`; at the cap it selects `uncertain` and never sends;
+  - Gorgias refuses the lookup, for example with a 401, 403, or a 404 for the
+    note's ticket: the attempt selects `uncertain` and never sends.
+
+  The example Flow fails on the unwired `uncertain` branch; the application
+  decides, for example by asking a person to check Gorgias.
 - A definite refusal of the first send selects `providerRejected`, `notFound`,
-  or `defect`. After a possible earlier send, a refusal, credentials that
-  cannot be resolved, or a public reply's ticket that cannot be read again
+  or `defect`. After a possible earlier send, a refusal, credentials that are
+  revoked or unusable, or a public reply's ticket that cannot be read again
   selects `uncertain`, because the earlier send may have been applied. A
   possibly sent write never selects `defect` or `providerRejected`.
+- Credentials that could not be read this time, such as an unavailable
+  credential store, return Retry without recording a checkpoint after a
+  possible earlier send. On a first send the fence records that nothing was
+  sent; revoked or unusable credentials then select `defect`.
 - An unreadable or untrusted fence checkpoint sends nothing and returns
   Retry. Markers written by `v0.24.0` and earlier (Go) or `v0.2.0` and earlier
   (Python and TypeScript) are connector-owned and untrusted by the SDK fence,
@@ -307,15 +326,16 @@ A write here means an `updateTicket` write or the read after it, and the
 
 | Response | Reads | Writes |
 | --- | --- | --- |
-| 400, 411, 413, 414, 415, 422 | `providerRejected`, `VALIDATION` for 400 | `providerRejected`; `uncertain` after a possible earlier create or message send |
+| 400, 411, 413, 414, 415, 422 | `providerRejected`, `VALIDATION` for 400 | `providerRejected`; `uncertain` after a possible earlier create or message send; Retry, as for 409, when the body exceeds `maxResponseBytes` |
 | 401, 403 | `providerRejected`, `AUTHENTICATION` or `AUTHORIZATION` | same as 400 |
 | 404 | `notFound` where declared, otherwise `providerRejected` | same as 400, with `notFound` where declared |
 | 409, other 4xx | `providerRejected` | Retry; a create or message reads back by `external_id` first |
 | 3xx, such as the 301 for a merged customer or ticket | `providerRejected`, `PROTOCOL`; redirects are never followed | Retry, as for 409 |
 | 429, 503, connection refused before sending | Retry after `Retry-After` | Retry after `Retry-After`; a create or message sends again without a lookup |
 | 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | Retry; a create or message reads back, resends below the cap, and selects `uncertain` at the cap |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | Retry, as for 408 |
-| invalid input or connection credentials | `defect`, with no request | `defect`, with no request; `uncertain` for unusable credentials after a possible earlier send |
+| oversized, malformed, credential-reflecting, or broken 2xx | `invalidResponse` | Retry for `updateTicket`; a create or message is read back once and never resent |
+| invalid input | `defect`, with no request | `defect`, with no request |
+| connection credentials | `defect`, with no request | revoked or unusable: `defect`, or `uncertain` after a possible earlier create or message send; unreadable this time: Retry |
 
 Gorgias limits API-key integrations to 40 requests per 20-second window, a
 10-second window for Enterprise accounts, and answers 429 with `Retry-After`

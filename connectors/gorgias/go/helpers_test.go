@@ -91,6 +91,26 @@ func newGorgiasClientWithCredentials(t *testing.T, baseURL string, credentials g
 	return client
 }
 
+// failingCredentialProvider fails every Resolve with err, as a credential store or broker does.
+type failingCredentialProvider struct{ err error }
+
+func (provider failingCredentialProvider) Resolve(sdkgo.Call) (gorgias.Credentials, error) {
+	return gorgias.Credentials{}, provider.err
+}
+
+// credentialFailureCases are a transient credential failure and the terminal ones another attempt cannot repair.
+var credentialFailureCases = []struct {
+	name        string
+	credentials gorgias.CredentialSource
+	isTerminal  bool
+}{
+	{name: "transient store failure", credentials: failingCredentialProvider{err: errors.New("credential store unavailable")}},
+	{name: "reauthorization required", credentials: failingCredentialProvider{err: sdkgo.ErrReauthorizationRequired}, isTerminal: true},
+	{name: "unusable credentials", credentials: sdkgo.StaticCredentialProvider[gorgias.Credentials]{
+		gorgiasConnection: {Email: "not an address", APIKey: sdkgo.NewSecretString(testAPIKey)},
+	}, isTerminal: true},
+}
+
 func testCredentialProvider() sdkgo.StaticCredentialProvider[gorgias.Credentials] {
 	return sdkgo.StaticCredentialProvider[gorgias.Credentials]{
 		gorgiasConnection: {Email: testEmail, APIKey: sdkgo.NewSecretString(testAPIKey)},
@@ -126,6 +146,17 @@ func writeValue(t *testing.T, response http.ResponseWriter, status int, value an
 }
 
 // dropConnection closes the connection after the request arrived, as a lost response would.
+// breakBodyAfterHeaders sends status and part of a promised body, then closes the connection mid-body.
+func breakBodyAfterHeaders(t *testing.T, response http.ResponseWriter, status int) {
+	t.Helper()
+	response.Header().Set("Content-Type", "application/json")
+	response.Header().Set("Content-Length", "4096")
+	response.WriteHeader(status)
+	_, err := response.Write([]byte(`{"id":`))
+	require.NoError(t, err)
+	dropConnection(t, response)
+}
+
 func dropConnection(t *testing.T, response http.ResponseWriter) {
 	t.Helper()
 	hijacker, isHijacker := response.(http.Hijacker)

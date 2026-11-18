@@ -44,6 +44,14 @@ func requireRetryAfter(t *testing.T, err error) *dex.RetryAfterError {
 	return retryAfter
 }
 
+// requireRetry asserts a Retry with the SDK's default delay and returns its Failure.
+func requireRetry(t *testing.T, err error) sdkgo.Failure {
+	t.Helper()
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	return retry.Failure
+}
+
 func TestCreateTicketSendsTheFirstMessageThroughTheAPIChannelWithTheIdempotencyKey(t *testing.T) {
 	var provider *recordingGorgias
 	provider = newRecordingGorgias(t, func(response http.ResponseWriter, _ *http.Request, index int) {
@@ -192,18 +200,44 @@ func TestCreateTicketReadBackAtTheSendCap(t *testing.T) {
 	}
 }
 
-func TestCreateTicketWithAnEarlierSendAndUnavailableCredentialsSelectsUncertain(t *testing.T) {
-	provider := newRecordingGorgias(t, func(response http.ResponseWriter, _ *http.Request, _ int) { dropConnection(t, response) })
-	first := newGorgiasDexContext("credentials")
-	_, err := sdkgo.RunMutation(first, newGorgiasClient(t, provider.URL).CreateTicket(), gorgiasConnection, validCreateTicketInput())
-	requireRetryAfter(t, err)
+func TestCreateTicketCredentialFailureAfterAnEarlierSendRetriesOrSelectsUncertain(t *testing.T) {
+	for _, test := range credentialFailureCases {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingGorgias(t, func(response http.ResponseWriter, _ *http.Request, _ int) { dropConnection(t, response) })
+			first := newGorgiasDexContext("credentials-" + test.name)
+			_, err := sdkgo.RunMutation(first, newGorgiasClient(t, provider.URL).CreateTicket(), gorgiasConnection, validCreateTicketInput())
+			requireRetryAfter(t, err)
 
-	withoutCredentials := newGorgiasClientWithCredentials(t, provider.URL, sdkgo.StaticCredentialProvider[gorgias.Credentials]{})
-	result, err := sdkgo.RunMutation(first.nextAttempt(), withoutCredentials.CreateTicket(), gorgiasConnection, validCreateTicketInput())
-	require.NoError(t, err)
-	require.Equal(t, gorgias.CreateTicketBranchUncertain, result.Branch, "a possibly sent ticket is never reported as a defect")
-	require.Contains(t, result.Failure.Message, "credentials are unavailable")
-	require.Equal(t, 1, provider.requestCount())
+			second := first.nextAttempt()
+			result, err := sdkgo.RunMutation(second, newGorgiasClientWithCredentials(t, provider.URL, test.credentials).CreateTicket(), gorgiasConnection, validCreateTicketInput())
+			require.Equal(t, 1, provider.requestCount())
+			require.Empty(t, second.recordedHeartbeat, "notSent would hide the earlier possible send")
+			if !test.isTerminal {
+				require.Equal(t, sdkgo.FailureAvailability, requireRetry(t, err).Kind, "credentials that could not be read this time are retried")
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, gorgias.CreateTicketBranchUncertain, result.Branch, "a possibly sent ticket is never reported as a defect")
+			require.Contains(t, result.Failure.Message, "credentials are unusable")
+		})
+	}
+}
+
+func TestCreateTicketCredentialFailureOnAFirstSendRecordsNotSent(t *testing.T) {
+	for _, test := range credentialFailureCases {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingGorgias(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+			ctx := newGorgiasDexContext("first-credentials-" + test.name)
+			result, err := sdkgo.RunMutation(ctx, newGorgiasClientWithCredentials(t, provider.URL, test.credentials).CreateTicket(), gorgiasConnection, validCreateTicketInput())
+			require.Contains(t, string(ctx.recordedHeartbeat), `"state":"notSent"`)
+			if !test.isTerminal {
+				requireRetry(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, gorgias.CreateTicketBranchDefect, result.Branch)
+		})
+	}
 }
 
 func TestCreateTicketRetriesAnUnknownOutcomeAfterRetryAfterWithTheClaimKept(t *testing.T) {
@@ -256,24 +290,127 @@ func TestCreateTicketLaterAttemptWithoutAMarkerFindsTheTicketInsteadOfResending(
 	require.Equal(t, http.MethodGet, provider.request(0).method)
 }
 
-func TestCreateTicketWithASavedTicketIDReadsBackAndNeverResends(t *testing.T) {
-	provider := newRecordingGorgias(t, func(response http.ResponseWriter, request *http.Request, _ int) {
-		if request.Method == http.MethodGet {
-			writeJSON(t, response, http.StatusOK, emptyTicketPage)
-			return
-		}
-		writeValue(t, response, http.StatusCreated, ticketJSON(5512, "open", nil, nil))
-	})
-	client := newGorgiasClient(t, provider.URL)
-	first := newGorgiasDexContext("saved-id")
-	_, err := sdkgo.RunMutation(first, client.CreateTicket(), gorgiasConnection, validCreateTicketInput())
-	require.NoError(t, err)
+func TestCreateTicketWithASavedTicketIDReadsBackByIDAndNeverResends(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		status int
+		isOurs bool
+		branch sdkgo.BranchID
+	}{
+		{name: "found", status: http.StatusOK, isOurs: true, branch: gorgias.CreateTicketBranchCreated},
+		{name: "another ticket", status: http.StatusOK, branch: gorgias.CreateTicketBranchUncertain},
+		{name: "missing", status: http.StatusNotFound, branch: gorgias.CreateTicketBranchUncertain},
+		{name: "outage", status: http.StatusBadGateway},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var externalID string
+			provider := newRecordingGorgias(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+				if request.Method == http.MethodPost {
+					writeValue(t, response, http.StatusCreated, ticketJSON(5512, "open", nil, nil))
+					return
+				}
+				ticket := ticketJSON(5512, "open", nil, nil)
+				if test.isOurs {
+					ticket["external_id"] = externalID
+				}
+				writeValue(t, response, test.status, ticket)
+			})
+			client := newGorgiasClient(t, provider.URL)
+			first := newGorgiasDexContext("saved-id-" + test.name)
+			_, err := sdkgo.RunMutation(first, client.CreateTicket(), gorgiasConnection, validCreateTicketInput())
+			require.NoError(t, err)
+			externalID = externalIDOf(t, provider.request(0).body)
 
-	result, err := sdkgo.RunMutation(first.nextAttempt(), client.CreateTicket(), gorgiasConnection, validCreateTicketInput())
+			result, err := sdkgo.RunMutation(first.nextAttempt(), client.CreateTicket(), gorgiasConnection, validCreateTicketInput())
+			require.Equal(t, 2, provider.requestCount(), "Gorgias accepted the earlier send, so it is never resent")
+			require.Equal(t, http.MethodGet, provider.request(1).method)
+			require.Equal(t, "/api/tickets/5512", provider.request(1).path)
+			if test.branch == "" {
+				requireRetryAfter(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, test.branch, result.Branch)
+			if test.isOurs {
+				require.True(t, result.Value.WasCreatedByEarlierAttempt)
+			}
+		})
+	}
+}
+
+func TestCreateTicketAcceptedWithAnUnusableAnswerIsReadBackAndNeverResent(t *testing.T) {
+	for _, test := range []struct {
+		name             string
+		reply            func(http.ResponseWriter)
+		isFound          bool
+		isReadBackByID   bool
+		maxResponseBytes int64
+	}{
+		{name: "body breaks after 2xx headers, ticket found", reply: func(response http.ResponseWriter) { breakBodyAfterHeaders(t, response, http.StatusCreated) }, isFound: true},
+		{name: "body breaks after 2xx headers, nothing found", reply: func(response http.ResponseWriter) { breakBodyAfterHeaders(t, response, http.StatusCreated) }},
+		{name: "undecodable 2xx naming the ticket", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusCreated, `{"id":5512,"status":7}`)
+		}, isFound: true, isReadBackByID: true},
+		{name: "undecodable 2xx naming no ticket", reply: func(response http.ResponseWriter) { writeJSON(t, response, http.StatusCreated, `not json`) }},
+		{name: "oversized 2xx", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusCreated, `{"id":5512,"padding":"`+strings.Repeat("x", 4096)+`"}`)
+		}, isFound: true, maxResponseBytes: 2048},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var postCount atomic.Int32
+			var provider *recordingGorgias
+			provider = newRecordingGorgias(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+				switch {
+				case request.Method == http.MethodPost:
+					postCount.Add(1)
+					test.reply(response)
+				case !test.isFound:
+					writeJSON(t, response, http.StatusOK, emptyTicketPage)
+				default:
+					ticket := ticketJSON(5512, "open", nil, nil)
+					delete(ticket, "messages")
+					ticket["external_id"] = externalIDOf(t, provider.request(0).body)
+					if test.isReadBackByID {
+						writeValue(t, response, http.StatusOK, ticket)
+						return
+					}
+					writeValue(t, response, http.StatusOK, ticketPage(nil, ticket))
+				}
+			})
+			config := gorgias.Config{Domain: testDomain, MaxResponseBytes: test.maxResponseBytes}
+			client, err := gorgias.New(config, testCredentialProvider(), gorgias.WithAPIBaseURL(provider.URL+"/api"))
+			require.NoError(t, err)
+			ctx := newGorgiasDexContext("accepted")
+			result, err := sdkgo.RunMutation(ctx, client.CreateTicket(), gorgiasConnection, validCreateTicketInput())
+			require.NoError(t, err, "an accepted create is never retried without a saved ticket ID")
+			require.Equal(t, int32(1), postCount.Load())
+			require.Equal(t, 2, provider.requestCount())
+			if test.isReadBackByID {
+				require.Equal(t, "/api/tickets/5512", provider.request(1).path)
+				require.Contains(t, string(ctx.recordedHeartbeat), `"providerId":"5512"`)
+			} else {
+				require.Equal(t, externalIDOf(t, provider.request(0).body), provider.request(1).query["external_id"][0])
+			}
+			if !test.isFound {
+				require.Equal(t, gorgias.CreateTicketBranchUncertain, result.Branch)
+				return
+			}
+			require.Equal(t, gorgias.CreateTicketBranchCreated, result.Branch)
+			require.Equal(t, int64(5512), result.Value.Ticket.ID)
+		})
+	}
+}
+
+func TestCreateTicketRefusalWithAnOversizedBodyIsAnUnknownOutcome(t *testing.T) {
+	provider := newRecordingGorgias(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusBadRequest, `{"error":{"msg":"`+strings.Repeat("x", 4096)+`"}}`)
+	})
+	client, err := gorgias.New(gorgias.Config{Domain: testDomain, MaxResponseBytes: 2048}, testCredentialProvider(), gorgias.WithAPIBaseURL(provider.URL+"/api"))
 	require.NoError(t, err)
-	require.Equal(t, gorgias.CreateTicketBranchUncertain, result.Branch, "Gorgias accepted the earlier send, so it is never resent")
-	require.Equal(t, 2, provider.requestCount())
-	require.Equal(t, http.MethodGet, provider.request(1).method)
+	ctx := newGorgiasDexContext("oversized-refusal")
+	_, err = sdkgo.RunMutation(ctx, client.CreateTicket(), gorgiasConnection, validCreateTicketInput())
+	require.Equal(t, 2*time.Second, requireRetryAfter(t, err).After, "an unread refusal body cannot prove nothing was applied")
+	require.Contains(t, string(ctx.recordedHeartbeat), `"state":"claimed"`, "the send counts, so the retry reads back first")
 }
 
 func TestCreateTicketWithAPreviousReleaseMarkerRetriesWithoutSending(t *testing.T) {
