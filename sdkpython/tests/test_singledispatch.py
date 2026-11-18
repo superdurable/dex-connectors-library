@@ -4,15 +4,18 @@
 
 import asyncio
 import json
+from collections.abc import AsyncIterator
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
 
 import dex
+import httpx
 import pytest
 
 from dex_connectors.sdk import Call, CallID, ConnectionRef, OperationRef, derive_step_call_id
+from dex_connectors.sdk.providerhttp import new_provider_http_client, read_bounded_body, send_traced
 from dex_connectors.sdk.singledispatch import (
     CheckpointError,
     DecisionKind,
@@ -21,6 +24,7 @@ from dex_connectors.sdk.singledispatch import (
     InsufficientAttemptTimeError,
     Marker,
     State,
+    WriteWindowTimeoutError,
     decide_dispatch,
 )
 from dex_connectors.sdk.singledispatch.markers import _markers_from_heartbeat as markers_from_heartbeat
@@ -923,6 +927,102 @@ async def test_repeated_operation_in_one_step_gets_distinct_stable_call_ids() ->
         fence = occurrence_fence(retry)
         assert fence._call.id == expected_id
         assert (await fence.decide()).kind == DecisionKind.READ_BACK_REQUIRED
+
+
+class _StallingBody(httpx.AsyncByteStream):
+    """Yield one chunk after the headers, then stall until cancelled."""
+
+    def __init__(self) -> None:
+        self.closed = False
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        yield b"{"
+        await asyncio.Event().wait()
+
+    async def aclose(self) -> None:
+        self.closed = True
+
+
+async def _dispatch_stalled_body(client: httpx.AsyncClient) -> WriteWindowTimeoutError:
+    """Dispatch a fenced write whose response body stalls past a short write window."""
+    fence = _fence(FakeContext(), timedelta(milliseconds=600))
+    assert (await fence.decide()).kind == DecisionKind.SEND_ALLOWED
+
+    async def send(deadline: datetime) -> bytes:
+        response, _ = await send_traced(client, client.build_request("POST", "https://provider.test/items"))
+        return await read_bounded_body(response, 1024)
+
+    with pytest.raises(WriteWindowTimeoutError) as caught:
+        await fence.dispatch(send)
+    assert isinstance(caught.value, TimeoutError), "existing TimeoutError handlers still catch it"
+    return caught.value
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status_code", [201, 404])
+@pytest.mark.parametrize("is_provider_client", [False, True])
+async def test_write_window_timeout_keeps_the_status_of_a_stalled_body(
+    status_code: int, is_provider_client: bool
+) -> None:
+    """Headers arrive, then the body stalls past the write window: the status survives the cancel."""
+    body = _StallingBody()
+    transport = httpx.MockTransport(lambda request: httpx.Response(status_code, stream=body))
+    client = (
+        new_provider_http_client(transport=transport) if is_provider_client
+        else httpx.AsyncClient(transport=transport)
+    )
+    async with client:
+        error = await _dispatch_stalled_body(client)
+    assert error.observed_status == status_code
+    assert body.closed
+
+
+@pytest.mark.asyncio
+async def test_write_window_timeout_status_from_client_hook_without_send_traced() -> None:
+    """A provider client's response hook records the status for connectors that call send directly."""
+    body = _StallingBody()
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, stream=body))
+    async with new_provider_http_client(transport=transport) as client:
+        fence = _fence(FakeContext(), timedelta(milliseconds=600))
+        await fence.decide()
+
+        async def send(deadline: datetime) -> bytes:
+            response = await client.send(client.build_request("POST", "https://provider.test"), stream=True)
+            return await read_bounded_body(response, 1024)
+
+        with pytest.raises(WriteWindowTimeoutError) as caught:
+            await fence.dispatch(send)
+    assert caught.value.observed_status == 200
+
+
+@pytest.mark.asyncio
+async def test_write_window_timeout_without_headers_has_no_status() -> None:
+    """A provider that never sends headers leaves the observed status empty."""
+    async def never_respond(request: httpx.Request) -> httpx.Response:
+        await asyncio.Event().wait()
+        raise AssertionError("unreachable")
+
+    async with new_provider_http_client(transport=httpx.MockTransport(never_respond)) as client:
+        error = await _dispatch_stalled_body(client)
+    assert error.observed_status is None
+
+
+@pytest.mark.asyncio
+async def test_send_timeout_before_the_write_deadline_is_not_rewrapped() -> None:
+    """A TimeoutError the send raises itself keeps its own type, and status outside a Fence is ignored."""
+    fence = _fence(FakeContext(), timedelta(seconds=10))
+    await fence.decide()
+
+    async def send(deadline: datetime) -> None:
+        raise TimeoutError("connector timeout")
+
+    with pytest.raises(TimeoutError) as caught:
+        await fence.dispatch(send)
+    assert not isinstance(caught.value, WriteWindowTimeoutError)
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, content=b"{}"))
+    async with new_provider_http_client(transport=transport) as client:
+        response, _ = await send_traced(client, client.build_request("GET", "https://provider.test"))
+        assert await read_bounded_body(response, 16) == b"{}"
 
 
 def test_step_checkpoint_is_shared_per_attempt_and_released_with_context() -> None:

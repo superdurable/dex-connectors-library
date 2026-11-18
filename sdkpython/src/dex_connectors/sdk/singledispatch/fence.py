@@ -10,6 +10,7 @@ from typing import Any, TypeVar
 
 import dex
 
+from .._dispatch_observation import _current_dispatch_observation, _DispatchResponseObservation
 from ..types import Call
 from .checkpoint import _step_checkpoint_for
 from .markers import (
@@ -38,6 +39,24 @@ class InsufficientAttemptTimeError(RuntimeError):
 
 class CheckpointError(RuntimeError):
     """The claim heartbeat failed before the provider request was sent."""
+
+
+class WriteWindowTimeoutError(TimeoutError):
+    """The provider send passed the Fence write deadline and was cancelled.
+
+    A subclass of `TimeoutError`, so existing handlers still catch it. The
+    request may have reached the provider. `observed_status` is the HTTP
+    status of the last provider response whose headers arrived during the
+    dispatch, or None when none arrived. Requests sent through
+    `providerhttp.send_traced` or a client from
+    `providerhttp.new_provider_http_client` record it; other HTTP clients
+    leave it None. A 2xx status means the provider accepted the request even
+    though its body was not read in time.
+    """
+
+    def __init__(self, observed_status: int | None) -> None:
+        self.observed_status = observed_status
+        super().__init__("provider send exceeded the single-dispatch write window")
 
 
 class Fence:
@@ -130,6 +149,8 @@ class Fence:
         window or failed claim records `notSent` only after `SEND_ALLOWED`.
         A too-short window raises `InsufficientAttemptTimeError`; when its
         `notSent` heartbeat fails, the heartbeat error is its `__cause__`.
+        A send still running at the write deadline is cancelled and raises
+        `WriteWindowTimeoutError` carrying the last observed HTTP status.
         """
         async with self._lock:
             if (
@@ -167,10 +188,22 @@ class Fence:
                 raise CheckpointError("single-dispatch checkpoint could not be recorded") from error
         stop = asyncio.Event()
         repeater = asyncio.create_task(self._repeat_claim(claim, stop))
+        observation = _DispatchResponseObservation()
+        observation_token = _current_dispatch_observation.set(observation)
         try:
             remaining = max((self.write_deadline - datetime.now(UTC)).total_seconds(), 0)
-            return await asyncio.wait_for(send(self.write_deadline), remaining)
+            loop = asyncio.get_running_loop()
+            send_started_at = loop.time()
+            try:
+                return await asyncio.wait_for(send(self.write_deadline), remaining)
+            except TimeoutError as error:
+                # wait_for measures loop time; an earlier TimeoutError came from the send itself.
+                has_write_window_expired = loop.time() - send_started_at >= remaining
+                if isinstance(error, WriteWindowTimeoutError) or not has_write_window_expired:
+                    raise
+                raise WriteWindowTimeoutError(observation.status_code) from error
         finally:
+            _current_dispatch_observation.reset(observation_token)
             async with self._lock:
                 self._has_send_finished = True
             stop.set()
