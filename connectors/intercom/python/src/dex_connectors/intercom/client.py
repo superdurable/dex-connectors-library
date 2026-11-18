@@ -226,8 +226,12 @@ class Client:
             CredentialBrokerRejectedError,
         ):
             return None, self._credential_problem(operation, is_transient=False)
-        except Exception:
-            return None, self._credential_problem(operation, is_transient=True)
+        except Exception as error:
+            # The generated connection module imports this module, so import it lazily.
+            from ._generated.connection import is_credential_material_error
+
+            is_transient = not is_credential_material_error(error)
+            return None, self._credential_problem(operation, is_transient=is_transient)
         try:
             is_usable = is_header_safe_credential(credentials.access_token.reveal())
         except (AttributeError, TypeError):

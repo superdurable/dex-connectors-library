@@ -28,7 +28,7 @@ import {
   CredentialBrokerRejectedError,
   ObjectNotFoundError,
 } from "@superdurable/connectors-sdk/projectconfig";
-import type { Config, Credentials } from "./generated/models.js";
+import { isCredentialMaterialError, type Config, type Credentials } from "./generated/models.js";
 
 /** A credential failure no later attempt resolves without a person. */
 function isTerminalCredentialError(error: unknown): boolean {
@@ -36,7 +36,8 @@ function isTerminalCredentialError(error: unknown): boolean {
     error instanceof ReauthorizationRequiredError ||
     error instanceof ObjectNotFoundError ||
     error instanceof ConnectionNotSelectedError ||
-    error instanceof CredentialBrokerRejectedError
+    error instanceof CredentialBrokerRejectedError ||
+    isCredentialMaterialError(error)
   );
 }
 import {

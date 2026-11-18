@@ -26,6 +26,7 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk.singledispatch import Marker
 
 from dex_connectors.intercom import Client, Config, Credentials, ReplyToConversationInput
+from dex_connectors.intercom._generated.connection import CredentialMaterialError
 from dex_connectors.intercom._generated.definitions import REPLY_TO_CONVERSATION_DEFINITION
 from dex_connectors.intercom.models import ReplyToConversationOutput
 
@@ -244,6 +245,9 @@ class FailingCredentials:
         (projectconfig.ObjectNotFoundError("connection"), False, "defect"),
         (projectconfig.ConnectionNotSelectedError("connection"), False, "defect"),
         (projectconfig.CredentialBrokerRejectedError("broker"), True, "uncertain"),
+        # The generated project credential source raises this for malformed stored material.
+        (CredentialMaterialError("Intercom stored credential is malformed"), False, "defect"),
+        (CredentialMaterialError("Intercom stored credential is malformed"), True, "uncertain"),
         (projectconfig.CredentialBrokerUnavailableError("broker"), False, ""),
         (ValueError("connection is not configured"), False, ""),
         (ValueError("connection is not configured"), True, ""),

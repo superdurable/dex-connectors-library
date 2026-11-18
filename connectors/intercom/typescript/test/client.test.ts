@@ -441,6 +441,8 @@ it.each([
   ["missing connection object", () => new ObjectNotFoundError(), "defect"],
   ["unselected connection", () => new ConnectionNotSelectedError(), "defect"],
   ["broker refusal", () => new CredentialBrokerRejectedError(), "defect"],
+  // The SDK project provider replaces a malformed-material decoder error with this TypeError.
+  ["malformed stored material", () => new TypeError("project credential decoding failed"), "defect"],
   ["broker outage", () => new CredentialBrokerUnavailableError(), "retry"],
   ["unconfigured static connection", () => new Error("connection is not configured"), "retry"],
 ] as const)("classifies a %s resolve failure on a first send", async (_name, error, expected) => {
