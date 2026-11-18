@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -289,6 +290,10 @@ func (client *Client) startSession(call sdkgo.Call, operationID string) (*operat
 	}
 	operationContext, cancel := context.WithDeadline(call.Context, deadline)
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+	if err != nil && !isTerminalCredentialError(err) {
+		cancel()
+		return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAvailability, "Jira Service Management credential lookup is temporarily unavailable"), isRetryable: true}
+	}
 	if err != nil || validateResolvedCredentials(credentials) != nil {
 		cancel()
 		return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAuthentication, "Jira Service Management connection credentials are unavailable; reconnect the connection")}
@@ -521,6 +526,9 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, "Jira Service Management is temporarily unavailable for the "+subject)}
 	case response.statusCode == http.StatusConflict:
 		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureConflict, "Jira Service Management "+subject+" outcome requires read-back after HTTP 409")}
+	case !isCompleteResponse(response):
+		// A refusal status proves nothing when its body could not be read in full.
+		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureTransport, fmt.Sprintf("Jira Service Management %s outcome is unknown after HTTP %d with an unreadable body", subject, response.statusCode))}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode, providerRejection{})}
 	case isDefiniteWriteRefusalStatus(response.statusCode):
@@ -603,6 +611,17 @@ func statusFailureKind(statusCode int) sdkgo.FailureKind {
 }
 
 func isSuccessStatus(statusCode int) bool { return statusCode >= 200 && statusCode < 300 }
+
+// isTerminalCredentialError reports a credential failure no retry fixes; a store or broker outage may pass.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrObjectNotFound) ||
+		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
+// isCompleteResponse reports a response whose body was read in full; only then can it prove a refusal.
+func isCompleteResponse(response providerResponse) bool {
+	return !response.hasBodyReadFailed && !response.isBodyTooLarge && !response.reflectsSecret
+}
 
 // isDefiniteWriteRefusalStatus reports a status proving the provider refused a write; others leave it unknown.
 func isDefiniteWriteRefusalStatus(statusCode int) bool {

@@ -205,7 +205,7 @@ func TestAddCommentChecksPriorDispatchBeforeResolvingCredentials(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, jiraservicemanagement.AddCommentBranchAdded, result.Branch)
 	client, err := jiraservicemanagement.New(jiraservicemanagement.Config{CloudID: testCloudID, Endpoint: provider.URL},
-		sdkgo.StaticCredentialProvider[jiraservicemanagement.Credentials]{})
+		unavailableCredentials{isTerminal: true})
 	require.NoError(t, err)
 	replay, err := sdkgo.RunMutation(ctx.nextAttempt(), client.AddComment(), jsmConnection, input)
 	require.NoError(t, err)

@@ -32,7 +32,7 @@ Python bounds each operation to 25 seconds or the Execute deadline minus five se
 | `getTicket` | Query | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `createTicket` | Mutation | sync | `created` | `providerRejected`, `uncertain`, `defect` |
 | `updateTicket` | Mutation | async | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
-| `transitionTicket` | Mutation | async | `transitioned` | `notFound`, `transitionUnavailable`, `providerRejected`, `invalidResponse`, `defect` |
+| `transitionTicket` | Mutation | sync | `transitioned` | `notFound`, `transitionUnavailable`, `providerRejected`, `invalidResponse`, `defect` |
 | `addComment` | Mutation | sync | `added` | `notFound`, `providerRejected`, `uncertain`, `defect` |
 
 Only the happy branch of each operation is required; every other branch is
@@ -231,6 +231,16 @@ uses the platform transitions endpoint, which offers an agent every workflow
 transition, rather than the request API's customer transitions. Set
 `DestinationStatusName` whenever the destination is known.
 
+The transition POST goes through the single-dispatch fence with a cap of one
+send, because a workflow can offer a transition with the same name back and a
+second POST could undo the first. A 429, 503, refusal, or provably unsent
+request records `canResend`, and only then may the next attempt transition.
+After a possible earlier send, an attempt rereads the request and selects
+`transitioned` when its status equals `DestinationStatusName` or the matched
+transition leads to the current status; otherwise it returns Retry, never a
+failure branch, until the retry budget ends. A 2xx whose body breaks, even at
+the write deadline, is `transitioned`.
+
 ### addComment
 
 `POST /rest/servicedeskapi/request/{key}/comment` with `body` and an explicit
@@ -263,7 +273,13 @@ can replay a Step after Worker loss or before a result is committed, so the writ
   selects its branch; after an earlier possible POST it selects `uncertain`.
   A credential failure before the first POST records `notSent`; after an
   earlier possible POST it records nothing, returning Retry when transient and
-  `uncertain` when terminal.
+  `uncertain` when terminal. A terminal failure is a reauthorization request,
+  a missing or unselected connection, a broker rejection, or an invalid token;
+  a credential store or broker outage is transient and returns Retry, never
+  `defect`. A refusal status whose body could not be read in full is an
+  unknown outcome. In Python, each POST records its HTTP status when headers
+  arrive, so a 2xx whose body the write deadline cuts off selects `uncertain`
+  instead of resending.
   The service desk has no lookup by Call ID, so a resend may duplicate a request
   or a customer reply; at most the cap of them exist. Set the Step's `MaxSends`
   to 1 to forbid any resend. A 409
@@ -276,9 +292,11 @@ can replay a Step after Worker loss or before a result is committed, so the writ
   idempotency key. A comment with no returned ID cannot be attributed by
   listing text and timestamps alone. These provider claims have not been
   verified against a live Atlassian site.
-- **updateTicket** and **transitionTicket** keep async durability and read
-  before they write, so a backup attempt finds the change already made. Both
-  declare `repeatOnUnknown: safe`: an unknown write outcome returns Retry.
+- **updateTicket** keeps async durability and reads before it writes, so a
+  backup attempt finds the change already made. **transitionTicket** uses sync
+  durability for its fence checkpoint and never sends the transition again
+  after a possible send, as described above. Both declare
+  `repeatOnUnknown: safe`: an unknown write outcome returns Retry.
 
 Real Dex runs with delayed and retried fake provider requests guard each position:
 `TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex`,
@@ -335,7 +353,8 @@ token, such as
 | 408, other 4xx or 5xx, response lost before its status | Retry | Retry and resend below the send cap, `uncertain` at the cap |
 | 3xx | Reads: `invalidResponse`; writes: Retry | Retry and resend below the send cap, `uncertain` at the cap |
 | interrupted, oversized, malformed, or token-reflecting 2xx | Reads: `invalidResponse`; writes: Retry | Read back by a returned ID; otherwise `uncertain`, never resent |
-| invalid input or credentials | `defect`, no request | `defect`, no request |
+| invalid input or terminal credential failure | `defect`, no request | `defect`, no request |
+| credential store or broker outage | Retry, no request | Retry, no request |
 
 ## Not in this release
 

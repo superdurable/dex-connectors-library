@@ -201,7 +201,7 @@ export const TransitionTicketDefinition: MutationDefinition = {
     { id: "invalidResponse", description: "Jira returned an invalid or oversized issue or transition list.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
-  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync" },
   repeatOnUnknown: "safe",
 };
 /** Manifest metadata for transitionTicket. */
