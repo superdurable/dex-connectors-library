@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	youtube "github.com/superdurable/dex-connectors-library/connectors/google/youtube/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -602,6 +603,39 @@ func TestAddPlaylistItemRetriesTransientCredentialFailureAfterAPossibleInsert(t 
 	require.Equal(t, 1, inserts)
 }
 
+func TestAddPlaylistItemTerminalCredentialFailureAfterAPossibleInsertIsUncertain(t *testing.T) {
+	for _, failure := range []error{
+		projectconfig.ErrReauthorizationRequired, projectconfig.ErrObjectNotFound,
+		projectconfig.ErrConnectionNotSelected, projectconfig.ErrCredentialBrokerRejected,
+	} {
+		t.Run(failure.Error(), func(t *testing.T) {
+			inserts := 0
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodGet {
+					_, _ = response.Write([]byte(`{"pageInfo":{"totalResults":0},"items":[]}`))
+					return
+				}
+				inserts++
+				response.WriteHeader(http.StatusInternalServerError)
+			}))
+			t.Cleanup(server.Close)
+			provider := &failingAfterFirstCredentialProvider{failure: failure}
+			client, err := youtube.New(youtube.Config{Endpoint: server.URL}, provider)
+			require.NoError(t, err)
+			ctx := singledispatchtest.NewContext("youtube-flow", "add-credential-terminal")
+			input := youtube.AddPlaylistItemInput{PlaylistID: testPlaylistID, VideoID: testVideoID}
+			_, err = sdkgo.RunMutation(ctx, client.AddPlaylistItem(), youtubeConnection, input)
+			requireRetry(t, err, sdkgo.FailureAvailability)
+			ctx.AdvanceAttempt()
+			provider.isUnavailable = true
+			result, err := sdkgo.RunMutation(ctx, client.AddPlaylistItem(), youtubeConnection, input)
+			require.NoError(t, err)
+			require.Equal(t, youtube.AddPlaylistItemBranchUncertain, result.Branch)
+			require.Equal(t, 1, inserts)
+		})
+	}
+}
+
 func TestAddPlaylistItemRetriesATransientRefreshFailureAfterA401OnAResend(t *testing.T) {
 	inserts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -643,9 +677,15 @@ func (unavailableRefreshCredentialProvider) ResolveAfterRejection(context.Contex
 }
 
 // failingAfterFirstCredentialProvider authorizes the manage method until isUnavailable is set.
-type failingAfterFirstCredentialProvider struct{ isUnavailable bool }
+type failingAfterFirstCredentialProvider struct {
+	isUnavailable bool
+	failure       error
+}
 
 func (provider *failingAfterFirstCredentialProvider) Resolve(sdkgo.Call) (youtube.Credentials, error) {
+	if provider.isUnavailable && provider.failure != nil {
+		return youtube.Credentials{}, provider.failure
+	}
 	if provider.isUnavailable {
 		return youtube.Credentials{}, errors.New("credential store unavailable")
 	}
@@ -899,12 +939,45 @@ func TestRefreshesOnceAfterUnauthorized(t *testing.T) {
 	require.Equal(t, 1, provider.forcedRefreshes)
 }
 
-func TestMissingCredentialUsesDefect(t *testing.T) {
-	client, err := youtube.New(youtube.Config{}, sdkgo.StaticCredentialProvider[youtube.Credentials]{})
-	require.NoError(t, err)
-	result, err := sdkgo.RunQuery(newDexContext("missing"), client.GetVideo(), youtubeConnection, youtube.GetVideoInput{VideoID: testVideoID})
-	require.NoError(t, err)
-	require.Equal(t, youtube.GetVideoBranchDefect, result.Branch)
+// resolveErrorCredentials fails every resolution with one error.
+type resolveErrorCredentials struct{ err error }
+
+func (credentials resolveErrorCredentials) Resolve(sdkgo.Call) (youtube.Credentials, error) {
+	return youtube.Credentials{}, credentials.err
+}
+
+func (credentials resolveErrorCredentials) ResolveWithRefresh(context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[youtube.Credentials]) (youtube.Credentials, error) {
+	return youtube.Credentials{}, credentials.err
+}
+
+func TestCredentialResolveFailuresRetryUnlessTerminal(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		source     youtube.CredentialSource
+		isTerminal bool
+	}{
+		{name: "unconfigured static connection", source: sdkgo.StaticCredentialProvider[youtube.Credentials]{}},
+		{name: "broker unavailable", source: resolveErrorCredentials{err: projectconfig.ErrCredentialBrokerUnavailable}},
+		{name: "unlisted", source: resolveErrorCredentials{err: errors.New("unlisted resolve failure")}},
+		{name: "reauthorization", source: resolveErrorCredentials{err: sdkgo.NewReauthorizationRequiredError(errors.New("revoked"))}, isTerminal: true},
+		{name: "project reauthorization", source: resolveErrorCredentials{err: projectconfig.ErrReauthorizationRequired}, isTerminal: true},
+		{name: "object not found", source: resolveErrorCredentials{err: projectconfig.ErrObjectNotFound}, isTerminal: true},
+		{name: "connection not selected", source: resolveErrorCredentials{err: projectconfig.ErrConnectionNotSelected}, isTerminal: true},
+		{name: "broker rejected", source: resolveErrorCredentials{err: projectconfig.ErrCredentialBrokerRejected}, isTerminal: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			client, err := youtube.New(youtube.Config{}, test.source)
+			require.NoError(t, err)
+			result, err := sdkgo.RunQuery(newDexContext("credentials-"+test.name), client.GetVideo(), youtubeConnection, youtube.GetVideoInput{VideoID: testVideoID})
+			if test.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, youtube.GetVideoBranchProviderRejected, result.Branch)
+				return
+			}
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+		})
+	}
 }
 
 func TestNewRejectsInsecureEndpoint(t *testing.T) {

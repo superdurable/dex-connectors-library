@@ -294,6 +294,16 @@ func (operation AddPlaylistItemOperation) Invoke(call sdkgo.Call, input AddPlayl
 		method: http.MethodPost, path: "/playlistItems", query: url.Values{"part": {"snippet,contentDetails"}}, body: body, requiresManage: true, writeFence: fence,
 	}, input.PlaylistID)
 	if outcome != nil {
+		if outcome.isTransientCredentialFailure {
+			// A 401 or an unstarted insert changed nothing, and the next attempt lists again first.
+			if decision.Kind == singledispatch.SendAllowed && !hasPossibleEarlierSend {
+				// Before dispatch this keeps the send count; after a dispatched 401 the Fence refuses it.
+				_ = fence.RecordNotSent()
+			}
+			// After a dispatched 401 this marks the insert unprocessed; before dispatch the Fence refuses it.
+			_ = fence.RecordCanResend()
+			return sdkgo.NewMutationRetry[AddedPlaylistItem](outcome.failure, 0)
+		}
 		switch outcome.disposition {
 		case outcomeRetry:
 			// The insert was not started, so the fence counts no send for this attempt.
@@ -306,16 +316,6 @@ func (operation AddPlaylistItemOperation) Invoke(call sdkgo.Call, input AddPlayl
 			return resendOrSelectUncertain(canResendUnknownOutcome, outcome.failure, outcome.retryAfter, outcome.receipt)
 		case outcomeAcceptedUnreadable:
 			return operation.confirmAcceptedInsert(call, fence, listInput, query, outcome.failure, insertedItemID(response.body))
-		}
-		if outcome.isTransientCredentialFailure {
-			// A 401 or an unstarted insert changed nothing, and the next attempt lists again first.
-			if decision.Kind == singledispatch.SendAllowed && !hasPossibleEarlierSend {
-				// Before dispatch this keeps the send count; after a dispatched 401 the Fence refuses it.
-				_ = fence.RecordNotSent()
-			}
-			// After a dispatched 401 this marks the insert unprocessed; before dispatch the Fence refuses it.
-			_ = fence.RecordCanResend()
-			return sdkgo.NewMutationRetry[AddedPlaylistItem](outcome.failure, 0)
 		}
 		if !hasPossibleEarlierSend {
 			// The refusal ends the Step, so a lost checkpoint cannot cause another insert.

@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { expect, it } from 'vitest';
-import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { HeartbeatContext, loadScenarios, scenarioCall } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 import { BodyTooLargeError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { YouTubeClient } from '../src/client.js';
@@ -185,6 +186,37 @@ it('retries a transient credential failure after a possible insert', async () =>
   const scenario = recorded.find(candidate => candidate.operation === 'addPlaylistItem')!;
   const attemptCall = scenarioCall(scenario, connection, 'google-youtube', context, { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;
   expect((await client.addPlaylistItem().invoke(attemptCall, { playlistId: 'PLexample123', videoId: 'dQw4w9WgXcQ' })).kind).toBe('retry');
+  expect(inserts).toBe(1);
+});
+
+it.each([
+  { name: 'reauthorization', failure: new ReauthorizationRequiredError(), isTerminal: true },
+  { name: 'object not found', failure: new ObjectNotFoundError(), isTerminal: true },
+  { name: 'connection not selected', failure: new ConnectionNotSelectedError(), isTerminal: true },
+  { name: 'broker rejected', failure: new CredentialBrokerRejectedError(), isTerminal: true },
+  { name: 'broker unavailable', failure: new CredentialBrokerUnavailableError(), isTerminal: false },
+  { name: 'static connection not configured', failure: new Error('connection is not configured'), isTerminal: false },
+])('classifies a $name credential failure before and after a possible insert', async ({ failure, isTerminal }) => {
+  let inserts = 0;
+  let isUnavailable = false;
+  const provider = { resolve: async () => { if (isUnavailable) throw failure; return manageCredentials; } };
+  const send = async (request: ProviderRequest) => {
+    if (request.method === 'GET') return { status: 200, headers: {}, body: emptyListing };
+    inserts++;
+    return { status: 500, headers: {}, body: new Uint8Array() };
+  };
+  const firstSendProvider = { resolve: async () => { throw failure; } };
+  const firstSend = await runAttempts(send, 1, firstSendProvider);
+  expect(firstSend.results[0]!.kind).toBe(isTerminal ? 'branch' : 'retry');
+  const context = new HeartbeatContext(undefined, undefined, 'youtube-credential-classification');
+  const first = await runAttempts(send, 1, provider, context);
+  expect(first.results[0]!.kind).toBe('retry');
+  isUnavailable = true;
+  const client = new YouTubeClient({ endpoint: 'http://127.0.0.1:42501/youtube/v3' }, provider as never, { send });
+  context.attempt = 2;
+  const scenario = recorded.find(candidate => candidate.operation === 'addPlaylistItem')!;
+  const attemptCall = scenarioCall(scenario, connection, 'google-youtube', context, { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;
+  expect((await client.addPlaylistItem().invoke(attemptCall, { playlistId: 'PLexample123', videoId: 'dQw4w9WgXcQ' })).kind).toBe(isTerminal ? 'uncertain' : 'retry');
   expect(inserts).toBe(1);
 });
 

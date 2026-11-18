@@ -39,6 +39,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -455,16 +456,23 @@ func (observation *writeDispatchObservation) recordConnectionFailure() {
 // credentialOutcome separates a revoked grant from a missing or malformed access token.
 func (client *Client) credentialOutcome(operation string, credential Credentials, err error) *providerOutcome {
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case isTerminalCredentialError(err):
 		return client.outcome(outcomeRejected, operation, sdkgo.FailureAuthentication, "the YouTube connection must be authorized again", sdkgo.Receipt{})
 	case err != nil:
-		outcome := client.outcome(outcomeDefect, operation, sdkgo.FailureAuthentication, "YouTube connection credentials are unavailable or invalid", sdkgo.Receipt{})
+		outcome := client.outcome(outcomeRetry, operation, sdkgo.FailureAuthentication, "YouTube connection credentials are temporarily unavailable", sdkgo.Receipt{})
 		outcome.isTransientCredentialFailure = true
 		return outcome
 	case !providerhttp.IsHeaderSafeCredential(credential.AccessToken.Reveal()):
 		return client.outcome(outcomeDefect, operation, sdkgo.FailureAuthentication, "YouTube connection credentials are unavailable or invalid", sdkgo.Receipt{})
 	}
 	return nil
+}
+
+// isTerminalCredentialError reports a resolve failure that only reconnection repairs; any other one is transient.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (client *Client) outcome(disposition outcomeDisposition, operation string, kind sdkgo.FailureKind, message string, receipt sdkgo.Receipt) *providerOutcome {
