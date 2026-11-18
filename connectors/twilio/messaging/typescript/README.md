@@ -73,8 +73,10 @@ including `%2A` for `*` and an unescaped `~`. Twilio has no Messages create idem
 The SDK fence records a heartbeat before dispatch and counts possible sends.
 An unknown transport or response outcome resends while possible sends stay
 below the send cap and selects `uncertain` at the cap. A valid 2xx Message
-selects `accepted`; a 400, 401, 403, 404, 411, 413, 414, 415, or 422 on a first
-send selects `providerRejected` and is never resent. `getMessage` reads a Message SID,
+selects `accepted`; a 400, 401, 403, 404, 411, 413, 414, 415, or 422 with a
+readable body on a first send selects `providerRejected` and is never resent. A
+2xx or error status whose body names a created message SID reads that message
+back and is never resent. `getMessage` reads a Message SID,
 retries transport, 408, 429, and 5xx failures, and selects `found`, `notFound`,
 `providerRejected`, or `invalidResponse` for final results. Unwired optional
 branches fail the Flow.

@@ -177,13 +177,18 @@ class SendMessageOperation:
                 return MutationAttempt.retry(credential_failure)
             return MutationAttempt.branch_result("defect", empty, Receipt(), credential_failure)
         assert authorization is not None
+        observed_statuses: list[int] = []
         try:
             exchange = await fence.dispatch(
                 lambda _: self.client.exchange(
-                    authorization, "POST", self.client.messages_url + ".json", form
+                    authorization,
+                    "POST",
+                    self.client.messages_url + ".json",
+                    form,
+                    observed_statuses=observed_statuses,
                 )
             )
-        except (CheckpointError, InsufficientAttemptTimeError):
+        except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
             return MutationAttempt.retry(
                 failure(
                     "sendMessage",
@@ -191,7 +196,18 @@ class SendMessageOperation:
                     "Twilio dispatch checkpoint or attempt time is unavailable",
                 )
             )
-        except (TimeoutError, DispatchNotAllowedError):
+        except TimeoutError:
+            if observed_statuses and 200 <= observed_statuses[-1] < 300:
+                # Twilio accepted the message before the write deadline cut its body, so it is never resent.
+                return MutationAttempt.uncertain(
+                    requested,
+                    failure(
+                        "sendMessage",
+                        FailureKind.TRANSPORT,
+                        "Twilio accepted the message, but its response was interrupted",
+                    ),
+                    self.client.receipt(call),
+                )
             return self._resend_or_select_uncertain(
                 call,
                 can_resend_unknown_outcome,
@@ -277,16 +293,11 @@ class SendMessageOperation:
             try:
                 message = self.client.decode_message(exchange.body, authorization)
             except ValueError:
-                if _MESSAGE.fullmatch(_message_sid(exchange.body)):
-                    # Twilio returned a created message SID, so a resend could duplicate the message.
-                    return MutationAttempt.uncertain(
-                        requested,
-                        failure(
-                            "sendMessage",
-                            FailureKind.PROTOCOL,
-                            "Twilio accepted the request but returned an unusable message",
-                        ),
-                        receipt,
+                accepted_sid = _message_sid(exchange.body)
+                if _MESSAGE.fullmatch(accepted_sid):
+                    # The SID names the created message, so it is read back and never resent.
+                    return await self._read_back_named_message(
+                        call, fence, requested, exchange, accepted_sid, authorization
                     )
                 return MutationAttempt.uncertain(
                     requested,
@@ -307,14 +318,9 @@ class SendMessageOperation:
             )
         if not is_body_unreadable and _MESSAGE.fullmatch(_message_sid(exchange.body)):
             # An error status naming a created message is contradictory, so its SID is read back.
-            created_sid = _message_sid(exchange.body)
-            is_provider_id_saved = True
-            try:
-                await fence.record_provider_id(created_sid)
-            except Exception:
-                # Read-back still runs, but a transient failure cannot retry without the saved SID.
-                is_provider_id_saved = False
-            return await self._read_back(call, requested, created_sid, is_provider_id_saved)
+            return await self._read_back_named_message(
+                call, fence, requested, exchange, _message_sid(exchange.body), authorization
+            )
         if status in (429, 503):
             try:
                 await fence.record_can_resend()
@@ -348,8 +354,8 @@ class SendMessageOperation:
                 failure("sendMessage", FailureKind.AVAILABILITY, "Twilio service is temporarily unavailable"),
                 self.client.retry_after(exchange),
             )
-        # An unreadable error body cannot prove a refusal, except a 401 credential rejection.
-        if status in _DEFINITE_REFUSAL_STATUSES and (status == 401 or not is_body_unreadable):
+        # An unreadable error body cannot prove a refusal, including a 401 credential rejection.
+        if status in _DEFINITE_REFUSAL_STATUSES and not is_body_unreadable:
             code = error_code(exchange.body)
             rejected = replace(requested, error_code=code)
             refusal = (
@@ -394,6 +400,37 @@ class SendMessageOperation:
             return MutationAttempt.retry(unknown, self.client.retry_after(exchange) if exchange else 0)
         receipt = self.client.receipt(call, exchange) if exchange else self.client.receipt(call)
         return MutationAttempt.uncertain(requested, unknown, receipt)
+
+    async def _read_back_named_message(
+        self,
+        call: Call,
+        fence: Fence,
+        requested: Message,
+        exchange: Exchange,
+        message_sid: str,
+        authorization: tuple[str, str],
+    ) -> MutationAttempt[Message]:
+        """Checkpoint a SID that a send response named and read that message back.
+
+        A SID that contains the credential is never checkpointed, read back, or put in a Receipt.
+        Read-back still runs when the checkpoint fails, but a transient failure cannot retry then.
+        """
+        if authorization[1] and authorization[1] in message_sid:
+            return MutationAttempt.uncertain(
+                requested,
+                failure(
+                    "sendMessage",
+                    FailureKind.PROTOCOL,
+                    "Twilio accepted the request but returned an unusable message",
+                ),
+                self.client.receipt(call, exchange),
+            )
+        is_provider_id_saved = True
+        try:
+            await fence.record_provider_id(message_sid)
+        except Exception:
+            is_provider_id_saved = False
+        return await self._read_back(call, requested, message_sid, is_provider_id_saved)
 
     async def _read_back(
         self, call: Call, requested: Message, provider_id: str, is_provider_id_saved: bool = True

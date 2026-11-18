@@ -6,7 +6,7 @@ import type { ProviderResponse } from '@superdurable/connectors-sdk/providerhttp
 import { CheckpointError, Fence, InsufficientTimeError, type Marker } from '@superdurable/connectors-sdk/singledispatch';
 import { GetMessageDefinition, SendMessageDefinition } from './generated/definitions.js';
 import type { GetMessageInput, Message, SendMessageInput } from './generated/models.js';
-import { buildSendRequest, errorCode, retryAfter, twilioFailure, zeroMessage, type TwilioClient, type TwilioExchange } from './client.js';
+import { buildSendRequest, errorCode, retryAfter, twilioFailure, zeroMessage, type TwilioAuthorization, type TwilioClient, type TwilioExchange } from './client.js';
 
 const messagePattern = /^(SM|MM)[0-9a-f]{32}$/;
 // Only these statuses prove Twilio refused a send; other 4xx statuses leave the outcome unknown.
@@ -87,7 +87,9 @@ export class SendMessageOperation implements Mutation<SendMessageInput, Message>
       let message: Message;
       try { message = this.client.decodeMessage(response.body, auth.authorization); }
       catch {
-        if (messagePattern.test(messageSid(response.body))) return accepted('PROTOCOL', 'Twilio accepted the request but returned an unusable message');
+        const acceptedSid = messageSid(response.body);
+        // The SID names the created message, so it is read back and never resent.
+        if (messagePattern.test(acceptedSid)) return this.readBackNamedMessage(call, fence, requested, response, acceptedSid, auth.authorization);
         return accepted('PROTOCOL', 'Twilio accepted the message, but its response is malformed');
       }
       try { await fence.recordProviderId(message.sid ?? ''); } catch { /* The accepted provider response determines the branch. */ }
@@ -96,17 +98,15 @@ export class SendMessageOperation implements Mutation<SendMessageInput, Message>
     const createdSid = isBodyUnreadable ? '' : messageSid(response.body);
     if (messagePattern.test(createdSid)) {
       // An error status naming a created message is contradictory, so its SID is read back, never resent.
-      // Read-back still runs, but a transient failure cannot retry without the saved SID.
-      let isProviderIdSaved = true;
-      try { await fence.recordProviderId(createdSid); } catch { isProviderIdSaved = false; }
-      return this.readBack(call, requested, { callId: call.id, attempt: call.context.attempt, state: 'claimed', providerId: createdSid } as Marker, isProviderIdSaved);
+      return this.readBackNamedMessage(call, fence, requested, response, createdSid, auth.authorization);
     }
     if (response.status === 429 || response.status === 503) {
       let checkpointFailed = false; try { await fence.recordCanResend(); } catch { checkpointFailed = true; }
       const message = response.status === 429 ? `Twilio rate limited the message before creating it${checkpointFailed ? '; retry checkpoint is unavailable' : ''}` : checkpointFailed ? 'Twilio service and retry checkpoint are temporarily unavailable' : 'Twilio service is temporarily unavailable';
       return newMutationRetry(twilioFailure('sendMessage', response.status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY', message), retryAfter(response, this.client.currentTime()));
     }
-    if (response.status === 401) {
+    // An unreadable 401 body cannot prove a refusal, so it falls through to the unknown outcome.
+    if (response.status === 401 && !isBodyUnreadable) {
       const refreshed = await this.client.authorizationAfterRejection(call);
       if ('authorization' in refreshed && (refreshed.authorization.username !== auth.authorization.username || refreshed.authorization.password !== auth.authorization.password)) {
         try { await fence.recordCanResend(); }
@@ -131,6 +131,19 @@ export class SendMessageOperation implements Mutation<SendMessageInput, Message>
     if (hasPossibleEarlierSend) return newMutationUncertain(requested, refusal, receipt);
     try { await fence.recordCanResend(); } catch { /* The branch is terminal, so a lost canResend checkpoint cannot cause a resend. */ }
     return newMutationBranch('providerRejected', requested, receipt, refusal);
+  }
+
+  /**
+   * Checkpoint a SID that a send response named and read that message back. A SID that contains the
+   * credential is never checkpointed, read back, or put in a Receipt. Read-back still runs when the
+   * checkpoint fails, but a transient read-back failure cannot retry then.
+   */
+  private async readBackNamedMessage(call: Call, fence: Fence, requested: Message, response: ProviderResponse,
+    messageSid: string, authorization: TwilioAuthorization): Promise<MutationAttempt<Message>> {
+    if (authorization.password && messageSid.includes(authorization.password)) return newMutationUncertain(requested, twilioFailure('sendMessage', 'PROTOCOL', 'Twilio accepted the request but returned an unusable message'), this.client.receipt(call, response));
+    let isProviderIdSaved = true;
+    try { await fence.recordProviderId(messageSid); } catch { isProviderIdSaved = false; }
+    return this.readBack(call, requested, { callId: call.id, attempt: call.context.attempt, state: 'claimed', providerId: messageSid } as Marker, isProviderIdSaved);
   }
 
   /** Confirm a saved message SID without resending; a transient failure retries only when the SID is saved. */
