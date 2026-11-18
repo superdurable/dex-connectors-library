@@ -370,7 +370,7 @@ A token that contains the API token is dropped.
 | 429 | Retry after `Retry-After` |
 | oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for a read; a keyed retry for `createTicket`; an accepted write that `updateTicket` reads back |
 | 4xx refusal with an oversized body or a ticket in the body | the status above for a read; an unknown outcome for a write |
-| invalid input or connection credentials | `defect`, with no request; for a write only reauthorization, a missing or unselected connection, a credential broker refusal, or an unusable token is terminal, and any other credential failure, such as a broker outage, retries |
+| invalid input or connection credentials | `defect`, with no request; for a read or write only reauthorization, a missing or unselected connection, a credential broker refusal, malformed stored credential material (Python and TypeScript), or an unusable token is terminal, and any other credential failure, such as a broker outage, retries |
 
 This table describes reads and the first send of a write. `createTicket`
 retries every unknown outcome under its Idempotency-Key. `updateTicket`

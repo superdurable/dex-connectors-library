@@ -2,12 +2,13 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ZendeskClient } from '../src/client.js';
 import { CreateTicketDefinition, UpdateTicketDefinition } from '../src/generated/definitions.js';
-import type { CreateTicketOutput, UpdateTicketInput, UpdateTicketOutput } from '../src/generated/models.js';
+import { CredentialMaterialError, type CreateTicketOutput, type UpdateTicketInput, type UpdateTicketOutput } from '../src/generated/models.js';
 
 const callId = '6a0e7f8c-2f0b-5d7e-9a51-2f4c8e1b3d77';
 const update: UpdateTicketInput = { ticketId: 5512, status: 'open', addTags: ['escalated'], comment: { body: 'Customer called again.', isInternalNote: true } };
@@ -109,6 +110,7 @@ describe('updateTicket after a possible or accepted write', () => {
     ['transient', new Error('broker unavailable'), 'retry'],
     ['broker outage', new CredentialBrokerUnavailableError(), 'retry'],
     ['unconfigured static connection', new Error('connection is not configured'), 'retry'],
+    ['malformed stored material', new CredentialMaterialError('credential api_token is required'), 'uncertain'],
   ])('never selects defect for a %s credential failure after a possible send', async (_name, error, branch) => {
     const requests: ProviderRequest[] = [];
     const context = new AttemptContext();
@@ -130,6 +132,9 @@ describe('updateTicket after a possible or accepted write', () => {
     ['broker refusal', new CredentialBrokerRejectedError(), 'defect'],
     ['transient', new Error('broker unavailable'), 'retry'],
     ['broker outage', new CredentialBrokerUnavailableError(), 'retry'],
+    ['malformed stored material', new CredentialMaterialError('credential api_token is required'), 'defect'],
+    ['SDK-wrapped malformed material', new TypeError('project credential decoding failed'), 'defect'],
+    ['project material the schema rejects', new z.ZodError([]), 'defect'],
   ])('records notSent for a %s credential failure on a first send', async (_name, error, branch) => {
     const credentials = new SwitchableCredentials();
     credentials.error = error;
@@ -137,6 +142,27 @@ describe('updateTicket after a possible or accepted write', () => {
     const requests: ProviderRequest[] = [];
     expect(branchOf(await run('updateTicket', () => json(200, ticket()), context, requests, credentials))).toBe(branch);
     expect(context.marker?.state).toBe('notSent');
+    expect(requests).toHaveLength(0);
+  });
+
+  it.each([
+    ['terminal', new ReauthorizationRequiredError(), 'defect'],
+    ['broker refusal', new CredentialBrokerRejectedError(), 'defect'],
+    ['malformed stored material', new CredentialMaterialError('credential api_token is required'), 'defect'],
+    ['SDK-wrapped malformed material', new TypeError('project credential decoding failed'), 'defect'],
+    ['broker outage', new CredentialBrokerUnavailableError(), 'retry'],
+    ['unconfigured static connection', new Error('connection is not configured'), 'retry'],
+  ])('selects defect in a Query only for a %s credential failure', async (_name, error, expected) => {
+    const credentials = new SwitchableCredentials();
+    credentials.error = error;
+    const requests: ProviderRequest[] = [];
+    const client = new ZendeskClient({ subdomain: 'acme' }, credentials, {
+      apiBaseURL: 'http://127.0.0.1:37001/api/v2', send: async request => { requests.push(request); return json(500, {}); },
+    });
+    const context = new AttemptContext();
+    const get = await client.getTicket().invoke({ id: callId, connection: { provider: 'zendesk', name: 'desk' }, operation: { connectorId: 'zendesk-support', operationId: 'getTicket' }, context } as unknown as Call, { ticketId: 5512 });
+    const search = await client.searchTickets().invoke({ id: callId, connection: { provider: 'zendesk', name: 'desk' }, operation: { connectorId: 'zendesk-support', operationId: 'searchTickets' }, context } as unknown as Call, { statuses: ['open'] });
+    for (const result of [get, search]) expect(result.kind === 'branch' ? result.branch : result.kind).toBe(expected);
     expect(requests).toHaveLength(0);
   });
 

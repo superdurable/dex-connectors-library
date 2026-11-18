@@ -62,6 +62,13 @@ _TYPES = frozenset(("problem", "incident", "question", "task"))
 _TAG = re.compile(r"^[a-z0-9][a-z0-9_./-]{0,79}$")
 
 
+def _query_credential_failure(zero: Any, credential_failure: Failure, is_terminal: bool) -> QueryAttempt[Any]:
+    """Select defect for a terminal credential failure and retry a transient one."""
+    if is_terminal:
+        return QueryAttempt.branch_result(defs.DEFECT, zero, Receipt(), credential_failure)
+    return QueryAttempt.retry(credential_failure)
+
+
 def _query_exchange(
     exchange: Exchange, receipt: Receipt, zero: Any, has_not_found: bool = False
 ) -> QueryAttempt[Any] | None:
@@ -173,9 +180,10 @@ class SearchTicketsOperation:
             return QueryAttempt.branch_result(
                 defs.DEFECT, zero, Receipt(), failure(FailureKind.VALIDATION, operation, str(error))
             )
-        credentials, credential_failure = await self.client.resolve_credentials(call, operation)
+        resolved = await self.client.resolve_write_credentials(call, operation)
+        credentials, credential_failure, is_terminal = resolved
         if credential_failure:
-            return QueryAttempt.branch_result(defs.DEFECT, zero, Receipt(), credential_failure)
+            return _query_credential_failure(zero, credential_failure, is_terminal)
         assert credentials is not None
         parameters = {"query": query, "filter[type]": "ticket", "page[size]": str(input.page_size or 25)}
         if input.cursor:
@@ -251,9 +259,10 @@ class GetTicketOperation:
                 Receipt(),
                 failure(FailureKind.VALIDATION, operation, "ticketId or latestCommentLimit is invalid"),
             )
-        credentials, credential_failure = await self.client.resolve_credentials(call, operation)
+        resolved = await self.client.resolve_write_credentials(call, operation)
+        credentials, credential_failure, is_terminal = resolved
         if credential_failure:
-            return QueryAttempt.branch_result(defs.DEFECT, zero, Receipt(), credential_failure)
+            return _query_credential_failure(zero, credential_failure, is_terminal)
         assert credentials is not None
         path = f"/tickets/{input.ticket_id}"
         exchange = await self.client.exchange(call, credentials, operation, "GET", path, {"include": "users"})

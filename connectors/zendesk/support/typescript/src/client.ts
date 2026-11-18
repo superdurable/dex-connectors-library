@@ -3,9 +3,10 @@
 
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderStalledError, ProviderTransportError, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { isIP } from 'node:net';
+import { z } from 'zod';
 import { defaultTriggerLogger, ReauthorizationRequiredError, type Call, type CredentialProvider, type Failure, type Receipt, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { RequestSpacingLimiter } from './request_spacing_limiter.js';
 import { CreateTicketOperation, GetTicketOperation, SearchTicketsOperation, UpdateTicketOperation } from './operations.js';
 
@@ -116,7 +117,7 @@ export class ZendeskClient {
     let current: Credentials;
     try { current = await this.credentials.resolve(call, call.context.cancellationSignal); }
     catch (error) {
-      const isTerminal = error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+      const isTerminal = error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error) || error instanceof z.ZodError;
       return isTerminal
         ? { kind: 'terminal', failure: zendeskFailure(operation, 'AUTHENTICATION', 'connection credentials are unavailable') }
         : { kind: 'transient', failure: zendeskFailure(operation, 'AVAILABILITY', 'connection credentials could not be read') };
