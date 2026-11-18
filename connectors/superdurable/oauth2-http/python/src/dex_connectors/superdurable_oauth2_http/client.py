@@ -421,7 +421,11 @@ class Client:
             )
         except _TERMINAL_CREDENTIAL_ERRORS:
             return None, unusable
-        except Exception:
+        except Exception as error:
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return None, unusable
             # Includes TimeoutError, an unavailable broker or store, a failed or pending refresh,
             # and an unconfigured connection.
             return None, MutationAttempt.retry(

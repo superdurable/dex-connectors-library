@@ -17,10 +17,22 @@ from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.superdurable_oauth2_http as oauth2_http
+from dex_connectors.superdurable_oauth2_http._generated.connection import CredentialMaterialError
 from dex_connectors.superdurable_oauth2_http._generated.definitions import POST_NON_IDEMPOTENT_DEFINITION
 
 CONNECTION = sdk.ConnectionRef("oauth2-http", "oauth2-http")
 CALL_ID = sdk.CallID("659e7b4f-b114-59f6-98d1-17c1143ef228")
+
+
+def _sdk_wrapped_material_error() -> ValueError:
+    """Build the error the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("OAuth2 HTTP credential access_token is required")
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
 
 
 class AttemptContext:
@@ -238,6 +250,8 @@ class MissingConnection(FailingCredentials):
         (ConnectionNotSelectedError(), "defect"),
         (CredentialBrokerRejectedError(), "defect"),
         (sdk.ReauthorizationRequiredError(), "rejected"),
+        (CredentialMaterialError("OAuth2 HTTP credential access_token is required"), "defect"),
+        (_sdk_wrapped_material_error(), "defect"),
     ],
 )
 async def test_send_request_classifies_credential_resolve_failures(error: Exception, kind: str) -> None:
