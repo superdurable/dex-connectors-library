@@ -21,7 +21,8 @@ export class SendEmailOperation implements Mutation<SendEmailInput, SentEmail> {
     if (!input || !input.from || !input.to?.length || !input.subject || !input.html) return newMutationBranch('defect', emptySent, {}, failure(operation, 'VALIDATION', 'from, to, subject, and html are required'));
     if (input.to.some(recipient => !recipient)) return newMutationBranch('defect', emptySent, {}, failure(operation, 'VALIDATION', 'recipient cannot be blank'));
     if (!call.idempotencyKey || Buffer.byteLength(call.idempotencyKey) > 256) return newMutationBranch('defect', emptySent, {}, failure(operation, 'VALIDATION', 'idempotency key is invalid'));
-    const apiKey = await this.client.resolveAPIKey(call);
+    const { apiKey, isTransient } = await this.client.resolveAPIKeyResolution(call);
+    if (isTransient) return newMutationRetry(failure(operation, 'AVAILABILITY', 'connection credentials are temporarily unavailable; nothing was sent'));
     if (!apiKey) return credentialDefect(operation, emptySent);
     let response: ResendResponse;
     try { response = await this.client.exchange(call, apiKey, 'POST', '/emails', Buffer.from(JSON.stringify({ from: input.from, to: input.to, subject: input.subject, html: input.html }))); }
@@ -50,7 +51,8 @@ export class GetEmailOperation implements Query<GetEmailInput, Email> {
   async invoke(call: Call, input: GetEmailInput): Promise<QueryAttempt<Email>> {
     const operation = 'getEmail';
     if (!input?.id) return newQueryBranch('defect', emptyEmail, {}, failure(operation, 'VALIDATION', 'email ID is required'));
-    const apiKey = await this.client.resolveAPIKey(call);
+    const { apiKey, isTransient } = await this.client.resolveAPIKeyResolution(call);
+    if (isTransient) return newQueryRetry(failure(operation, 'AVAILABILITY', 'connection credentials are temporarily unavailable'));
     if (!apiKey) return credentialDefect(operation, emptyEmail);
     let response: ResendResponse;
     try { response = await this.client.exchange(call, apiKey, 'GET', `/emails/${goPathEscape(input.id)}`); }

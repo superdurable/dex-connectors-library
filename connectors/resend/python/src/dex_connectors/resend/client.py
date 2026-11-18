@@ -28,6 +28,8 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk import OperationRef as OperationRef
 from dex_connectors.sdk import SecretString as SecretString
 from dex_connectors.sdk import StepDefaults as StepDefaults
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -88,6 +90,8 @@ from .models import Email, GetEmailInput, SendEmailInput, SentEmail
 _DEFAULT_BASE_URL = "https://api.resend.com"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
+# A resolve failure outside the terminal SDK credential errors; a later attempt may clear it.
+_CREDENTIALS_TEMPORARILY_UNAVAILABLE = "connection credentials are temporarily unavailable; nothing was sent"
 
 Output = TypeVar("Output")
 
@@ -132,10 +136,20 @@ class Client:
         """Send one request, or return the defect message when it cannot be built."""
         try:
             credentials = await self.credentials.resolve(call)
-        except (ValueError, LookupError, OSError, ReauthorizationRequiredError):
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
             return "connection credentials are unavailable"
-        key = credentials.api_key.reveal()
-        if not key.strip() or not is_header_safe_credential(key):
+        except Exception:
+            return _CREDENTIALS_TEMPORARILY_UNAVAILABLE
+        try:
+            key = credentials.api_key.reveal()
+        except AttributeError:
+            return "connection credentials are invalid"
+        if not isinstance(key, str) or not key.strip() or not is_header_safe_credential(key):
             return "connection credentials are invalid"
         headers = {
             "Authorization": "Bearer " + key,
@@ -206,6 +220,8 @@ class SendEmailOperation:
             return MutationAttempt.retry(
                 _failure(operation, FailureKind.AVAILABILITY, "provider request failed")
             )
+        if response == _CREDENTIALS_TEMPORARILY_UNAVAILABLE:
+            return MutationAttempt.retry(_failure(operation, FailureKind.AVAILABILITY, response))
         if isinstance(response, str):
             return _mutation_branch(operation, DEFECT, empty, FailureKind.AUTHENTICATION, response)
         try:
@@ -287,6 +303,8 @@ class GetEmailOperation:
             return QueryAttempt.retry(
                 _failure(operation, FailureKind.AVAILABILITY, "provider request failed")
             )
+        if response == _CREDENTIALS_TEMPORARILY_UNAVAILABLE:
+            return QueryAttempt.retry(_failure(operation, FailureKind.AVAILABILITY, response))
         if isinstance(response, str):
             return _query_branch(operation, DEFECT, empty, FailureKind.AUTHENTICATION, response)
         try:

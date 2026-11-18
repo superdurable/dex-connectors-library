@@ -48,8 +48,8 @@ defaults; override the base URL only for a compatible gateway or test server.
 | Known missing resource on a detail operation | `notFound` |
 | Other definite 4xx rejection | `providerRejected` |
 | Malformed or oversized successful JSON | `invalidResponse` |
-| Invalid local input or credentials | `defect` |
-| HTTP 408, 429, 5xx, transport interruption | Retry until the default budget ends, then Flow failure |
+| Invalid local input or credentials, or a connection that needs reauthorization, is missing or no longer selected, or that the credential broker refused | `defect` |
+| HTTP 408, 429, 5xx, transport interruption, or any other credential lookup failure, such as an unavailable broker or a connection that is not configured yet | Retry until the default budget ends, then Flow failure |
 
 Every non-happy branch is optional. The example wires only the happy branch;
 an unwired optional outcome fails the Flow. Provider error response text and

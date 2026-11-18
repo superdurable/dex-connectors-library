@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ResendClient } from '../src/client.js';
 
 const call = { id: 'test-call', idempotencyKey: 'test-call', context: {} } as Call;
@@ -42,6 +43,20 @@ describe('Resend request boundaries', () => {
     expect(result.kind).toBe('branch');
     if (result.kind === 'branch') { expect(result.branch).toBe('defect'); expect(result.failure?.kind).toBe('AUTHENTICATION'); }
     expect(requests).toBe(0);
+  });
+
+  it('retries only transient credential resolve failures', async () => {
+    for (const [error, kind] of [
+      [new Error('connection is not configured'), 'retry'], [new CredentialBrokerUnavailableError(), 'retry'], [new RangeError('unlisted'), 'retry'],
+      [new ReauthorizationRequiredError(), 'branch'], [new ObjectNotFoundError(), 'branch'], [new ConnectionNotSelectedError(), 'branch'],
+      [new CredentialBrokerRejectedError(), 'branch'], [new TypeError('fetch failed'), 'retry'],
+    ] as const) {
+      const client = new ResendClient({ baseUrl: 'http://127.0.0.1' }, { resolve: async () => { throw error; } }, { send: async () => { throw new Error('unexpected request'); } });
+      const sent = await client.sendEmail().invoke(call, emailInput);
+      expect(sent.kind, error.name).toBe(kind);
+      if (sent.kind === 'branch') expect(sent.branch).toBe('defect');
+      expect((await client.getEmail().invoke(call, { id: 'mail' })).kind, error.name).toBe(kind);
+    }
   });
 
   it('retries a refused connection with the same call ID', async () => {

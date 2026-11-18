@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 import { BodyTooLargeError, isHeaderSafeCredential, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call, type CredentialProvider } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { z } from 'zod';
 import type { Config, Credentials } from './generated/models.js';
 import { GetEmailOperation, SendEmailOperation } from './operations.js';
 
@@ -51,12 +53,20 @@ export class ResendClient {
 
   /** Resolve a safe API key; invalid and unavailable credentials are terminal. */
   async resolveAPIKey(call: Call): Promise<string | undefined> {
-    try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      if (!(credentials.apiKey instanceof SecretString)) return undefined;
-      const key = credentials.apiKey.reveal();
-      return key.trim() && isHeaderSafeCredential(key) ? key : undefined;
-    } catch { return undefined; }
+    return (await this.resolveAPIKeyResolution(call)).apiKey;
+  }
+
+  /**
+   * Resolve a safe API key, or report whether the failure may clear on a later attempt. Only reauthorization,
+   * a missing or unselected connection, a broker refusal, and unusable material are terminal.
+   */
+  async resolveAPIKeyResolution(call: Call): Promise<{ apiKey?: string; isTransient: boolean }> {
+    let credentials: Credentials;
+    try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
+    catch (error) { return { isTransient: !isTerminalCredentialError(error) }; }
+    if (!(credentials?.apiKey instanceof SecretString)) return { isTransient: false };
+    const key = credentials.apiKey.reveal();
+    return key.trim() && isHeaderSafeCredential(key) ? { apiKey: key, isTransient: false } : { isTransient: false };
   }
 
   /** Send one no-redirect request with Resend's authentication and content headers. */
@@ -78,4 +88,11 @@ export class ResendClient {
       throw error;
     }
   }
+}
+
+/** Report a resolve failure no later attempt clears; a ZodError is stored material the decoder rejected. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError
+    || error instanceof z.ZodError;
 }
