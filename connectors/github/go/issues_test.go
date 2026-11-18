@@ -6,6 +6,7 @@ package github_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -544,12 +545,12 @@ func TestCreateIssueSelectsUncertainWhenReadBackCannotVerify(t *testing.T) {
 	require.Equal(t, 1, provider.count("POST"), "a repository the connection can no longer read is not written")
 }
 
-func TestCreateIssueRetriesWithoutSendingOnAForeignCheckpoint(t *testing.T) {
+func TestCreateIssueRetriesWithoutSendingOnAnUnreadableCheckpoint(t *testing.T) {
 	provider := newIssueProvider(t)
 	client := newIssueClient(t, provider.URL, github.RepositoryAuthMethodID)
-	ctx := singledispatchtest.NewContext("issues-flow", "foreign")
-	require.NoError(t, ctx.SetPersistedCheckpoint(singledispatch.Marker{CallID: "another-call", Attempt: 1, State: singledispatch.StateNotSent}))
+	ctx := singledispatchtest.NewContext("issues-flow", "unreadable")
 	ctx.AdvanceAttempt()
+	ctx.SetReadError(errors.New("heartbeat unavailable"))
 	_, err := sdkgo.RunMutation(ctx, client.CreateIssue(), githubConnection, bugReportInput())
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry, "FailClosed never selects a terminal branch")
@@ -622,9 +623,7 @@ func lastMarker(t *testing.T, ctx *singledispatchtest.Context) singledispatch.Ma
 	t.Helper()
 	heartbeats := ctx.Heartbeats()
 	require.NotEmpty(t, heartbeats)
-	var marker singledispatch.Marker
-	require.NoError(t, json.Unmarshal(heartbeats[len(heartbeats)-1], &marker))
-	return marker
+	return decodeRecordedMarker(t, heartbeats[len(heartbeats)-1])
 }
 
 func timePointer(value time.Time) *time.Time { return &value }
