@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { type Call, type CredentialProvider, type Failure } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 import { TrackEventOperation, ExportEventsOperation } from './operations.js';
 
@@ -58,14 +59,18 @@ export class MixpanelClient {
 
   /** Resolve current credentials and send one bounded provider request. */
   async exchange(call: Call, operation: string, method: 'GET' | 'POST', address: string, payload?: Uint8Array): Promise<MixpanelExchange> {
-    let username: string;
-    let secret: string;
+    let credentials: Credentials;
     try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      username = credentials.serviceAccountUsername.reveal();
-      secret = credentials.serviceAccountSecret.reveal();
-      if (!isHeaderSafeCredential(username) || !isHeaderSafeCredential(secret)) throw new TypeError('invalid credentials');
-    } catch {
+      credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
+    } catch (error) {
+      const isTerminal = error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+        || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+      if (!isTerminal) return this.failed(operation, 'AVAILABILITY', 'Mixpanel credentials are temporarily unavailable', 'retry');
+      return this.failed(operation, 'AUTHENTICATION', 'Mixpanel credentials are unavailable or invalid', 'defect');
+    }
+    const username = credentials.serviceAccountUsername instanceof SecretString ? credentials.serviceAccountUsername.reveal() : '';
+    const secret = credentials.serviceAccountSecret instanceof SecretString ? credentials.serviceAccountSecret.reveal() : '';
+    if (!isHeaderSafeCredential(username) || !isHeaderSafeCredential(secret)) {
       return this.failed(operation, 'AUTHENTICATION', 'Mixpanel credentials are unavailable or invalid', 'defect');
     }
     const headers: Record<string, string> = {

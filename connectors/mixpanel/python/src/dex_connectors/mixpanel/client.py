@@ -31,6 +31,11 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk import OperationRef as OperationRef
 from dex_connectors.sdk import SecretString as SecretString
 from dex_connectors.sdk import StepDefaults as StepDefaults
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -134,8 +139,21 @@ class Client:
         LOCAL_DEFECT means defect, and any other Failure means invalidResponse."""
         try:
             credentials = await self.credentials.resolve(call)
-        except (ValueError, LookupError, OSError, ReauthorizationRequiredError):
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
             credentials = None
+        except Exception:
+            # A passing credential outage sent nothing, so the attempt retries.
+            return (
+                _failure(
+                    operation, FailureKind.AVAILABILITY, "Mixpanel credentials are temporarily unavailable"
+                ),
+                0.0,
+            )
         username = "" if credentials is None else credentials.service_account_username.reveal()
         secret = "" if credentials is None else credentials.service_account_secret.reveal()
         if (

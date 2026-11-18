@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -221,8 +222,19 @@ func (operation ExportEventsOperation) Invoke(call sdkgo.Call, input ExportEvent
 	return sdkgo.NewQueryBranch(ExportEventsBranchExported, result, nil, sdkgo.Receipt{})
 }
 
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
 func (client *Client) send(call sdkgo.Call, method, address string, payload []byte, operation string) ([]byte, int, *sdkgo.Failure, time.Duration) {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		// A negative status retries; a passing credential outage sent nothing.
+		return nil, -1, mixpanelFailure(operation, sdkgo.FailureAvailability, "Mixpanel credentials are temporarily unavailable"), 0
+	}
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.ServiceAccountUsername.Reveal()) || !providerhttp.IsHeaderSafeCredential(credentials.ServiceAccountSecret.Reveal()) {
 		return nil, 0, mixpanelFailure(operation, sdkgo.FailureAuthentication, "Mixpanel credentials are unavailable or invalid"), 0
 	}

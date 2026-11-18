@@ -6,6 +6,7 @@ package mixpanel
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -133,4 +135,39 @@ func TestExportEventsClassifiesProviderRejection(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ExportEventsBranchProviderRejected, result.Branch)
 	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+}
+
+type failingCredentials struct{ resolveErr error }
+
+func (credentials failingCredentials) Resolve(sdkgo.Call) (Credentials, error) {
+	return Credentials{}, credentials.resolveErr
+}
+
+func TestTrackEventClassifiesCredentialFailures(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		resolveErr error
+		isTerminal bool
+	}{
+		"broker unavailable":            {projectconfig.ErrCredentialBrokerUnavailable, false},
+		"static not configured":         {errors.New("connection is not configured"), false},
+		"unlisted error":                {errors.New("credential store hiccup"), false},
+		"sdk reauthorization":           {sdkgo.NewReauthorizationRequiredError(nil), true},
+		"projectconfig reauthorization": {projectconfig.ErrReauthorizationRequired, true},
+		"object not found":              {projectconfig.ErrObjectNotFound, true},
+		"connection not selected":       {projectconfig.ErrConnectionNotSelected, true},
+		"broker rejected":               {projectconfig.ErrCredentialBrokerRejected, true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, err := New(Config{BaseURL: "http://127.0.0.1:1", ExportBaseURL: "http://127.0.0.1:1/api/2.0", ProjectID: 12345}, failingCredentials{resolveErr: testCase.resolveErr})
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(providerContext{}, client.TrackEvent(), testConnection, TrackEventInput{Event: "Signed Up", DistinctID: "member-1", Time: 1793232000})
+			if testCase.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, TrackEventBranchDefect, result.Branch)
+				return
+			}
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+		})
+	}
 }
