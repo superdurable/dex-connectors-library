@@ -14,6 +14,7 @@ import {
   type ProviderResponse,
 } from "@superdurable/connectors-sdk/providerhttp";
 import {
+  ReauthorizationRequiredError,
   SecretString,
   defaultTriggerLogger,
   type Call,
@@ -22,7 +23,22 @@ import {
   type ReceiptDraft,
   type TriggerLogger,
 } from "@superdurable/connectors-sdk";
+import {
+  ConnectionNotSelectedError,
+  CredentialBrokerRejectedError,
+  ObjectNotFoundError,
+} from "@superdurable/connectors-sdk/projectconfig";
 import type { Config, Credentials } from "./generated/models.js";
+
+/** A credential failure no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return (
+    error instanceof ReauthorizationRequiredError ||
+    error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError ||
+    error instanceof CredentialBrokerRejectedError
+  );
+}
 import {
   SearchConversationsOperation,
   GetConversationOperation,
@@ -200,8 +216,8 @@ export class IntercomClient {
         call,
         call.context.cancellationSignal,
       );
-    } catch {
-      return { isTransient: true };
+    } catch (error) {
+      return { isTransient: !isTerminalCredentialError(error) };
     }
     if (!(credentials.accessToken instanceof SecretString))
       return { isTransient: false };

@@ -4,7 +4,8 @@
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { afterEach, expect, it } from "vitest";
-import { SecretString, type Call } from "@superdurable/connectors-sdk";
+import { ReauthorizationRequiredError, SecretString, type Call } from "@superdurable/connectors-sdk";
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from "@superdurable/connectors-sdk/projectconfig";
 import { AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransportError } from "@superdurable/connectors-sdk/providerhttp";
 import { IntercomClient } from "../src/client.js";
 
@@ -431,6 +432,25 @@ it.each([
   const attempt = await client.replyToConversation().invoke(replyCall, replyInput);
   expect(requestCount).toBe(requestsBefore);
   expect(state.heartbeat).toMatchObject({ state: hasPossibleEarlierSend ? "claimed" : "notSent" });
+  if (attempt.kind === "branch") expect(attempt.branch).toBe(expected);
+  else expect(attempt.kind).toBe(expected);
+});
+
+it.each([
+  ["reauthorization", () => new ReauthorizationRequiredError(), "defect"],
+  ["missing connection object", () => new ObjectNotFoundError(), "defect"],
+  ["unselected connection", () => new ConnectionNotSelectedError(), "defect"],
+  ["broker refusal", () => new CredentialBrokerRejectedError(), "defect"],
+  ["broker outage", () => new CredentialBrokerUnavailableError(), "retry"],
+  ["unconfigured static connection", () => new Error("connection is not configured"), "retry"],
+] as const)("classifies a %s resolve failure on a first send", async (_name, error, expected) => {
+  const { replyCall, state } = fencedReplyCall();
+  const client = new IntercomClient({}, { resolve: async () => { throw error(); } }, {
+    endpoint: "http://127.0.0.1:0",
+    send: async () => { throw new Error("no request may be sent"); },
+  });
+  const attempt = await client.replyToConversation().invoke(replyCall, replyInput);
+  expect(state.heartbeat).toMatchObject({ state: "notSent" });
   if (attempt.kind === "branch") expect(attempt.branch).toBe(expected);
   else expect(attempt.kind).toBe(expected);
 });

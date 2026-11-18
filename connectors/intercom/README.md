@@ -215,9 +215,11 @@ default, per Step execution. An application lowers or raises the cap, from 1 to
    or 422, selects `notFound` or `providerRejected`. After a possible earlier
    send the same answer selects `uncertain`, because that send may have
    applied the reply.
-6. Connection credentials that cannot be resolved retry when the lookup may
-   succeed later. A token that is unusable or needs reauthorization selects
+6. A token that is unusable, needs reauthorization, or belongs to a missing or
+   unselected connection, or that the credential broker refuses, selects
    `defect` before any send, and `uncertain` after a possible earlier send.
+   Every other credential failure, such as a broker outage or a connection the
+   static provider does not configure, retries.
    `invalidResponse` stays declared for compatibility but is no longer
    selected.
 
@@ -352,7 +354,7 @@ non-2xx answer, as their sections describe.
 | 408, 5xx, transport failure | Retry; `replyToConversation` reads back before resending |
 | oversized, malformed, or credential-reflecting 2xx | `invalidResponse`; `replyToConversation` reads back, never resends, and selects `replied` or `uncertain` or retries the read; `updateConversationState` retries after the write |
 | invalid input or unusable connection credentials | `defect`, with no request; after a possible reply send, `uncertain` |
-| credential lookup that may succeed later | Retry for writes |
+| any other credential failure, such as a broker outage | Retry for writes |
 
 ## Not in this release
 

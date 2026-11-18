@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/intercom/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -371,6 +372,12 @@ func TestReplyCredentialFailures(t *testing.T) {
 		{name: "terminal before any send", credentials: terminalProvider, expectedBranch: intercom.ReplyToConversationBranchDefect},
 		{name: "transient after a possible send", credentials: transientProvider, hasPossibleEarlierSend: true},
 		{name: "terminal after a possible send", credentials: terminalProvider, hasPossibleEarlierSend: true, expectedBranch: sdkgo.UncertainBranchID},
+		{name: "project reauthorization", credentials: failingCredentialProvider{err: projectconfig.ErrReauthorizationRequired}, expectedBranch: intercom.ReplyToConversationBranchDefect},
+		{name: "connection object missing", credentials: failingCredentialProvider{err: projectconfig.ErrObjectNotFound}, expectedBranch: intercom.ReplyToConversationBranchDefect},
+		{name: "connection not selected", credentials: failingCredentialProvider{err: projectconfig.ErrConnectionNotSelected}, expectedBranch: intercom.ReplyToConversationBranchDefect},
+		{name: "broker rejected after a possible send", credentials: failingCredentialProvider{err: projectconfig.ErrCredentialBrokerRejected}, hasPossibleEarlierSend: true, expectedBranch: sdkgo.UncertainBranchID},
+		{name: "broker unavailable", credentials: failingCredentialProvider{err: projectconfig.ErrCredentialBrokerUnavailable}},
+		{name: "connection not configured", credentials: sdkgo.StaticCredentialProvider[intercom.Credentials]{}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingIntercom(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
