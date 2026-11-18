@@ -378,7 +378,7 @@ var UploadFileDefinition = sdkgo.MutationDefinition{
 		{ID: UploadFileBranchUploaded, Description: "The existing Box file now has the requested content."},
 		{ID: UploadFileBranchNotFound, Description: "Box did not find the file or the user lacks access.", Optional: true},
 		{ID: UploadFileBranchProviderRejected, Description: "Box conclusively rejected the replacement.", Optional: true},
-		{ID: UploadFileBranchInvalidResponse, Description: "Box returned malformed or oversized file metadata.", Optional: true},
+		{ID: UploadFileBranchInvalidResponse, Description: "Retained for compatibility and no longer selected: malformed or oversized file metadata now retries.", Optional: true},
 		{ID: UploadFileBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

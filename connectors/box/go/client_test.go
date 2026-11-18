@@ -19,8 +19,12 @@ import (
 
 var testConnection = sdkgo.ConnectionRef{Provider: "box", Name: "box"}
 
-type queryContext struct{ dex.Context }
+type queryContext struct {
+	dex.Context
+	attempt int32
+}
 
+func (fake queryContext) Attempt() int32         { return max(fake.attempt, 1) }
 func (queryContext) FlowID() string              { return "box-provider-test" }
 func (queryContext) StepExecutionID() string     { return "download" }
 func (queryContext) Deadline() (time.Time, bool) { return time.Time{}, false }
