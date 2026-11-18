@@ -20,7 +20,10 @@ export type HiverExchange = { kind: 'success'; response: ProviderResponse } | { 
 /** A resolved API key, or a credential failure that is terminal or may clear on retry. */
 export type HiverCredentialResult = { kind: 'resolved'; key: string } | { kind: 'terminal' | 'transient' };
 /** One HTTP request's payload. */
-export interface HiverRequest { method: string; path: string; query?: URLSearchParams; json?: unknown; form?: ReadonlyArray<readonly [string, string]>; correlationCallId?: string }
+export interface HiverRequest {
+  method: string; path: string; query?: URLSearchParams; json?: unknown; form?: ReadonlyArray<readonly [string, string]>; correlationCallId?: string;
+  /** Read a GET refusal body in full, as a write does, because the answer decides a write. */ isPreWriteLookup?: boolean;
+}
 
 /** Statuses that prove Hiver applied nothing when their body reads cleanly without a created ID; operations.ts keeps the same set. */
 const definiteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
@@ -143,7 +146,7 @@ export class HiverClient {
     if (request.form) { const multipart = encodeMultipart(request.form); body = multipart.body; headers['Content-Type'] = multipart.contentType; }
     const query = request.query?.toString();
     const url = this.baseURL + request.path + (query ? `?${query}` : '');
-    const isWrite = request.method !== 'GET';
+    const isWrite = request.method !== 'GET' || request.isPreWriteLookup === true;
     let response: ProviderResponse;
     // A write reads its whole error body, because only a readable refusal is definite.
     let isErrorBodyUnreadable = false;
@@ -179,6 +182,8 @@ export class HiverClient {
     }
     this.rateLimitPenalty = 0;
     if (status === 408 || status >= 500) return this.failure('unavailable', operation, 'AVAILABILITY', `Hiver could not complete the request (HTTP ${status})`, retryAfterMs, status, response);
+    // A credential-reflecting refusal body is untrusted, so it is treated like an unreadable one.
+    if (status < 200 || status >= 300) isErrorBodyUnreadable ||= key !== '' && Buffer.from(response.body).includes(Buffer.from(key));
     if (isWrite && isErrorBodyUnreadable && definiteRefusalStatuses.has(status)) {
       return this.failure('unavailable', operation, 'TRANSPORT', `Hiver answered HTTP ${status}, but its oversized or unreadable body may hide an accepted write`, 0, status, response);
     }

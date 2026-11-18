@@ -1210,18 +1210,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "conversation": {
-            "id": "",
-            "inboxId": "",
-            "status": "",
-            "tagIds": []
-          }
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1231,7 +1223,7 @@
         "conversationId": "573741352",
         "inboxId": "105902"
       },
-      "name": "updateConversation-invalid-response",
+      "name": "updateConversation-invalid-lookup-retries",
       "operation": "updateConversation"
     },
     {

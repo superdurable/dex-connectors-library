@@ -11,6 +11,8 @@ from typing import Any
 
 import dex_connectors.sdk as sdk
 import httpx
+import pytest
+from dex_connectors.sdk import projectconfig
 
 import dex_connectors.hiver as hiver
 
@@ -317,3 +319,74 @@ async def test_update_conversation_credential_failure_is_defect_only_on_a_termin
         attempt = await client.update_conversation().invoke(call, update)
         await client.aclose()
         assert attempt.kind == expected_kind
+
+
+class FailingCredentials:
+    """Fail every resolution with one error."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, _call: sdk.Call) -> hiver.Credentials:
+        raise self.error
+
+
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (sdk.ReauthorizationRequiredError(), True),
+        (projectconfig.ObjectNotFoundError("connection"), True),
+        (projectconfig.ConnectionNotSelectedError("connection"), True),
+        (projectconfig.CredentialBrokerRejectedError("broker"), True),
+        (projectconfig.CredentialBrokerUnavailableError("broker"), False),
+        (ValueError("connection is not configured"), False),
+        (KeyError("unlisted"), False),
+    ],
+)
+async def test_a_first_send_classifies_every_credential_failure(error: Exception, is_terminal: bool) -> None:
+    provider = Provider(lambda: httpx.Response(201, json={}))
+    context = new_context()
+    attempt = await invoke(provider, context, credentials=FailingCredentials(error))
+    assert provider.request_count == 0
+    assert marker_state(context) == "notSent"
+    if is_terminal:
+        assert attempt.kind == "branch" and attempt.branch == "defect"
+    else:
+        assert attempt.kind == "retry"
+
+
+@pytest.mark.parametrize(
+    ("status", "body", "branch"),
+    [
+        (404, b"{}", "notFound"),
+        (403, b"{}", "providerRejected"),
+        (200, b'{"data":"SENTINEL"}', ""),
+        (409, b"{}", ""),
+        (500, b"{}", ""),
+        (301, b"{}", ""),
+        (400, b'{"message":"' + API_KEY.encode() + b'"}', ""),
+    ],
+)
+async def test_a_pre_write_lookup_selects_a_branch_only_for_a_definite_answer(
+    status: int, body: bytes, branch: str
+) -> None:
+    for update in (
+        hiver.UpdateConversationInput("105902", "573741352", assignee_email="phoebe@acme.example.com"),
+        hiver.UpdateConversationInput("105902", "573741352", apply_tag_names=("billing",)),
+    ):
+        provider = Provider(lambda: httpx.Response(status, content=body))
+        async with httpx.AsyncClient(transport=httpx.MockTransport(provider.answer)) as http_client:
+            client = hiver.Client(
+                hiver.Config(request_interval_milliseconds=1), static_credentials(), http_client,
+                "http://127.0.0.1:12345/v1",
+            )
+            call = sdk.Call(
+                sdk.CallID("update"), CONNECTION, sdk.OperationRef("hiver", "updateConversation"),
+                context=new_context(),
+            )
+            attempt = await client.update_conversation().invoke(call, update)
+        assert provider.request_count == 1
+        if not branch:
+            assert attempt.kind == "retry", "an earlier attempt's PATCH may have applied"
+        else:
+            assert attempt.kind == "branch" and attempt.branch == branch

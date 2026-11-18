@@ -256,16 +256,40 @@ func TestRejectedReadBackRepeatsTheAbsoluteChange(t *testing.T) {
 	require.Equal(t, 2, provider.requestCount())
 }
 
-func TestMalformedPreWriteReadSelectsInvalidResponseWithoutWriting(t *testing.T) {
-	provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
-		writeJSON(t, response, http.StatusOK, `{"data":"SENTINEL"}`)
-	})
-	result, err := sdkgo.RunMutation(newHiverDexContext("update"), newHiverClient(t, provider.URL).UpdateConversation(), hiverConnection,
-		hiver.UpdateConversationInput{InboxID: "105902", ConversationID: "573741352", AssigneeEmail: "phoebe@acme.example.com"})
-	require.NoError(t, err)
-	require.Equal(t, hiver.UpdateConversationBranchInvalidResponse, result.Branch)
-	require.Equal(t, 1, provider.requestCount())
-	require.Equal(t, http.MethodGet, provider.request(0).method, "nothing was written")
+func TestPreWriteLookupSelectsABranchOnlyForADefiniteAnswer(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		status int
+		body   string
+		branch sdkgo.BranchID
+	}{
+		{name: "missing inbox", status: http.StatusNotFound, body: `{}`, branch: hiver.UpdateConversationBranchNotFound},
+		{name: "forbidden", status: http.StatusForbidden, body: `{}`, branch: hiver.UpdateConversationBranchProviderRejected},
+		{name: "malformed page", status: http.StatusOK, body: `{"data":"SENTINEL"}`},
+		{name: "conflict", status: http.StatusConflict, body: `{}`},
+		{name: "outage", status: http.StatusInternalServerError, body: `{}`},
+		{name: "redirect", status: http.StatusMovedPermanently, body: `{}`},
+		{name: "credential-reflecting refusal", status: http.StatusBadRequest, body: `{"message":"` + testAPIKey + `"}`},
+	} {
+		for _, input := range []hiver.UpdateConversationInput{
+			{InboxID: "105902", ConversationID: "573741352", AssigneeEmail: "phoebe@acme.example.com"},
+			{InboxID: "105902", ConversationID: "573741352", ApplyTagNames: []string{"billing"}},
+		} {
+			provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				writeJSON(t, response, test.status, test.body)
+			})
+			result, err := sdkgo.RunMutation(newHiverDexContext("update"), newHiverClient(t, provider.URL).UpdateConversation(), hiverConnection, input)
+			require.Equal(t, 1, provider.requestCount(), test.name)
+			require.Equal(t, http.MethodGet, provider.request(0).method, "%s: nothing was written", test.name)
+			if test.branch == "" {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry, "%s: an earlier attempt's PATCH may have applied", test.name)
+				continue
+			}
+			require.NoError(t, err, test.name)
+			require.Equal(t, test.branch, result.Branch, test.name)
+		}
+	}
 }
 
 func TestTagLookupBeyondTheLastPageReadSaysSo(t *testing.T) {

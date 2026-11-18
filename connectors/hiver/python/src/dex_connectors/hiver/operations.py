@@ -114,6 +114,20 @@ def _mutation_result(
     )
 
 
+def _is_unknown_update_exchange(exchange: Exchange) -> bool:
+    """Report an updateConversation answer that proves nothing, so the absolute change repeats."""
+    return (
+        exchange.outcome == "invalid"
+        or exchange.is_error_body_unreadable
+        or (exchange.outcome == "rejected" and exchange.status not in DEFINITE_REFUSAL_STATUSES)
+    )
+
+
+def _retry_unknown_lookup(message: str) -> MutationAttempt[Any]:
+    """Retry an invalid pre-write lookup: an earlier attempt's PATCH may have applied."""
+    return MutationAttempt.retry(hiver_failure(FailureKind.PROTOCOL, "updateConversation", message))
+
+
 def _empty_details() -> ConversationDetails:
     return ConversationDetails(Conversation("", "", status=""), ())
 
@@ -420,6 +434,9 @@ class UpdateConversationOperation:
                 "/inboxes/" + path_escape(input.inbox_id) + "/users/search",
                 {"email": input.assignee_email},
             )
+            if _is_unknown_update_exchange(exchange):
+                assert exchange.failure is not None
+                return MutationAttempt.retry(exchange.failure, exchange.retry_after)
             terminal = _mutation_result(call, self.client, exchange, empty, input.conversation_id)
             if terminal:
                 return terminal
@@ -435,14 +452,7 @@ class UpdateConversationOperation:
                 for user in users:
                     validate_id("inbox user", wire_id(user.get("id")))
             except (ValueError, TypeError, AttributeError):
-                return MutationAttempt.branch_result(
-                    "invalidResponse",
-                    empty,
-                    self.client.receipt(call, exchange, input.conversation_id),
-                    hiver_failure(
-                        FailureKind.PROTOCOL, "updateConversation", "Hiver returned an invalid inbox user"
-                    ),
-                )
+                return _retry_unknown_lookup("Hiver returned an invalid inbox user")
             if len(matches) != 1:
                 return MutationAttempt.branch_result(
                     "providerRejected",
@@ -471,6 +481,9 @@ class UpdateConversationOperation:
                     "/inboxes/" + path_escape(input.inbox_id) + "/tags",
                     page_query(page_token, 100),
                 )
+                if _is_unknown_update_exchange(exchange):
+                    assert exchange.failure is not None
+                    return MutationAttempt.retry(exchange.failure, exchange.retry_after)
                 terminal = _mutation_result(call, self.client, exchange, empty, input.conversation_id)
                 if terminal:
                     return terminal
@@ -478,16 +491,7 @@ class UpdateConversationOperation:
                     results, page_token = list_page(exchange.body)
                     tags.extend(decode_tag(raw) for raw in results)
                 except (ValueError, TypeError, AttributeError) as error:
-                    return MutationAttempt.branch_result(
-                        "invalidResponse",
-                        empty,
-                        self.client.receipt(call, exchange, input.conversation_id),
-                        hiver_failure(
-                            FailureKind.PROTOCOL,
-                            "updateConversation",
-                            "Hiver returned an invalid tag page: " + str(error),
-                        ),
-                    )
+                    return _retry_unknown_lookup("Hiver returned an invalid tag page: " + str(error))
                 complete = not page_token
                 if complete or all(
                     any(tag.name == name for tag in tags)
@@ -526,11 +530,7 @@ class UpdateConversationOperation:
         exchange = await self.client.exchange(
             call, token, "updateConversation", "PATCH", path, payload=change
         )
-        if (
-            exchange.outcome == "invalid"
-            or exchange.is_error_body_unreadable
-            or (exchange.outcome == "rejected" and exchange.status not in DEFINITE_REFUSAL_STATUSES)
-        ):
+        if _is_unknown_update_exchange(exchange):
             # The change is absolute, so an unknown outcome repeats it.
             assert exchange.failure is not None
             return MutationAttempt.retry(exchange.failure, exchange.retry_after)

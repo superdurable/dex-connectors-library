@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { HeartbeatContext } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 import { HiverClient } from '../src/client.js';
 import type { Credentials } from '../src/generated/models.js';
@@ -189,6 +190,42 @@ describe('credential failures on a first send', () => {
       context.attempt = attemptNumber;
       const attempt = await newClient(new Provider([() => json(500)]), credentials).updateConversation().invoke(call(context, 'updateConversation'), update);
       expect(attempt.kind).toBe(kind);
+    }
+  });
+
+  it.each([
+    ['reauthorization', new ReauthorizationRequiredError(), true],
+    ['missing connection object', new ObjectNotFoundError(), true],
+    ['unselected connection', new ConnectionNotSelectedError(), true],
+    ['broker refusal', new CredentialBrokerRejectedError(), true],
+    ['broker outage', new CredentialBrokerUnavailableError(), false],
+    ['unlisted error', new TypeError('unlisted'), false],
+  ] as const)('classifies a %s credential failure on a first send', async (_name, error, isTerminal) => {
+    const context = new HeartbeatContext(undefined, undefined, '', callId);
+    const provider = new Provider([() => json(201)]);
+    const attempt = await newClient(provider, { resolve: async () => { throw error; } }).addNote().invoke(call(context, 'addNote'), noteInput);
+    expect(provider.requestCount).toBe(0);
+    expect(markerState(context)).toBe('notSent');
+    if (isTerminal) expect(attempt).toMatchObject({ kind: 'branch', branch: 'defect' });
+    else expect(attempt.kind).toBe('retry');
+  });
+});
+
+describe('updateConversation pre-write lookups', () => {
+  it.each([
+    [404, '{}', 'notFound'], [403, '{}', 'providerRejected'], [200, '{"data":"SENTINEL"}', ''], [409, '{}', ''], [500, '{}', ''], [301, '{}', ''],
+    [400, '{"message":"hiverTestKey0123456789"}', ''],
+  ] as const)('select a branch only for a definite answer: HTTP %s %s', async (status, body, branch) => {
+    for (const update of [
+      { inboxId: '105902', conversationId: '573741352', assigneeEmail: 'phoebe@acme.example.com' },
+      { inboxId: '105902', conversationId: '573741352', applyTagNames: ['billing'] },
+    ]) {
+      const provider = new Provider([() => json(status, body)]);
+      const context = new HeartbeatContext(undefined, undefined, '', callId);
+      const attempt = await newClient(provider).updateConversation().invoke(call(context, 'updateConversation'), update);
+      expect(provider.requestCount).toBe(1);
+      if (!branch) expect(attempt.kind).toBe('retry');
+      else expect(attempt).toMatchObject({ kind: 'branch', branch });
     }
   });
 });

@@ -118,7 +118,7 @@ export const UpdateConversationBranchUpdated = UpdateConversationBranch.Updated;
 export const UpdateConversationBranchNotFound = UpdateConversationBranch.NotFound;
 /** Hiver conclusively rejected the change, or the assignee email or a tag name was not found in the shared inbox; this attempt changed nothing, though an earlier attempt that ended unconfirmed may have applied the change. */
 export const UpdateConversationBranchProviderRejected = UpdateConversationBranch.ProviderRejected;
-/** A user search or tag page read before the change was malformed or oversized, so this attempt sent no change. A malformed answer after the change is sent repeats the absolute change instead. */
+/** Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so a malformed or oversized lookup or answer repeats the absolute change. */
 export const UpdateConversationBranchInvalidResponse = UpdateConversationBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateConversationBranchDefect = UpdateConversationBranch.Defect;
@@ -129,7 +129,7 @@ export const UpdateConversationDefinition: MutationDefinition = {
     { id: "updated", description: "The conversation, read back after the change, holds the requested status, assignee, and tags." },
     { id: "notFound", description: "The conversation or shared inbox does not exist or is not visible to the API key.", optional: true },
     { id: "providerRejected", description: "Hiver conclusively rejected the change, or the assignee email or a tag name was not found in the shared inbox; this attempt changed nothing, though an earlier attempt that ended unconfirmed may have applied the change.", optional: true },
-    { id: "invalidResponse", description: "A user search or tag page read before the change was malformed or oversized, so this attempt sent no change. A malformed answer after the change is sent repeats the absolute change instead.", optional: true },
+    { id: "invalidResponse", description: "Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so a malformed or oversized lookup or answer repeats the absolute change.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 60000, executeDurability: "async" },
