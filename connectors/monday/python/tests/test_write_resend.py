@@ -34,23 +34,34 @@ ADDED_UPDATE = {"data": {"create_update": {"id": "5550004", "item_id": "98765432
 class AttemptContext:
     """Keep the last heartbeat across Execute attempts like Dex does."""
 
-    def __init__(self, attempt: int = 1, marker: Marker | None = None) -> None:
+    def __init__(self, attempt: int = 1) -> None:
         self.attempt = attempt
         self.run_id = "run"
         self.deadline = datetime.now(UTC) + timedelta(seconds=30)
-        self.marker = marker
+        self.heartbeat_value: object = None
+        self.read_error: Exception | None = None
+
+    @property
+    def marker(self) -> Marker | None:
+        """Decode this call's marker from a single marker or the checkpoint map."""
+        if isinstance(self.heartbeat_value, Marker) or self.heartbeat_value is None:
+            return self.heartbeat_value
+        assert isinstance(self.heartbeat_value, dict)
+        return Marker.from_wire(self.heartbeat_value["singleDispatchMarkers"][str(CALL_ID)])
 
     def has_last_heartbeat_value(self) -> bool:
         """Report whether an earlier attempt recorded a heartbeat."""
-        return self.marker is not None
+        return self.heartbeat_value is not None or self.read_error is not None
 
     def get_last_heartbeat_value(self, value_type: type[object]) -> object:
-        """Return the last marker."""
-        return self.marker
+        """Return the last heartbeat exactly as the SDK wrote it."""
+        if self.read_error is not None:
+            raise self.read_error
+        return self.heartbeat_value
 
     async def heartbeat(self, value: object = None) -> None:
-        """Record the attempt's marker."""
-        self.marker = value if isinstance(value, Marker) else None
+        """Record the attempt's heartbeat exactly as written."""
+        self.heartbeat_value = value
 
 
 async def run(
@@ -190,10 +201,11 @@ async def test_refusal_of_a_resend_is_uncertain() -> None:
 
 
 @pytest.mark.asyncio
-async def test_untrusted_checkpoint_retries_without_sending() -> None:
+async def test_unreadable_checkpoint_retries_without_sending() -> None:
     requests: list[httpx.Request] = []
-    foreign = Marker(call_id=sdk.CallID("8a2b6f7e-61b9-4d1a-9c55-2f3c1e0b9d41"), attempt=1, state="claimed")
-    assert await run("createItem", 200, CREATED_ITEM, AttemptContext(2, foreign), requests) == "retry"
+    context = AttemptContext(2)
+    context.read_error = RuntimeError("heartbeat store unavailable")
+    assert await run("createItem", 200, CREATED_ITEM, context, requests) == "retry"
     assert requests == []
 
 
