@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, timedelta
 from email.utils import parseaddr
-from typing import Any, TypeVar
+from typing import Any, Protocol, TypeVar
 
 from dex_connectors.sdk import (
     Call,
@@ -32,7 +32,7 @@ from dex_connectors.sdk.singledispatch import (
 )
 
 from ._generated import definitions as defs
-from .client import Client, Exchange
+from .client import Client, Exchange, accepted_provider_id
 from .models import (
     AddNoteInput,
     AddNoteOutput,
@@ -54,8 +54,14 @@ _TIME = re.compile(
     r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:[.,][0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
 )
 Output = TypeVar("Output")
+_DecodedOutput = TypeVar("_DecodedOutput", covariant=True)
 # Only these statuses prove Freshdesk applied nothing; any other non-2xx answer may have been applied.
 _DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+# A read with one of these outcomes may answer differently on a later attempt.
+_TRANSIENT_OUTCOMES = frozenset({"rateLimited", "notSent", "unavailable", "serviceUnavailable"})
+# Freshdesk's largest conversation page, and the pages a note read-back searches in one attempt.
+_ACCEPTED_CONVERSATION_PAGE_SIZE = 100
+_MAXIMUM_ACCEPTED_CONVERSATION_PAGES = 10
 _MAXIMUM_PROVIDER_ID = 2**63 - 1
 
 
@@ -68,6 +74,30 @@ class _WritePermit:
     is_first_send: bool
     # This attempt's send leaves room under the cap for one more.
     can_resend_unknown_outcome: bool
+    # An earlier attempt checkpointed this ID; nonzero means read back and never send.
+    saved_provider_id: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class _AcceptedWriteReadBack:
+    """The result of reading an accepted write back by provider ID."""
+
+    is_confirmed: bool
+    # The last read; its failure explains an unconfirmed read-back.
+    exchange: Exchange
+    output: Any = None
+
+
+class _AcceptedWriteReader(Protocol[_DecodedOutput]):
+    """Decode one operation's accepted answer and read the write back by provider ID."""
+
+    def decode_accepted_write(self, body: bytes) -> tuple[_DecodedOutput, int]:
+        """Return the output and provider ID of a 2xx answer; raise ValueError or TypeError."""
+        ...
+
+    async def read_accepted_write(self, call: Call, key: str, provider_id: int) -> _AcceptedWriteReadBack:
+        """Read the accepted write back by the provider ID Freshdesk returned."""
+        ...
 
 
 def _zero_ticket() -> Ticket:
@@ -538,7 +568,10 @@ def _validate_status_priority(status: int | None, priority: int | None) -> None:
 async def _begin_write(
     client: Client, call: Call, operation: str, definition: MutationDefinition, zero: Output
 ) -> tuple[_WritePermit | None, MutationAttempt[Output] | None]:
-    """Decide whether this attempt may send; Freshdesk has no read-back by Call ID."""
+    """Decide whether this attempt may send or must read a saved provider ID back.
+
+    Freshdesk has no read-back by Call ID, so only a checkpointed provider ID is read back.
+    """
     try:
         fence = Fence(call, definition.step_defaults.execute_method_timeout, max_sends=call.max_sends)
         decision = await fence.decide()
@@ -558,6 +591,21 @@ async def _begin_write(
                 "the single-dispatch checkpoint could not be read; nothing was sent in this attempt",
             )
         )
+    if decision.marker is not None and decision.marker.provider_id:
+        # A saved provider ID proves Freshdesk accepted the write, so it is read back and never resent.
+        saved_provider_id = _marker_provider_id(decision.marker)
+        if not saved_provider_id:
+            return None, MutationAttempt.uncertain(
+                zero,
+                client.failure(
+                    operation,
+                    "PROTOCOL",
+                    "Freshdesk accepted an earlier attempt's write, and its checkpointed ID is not a "
+                    "Freshdesk ID",
+                ),
+                client.receipt(call),
+            )
+        return _WritePermit(fence, False, False, saved_provider_id), None
     if decision.kind == DecisionKind.READ_BACK_REQUIRED:
         return None, MutationAttempt.uncertain(
             zero,
@@ -567,22 +615,7 @@ async def _begin_write(
                 "earlier attempts may have sent the request and the send cap is reached, "
                 "so it is not sent again",
             ),
-            client.receipt(call, object_id=_marker_provider_id(decision.marker)),
-        )
-    if (
-        decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
-        and decision.marker is not None
-        and decision.marker.provider_id
-    ):
-        # A saved provider ID proves Freshdesk accepted the write, so it is never resent.
-        return None, MutationAttempt.uncertain(
-            zero,
-            client.failure(
-                operation,
-                "TRANSPORT",
-                "Freshdesk accepted an earlier attempt's write, and its answer was lost",
-            ),
-            client.receipt(call, object_id=_marker_provider_id(decision.marker)),
+            client.receipt(call),
         )
     prior_sends = decision.prior_send_upper_bound
     return _WritePermit(fence, prior_sends == 0, prior_sends + 1 < call.max_sends), None
@@ -617,8 +650,12 @@ async def _send_write(
     path: str,
     payload: dict[str, Any],
     write_budget: float,
-) -> tuple[Exchange | None, MutationAttempt[Any] | None]:
-    """Dispatch one POST under the fence; a refused dispatch returns its Retry attempt."""
+    zero: Output,
+) -> tuple[Exchange | None, MutationAttempt[Output] | None]:
+    """Dispatch one POST under the fence; a refused dispatch returns its Retry attempt.
+
+    The write window expiring after dispatch is an unknown outcome.
+    """
     try:
         exchange = await permit.fence.dispatch(
             lambda deadline: client.exchange(
@@ -637,7 +674,103 @@ async def _send_write(
         return None, MutationAttempt.retry(
             client.failure(operation, "AVAILABILITY", "Freshdesk write was not dispatched")
         )
+    except TimeoutError:
+        # The claim was recorded and the request may have reached Freshdesk.
+        failure = client.failure(
+            operation, "TRANSPORT", "Freshdesk did not answer within the single-dispatch write window"
+        )
+        return None, _resend_or_uncertain(permit, zero, failure, 0, client.receipt(call))
     return exchange, None
+
+
+async def _finish_write(
+    client: Client,
+    call: Call,
+    permit: _WritePermit,
+    operation: str,
+    key: str,
+    exchange: Exchange,
+    success_branch: str,
+    zero: Output,
+    reader: _AcceptedWriteReader[Output],
+    not_found: str = "providerRejected",
+) -> MutationAttempt[Output]:
+    """Map a sent write; any 2xx, or an answer carrying a created ID, is accepted and never resent."""
+    if 200 <= exchange.status < 300:
+        failure = exchange.failure
+        if exchange.outcome == "succeeded":
+            try:
+                output, provider_id = reader.decode_accepted_write(exchange.body)
+            except (ValueError, TypeError) as error:
+                failure = client.failure(
+                    operation,
+                    "PROTOCOL",
+                    f"Freshdesk accepted the write but returned an invalid answer: {error}",
+                )
+            else:
+                await _record_accepted_write(permit, provider_id)
+                return MutationAttempt.branch_result(
+                    success_branch, output, client.receipt(call, exchange, provider_id)
+                )
+        assert failure is not None
+        return await _complete_unreadable_accepted_write(
+            client, call, permit, key, exchange, accepted_provider_id(exchange.body), failure,
+            success_branch, zero, reader,
+        )
+    assert exchange.failure is not None
+    if exchange.body_provider_id:
+        return await _complete_unreadable_accepted_write(
+            client, call, permit, key, exchange, exchange.body_provider_id, exchange.failure,
+            success_branch, zero, reader,
+        )
+    return await _write_exchange_attempt(client, call, permit, exchange, zero, not_found)
+
+
+async def _complete_unreadable_accepted_write(
+    client: Client,
+    call: Call,
+    permit: _WritePermit,
+    key: str,
+    exchange: Exchange,
+    provider_id: int,
+    failure: Failure,
+    success_branch: str,
+    zero: Output,
+    reader: _AcceptedWriteReader[Output],
+) -> MutationAttempt[Output]:
+    """Read back an accepted write whose answer was unusable; without an ID select uncertain."""
+    if not provider_id:
+        return MutationAttempt.uncertain(zero, failure, client.receipt(call, exchange))
+    try:
+        await permit.fence.record_provider_id(str(provider_id))
+        is_provider_id_recorded = True
+    except Exception:
+        # Without a saved ID a later attempt could resend, so Retry is forbidden.
+        is_provider_id_recorded = False
+    return await _confirm_accepted_write(
+        client, call, key, provider_id, is_provider_id_recorded, success_branch, zero, reader
+    )
+
+
+async def _confirm_accepted_write(
+    client: Client,
+    call: Call,
+    key: str,
+    provider_id: int,
+    is_provider_id_recorded: bool,
+    success_branch: str,
+    zero: Output,
+    reader: _AcceptedWriteReader[Output],
+) -> MutationAttempt[Output]:
+    """Read an accepted write back: confirmed succeeds, a checkpointed transient failure retries."""
+    read_back = await reader.read_accepted_write(call, key, provider_id)
+    receipt = client.receipt(call, read_back.exchange, provider_id)
+    if read_back.is_confirmed:
+        return MutationAttempt.branch_result(success_branch, read_back.output, receipt)
+    assert read_back.exchange.failure is not None
+    if is_provider_id_recorded and read_back.exchange.outcome in _TRANSIENT_OUTCOMES:
+        return MutationAttempt.retry(read_back.exchange.failure, read_back.exchange.retry_after)
+    return MutationAttempt.uncertain(zero, read_back.exchange.failure, receipt)
 
 
 async def _write_exchange_attempt(
@@ -647,10 +780,8 @@ async def _write_exchange_attempt(
     exchange: Exchange,
     zero: Output,
     not_found: str = "providerRejected",
-) -> MutationAttempt[Output] | None:
-    """Map a sent write; only a definite refusal selects a refusal branch."""
-    if exchange.outcome == "succeeded":
-        return None
+) -> MutationAttempt[Output]:
+    """Map a sent write Freshdesk did not accept; only a complete definite refusal selects a refusal."""
     assert exchange.failure is not None
     if exchange.outcome in ("rateLimited", "notSent", "serviceUnavailable"):
         try:
@@ -659,12 +790,19 @@ async def _write_exchange_attempt(
             pass  # A lost checkpoint leaves the claim, so the next attempt counts this send.
         return MutationAttempt.retry(exchange.failure, exchange.retry_after)
     receipt = client.receipt(call, exchange)
-    if exchange.outcome == "notFound":
+    if exchange.outcome == "notFound" and not exchange.is_body_incomplete:
         return await _reject_write(client, permit, exchange.failure, receipt, not_found, zero)
-    if exchange.outcome == "defect" and permit.is_first_send:
+    if exchange.outcome == "defect":
         # defect would hide an earlier possible send, so only a first send selects it.
-        return await _reject_write(client, permit, exchange.failure, Receipt(), "defect", zero)
-    if exchange.outcome == "rejected" and exchange.status in _DEFINITE_REFUSAL_STATUSES:
+        if permit.is_first_send:
+            return await _reject_write(client, permit, exchange.failure, Receipt(), "defect", zero)
+        # The request could not be built, so a resend would fail the same way.
+        return MutationAttempt.uncertain(zero, exchange.failure, receipt)
+    if (
+        exchange.outcome == "rejected"
+        and exchange.status in _DEFINITE_REFUSAL_STATUSES
+        and not exchange.is_body_incomplete
+    ):
         return await _reject_write(client, permit, exchange.failure, receipt, "providerRejected", zero)
     return _resend_or_uncertain(permit, zero, exchange.failure, exchange.retry_after, receipt)
 
@@ -692,31 +830,6 @@ def _resend_or_uncertain(
         # The claim stays the last marker, so the next attempt counts this send.
         return MutationAttempt.retry(failure, retry_after)
     return MutationAttempt.uncertain(zero, failure, receipt)
-
-
-async def _accepted_write_attempt(
-    client: Client, call: Call, permit: _WritePermit, exchange: Exchange, zero: Output, failure: Failure
-) -> MutationAttempt[Output]:
-    """Handle a 2xx body that failed to decode; only an answer without an ID is resent."""
-    provider_id = _accepted_provider_id(exchange.body)
-    if not provider_id:
-        return _resend_or_uncertain(permit, zero, failure, 0, client.receipt(call, exchange))
-    await _record_accepted_write(permit, provider_id)
-    return MutationAttempt.uncertain(zero, failure, client.receipt(call, exchange, provider_id))
-
-
-def _accepted_provider_id(body: bytes) -> int:
-    """Return the positive top-level integer id of a 2xx body, or 0 when it has none."""
-    try:
-        document = json.loads(body)
-    except (ValueError, TypeError):
-        return 0
-    if not isinstance(document, dict):
-        return 0
-    provider_id = document.get("id")
-    if type(provider_id) is not int or not 1 <= provider_id <= _MAXIMUM_PROVIDER_ID:
-        return 0
-    return provider_id
 
 
 async def _record_accepted_write(permit: _WritePermit, provider_id: int) -> None:
@@ -783,6 +896,11 @@ class CreateTicketOperation:
         key, failure, transient = await self.client.resolve_credentials(call, operation)
         if failure:
             return await _credential_attempt(self.client, permit, failure, transient, zero)
+        reader = _CreatedTicketReader(self.client)
+        if permit.saved_provider_id:
+            return await _confirm_accepted_write(
+                self.client, call, key, permit.saved_provider_id, True, "created", zero, reader
+            )
         payload: dict[str, Any] = {
             "subject": input.subject,
             "description": _html(input.description),
@@ -800,33 +918,49 @@ class CreateTicketOperation:
             if value:
                 payload[name] = value
         exchange, terminal = await _send_write(
-            self.client, call, permit, operation, key, "/tickets", payload, write_budget
+            self.client, call, permit, operation, key, "/tickets", payload, write_budget, zero
         )
         if exchange is None:
             assert terminal is not None
             return terminal
-        terminal = await _write_exchange_attempt(self.client, call, permit, exchange, zero)
-        if terminal:
-            return terminal
-        try:
-            ticket = _ticket(exchange.body)
-        except (ValueError, TypeError) as error:
-            return await _accepted_write_attempt(
-                self.client,
-                call,
-                permit,
-                exchange,
-                zero,
-                self.client.failure(
-                    operation,
-                    "PROTOCOL",
-                    f"Freshdesk accepted the ticket but returned an invalid ticket: {error}",
-                ),
-            )
-        await _record_accepted_write(permit, ticket.id)
-        return MutationAttempt.branch_result(
-            "created", CreateTicketOutput(ticket), self.client.receipt(call, exchange, ticket.id)
+        return await _finish_write(
+            self.client, call, permit, operation, key, exchange, "created", zero, reader
         )
+
+
+class _CreatedTicketReader:
+    """Decode a created ticket and read it back by ID."""
+
+    def __init__(self, client: Client) -> None:
+        self.client = client
+
+    def decode_accepted_write(self, body: bytes) -> tuple[CreateTicketOutput, int]:
+        ticket = _ticket(body)
+        return CreateTicketOutput(ticket), ticket.id
+
+    async def read_accepted_write(self, call: Call, key: str, provider_id: int) -> _AcceptedWriteReadBack:
+        """Read GET /tickets/{id}; a missing or invalid ticket is unconfirmed."""
+        exchange = await self.client.exchange(call, "createTicket", key, "GET", f"/tickets/{provider_id}")
+        if exchange.outcome != "succeeded":
+            return _AcceptedWriteReadBack(False, exchange)
+        try:
+            ticket = _ticket(exchange.body, provider_id)
+        except (ValueError, TypeError) as error:
+            return _unconfirmed_read_back(
+                self.client,
+                exchange,
+                "createTicket",
+                f"Freshdesk accepted the ticket, and its read-back returned an invalid ticket: {error}",
+            )
+        return _AcceptedWriteReadBack(True, exchange, CreateTicketOutput(ticket))
+
+
+def _unconfirmed_read_back(
+    client: Client, exchange: Exchange, operation: str, message: str
+) -> _AcceptedWriteReadBack:
+    return _AcceptedWriteReadBack(
+        False, replace(exchange, outcome="invalid", failure=client.failure(operation, "PROTOCOL", message))
+    )
 
 
 class UpdateTicketOperation:
@@ -921,8 +1055,9 @@ class UpdateTicketOperation:
                 self.client.receipt(call, first, input.ticket_id),
             )
         second = await self.client.exchange(call, operation, key, "PUT", path, payload=payload)
-        if second.outcome not in ("succeeded", "notFound", "defect") and not (
-            second.outcome == "rejected" and second.status in _DEFINITE_REFUSAL_STATUSES
+        if second.is_body_incomplete or (
+            second.outcome not in ("succeeded", "notFound", "defect")
+            and not (second.outcome == "rejected" and second.status in _DEFINITE_REFUSAL_STATUSES)
         ):
             # The PUT sets final values, so an unknown outcome repeats it.
             assert second.failure is not None
@@ -980,6 +1115,11 @@ class AddNoteOperation:
         key, failure, transient = await self.client.resolve_credentials(call, operation)
         if failure:
             return await _credential_attempt(self.client, permit, failure, transient, zero)
+        reader = _AddedConversationReader(self.client, input)
+        if permit.saved_provider_id:
+            return await _confirm_accepted_write(
+                self.client, call, key, permit.saved_provider_id, True, "added", zero, reader
+            )
         path = f"/tickets/{input.ticket_id}/" + ("reply" if input.is_public_reply else "notes")
         payload: dict[str, Any] = (
             {"body": _html(input.body)}
@@ -987,40 +1127,91 @@ class AddNoteOperation:
             else {"body": _html(input.body), "private": True}
         )
         exchange, terminal = await _send_write(
-            self.client, call, permit, operation, key, path, payload, write_budget
+            self.client, call, permit, operation, key, path, payload, write_budget, zero
         )
         if exchange is None:
             assert terminal is not None
             return terminal
-        terminal = await _write_exchange_attempt(self.client, call, permit, exchange, zero, "notFound")
-        if terminal:
-            return terminal
-        try:
-            wire = _object(exchange.body)
-            conversation = _conversation(wire)
-            if conversation.ticket_id and conversation.ticket_id != input.ticket_id:
-                raise ValueError
-            private = _boolean(wire.get("private")) if wire.get("private") is not None else True
-            conversation = replace(
-                conversation,
-                ticket_id=input.ticket_id,
-                source=0 if input.is_public_reply else 2,
-                is_private=False if input.is_public_reply else private,
-            )
-        except (ValueError, TypeError) as error:
-            return await _accepted_write_attempt(
-                self.client,
+        return await _finish_write(
+            self.client, call, permit, operation, key, exchange, "added", zero, reader, "notFound"
+        )
+
+
+def _added_conversation(value: Any, input: AddNoteInput) -> TicketConversation:
+    """Decode an added conversation, filling its kind from the request as a reply answer lacks it."""
+    wire = _object(value)
+    conversation = _conversation(wire)
+    if conversation.ticket_id and conversation.ticket_id != input.ticket_id:
+        raise ValueError("conversation response is for another ticket")
+    private = _boolean(wire.get("private")) if wire.get("private") is not None else True
+    return replace(
+        conversation,
+        ticket_id=input.ticket_id,
+        source=0 if input.is_public_reply else 2,
+        is_private=False if input.is_public_reply else private,
+    )
+
+
+class _AddedConversationReader:
+    """Decode an added note or reply and find it in the ticket's conversation list."""
+
+    def __init__(self, client: Client, input: AddNoteInput) -> None:
+        self.client = client
+        self.input = input
+
+    def decode_accepted_write(self, body: bytes) -> tuple[AddNoteOutput, int]:
+        conversation = _added_conversation(body, self.input)
+        return AddNoteOutput(conversation), conversation.id
+
+    async def read_accepted_write(self, call: Call, key: str, provider_id: int) -> _AcceptedWriteReadBack:
+        """Page GET /tickets/{id}/conversations, Freshdesk's only conversation read, for the ID."""
+        for page in range(1, _MAXIMUM_ACCEPTED_CONVERSATION_PAGES + 1):
+            exchange = await self.client.exchange(
                 call,
-                permit,
-                exchange,
-                zero,
-                self.client.failure(
-                    operation,
-                    "PROTOCOL",
-                    f"Freshdesk accepted the note but returned an invalid conversation: {error}",
-                ),
+                "addNote",
+                key,
+                "GET",
+                f"/tickets/{self.input.ticket_id}/conversations",
+                {"per_page": str(_ACCEPTED_CONVERSATION_PAGE_SIZE), "page": str(page)},
             )
-        await _record_accepted_write(permit, conversation.id)
-        return MutationAttempt.branch_result(
-            "added", AddNoteOutput(conversation), self.client.receipt(call, exchange, conversation.id)
+            if exchange.outcome != "succeeded":
+                return _AcceptedWriteReadBack(False, exchange)
+            try:
+                rows = json.loads(exchange.body)
+            except (ValueError, TypeError):
+                rows = None
+            if not isinstance(rows, list):
+                return _unconfirmed_read_back(
+                    self.client,
+                    exchange,
+                    "addNote",
+                    "Freshdesk accepted the note, and its read-back returned an invalid conversation page",
+                )
+            for row in rows:
+                row_id = row.get("id") if isinstance(row, dict) else None
+                if type(row_id) is not int or row_id != provider_id:
+                    continue
+                try:
+                    conversation = _added_conversation(row, self.input)
+                except (ValueError, TypeError) as error:
+                    return _unconfirmed_read_back(
+                        self.client,
+                        exchange,
+                        "addNote",
+                        "Freshdesk accepted the note, and its read-back returned an invalid "
+                        f"conversation: {error}",
+                    )
+                return _AcceptedWriteReadBack(True, exchange, AddNoteOutput(conversation))
+            if not (exchange.headers and 'rel="next"' in exchange.headers.get("Link", "")):
+                return _unconfirmed_read_back(
+                    self.client,
+                    exchange,
+                    "addNote",
+                    "Freshdesk accepted the note, and the ticket's conversations do not list it",
+                )
+        return _unconfirmed_read_back(
+            self.client,
+            Exchange("invalid"),
+            "addNote",
+            "Freshdesk accepted the note, and it is not within the ticket's first conversation pages",
         )

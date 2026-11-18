@@ -69,9 +69,9 @@ GET_TICKET_DEFINITION = QueryDefinition(
 CREATE_TICKET_DEFINITION = MutationDefinition(
     OperationRef(CONNECTOR_ID, CREATE_TICKET_OPERATION_ID),
     (
-        BranchDefinition(CREATED, "Freshdesk created the ticket and returned it.", False),
+        BranchDefinition(CREATED, "Freshdesk created the ticket and returned it, or the ticket was read back by the ID Freshdesk returned.", False),
         BranchDefinition(PROVIDER_REJECTED, "Freshdesk conclusively rejected the ticket, such as an unknown status, group, or agent; no ticket was created.", True),
-        BranchDefinition(UNCERTAIN, "The ticket may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Freshdesk returned the ticket ID with an invalid ticket. The Step does not send it again.", True),
+        BranchDefinition(UNCERTAIN, "The ticket may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, an oversized refusal, or another server error besides 503; or Freshdesk accepted the ticket with an unusable answer and the ticket could not be read back by its ID. The Step does not send it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -103,10 +103,10 @@ UPDATE_TICKET_DEFINITION = MutationDefinition(
 ADD_NOTE_DEFINITION = MutationDefinition(
     OperationRef(CONNECTOR_ID, ADD_NOTE_OPERATION_ID),
     (
-        BranchDefinition(ADDED, "Freshdesk added the note or reply and returned it.", False),
+        BranchDefinition(ADDED, "Freshdesk added the note or reply and returned it, or the ticket's conversation list shows it by the ID Freshdesk returned.", False),
         BranchDefinition(NOT_FOUND, "The ticket does not exist or is not visible to the connection's agent; nothing was added.", True),
         BranchDefinition(PROVIDER_REJECTED, "Freshdesk conclusively rejected the note or reply; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "The note or reply may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Freshdesk returned the conversation ID with an invalid conversation. The Step does not send it again.", True),
+        BranchDefinition(UNCERTAIN, "The note or reply may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, an oversized refusal, or another server error besides 503; or Freshdesk accepted it with an unusable answer and the ticket's conversation list did not show it by its ID. The Step does not send it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

@@ -145,6 +145,10 @@ type freshdeskExchange struct {
 	response   freshdeskResponse
 	failure    sdkgo.Failure
 	retryAfter time.Duration
+	// isBodyIncomplete means a non-2xx body exceeded maxResponseBytes, so it cannot prove a refusal.
+	isBodyIncomplete bool
+	// bodyProviderID is a created object's id found in a non-2xx body, which means acceptance.
+	bodyProviderID int64
 }
 
 // freshdeskErrorSummary holds only Freshdesk's machine-readable error code and field=code pairs.
@@ -301,7 +305,10 @@ func (client *Client) exchangeWithContext(requestContext context.Context, creden
 		}
 		return freshdeskExchange{outcome: exchangeSucceeded, response: response}
 	}
-	return client.classifyFailureStatus(response, credentials, operation)
+	result := client.classifyFailureStatus(response, credentials, operation)
+	result.isBodyIncomplete = errors.Is(readErr, providerhttp.ErrBodyTooLarge)
+	result.bodyProviderID = acceptedProviderID(body)
+	return result
 }
 
 func (client *Client) buildRequest(requestContext context.Context, credentials Credentials, request freshdeskRequest) (*http.Request, error) {

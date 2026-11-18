@@ -72,11 +72,11 @@ export interface CreateTicketStepConfig<StepInput, OperationInput = CreateTicket
   connection: Connection<{ createTicket(): Mutation<OperationInput, OperationOutput> }>;
   /** Name matching the bound connection. */
   connectionName: string;
-  /** Freshdesk created the ticket and returned it. */
+  /** Freshdesk created the ticket and returned it, or the ticket was read back by the ID Freshdesk returned. */
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Freshdesk conclusively rejected the ticket, such as an unknown status, group, or agent; no ticket was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The ticket may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Freshdesk returned the ticket ID with an invalid ticket. The Step does not send it again. */
+  /** The ticket may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, an oversized refusal, or another server error besides 503; or Freshdesk accepted the ticket with an unusable answer and the ticket could not be read back by its ID. The Step does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -134,13 +134,13 @@ export interface AddNoteStepConfig<StepInput, OperationInput = AddNoteInput, Ope
   connection: Connection<{ addNote(): Mutation<OperationInput, OperationOutput> }>;
   /** Name matching the bound connection. */
   connectionName: string;
-  /** Freshdesk added the note or reply and returned it. */
+  /** Freshdesk added the note or reply and returned it, or the ticket's conversation list shows it by the ID Freshdesk returned. */
   added: StepTarget<MutationResult<OperationOutput>>;
   /** The ticket does not exist or is not visible to the connection's agent; nothing was added. */
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Freshdesk conclusively rejected the note or reply; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The note or reply may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Freshdesk returned the conversation ID with an invalid conversation. The Step does not send it again. */
+  /** The note or reply may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, an oversized refusal, or another server error besides 503; or Freshdesk accepted it with an unusable answer and the ticket's conversation list did not show it by its ID. The Step does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

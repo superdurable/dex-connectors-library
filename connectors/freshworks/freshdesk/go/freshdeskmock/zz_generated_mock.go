@@ -207,7 +207,7 @@ func GetTicketDefault() connectormock.Case[freshdesk.TicketDetails] {
 	return GetTicketCustomerIssueTicket()
 }
 
-// CreateTicketCreated selects the created branch: Freshdesk created the ticket and returned it.
+// CreateTicketCreated selects the created branch: Freshdesk created the ticket and returned it, or the ticket was read back by the ID Freshdesk returned.
 func CreateTicketCreated(value freshdesk.CreateTicketOutput, failure *sdkgo.Failure) connectormock.Case[freshdesk.CreateTicketOutput] {
 	return connectormock.Branch(freshdesk.CreateTicketBranchCreated, value, failure)
 }
@@ -308,7 +308,7 @@ func UpdateTicketDefault() connectormock.Case[freshdesk.UpdateTicketOutput] {
 	return UpdateTicketReprioritizedCustomerIssue()
 }
 
-// AddNoteAdded selects the added branch: Freshdesk added the note or reply and returned it.
+// AddNoteAdded selects the added branch: Freshdesk added the note or reply and returned it, or the ticket's conversation list shows it by the ID Freshdesk returned.
 func AddNoteAdded(value freshdesk.AddNoteOutput, failure *sdkgo.Failure) connectormock.Case[freshdesk.AddNoteOutput] {
 	return connectormock.Branch(freshdesk.AddNoteBranchAdded, value, failure)
 }

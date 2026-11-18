@@ -30,8 +30,12 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
 		if attempt > 1 {
-			context.previousHeartbeat = append(json.RawMessage(nil), context.recordedHeartbeat...)
+			// A later attempt sees the last heartbeat an earlier attempt stored, as Dex supplies it.
+			if context.heartbeatCount > 0 {
+				context.previousHeartbeat = append(json.RawMessage(nil), context.recordedHeartbeat...)
+			}
 			context.recordedHeartbeat = nil
+			context.heartbeatCount = 0
 			context.attempt = int32(attempt)
 		}
 	}, actions: map[string]conformanceOperationInvocation{
