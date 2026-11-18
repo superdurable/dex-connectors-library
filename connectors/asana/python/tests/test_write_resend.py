@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
-from dex_connectors.sdk.singledispatch import Marker
+from dex_connectors.sdk.singledispatch import Marker, State
 
 import dex_connectors.asana as asana
 from dex_connectors.asana._generated.definitions import ADD_COMMENT_DEFINITION, CREATE_TASK_DEFINITION
@@ -57,6 +57,14 @@ class AttemptContext:
         self.heartbeat_value = value
 
 
+class BrokenBodyStream(httpx.AsyncByteStream):
+    """Fail after the response headers arrived."""
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        raise httpx.ReadError("connection lost while reading the body")
+        yield b""
+
+
 async def run(
     operation_name: str,
     status: int,
@@ -65,17 +73,22 @@ async def run(
     requests: list[httpx.Request],
     *,
     max_sends: int = CREATE_TASK_DEFINITION.max_sends,
+    is_body_broken: bool = False,
+    has_credentials: bool = True,
 ) -> str:
     """Run one Execute attempt of an Asana write and return its branch or `retry`."""
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
+        if is_body_broken:
+            return httpx.Response(status, stream=BrokenBodyStream())
         return httpx.Response(status, content=body.encode(), headers={"Content-Type": "application/json"})
 
+    credentials = {CONNECTION: asana.Credentials(sdk.SecretString("token"))} if has_credentials else {}
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as http_client:
         client = asana.Client(
             asana.Config(endpoint="http://127.0.0.1:22201/api/1.0"),
-            sdk.StaticCredentialProvider({CONNECTION: asana.Credentials(sdk.SecretString("token"))}),
+            sdk.StaticCredentialProvider(credentials),
             http_client,
         )
         operation = sdk.OperationRef("asana", operation_name)
@@ -152,4 +165,38 @@ async def test_unreadable_checkpoint_retries_without_sending() -> None:
     context = AttemptContext(2)
     context.heartbeat_read_error = RuntimeError("heartbeat store unavailable")
     assert await run("createTask", 201, CREATED, context, requests) == "retry"
+    assert requests == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_name", ["createTask", "addComment"])
+@pytest.mark.parametrize(
+    ("body", "is_body_broken"),
+    [('{"data":{"gid":"invalid"}}', False), ("", True)],
+    ids=["no usable ID", "body breaks after 2xx headers"],
+)
+async def test_accepted_write_without_an_identity_is_uncertain_and_never_resent(
+    operation_name: str, body: str, is_body_broken: bool
+) -> None:
+    requests: list[httpx.Request] = []
+    result = await run(operation_name, 201, body, AttemptContext(), requests, is_body_broken=is_body_broken)
+    assert result == "uncertain"
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_unreadable_error_body_is_an_unknown_outcome() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    assert await run("createTask", 400, "", context, requests, is_body_broken=True) == "retry"
+    assert context.marker is not None and context.marker.state == "claimed"
+
+
+@pytest.mark.asyncio
+async def test_credential_failure_after_a_possible_send_retries_without_not_sent() -> None:
+    requests: list[httpx.Request] = []
+    marker = Marker(CALL_ID, 1, State.CLAIMED, send_count=1)
+    context = AttemptContext(2, marker)
+    assert await run("createTask", 201, CREATED, context, requests, has_credentials=False) == "retry"
+    assert context.marker is not None and context.marker.state == "claimed" and context.marker.attempt == 1
     assert requests == []

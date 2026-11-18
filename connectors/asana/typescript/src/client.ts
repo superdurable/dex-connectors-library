@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
-import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import type { Config, Credentials } from './generated/models.js';
 import { ListTasksOperation, GetTaskOperation, CreateTaskOperation, UpdateTaskOperation, AddCommentOperation } from './operations.js';
 
@@ -25,7 +25,7 @@ export interface ClientOptions {
 
 /** Bounded provider exchange, including failures before or after dispatch. */
 export type Exchange =
-  | { response: ProviderResponse; isTooLarge: boolean; reflectsSecret: boolean }
+  | { response: ProviderResponse; isTooLarge: boolean; reflectsSecret: boolean; hasBodyReadFailed?: boolean }
   | { error: 'beforeSend' | 'afterSend' | 'notBuilt' | 'interrupted' };
 
 /**
@@ -95,6 +95,8 @@ export class Client {
     } catch (error) {
       if (error instanceof BodyTooLargeError && error.status !== undefined) return { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, isTooLarge: true, reflectsSecret: false };
       if (error instanceof AddressRefusal || error instanceof TypeError) return { error: 'notBuilt' };
+      // Keep a status that arrived before the body failed, so an accepted write is never resent.
+      if ((error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status !== undefined) return { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, isTooLarge: false, reflectsSecret: false, hasBodyReadFailed: true };
       if (error instanceof ProviderTransportError) return { error: error.isProvablyNotSent ? 'beforeSend' : 'afterSend' };
       return { error: 'afterSend' };
     }

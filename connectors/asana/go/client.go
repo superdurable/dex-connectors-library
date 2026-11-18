@@ -138,6 +138,8 @@ const (
 	writeUncertain
 	writeInvalid
 	writeDefect
+	// writeAcceptedUnreadable is a 2xx whose body is unreadable, oversized, or unsafe: Asana applied the write.
+	writeAcceptedUnreadable
 )
 
 // writeClassification is the safe meaning of one write exchange.
@@ -336,17 +338,20 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 	response := result.response
 	switch {
 	case isSuccessStatus(response.statusCode) && response.hasBodyReadFailed:
-		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureTransport, "Asana accepted the "+subject+" but its response was interrupted")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureTransport, "Asana accepted the "+subject+" but its response was interrupted")}
 	case isSuccessStatus(response.statusCode) && response.isBodyTooLarge:
-		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Asana accepted the "+subject+" but its response exceeds the configured size limit")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Asana accepted the "+subject+" but its response exceeds the configured size limit")}
 	case isSuccessStatus(response.statusCode) && response.reflectsSecret:
-		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureProtocol, "Asana accepted the "+subject+" but its response contains credential material")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureProtocol, "Asana accepted the "+subject+" but its response contains credential material")}
 	case isSuccessStatus(response.statusCode):
 		return writeClassification{outcome: writeAccepted}
 	case response.statusCode == http.StatusTooManyRequests:
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureRateLimit, "Asana rate limited the "+subject+" before writing it")}
 	case response.statusCode == http.StatusServiceUnavailable:
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, "Asana "+subject+" is temporarily unavailable")}
+	case response.isBodyTooLarge || response.hasBodyReadFailed:
+		// An error body that cannot be read in full cannot prove a refusal.
+		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureAvailability, fmt.Sprintf("Asana %s outcome is unknown after HTTP %d with an unreadable body", subject, response.statusCode))}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode)}
 	case isDefiniteWriteRefusalStatus(response.statusCode):
@@ -377,6 +382,9 @@ func (client *Client) classifyRepeatableWrite(operationID string, subject string
 		return writeClassification{outcome: writeAccepted}
 	case response.statusCode == http.StatusTooManyRequests:
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureRateLimit, "Asana rate limited the "+subject)}
+	case response.isBodyTooLarge || response.hasBodyReadFailed:
+		// An error body that cannot be read in full cannot prove a refusal.
+		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, fmt.Sprintf("Asana %s outcome is unknown after HTTP %d with an unreadable body, so the update is sent again", subject, response.statusCode))}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode)}
 	case isDefiniteWriteRefusalStatus(response.statusCode):

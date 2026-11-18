@@ -170,8 +170,12 @@ within the cap:
 | One of those refusals after an earlier possible POST | `uncertain` |
 | 429 or 503 | Retry, after `Retry-After` when supplied |
 | DNS, connect, or TLS failure before any connection opened | Retry |
-| Timeout, dropped connection, 3xx, 402, 408, 409, another 4xx, or another 5xx after dispatch | Retry and resend below the send cap; `uncertain` at the cap |
-| 2xx whose body is oversized, unreadable, unusable, or reflects the token | Retry and resend below the send cap; `uncertain` at the cap |
+| Timeout, dropped connection, 3xx, 402, 408, 409, another 4xx, another 5xx, or an error status whose body is unreadable or oversized, after dispatch | Retry and resend below the send cap; `uncertain` at the cap |
+| 2xx whose body still names a valid gid but is otherwise unusable (Go) | Checkpoint the gid and retry; the next attempt reads it back and never resends |
+| 2xx whose body is oversized, unreadable, has no valid gid, or reflects the token | `uncertain`; Asana accepted the POST, so it is never sent again |
+
+Unavailable credentials after an earlier possible POST retry without recording
+that nothing was sent, so the next attempt still counts the earlier POST.
 
 On `providerRejected` and `uncertain`, the Value echoes the requested name,
 project, section, and workspace without a task gid. Asana's `external.gid`
@@ -195,8 +199,9 @@ for a section of a project the task is not in.
 
 Because a repeated move or `PUT` leaves the same task, every ambiguous outcome,
 including a timeout after dispatch, a 5xx, a 3xx, a 409 or another status outside
-400, 401, 403, 404, 411, 413, 414, 415, and 422, or an oversized response,
-retries instead of selecting `uncertain`. A retry can move the task back to the top of the
+400, 401, 403, 404, 411, 413, 414, 415, and 422, or an oversized, unreadable,
+or invalid response, retries instead of selecting `uncertain`, so the declared
+`invalidResponse` branch is no longer selected. A retry can move the task back to the top of the
 section if someone reordered it in between.
 
 ### addComment

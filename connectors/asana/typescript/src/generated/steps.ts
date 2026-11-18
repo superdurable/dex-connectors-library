@@ -79,7 +79,7 @@ export interface CreateTaskStepConfig<StepInput, OperationInput = CreateTaskInpu
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Asana conclusively rejected the task, such as an unknown project, section, assignee, or custom field value, or missing permission; nothing was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send cap is reached and the outcome cannot be confirmed; Asana has no idempotency key, so the task may exist and must not be created again automatically. */
+  /** The send cap is reached and the outcome cannot be confirmed, or Asana accepted the create without a usable task ID; Asana has no idempotency key, so the task may exist and must not be created again automatically. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -109,7 +109,7 @@ export interface UpdateTaskStepConfig<StepInput, OperationInput = UpdateTaskInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Asana conclusively rejected a change, such as an unknown assignee, a section of a project the task is not in, or missing permission. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Asana returned an invalid or oversized task after the update. */
+  /** Kept for compatibility and no longer selected: the update is safe to repeat, so an invalid or oversized task after the update retries. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -143,7 +143,7 @@ export interface AddCommentStepConfig<StepInput, OperationInput = AddCommentInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Asana conclusively rejected the comment, such as missing permission or invalid text; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send cap is reached and the outcome cannot be confirmed; Asana has no idempotency key, so the comment may exist and must not be added again automatically. */
+  /** The send cap is reached and the outcome cannot be confirmed, or Asana accepted the comment without a usable story ID; Asana has no idempotency key, so the comment may exist and must not be added again automatically. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

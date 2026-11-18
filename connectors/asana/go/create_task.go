@@ -133,7 +133,8 @@ func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInp
 	}
 	created, err := decodeData[createdTaskResource](result.response.body)
 	if err != nil || !gidPattern.MatchString(created.GID) {
-		return resendOrSelectUncertain(write, requested, newFailure(createTaskOperationID, sdkgo.FailureProtocol, "Asana accepted the task but returned an unusable task reference"), receipt)
+		return retryAcceptedReadBackOrSelectUncertain(write, createTaskOperationID, acceptedObjectID(result.response.body), requested,
+			"Asana accepted the task but returned an unusable task reference", receipt)
 	}
 	output := requested
 	output.TaskID, output.PermalinkURL = created.GID, created.PermalinkURL

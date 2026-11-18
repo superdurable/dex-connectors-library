@@ -105,7 +105,8 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	}
 	story, err := decodeData[storyResource](result.response.body)
 	if err != nil || !gidPattern.MatchString(story.GID) {
-		return resendOrSelectUncertain(write, requested, newFailure(addCommentOperationID, sdkgo.FailureProtocol, "Asana accepted the comment but returned an unusable story reference"), receipt)
+		return retryAcceptedReadBackOrSelectUncertain(write, addCommentOperationID, acceptedObjectID(result.response.body), requested,
+			"Asana accepted the comment but returned an unusable story reference", receipt)
 	}
 	output := requested
 	output.CommentID, output.Author = story.GID, story.CreatedBy.userView()

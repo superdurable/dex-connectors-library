@@ -5,6 +5,7 @@ package asana
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -54,21 +55,23 @@ func startFencedWrite[OUT any](client *Client, call sdkgo.Call, definition sdkgo
 
 // sessionFailureAttempt maps a credential failure before the send.
 func sessionFailureAttempt[OUT any](write *fencedWrite, operationID string, failure *sdkgo.Failure, echo OUT, defect sdkgo.BranchID) sdkgo.MutationAttempt[OUT] {
-	// notSent after a possible earlier send would hide it, so only a first-send decision records it.
-	if write.decision.Kind == singledispatch.SendAllowed {
-		if err := write.fence.RecordNotSent(); err != nil {
-			return sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Asana setup failed and the not-sent checkpoint could not be recorded"), 0)
-		}
+	if write.hasPossibleEarlierSend {
+		// notSent would hide the earlier send, and Asana credential failures cannot be told apart as transient.
+		return sdkgo.NewMutationRetry[OUT](newFailure(operationID, failure.Kind,
+			"an earlier attempt of this Step may have sent the request and the connection credentials are unavailable: "+failure.Message), 0)
 	}
-	return defectOrSelectUncertain(write, defect, echo, *failure, sdkgo.Receipt{})
+	if err := write.fence.RecordNotSent(); err != nil {
+		return sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Asana setup failed and the not-sent checkpoint could not be recorded"), 0)
+	}
+	return sdkgo.NewMutationBranch(defect, echo, failure, sdkgo.Receipt{})
 }
 
 // dispatchFencedWrite sends once behind the fence; it returns a terminal attempt when the fence forbids sending.
 func dispatchFencedWrite[OUT any](write *fencedWrite, client *Client, session *operationSession, request asanaRequest, operationID string, echo OUT, defect sdkgo.BranchID) (exchangeResult, sdkgo.MutationAttempt[OUT], bool) {
 	var result exchangeResult
 	if !client.canStartRequest(session) {
-		// notSent after a possible earlier send would hide it, so only a first-send decision records it.
-		if write.decision.Kind == singledispatch.SendAllowed {
+		// notSent after a possible earlier send would hide it, so only a first send records it.
+		if !write.hasPossibleEarlierSend {
 			if err := write.fence.RecordNotSent(); err != nil {
 				return result, sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Asana not-sent checkpoint could not be recorded"), 0), true
 			}
@@ -108,6 +111,9 @@ func attemptForWrite[OUT any](write *fencedWrite, operationID string, classifica
 		return defectOrSelectUncertain(write, defect, echo, classification.failure, receipt), true
 	case writeUncertain:
 		return resendOrSelectUncertain(write, echo, classification.failure, receipt), true
+	case writeAcceptedUnreadable:
+		// Asana accepted the write without a readable ID, so it is never sent again.
+		return sdkgo.NewMutationUncertain(echo, classification.failure, receipt), true
 	case writeNotFound:
 		return rejectOrSelectUncertain(write, operationID, notFound, echo, classification.failure, receipt), true
 	default:
@@ -119,6 +125,26 @@ func attemptForWrite[OUT any](write *fencedWrite, operationID string, classifica
 func recordAcceptedWrite(write *fencedWrite, objectID string) {
 	// The accepted result stands; a lost identity checkpoint only keeps the claim.
 	_ = write.fence.RecordProviderID(objectID)
+}
+
+// retryAcceptedReadBackOrSelectUncertain retries an unusable 2xx only when its ID is saved, so the next
+// attempt reads it back and never resends it.
+func retryAcceptedReadBackOrSelectUncertain[OUT any](write *fencedWrite, operationID string, objectID string, echo OUT, message string, receipt sdkgo.Receipt) sdkgo.MutationAttempt[OUT] {
+	if gidPattern.MatchString(objectID) && write.fence.RecordProviderID(objectID) == nil {
+		return sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureProtocol, message+", so the next attempt reads it back"), 0)
+	}
+	return sdkgo.NewMutationUncertain(echo, newFailure(operationID, sdkgo.FailureProtocol, message+", so it is not sent again"), receipt)
+}
+
+// acceptedObjectID returns the gid of an accepted response whose other fields are unusable, or "".
+func acceptedObjectID(body []byte) string {
+	var envelope dataEnvelope[struct {
+		GID string `json:"gid"`
+	}]
+	if json.Unmarshal(body, &envelope) != nil {
+		return ""
+	}
+	return envelope.Data.GID
 }
 
 // resendOrSelectUncertain retries an unknown outcome while the send cap allows another send.
