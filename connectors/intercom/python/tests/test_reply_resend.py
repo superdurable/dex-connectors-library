@@ -142,9 +142,7 @@ def read_back_response(read_back: str) -> httpx.Response:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("read_back", "branch"), [("found", "replied"), ("absent", "uncertain"), ("rateLimited", "uncertain")]
-)
+@pytest.mark.parametrize(("read_back", "branch"), [("found", "replied"), ("absent", "uncertain")])
 async def test_2xx_whose_body_breaks_is_read_back_and_never_resent(read_back: str, branch: str) -> None:
     requests: list[httpx.Request] = []
 
@@ -160,6 +158,29 @@ async def test_2xx_whose_body_breaks_is_read_back_and_never_resent(read_back: st
     if branch == "replied":
         assert result.value.part.id == "3001"
         assert not result.value.was_already_applied
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("later_read_back", "branch"), [("found", "replied"), ("absent", "uncertain")])
+async def test_accepted_reply_whose_read_back_is_rate_limited_is_never_resent(
+    later_read_back: str, branch: str
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            assert not requests[:-1], "the accepted reply is never sent again"
+            return httpx.Response(200, stream=BreakingBody())
+        return read_back_response("rateLimited" if len(requests) == 2 else later_read_back)
+
+    context = AttemptContext()
+    assert isinstance(await reply(respond, context, requests), RetryError)
+    assert context.marker is not None and context.marker.provider_id
+    context.attempt = 2
+    result = await reply(respond, context, requests)
+    assert isinstance(result, MutationResult)
+    assert result.branch == branch
+    assert [request.method for request in requests] == ["POST", "GET", "GET"]
 
 
 @pytest.mark.asyncio

@@ -23,6 +23,9 @@ const (
 
 	// replyReconciliationSkew tolerates a difference between the Worker's and Intercom's clocks.
 	replyReconciliationSkew = 5 * time.Minute
+
+	// acceptedReplyWithoutPartID is the checkpoint provider ID of a reply Intercom accepted without a usable part.
+	acceptedReplyWithoutPartID = "dex:acceptedWithoutPartId"
 )
 
 // ReplyMessageType is Intercom's admin reply type.
@@ -147,14 +150,14 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 	receipt := operation.client.receipt(call, result.response, input.ConversationID)
 	if result.outcome != exchangeSucceeded && result.hasSuccessStatus() {
 		// An oversized, credential-reflecting, or unreadable 2xx still means Intercom accepted the reply.
-		return operation.confirmAcceptedReply(call, credentials, input, result.failure)
+		return operation.confirmAcceptedReply(call, fence, credentials, input, result.failure)
 	}
 	if attempt, isTerminal := classifySentReply(permit, result, output, receipt); isTerminal {
 		return attempt
 	}
 	wire, err := decodeConversationEnvelope(result.response.body, input.ConversationID)
 	if err != nil {
-		return operation.confirmAcceptedReply(call, credentials, input, intercomFailure(sdkgo.FailureProtocol, replyToConversationOperation,
+		return operation.confirmAcceptedReply(call, fence, credentials, input, intercomFailure(sdkgo.FailureProtocol, replyToConversationOperation,
 			"Intercom accepted the reply but returned an invalid conversation: "+err.Error()))
 	}
 	output.ConversationState = ConversationState(wire.State)
@@ -165,7 +168,7 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 	if isPartFound {
 		decoded, err := decodePartWire(part)
 		if err != nil {
-			return operation.confirmAcceptedReply(call, credentials, input, intercomFailure(sdkgo.FailureProtocol, replyToConversationOperation,
+			return operation.confirmAcceptedReply(call, fence, credentials, input, intercomFailure(sdkgo.FailureProtocol, replyToConversationOperation,
 				"Intercom accepted the reply but returned an invalid part: "+err.Error()))
 		}
 		output.Part = decoded
@@ -174,14 +177,17 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 	return sdkgo.NewMutationBranch(ReplyToConversationBranchReplied, output, nil, receipt)
 }
 
-// confirmAcceptedReply reads back once after a 2xx with an unusable answer. No provider ID guards a
-// later attempt against resending, so anything but a confirmed part selects uncertain, never Retry.
+// confirmAcceptedReply never resends an accepted 2xx; a retryable read-back saves an acceptance marker and retries.
 func (operation ReplyToConversationOperation) confirmAcceptedReply(
-	call sdkgo.Call, credentials Credentials, input ReplyToConversationInput, answerFailure sdkgo.Failure,
+	call sdkgo.Call, fence *singledispatch.Fence, credentials Credentials, input ReplyToConversationInput, answerFailure sdkgo.Failure,
 ) sdkgo.MutationAttempt[ReplyToConversationOutput] {
 	readBack := operation.readBackReply(call, credentials, input)
 	if readBack.outcome == replyReadBackFound {
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchReplied, readBack.output, nil, readBack.receipt)
+	}
+	if readBack.outcome == replyReadBackRetryable && fence.RecordProviderID(acceptedReplyWithoutPartID) == nil {
+		return sdkgo.NewMutationRetry[ReplyToConversationOutput](intercomFailure(readBack.failure.Kind, replyToConversationOperation,
+			answerFailure.Message+"; the reply was accepted and is never resent, and "+readBack.failure.Message), readBack.retryAfter)
 	}
 	return sdkgo.NewMutationUncertain(readBack.output, intercomFailure(answerFailure.Kind, replyToConversationOperation,
 		answerFailure.Message+"; the reply was accepted and is never resent, and "+readBack.failure.Message), readBack.receipt)

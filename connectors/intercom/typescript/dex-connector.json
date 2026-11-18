@@ -154,7 +154,7 @@
       "kind": "mutation",
       "operationId": "replyToConversation",
       "inputType": "ReplyToConversationInput",
-      "description": "Add one admin reply or internal note to a conversation. Intercom has no idempotency key, so the Step runs with sync durability and, whenever an earlier attempt may have sent, first reads the conversation back for a part by the same admin with the same type and text; only a read that shows no such part permits a resend while the send cap allows, and any other unconfirmed read, or one at the cap, selects uncertain. A 2xx whose answer is unusable is read back once and never resent. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and count every possible send.",
+      "description": "Add one admin reply or internal note to a conversation. Intercom has no idempotency key, so the Step runs with sync durability and, whenever an earlier attempt may have sent, first reads the conversation back for a part by the same admin with the same type and text; only a read that shows no such part permits a resend while the send cap allows, and any other unconfirmed read, or one at the cap, selects uncertain. A 2xx whose answer is unusable is read back and never resent; a read-back that may succeed later is retried without sending. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and count every possible send.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
