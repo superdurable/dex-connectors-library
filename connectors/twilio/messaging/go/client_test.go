@@ -236,14 +236,6 @@ func TestSendMessageResendsAnUnknownOutcomeAndSelectsUncertainAtTheSendCap(t *te
 			response.WriteHeader(http.StatusBadRequest)
 			writeBody(response, `{"code":21211,"message":"`+strings.Repeat("x", providerhttp.MaxErrorBodyBytes)+`"}`)
 		}, messaging.Config{}, sdkgo.FailureAvailability, false},
-		{"accepted for another account", func(response http.ResponseWriter, _ *http.Request) {
-			response.WriteHeader(http.StatusCreated)
-			writeBody(response, strings.ReplaceAll(messageJSON(testMessageSID, "queued", "null"), testAccountSID, "AC"+strings.Repeat("f", 32)))
-		}, messaging.Config{}, sdkgo.FailureProtocol, true},
-		{"accepted response that reflects the credential", func(response http.ResponseWriter, _ *http.Request) {
-			response.WriteHeader(http.StatusCreated)
-			writeBody(response, strings.ReplaceAll(messageJSON(testMessageSID, "queued", "null"), `"to":"`+testRecipient+`"`, `"to":"`+testAuthToken+`"`))
-		}, messaging.Config{}, sdkgo.FailureProtocol, true},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -267,6 +259,35 @@ func TestSendMessageResendsAnUnknownOutcomeAndSelectsUncertainAtTheSendCap(t *te
 			require.Empty(t, result.Value.SID)
 			require.Equal(t, testRecipient, result.Value.To)
 			require.Len(t, provider.recordedRequests(), 2)
+			requireNoProviderText(t, result)
+		})
+	}
+}
+
+func TestSendMessageReadsBackAnAcceptedSIDWhoseMessageIsUnusable(t *testing.T) {
+	for _, testCase := range []struct {
+		name string
+		body string
+	}{
+		{"accepted for another account", strings.ReplaceAll(messageJSON(testMessageSID, "queued", "null"), testAccountSID, "AC"+strings.Repeat("f", 32))},
+		{"accepted response that reflects the credential", strings.ReplaceAll(messageJSON(testMessageSID, "queued", "null"), `"to":"`+testRecipient+`"`, `"to":"`+testAuthToken+`"`)},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			provider := newTwilioFake(t, func(response http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodPost {
+					response.WriteHeader(http.StatusCreated)
+				}
+				writeBody(response, testCase.body)
+			})
+			client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, authTokenCredentials())
+			result, err := sdkgo.RunMutation(newTestDexContext("send-accepted-unusable"), client.SendMessage(), twilioConnection, validSendInput())
+			require.NoError(t, err, "a returned message SID means a resend could duplicate the message")
+			require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
+			require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
+			require.Empty(t, result.Value.SID)
+			requests := provider.recordedRequests()
+			require.Len(t, requests, 2, "the SID is read back once and the message is never resent")
+			require.Equal(t, http.MethodGet, requests[1].method)
 			requireNoProviderText(t, result)
 		})
 	}

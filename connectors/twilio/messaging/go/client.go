@@ -415,8 +415,9 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		}
 		message, err := client.decodeMessage(response.body, authorization)
 		if err != nil {
-			if messageSIDPattern.MatchString(readMessageSID(response.body)) {
-				return sdkgo.NewMutationUncertain(requested, newFailure("sendMessage", sdkgo.FailureProtocol, "Twilio accepted the request but returned an unusable message"), client.receipt(call, response, "", 0))
+			if messageSID := readMessageSID(response.body); messageSIDPattern.MatchString(messageSID) {
+				// The SID names the created message, so it is read back and never resent.
+				return client.readBackNamedMessage(call, fence, requested, response, messageSID, authorization)
 			}
 			return client.uncertainSend(call, requested, response, sdkgo.FailureProtocol, "Twilio accepted the message, but its response is malformed")
 		}
@@ -425,9 +426,7 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		return sdkgo.NewMutationBranch(SendMessageBranchAccepted, message, nil, client.receipt(call, response, message.SID, 0))
 	case !isBodyUnreadable && messageSIDPattern.MatchString(readMessageSID(response.body)):
 		// An error status naming a created message is contradictory, so the SID is read back, never resent.
-		messageSID := readMessageSID(response.body)
-		isProviderIDSaved := fence.RecordProviderID(messageSID) == nil
-		return client.readBackSentMessage(call, singledispatch.Marker{CallID: call.ID, ProviderID: messageSID}, requested, isProviderIDSaved)
+		return client.readBackNamedMessage(call, fence, requested, response, readMessageSID(response.body), authorization)
 	case response.statusCode == http.StatusTooManyRequests || response.statusCode == http.StatusServiceUnavailable:
 		checkpointErr := fence.RecordCanResend()
 		if response.statusCode == http.StatusTooManyRequests {
@@ -440,7 +439,8 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 			return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureAvailability, "Twilio service and retry checkpoint are temporarily unavailable"), providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now()))
 		}
 		return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureAvailability, "Twilio service is temporarily unavailable"), providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now()))
-	case response.statusCode == http.StatusUnauthorized:
+	case response.statusCode == http.StatusUnauthorized && !isBodyUnreadable:
+		// An unreadable 401 body cannot prove a refusal, so it falls through to the unknown outcome.
 		replacement, refreshFailure, _ := client.resolveAuthorizationAfterRejection(call)
 		if refreshFailure == nil && replacement != authorization {
 			if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
@@ -513,6 +513,16 @@ func (attempt *sendMessageAttempt) send(requestContext context.Context) error {
 
 func (client *Client) uncertainSend(call sdkgo.Call, requested Message, response providerResponse, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[Message] {
 	return sdkgo.NewMutationUncertain(requested, newFailure("sendMessage", kind, message), client.receipt(call, response, "", 0))
+}
+
+// readBackNamedMessage checkpoints a SID that a send response named and reads that message back.
+// A SID that contains the credential is never checkpointed, read back, or put in a Receipt.
+func (client *Client) readBackNamedMessage(call sdkgo.Call, fence *singledispatch.Fence, requested Message, response providerResponse, messageSID string, authorization basicAuthorization) sdkgo.MutationAttempt[Message] {
+	if authorization.password != "" && strings.Contains(messageSID, authorization.password) {
+		return client.uncertainSend(call, requested, response, sdkgo.FailureProtocol, "Twilio accepted the request but returned an unusable message")
+	}
+	isProviderIDSaved := fence.RecordProviderID(messageSID) == nil
+	return client.readBackSentMessage(call, singledispatch.Marker{CallID: call.ID, ProviderID: messageSID}, requested, isProviderIDSaved)
 }
 
 // readBackSentMessage confirms a created message by SID. A transient failure retries only when the SID

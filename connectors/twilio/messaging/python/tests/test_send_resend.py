@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of Twilio messages whose outcome is unknown."""
 
+import asyncio
 import json
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
@@ -310,3 +311,69 @@ async def test_terminal_credential_failure_after_possible_send_selects_uncertain
     assert len(requests) == 1
     result = await send(lambda _: SERVER_FAILURE, AttemptContext(), requests, auth_token="")
     assert isinstance(result, MutationResult) and result.branch == "defect"
+
+
+async def test_accepted_sid_whose_message_does_not_decode_is_read_back_not_resent() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+
+    def answer(request: httpx.Request) -> tuple[int, object]:
+        if request.method == "POST":
+            return (201, {**CREATED[1], "status": "Not A Status"})
+        return (200, CREATED[1])
+
+    result = await send(answer, context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "accepted"
+    assert result.value.sid == MESSAGE_SID
+    assert context.marker is not None and context.marker.provider_id == MESSAGE_SID
+    assert [request.method for request in requests] == ["POST", "GET"]
+
+
+@pytest.mark.parametrize("status", [201, 409])
+async def test_named_sid_that_contains_the_credential_is_never_saved_or_read_back(status: int) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    hex_auth_token = "0123456789abcdef" * 2
+    reflected = {**CREATED[1], "sid": "SM" + hex_auth_token}
+    result = await send(lambda _: (status, reflected), context, requests, auth_token=hex_auth_token)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert hex_auth_token not in result.receipt.provider_object_id
+    assert hex_auth_token not in json.dumps(context.heartbeat_value, default=str)
+    assert len(requests) == 1
+
+
+@pytest.mark.parametrize("unreadable", ["oversized", "interrupted"])
+async def test_unreadable_unauthorized_body_is_an_unknown_outcome(unreadable: str) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    first: tuple[int, object] = (
+        (401, b'{"code":20003,"message":"' + b"x" * 65536 + b'"}')
+        if unreadable == "oversized"
+        else (401, BrokenBodyStream())
+    )
+    answer = sequence(first, (401, {"code": 20003}))
+    assert isinstance(await send(answer, context, requests), RetryError)
+    assert context.marker is not None and context.marker.state == "claimed"
+    context.attempt = 2
+    result = await send(answer, context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 2
+
+
+class StalledBodyStream(httpx.AsyncByteStream):
+    """Stall the response body past the Fence write window, then drop the connection."""
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        await asyncio.sleep(2)
+        yield b"{"
+        raise httpx.ReadError("connection dropped")
+
+
+async def test_success_headers_then_write_deadline_cutting_the_body_are_never_resent() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    # A short Step deadline shortens the Fence write window to about 0.7 seconds.
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
+    result = await send(lambda _: (201, StalledBodyStream()), context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 1

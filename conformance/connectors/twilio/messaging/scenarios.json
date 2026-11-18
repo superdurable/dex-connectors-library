@@ -1726,6 +1726,91 @@
       "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
       "exchanges": [
         {
+          "body": "{\"sid\":\"SMfedcba9876543210fedcba9876543210\",\"account_sid\":\"AC00000000000000000000000000000000\",\"from\":\"+14155550100\",\"to\":\"+14155550123\",\"status\":\"Not A Status\",\"direction\":\"outbound-api\",\"num_segments\":\"1\",\"num_media\":\"0\",\"date_created\":\"Wed, 30 Sep 2026 17:04:05 +0000\"}",
+          "form": {
+            "Body": [
+              "Hello"
+            ],
+            "From": [
+              "+14155550100"
+            ],
+            "To": [
+              "+14155550123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"sid\":\"SMfedcba9876543210fedcba9876543210\",\"account_sid\":\"AC00000000000000000000000000000000\",\"from\":\"+14155550100\",\"to\":\"+14155550123\",\"status\":\"queued\",\"direction\":\"outbound-api\",\"num_segments\":\"1\",\"num_media\":\"0\",\"date_created\":\"Wed, 30 Sep 2026 17:04:05 +0000\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "accepted",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+          "providerId": "SMfedcba9876543210fedcba9876543210",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "accountSid": "AC00000000000000000000000000000000",
+          "createdAt": "2026-09-30T17:04:05Z",
+          "direction": "outbound-api",
+          "from": "+14155550100",
+          "segmentCount": 1,
+          "sentAt": "0001-01-01T00:00:00Z",
+          "sid": "SMfedcba9876543210fedcba9876543210",
+          "status": "queued",
+          "to": "+14155550123",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "input": {
+        "body": "Hello",
+        "to": "+14155550123"
+      },
+      "name": "send_accepted_undecodable_sid_readback",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
           "body": "{\"status\":\"queued\"}",
           "form": {
             "Body": [
