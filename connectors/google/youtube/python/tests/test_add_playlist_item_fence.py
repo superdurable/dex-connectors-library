@@ -19,6 +19,7 @@ from dex_connectors.sdk.projectconfig import (
 from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.google_youtube as youtube
+from dex_connectors.google_youtube._generated.connection import CredentialMaterialError, decode_credentials
 
 ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
@@ -296,9 +297,22 @@ async def test_transient_credential_failure_after_possible_insert_retries() -> N
     assert inserts == 1
 
 
+def sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError the SDK project provider raises after the generated decoder refuses material."""
+    try:
+        try:
+            decode_credentials({"unknown": "value"})
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed material decoded")
+
+
 @pytest.mark.parametrize(
     ("error", "is_terminal"),
     [
+        (sdk_wrapped_material_error(), True),
         (sdk.ReauthorizationRequiredError(), True),
         (ObjectNotFoundError(), True),
         (ConnectionNotSelectedError(), True),

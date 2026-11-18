@@ -7,7 +7,7 @@ import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFou
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call } from '@superdurable/connectors-sdk';
 import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { SearchVideosOperation, GetVideoOperation, GetChannelOperation, ListPlaylistItemsOperation, AddPlaylistItemOperation } from './operations.js';
 
 const defaultEndpoint = 'https://www.googleapis.com/youtube/v3';
@@ -149,7 +149,7 @@ export function goQueryEscape(value: string): string { return encodeURIComponent
 /** Report a resolve failure that only reconnection repairs; any other one is transient. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
-    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 
 function header(response: YouTubeResponse, name: string): string {

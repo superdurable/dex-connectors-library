@@ -90,7 +90,17 @@ TERMINAL_CREDENTIAL_ERRORS = (
     ConnectionNotSelectedError,
     CredentialBrokerRejectedError,
 )
-_VIDEO_ID = re.compile(r"[A-Za-z0-9_-]{11}\Z")
+
+
+def is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a resolve failure that only reconnection repairs, including malformed stored material."""
+    # The generated connection module imports this module, so import it lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return isinstance(error, TERMINAL_CREDENTIAL_ERRORS) or is_credential_material_error(error)
+
+
+_VIDEO_ID =re.compile(r"[A-Za-z0-9_-]{11}\Z")
 _CHANNEL_ID = re.compile(r"UC[A-Za-z0-9_-]{22}\Z")
 _PLAYLIST_ID = re.compile(r"[A-Za-z0-9_-]{2,64}\Z")
 _HANDLE = re.compile(r"@?[A-Za-z0-9._-]{3,30}\Z")
@@ -378,7 +388,7 @@ class Client:
         try:
             credential = await self.credentials.resolve(call)
         except Exception as error:
-            if isinstance(error, TERMINAL_CREDENTIAL_ERRORS):
+            if is_terminal_credential_error(error):
                 failure = _failure(
                     operation, FailureKind.AUTHENTICATION, "the YouTube connection must be authorized again"
                 )
@@ -513,7 +523,7 @@ class Client:
                     )
                     return b"", _empty_receipt(), _Outcome("defect", failure, _empty_receipt())
                 except Exception as error:
-                    if isinstance(error, TERMINAL_CREDENTIAL_ERRORS):
+                    if is_terminal_credential_error(error):
                         failure = _failure(
                             operation,
                             FailureKind.AUTHENTICATION,
