@@ -58,8 +58,9 @@ func (AddCommentOperation) IdempotencyKey(callID sdkgo.CallID, _ AddCommentInput
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /rest/servicedeskapi/request/{issueIdOrKey}/comment without repeating a possibly accepted write.
-// A 429, 503, or proven pre-connection failure retries; other unconfirmed outcomes select uncertain.
+// Invoke sends POST /rest/servicedeskapi/request/{issueIdOrKey}/comment without repeating an accepted write.
+// A 429, 503, or proven pre-connection failure retries; other unconfirmed outcomes resend below the send
+// cap and select uncertain at the cap.
 func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInput) sdkgo.MutationAttempt[AddCommentOutput] {
 	client := operation.client
 	requested := AddCommentOutput{IssueIDOrKey: input.IssueIDOrKey, IsPublic: input.IsPublic}
