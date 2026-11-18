@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -242,7 +243,7 @@ func (client *Client) startSession(call sdkgo.Call, operationID string) (*operat
 	validationErr := validateResolvedCredentials(credentials)
 	if err != nil || validationErr != nil {
 		cancel()
-		isReauthorizationRequired := sdkgo.IsReauthorizationRequired(err) || (err == nil && validationErr != nil)
+		isReauthorizationRequired := isTerminalCredentialError(err) || (err == nil && validationErr != nil)
 		message := "Microsoft Teams connection credentials are temporarily unavailable"
 		if isReauthorizationRequired {
 			message = "Microsoft Teams connection credentials are unavailable; reconnect the connection"
@@ -253,6 +254,13 @@ func (client *Client) startSession(call sdkgo.Call, operationID string) (*operat
 		}
 	}
 	return &operationSession{context: operationContext, call: call, credentials: credentials}, cancel, nil
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // exchange refreshes and resends reads once after a 401.

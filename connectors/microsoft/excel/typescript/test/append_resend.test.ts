@@ -3,7 +3,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, StaticCredentialProvider, type Call, type CredentialRefreshDriver } from '@superdurable/connectors-sdk';
-import { ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
 import { ExcelClient } from '../src/client.js';
 import { AppendTableRowsDefinition, UpdateValuesDefinition } from '../src/generated/definitions.js';
 import type { Credentials } from '../src/models.js';
@@ -128,5 +129,36 @@ describe('Excel appendTableRows bounded resend', () => {
       catch (error) { if (error instanceof RetryError) branches.push('retry'); else throw error; }
     }
     expect(branches).toEqual(['retry', 'defect']);
+  });
+
+  const terminalCredentialErrors: Error[] = [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError()];
+  const transientCredentialErrors: Error[] = [new CredentialBrokerUnavailableError(), new RejectedCredentialNotRefreshedError(), new Error('connection is not configured'), new TypeError('unlisted')];
+
+  it.each([...terminalCredentialErrors, ...transientCredentialErrors].map(error => [error.name, error] as const))('classifies %s like every connector', async (_name, error) => {
+    const isTerminal = terminalCredentialErrors.includes(error);
+    expect(await run(noRequest, new AttemptContext(), failingSource(error))).toBe(isTerminal ? 'defect' : 'retry');
+    expect(await run(noRequest, new AttemptContext(2), failingSource(error))).toBe(isTerminal ? 'uncertain' : 'retry');
+  });
+
+  it('retries a static connection that is not configured', async () => {
+    const other = new StaticCredentialProvider([[{ provider: 'microsoft', name: 'other' }, credentials]]);
+    expect(await run(noRequest, new AttemptContext(), other as unknown as CredentialSource)).toBe('retry');
+  });
+
+  it('treats credential material that fails local checks as terminal', async () => {
+    const unsafe = new StaticCredentialProvider([[connection, { ...credentials, accessToken: new SecretString('bad\ntoken') }]]);
+    expect(await run(noRequest, new AttemptContext(), unsafe as unknown as CredentialSource)).toBe('defect');
+    expect(await run(noRequest, new AttemptContext(2), unsafe as unknown as CredentialSource)).toBe('uncertain');
+  });
+
+  it.each([['empty', ''], ['oversized', 'x'.repeat(5 << 20)]])('treats a refusal with an %s body as unknown', async (_name, body) => {
+    const respond: Respond = async request => {
+      if (request.method === 'POST') {
+        if (body.length > (request.maxResponseBytes ?? 0)) throw new BodyTooLargeError(403, {});
+        return respondJSON(403, body);
+      }
+      return respondJSON(200, request.url.includes('/columns?') ? columns : emptyKeys);
+    };
+    expect(await run(respond, new AttemptContext())).toBe('retry');
   });
 });

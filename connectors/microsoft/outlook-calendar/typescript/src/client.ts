@@ -194,6 +194,9 @@ function failedValidation<T>(
   empty: T,
 ): QueryAttempt<T> {
   const source = error instanceof RequestFailure ? error.kind : "VALIDATION";
+  // Only a non-terminal credential failure carries AVAILABILITY here.
+  if (source === "AVAILABILITY")
+    return newQueryRetry(failure(op, source, (error as Error).message));
   return newQueryBranch(
     "defect",
     empty,

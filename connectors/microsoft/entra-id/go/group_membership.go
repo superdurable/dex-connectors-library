@@ -95,7 +95,10 @@ func (operation AddUserToGroupOperation) Invoke(call sdkgo.Call, input AddUserTo
 	if err != nil {
 		return sdkgo.NewMutationBranch(AddUserToGroupBranchDefect, AddUserToGroupOutput{}, failurePointer(sdkgo.FailureValidation, operationID, err.Error()), sdkgo.Receipt{})
 	}
-	credential, failure := operation.client.resolveCredential(call, operationID)
+	credential, failure, isRetryable := operation.client.resolveCredential(call, operationID)
+	if isRetryable {
+		return sdkgo.NewMutationRetry[AddUserToGroupOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(AddUserToGroupBranchDefect, AddUserToGroupOutput{}, failure, sdkgo.Receipt{})
 	}
@@ -176,7 +179,10 @@ func (operation RemoveUserFromGroupOperation) Invoke(call sdkgo.Call, input Remo
 	if err != nil {
 		return sdkgo.NewMutationBranch(RemoveUserFromGroupBranchDefect, RemoveUserFromGroupOutput{}, failurePointer(sdkgo.FailureValidation, operationID, err.Error()), sdkgo.Receipt{})
 	}
-	credential, failure := operation.client.resolveCredential(call, operationID)
+	credential, failure, isRetryable := operation.client.resolveCredential(call, operationID)
+	if isRetryable {
+		return sdkgo.NewMutationRetry[RemoveUserFromGroupOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(RemoveUserFromGroupBranchDefect, RemoveUserFromGroupOutput{}, failure, sdkgo.Receipt{})
 	}

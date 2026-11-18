@@ -56,7 +56,10 @@ func (operation RevokeSignInSessionsOperation) Invoke(call sdkgo.Call, input Rev
 	if err != nil {
 		return sdkgo.NewMutationBranch(RevokeSignInSessionsBranchDefect, RevokeSignInSessionsOutput{}, failurePointer(sdkgo.FailureValidation, operationID, err.Error()), sdkgo.Receipt{})
 	}
-	credential, failure := operation.client.resolveCredential(call, operationID)
+	credential, failure, isRetryable := operation.client.resolveCredential(call, operationID)
+	if isRetryable {
+		return sdkgo.NewMutationRetry[RevokeSignInSessionsOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(RevokeSignInSessionsBranchDefect, RevokeSignInSessionsOutput{}, failure, sdkgo.Receipt{})
 	}

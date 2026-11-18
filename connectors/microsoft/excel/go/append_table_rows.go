@@ -307,8 +307,9 @@ func (client *Client) appendAttemptFromResponse(
 }
 
 // isDefiniteAppendRefusal reports a refusal status whose body carries no appended table row.
+// An empty body, including an oversized one that sendOnce drops, proves nothing.
 func isDefiniteAppendRefusal(response graphResponse) bool {
-	if !isDefiniteRefusalStatus(response.status) {
+	if !isDefiniteRefusalStatus(response.status) || len(response.body) == 0 {
 		return false
 	}
 	var acceptedRow struct {

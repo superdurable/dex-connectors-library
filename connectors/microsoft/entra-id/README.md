@@ -240,7 +240,8 @@ apart.
 
 | Outcome | Branch or Retry |
 | --- | --- |
-| Invalid input, configuration, or credential | `defect`, before any request |
+| Invalid input or configuration; a terminal credential failure (reauthorization required, a missing or unselected connection, a broker refusal, or a token that fails local checks) | `defect`, before any request |
+| Any other credential failure, such as a broker outage or an unconfigured static connection | Retry, before any request |
 | 404 | `notFound` where the operation declares it, after the checks above |
 | 400 | read-back or membership check for `createUser` and `addUserToGroup`, otherwise `providerRejected` |
 | 401 (after one refresh and resend only when the stored token has expired), 403, and other 4xx | `providerRejected` |

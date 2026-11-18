@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import {
+  ReauthorizationRequiredError,
   resolveCredential,
   resolveCredentialAfterRejection,
   type Call,
@@ -18,11 +19,26 @@ import {
   type ProviderRequest,
   type ProviderResponse,
 } from "@superdurable/connectors-sdk/providerhttp";
+import {
+  ConnectionNotSelectedError,
+  CredentialBrokerRejectedError,
+  ObjectNotFoundError,
+} from "@superdurable/connectors-sdk/projectconfig";
 import type {
   Config,
   CredentialSource,
   Credentials,
 } from "./generated/models.js";
+
+/** Report a credential failure no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return (
+    error instanceof ReauthorizationRequiredError ||
+    error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError ||
+    error instanceof CredentialBrokerRejectedError
+  );
+}
 
 export const graphBase = "https://graph.microsoft.com/v1.0";
 export const marker =
@@ -255,6 +271,19 @@ export class GraphHTTP {
         this.driver,
         call.context.cancellationSignal,
       );
+    } catch (error) {
+      // A non-terminal credential failure is AVAILABILITY, which callers retry.
+      if (isTerminalCredentialError(error))
+        throw new RequestFailure(
+          "AUTHENTICATION",
+          "connection credentials are unavailable",
+        );
+      throw new RequestFailure(
+        "AVAILABILITY",
+        "connection credentials are temporarily unavailable; nothing was sent",
+      );
+    }
+    try {
       const token = material.accessToken?.reveal() ?? "";
       if (
         !isHeaderSafeCredential(token) ||

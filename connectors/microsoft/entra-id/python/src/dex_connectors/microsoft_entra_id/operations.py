@@ -15,6 +15,7 @@ from urllib.parse import parse_qs, urlsplit
 from dex_connectors.sdk import (
     Call,
     CallID,
+    Failure,
     FailureKind,
     IdempotencyKey,
     MutationAttempt,
@@ -29,6 +30,7 @@ from .client import (
     USER_SELECT,
     Client,
     Exchange,
+    _TransientCredentialError,
     convert_user,
     decode_user,
     failure,
@@ -114,6 +116,11 @@ def _failed_mutation(
     return MutationAttempt.branch_result(branch, zero, receipt, exchange.failure)
 
 
+def _transient_credential_failure(operation: str) -> Failure:
+    message = "connection credentials are temporarily unavailable; nothing was sent"
+    return failure(operation, FailureKind.AVAILABILITY, message)
+
+
 def _validation_query(operation: str, zero: Any, error: Exception) -> QueryAttempt[Any]:
     return QueryAttempt.branch_result(
         "defect", zero, Receipt(), failure(operation, FailureKind.VALIDATION, str(error))
@@ -145,6 +152,8 @@ class GetUserOperation:
             return _validation_query(operation, User(), error)
         try:
             credential = await self.client.resolve_credentials(call)
+        except _TransientCredentialError:
+            return QueryAttempt.retry(_transient_credential_failure(operation))
         except Exception:
             return QueryAttempt.branch_result(
                 "defect",
@@ -191,6 +200,8 @@ class ListUsersOperation:
             return _validation_query(operation, ListUsersOutput(), error)
         try:
             credential = await self.client.resolve_credentials(call)
+        except _TransientCredentialError:
+            return QueryAttempt.retry(_transient_credential_failure(operation))
         except Exception:
             return QueryAttempt.branch_result(
                 "defect",
@@ -342,6 +353,8 @@ async def _set_account_enabled(
         return _validation_mutation(operation, User(), error)
     try:
         credential = await client.resolve_credentials(call)
+    except _TransientCredentialError:
+        return MutationAttempt.retry(_transient_credential_failure(operation))
     except Exception:
         return MutationAttempt.branch_result(
             "defect",
@@ -419,6 +432,8 @@ class RevokeSignInSessionsOperation:
             return _validation_mutation(operation, RevokeSignInSessionsOutput(), error)
         try:
             credential = await self.client.resolve_credentials(call)
+        except _TransientCredentialError:
+            return MutationAttempt.retry(_transient_credential_failure(operation))
         except Exception:
             return MutationAttempt.branch_result(
                 "defect",
@@ -488,6 +503,8 @@ class AddUserToGroupOperation:
             return _validation_mutation(operation, AddUserToGroupOutput(), error)
         try:
             credential = await self.client.resolve_credentials(call)
+        except _TransientCredentialError:
+            return MutationAttempt.retry(_transient_credential_failure(operation))
         except Exception:
             return MutationAttempt.branch_result(
                 "defect",
@@ -610,6 +627,8 @@ class RemoveUserFromGroupOperation:
             return _validation_mutation(operation, RemoveUserFromGroupOutput(), error)
         try:
             credential = await self.client.resolve_credentials(call)
+        except _TransientCredentialError:
+            return MutationAttempt.retry(_transient_credential_failure(operation))
         except Exception:
             return MutationAttempt.branch_result(
                 "defect",
@@ -663,6 +682,8 @@ class CreateUserOperation:
             return _validation_mutation(operation, CreateUserOutput(), error)
         try:
             credential = await self.client.resolve_credentials(call)
+        except _TransientCredentialError:
+            return MutationAttempt.retry(_transient_credential_failure(operation))
         except Exception:
             return MutationAttempt.branch_result(
                 "defect",

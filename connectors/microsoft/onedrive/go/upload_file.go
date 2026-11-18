@@ -96,7 +96,10 @@ func (operation UploadFileOperation) Invoke(call sdkgo.Call, input UploadFileInp
 	if err != nil {
 		return sdkgo.NewMutationBranch(UploadFileBranchDefect, UploadFileOutput{}, graphFailurePointer(sdkgo.FailureValidation, uploadFileOperationID, err.Error()), sdkgo.Receipt{})
 	}
-	credential, failure := client.resolveCredential(call, uploadFileOperationID, input.DriveID)
+	credential, failure, isRetryable := client.resolveCredential(call, uploadFileOperationID, input.DriveID)
+	if isRetryable {
+		return sdkgo.NewMutationRetry[UploadFileOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(UploadFileBranchDefect, UploadFileOutput{}, failure, sdkgo.Receipt{})
 	}

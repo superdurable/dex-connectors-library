@@ -1,12 +1,19 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialProvider, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialProvider, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, isHeaderSafeCredential, MaxErrorBodyBytes, parseRetryAfter, ProviderTransportError, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderHTTPClient, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import { DriveItemSchema, type Config, type Credentials, type DriveItem, type ItemIdentity } from './generated/models.js';
 import { CreateFolderOperation, GetFileOperation, ReadFileTextOperation, SearchFilesOperation, UploadFileOperation } from './operations.js';
+
+/** Report a credential failure no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+}
 
 /** Graph item metadata projection; download URLs never enter the result. */
 export const itemFields = 'id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy';
@@ -76,10 +83,18 @@ export class OneDriveClient {
   /** Return the bound uploadFile Mutation. */ uploadFile(): UploadFileOperation { return new UploadFileOperation(this); }
   /** Return the bound createFolder Mutation. */ createFolder(): CreateFolderOperation { return new CreateFolderOperation(this); }
 
-  /** Resolve generated token grants and enforce app-only drive IDs. */
-  async resolveCredentials(call: Call, operation: string, driveID: string): Promise<{ credentials?: Credentials; failure?: Failure }> {
+  /**
+   * Resolve generated token grants and enforce app-only drive IDs. `isRetryable` marks a credential failure
+   * other than reauthorization, a missing or unselected connection, a broker refusal, or invalid material.
+   */
+  async resolveCredentials(call: Call, operation: string, driveID: string): Promise<{ credentials?: Credentials; failure?: Failure; isRetryable?: boolean }> {
+    let credentials: Credentials;
+    try { credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal); }
+    catch (error) {
+      if (isTerminalCredentialError(error)) return { failure: failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable') };
+      return { failure: failure(operation, 'AVAILABILITY', 'connection credentials are temporarily unavailable; nothing was sent'), isRetryable: true };
+    }
     try {
-      const credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
       if (!isHeaderSafeCredential(credentials.accessToken?.reveal() ?? '') || !['', 'microsoft-oauth', 'microsoft-app-only'].includes(credentials.authMethodId ?? '')) throw new TypeError('invalid token');
       if (!driveID && credentials.authMethodId === 'microsoft-app-only') return { failure: failure(operation, 'VALIDATION', 'driveId is required with app-only authorization, which has no signed-in user') };
       return { credentials };

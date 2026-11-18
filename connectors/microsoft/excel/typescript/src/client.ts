@@ -277,9 +277,9 @@ function hasLegacyDispatchMarker(call: Call): boolean {
   } catch { return false; }
 }
 
-/** Report a refusal status whose body carries no appended table row. */
+/** Report a refusal status whose body carries no appended table row; an empty or oversized body proves nothing. */
 function isDefiniteAppendRefusal(response: GraphResult): boolean {
-  if (!definiteRefusalStatuses.has(response.status)) return false;
+  if (!definiteRefusalStatuses.has(response.status) || response.body.length === 0) return false;
   try {
     const document = JSON.parse(new TextDecoder().decode(response.body)) as unknown;
     const index = typeof document === 'object' && document !== null && !Array.isArray(document) ? (document as { index?: unknown }).index : undefined;

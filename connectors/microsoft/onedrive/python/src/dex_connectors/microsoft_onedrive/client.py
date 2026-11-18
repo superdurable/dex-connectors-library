@@ -16,12 +16,15 @@ from dex_connectors.sdk import (
     CredentialProvider,
     Failure,
     FailureKind,
+    ReauthorizationRequiredError,
     Receipt,
     RejectedCredentialRefreshingProvider,
     resolve_credential,
     resolve_credential_after_rejection,
 )
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -39,6 +42,14 @@ from ._generated.config import Credentials as Credentials
 from ._generated.refresh import AUTHORIZATION, CREDENTIAL_FIELDS
 from ._generated.timestamps import parse_go_datetime
 from .models import DriveItem, ItemIdentity
+
+# Only these credential failures need a person; every other one retries.
+_TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
 
 if TYPE_CHECKING:
     from .operations import (
@@ -296,9 +307,24 @@ class Client:
     async def resolve_credentials(
         self, call: Call, operation: str, drive_id: str
     ) -> tuple[Credentials | None, Failure | None]:
-        """Resolve current token with generated refresh and enforce app-only drive selection."""
+        """Resolve current token with generated refresh and enforce app-only drive selection.
+
+        A credential failure that is not terminal returns an AVAILABILITY failure, which the
+        caller retries; every other failure is terminal.
+        """
         try:
             credentials = await resolve_credential(self.credentials, call, self.refresh_driver)
+        except _TERMINAL_CREDENTIAL_ERRORS:
+            return None, graph_failure(
+                FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable"
+            )
+        except Exception:
+            return None, graph_failure(
+                FailureKind.AVAILABILITY,
+                operation,
+                "connection credentials are temporarily unavailable; nothing was sent",
+            )
+        try:
             token = credentials.access_token.reveal() if credentials.access_token else ""
             if not is_header_safe_credential(token) or credentials.auth_method_id not in (
                 "",

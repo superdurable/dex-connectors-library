@@ -231,6 +231,8 @@ class SearchFilesOperation:
                 defs.DEFECT, zero, Receipt(), graph_failure(FailureKind.VALIDATION, operation, str(error))
             )
         credentials, failure = await self.client.resolve_credentials(call, operation, input.drive_id)
+        if failure is not None and failure.kind is FailureKind.AVAILABILITY:
+            return QueryAttempt.retry(failure)
         if failure is not None or credentials is None:
             return QueryAttempt.branch_result(defs.DEFECT, zero, Receipt(), failure)
         is_path = bool(
@@ -380,6 +382,8 @@ class GetFileOperation:
                 ),
             )
         credentials, failure = await self.client.resolve_credentials(call, operation, input.drive_id)
+        if failure is not None and failure.kind is FailureKind.AVAILABILITY:
+            return QueryAttempt.retry(failure)
         if failure is not None or credentials is None:
             return QueryAttempt.branch_result(defs.DEFECT, zero, Receipt(), failure)
         target = (
@@ -434,9 +438,11 @@ class ReadFileTextOperation:
                 ),
             )
         credentials, failure = await self.client.resolve_credentials(call, operation, input.drive_id)
+        if failure is not None and failure.kind is FailureKind.AVAILABILITY:
+            return QueryAttempt.retry(failure)
         if failure is not None or credentials is None:
             return QueryAttempt.branch_result(defs.DEFECT, zero, Receipt(), failure)
-        item_url = self.client.item_url(input.drive_id, input.item_id)
+        item_url =self.client.item_url(input.drive_id, input.item_id)
         exchange = await self.client.send(
             call, credentials, "GET", item_url + "?" + odata_query(("$select", TEXT_FIELDS))
         )
@@ -637,6 +643,8 @@ class UploadFileOperation:
                 defs.DEFECT, zero, Receipt(), graph_failure(FailureKind.VALIDATION, operation, str(error))
             )
         credentials, failure = await self.client.resolve_credentials(call, operation, input.drive_id)
+        if failure is not None and failure.kind is FailureKind.AVAILABILITY:
+            return MutationAttempt.retry(failure)
         if failure is not None or credentials is None:
             return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), failure)
         target = (
@@ -793,6 +801,8 @@ class CreateFolderOperation:
                 defs.DEFECT, zero, Receipt(), graph_failure(FailureKind.VALIDATION, operation, str(error))
             )
         credentials, failure = await self.client.resolve_credentials(call, operation, input.drive_id)
+        if failure is not None and failure.kind is FailureKind.AVAILABILITY:
+            return MutationAttempt.retry(failure)
         if failure is not None or credentials is None:
             return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), failure)
         body = json.dumps(

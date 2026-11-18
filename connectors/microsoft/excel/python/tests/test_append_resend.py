@@ -10,6 +10,13 @@ from typing import get_origin
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+)
+from dex_connectors.sdk.projectconfig.broker import RejectedCredentialNotRefreshedError
 
 import dex_connectors.microsoft_excel as excel
 
@@ -211,3 +218,72 @@ async def test_update_values_retries_a_transient_credential_failure() -> None:
             except sdk.RetryError:
                 branches.append("retry")
     assert branches == ["retry", "defect"]
+
+
+_TERMINAL_CREDENTIAL_ERRORS: tuple[Exception, ...] = (
+    sdk.ReauthorizationRequiredError(),
+    ObjectNotFoundError(),
+    ConnectionNotSelectedError(),
+    CredentialBrokerRejectedError(),
+)
+_TRANSIENT_CREDENTIAL_ERRORS: tuple[Exception, ...] = (
+    CredentialBrokerUnavailableError(),
+    RejectedCredentialNotRefreshedError(),
+    ValueError("connection is not configured"),
+    TimeoutError(),
+    RuntimeError("unlisted"),
+)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("error", _TERMINAL_CREDENTIAL_ERRORS + _TRANSIENT_CREDENTIAL_ERRORS)
+async def test_every_credential_failure_is_classified_the_same_way(error: Exception) -> None:
+    """Only the four terminal classes select defect or uncertain; every other failure retries."""
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request is expected")
+
+    failing = FailingCredentials(error)
+    is_terminal = error in _TERMINAL_CREDENTIAL_ERRORS
+    first_branch, later_branch = ("defect", "uncertain") if is_terminal else ("retry", "retry")
+    assert await _run(respond, AttemptContext(), failing) == first_branch
+    assert await _run(respond, AttemptContext(attempt=2), failing) == later_branch
+
+
+@pytest.mark.asyncio
+async def test_a_static_connection_that_is_not_configured_retries() -> None:
+    """The static provider's plain ValueError is not a credential-material failure."""
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request is expected")
+
+    other_connection = sdk.ConnectionRef("microsoft", "other")
+    token = sdk.SecretString("inert-token")
+    other = sdk.StaticCredentialProvider({other_connection: excel.Credentials(access_token=token)})
+    assert await _run(respond, AttemptContext(), other) == "retry"
+
+
+@pytest.mark.asyncio
+async def test_credential_material_that_fails_local_checks_is_terminal() -> None:
+    """A header-unsafe token selects defect first and uncertain after a possible send."""
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request is expected")
+
+    token = sdk.SecretString("bad\ntoken")
+    unsafe = sdk.StaticCredentialProvider({CONNECTION: excel.Credentials(access_token=token)})
+    assert await _run(respond, AttemptContext(), unsafe) == "defect"
+    assert await _run(respond, AttemptContext(attempt=2), unsafe) == "uncertain"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body", [b"", b'{"error":{"message":"' + b"x" * (5 << 20) + b'"}}'])
+async def test_a_refusal_with_an_empty_or_oversized_body_is_unknown(body: bytes) -> None:
+    """Such a refusal proves nothing, so the append is not mapped to providerRejected."""
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(403, content=body)
+        return httpx.Response(200, content=COLUMNS if request.url.path.endswith("/columns") else EMPTY_KEYS)
+
+    assert await _run(respond, AttemptContext()) == "retry"

@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -243,13 +244,16 @@ type graphExchange struct {
 func (client *Client) openSession(call sdkgo.Call, operation string) (*graphSession, *graphExchange) {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case isTerminalCredentialError(err):
 		return nil, &graphExchange{outcome: graphRejected, failure: graphFailure(sdkgo.FailureAuthentication, operation,
 			"Microsoft authorization must be renewed: authorize the connection again or replace the client secret")}
 	case errors.Is(err, errCredentialRefreshUnavailable):
 		return nil, &graphExchange{outcome: graphRetry, failure: graphFailure(sdkgo.FailureAvailability, operation,
 			"the Microsoft token endpoint is temporarily unavailable")}
-	case err != nil || validateResolvedCredentials(credentials) != nil:
+	case err != nil:
+		return nil, &graphExchange{outcome: graphRetry, failure: graphFailure(sdkgo.FailureAvailability, operation,
+			"Outlook Mail connection credentials are temporarily unavailable; nothing was sent")}
+	case validateResolvedCredentials(credentials) != nil:
 		return nil, &graphExchange{outcome: graphDefect, failure: graphFailure(sdkgo.FailureAuthentication, operation,
 			"Outlook Mail connection credentials are unavailable")}
 	}
@@ -258,6 +262,13 @@ func (client *Client) openSession(call sdkgo.Call, operation string) (*graphSess
 		return nil, &graphExchange{outcome: graphDefect, failure: graphFailure(sdkgo.FailureValidation, operation, err.Error())}
 	}
 	return &graphSession{client: client, call: call, operation: operation, credentials: credentials, mailboxRoot: mailboxRoot}, nil
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // resolveMailboxRoot is /me for a delegated connection and /users/<mailbox> for an app-only one.

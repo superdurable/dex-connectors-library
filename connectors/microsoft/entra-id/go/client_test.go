@@ -113,10 +113,8 @@ func TestOversizedResponsesRedirectsAndMissingCredentials(t *testing.T) {
 
 	noCredentials, err := entraid.New(entraid.Config{}, sdkgo.StaticCredentialProvider[entraid.Credentials]{}, entraid.WithLocalProviderURL(graph.URL))
 	require.NoError(t, err)
-	defect, err := sdkgo.RunQuery(newTestDexContext("no-credentials"), noCredentials.GetUser(), testConnection, entraid.GetUserInput{UserKey: userID})
-	require.NoError(t, err)
-	require.Equal(t, entraid.GetUserBranchDefect, defect.Branch)
-	require.Equal(t, sdkgo.FailureAuthentication, defect.Failure.Kind)
+	_, err = sdkgo.RunQuery(newTestDexContext("no-credentials"), noCredentials.GetUser(), testConnection, entraid.GetUserInput{UserKey: userID})
+	require.Equal(t, sdkgo.FailureAvailability, requireRetry(t, err).Kind, "an unconfigured static connection is transient")
 
 	graph.Intercept = func(graphfake.Request, int) (graphfake.Answer, bool) {
 		return graphfake.Answer{Status: http.StatusFound}, true

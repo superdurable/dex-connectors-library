@@ -187,8 +187,11 @@ attendees, so the example places an uninvited hold first.
 ## Branches
 
 Every operation uses `defect` for invalid local input, connection
-configuration, or connector contract violations, before any provider request;
-an app-only connection without its mailbox is one. A conclusive Graph refusal
+configuration, a terminal credential failure (reauthorization required, a
+missing or unselected connection, a broker refusal, or a token that fails local
+checks), or connector contract violations, before any provider request; an
+app-only connection without its mailbox is one. Every other credential
+failure, such as a broker outage, returns Retry before any request. A conclusive Graph refusal
 uses `providerRejected` with a safe failure naming only the HTTP status and a
 word-shaped `error.code`, never `error.message`. A malformed or oversized
 response, or a `@odata.nextLink` outside `https://graph.microsoft.com/v1.0`,
