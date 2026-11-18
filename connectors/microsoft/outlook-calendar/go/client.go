@@ -15,6 +15,7 @@ package outlookcalendar
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -103,6 +104,8 @@ type graphRequest struct {
 	query    url.Values
 	payload  any
 	ifMatch  string
+	// requestContext bounds a fenced write to its write window; nil uses the Step context.
+	requestContext context.Context
 }
 
 type graphResponse struct {
@@ -360,7 +363,11 @@ func (client *Client) send(call sdkgo.Call, credentials *Credentials, request gr
 		if encodedPayload != nil {
 			body = bytes.NewReader(encodedPayload)
 		}
-		httpRequest, err := http.NewRequestWithContext(call.Context, request.method, strings.TrimSuffix(target, "?"), body)
+		var requestContext context.Context = call.Context
+		if request.requestContext != nil {
+			requestContext = request.requestContext
+		}
+		httpRequest, err := http.NewRequestWithContext(requestContext, request.method, strings.TrimSuffix(target, "?"), body)
 		if err != nil {
 			return graphResponse{}, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "provider request could not be built"}
 		}

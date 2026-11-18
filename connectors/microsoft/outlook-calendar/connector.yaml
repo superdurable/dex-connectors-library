@@ -6,17 +6,17 @@ metadata:
   description: List and read Outlook calendar events in a bounded window, create and update events idempotently, and query free/busy schedules through Microsoft Graph, with delegated Microsoft OAuth or an app-only connection to one mailbox.
   company: Microsoft
   categories: [productivity]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: microsoft
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: "@superdurable/connector-microsoft-outlook-calendar"
       operations: [listEvents, getEvent, createEvent, updateEvent, queryFreeBusy]
       triggers: []
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-microsoft-outlook-calendar
       operations: [listEvents, getEvent, createEvent, updateEvent, queryFreeBusy]
       triggers: []
@@ -257,8 +257,9 @@ spec:
       branches:
         - {id: created, goName: Created, description: The event that carries the Step's idempotency key exists.}
         - {id: providerRejected, goName: ProviderRejected, description: Microsoft Graph conclusively rejected the event., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized event response., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The marker lookup before any send returned a malformed or oversized answer, so nothing was sent; an unusable POST answer is read back or selects uncertain instead.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "An earlier send may have created the event, the marker lookup cannot confirm it, and the send cap allows no further POST.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
@@ -284,11 +285,13 @@ spec:
         - {id: updated, goName: Updated, description: The event holds the requested values.}
         - {id: notFound, goName: NotFound, description: "The event does not exist, is cancelled, or is not visible to the connection.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Microsoft Graph conclusively rejected the event change., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized event response., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retained for compatibility and no longer selected: an invalid or oversized response now retries from the read.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Each attempt rereads the event, skips a change it already holds, and PATCHes absolute values under If-Match.
+        repeatOnUnknown: safe
       mocks:
         - name: updatedDefaultAnswer
           branch: updated

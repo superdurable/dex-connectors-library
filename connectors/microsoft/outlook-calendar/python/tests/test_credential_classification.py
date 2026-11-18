@@ -22,15 +22,35 @@ from dex_connectors.sdk.projectconfig.broker import (
 from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.microsoft_outlook_calendar import Config, Credentials
+from dex_connectors.microsoft_outlook_calendar._generated.connection import (
+    CredentialMaterialError,
+    decode_credentials,
+)
 from dex_connectors.microsoft_outlook_calendar.client import Client
 from dex_connectors.microsoft_outlook_calendar.models import GetEventInput, UpdateEventInput
 
 CONNECTION = ConnectionRef("microsoft", "outlook-calendar-test")
+
+
+def _sdk_decoding_failure() -> ValueError:
+    """Reproduce the SDK refresh provider, which replaces the decoder error with a plain ValueError."""
+    try:
+        try:
+            decode_credentials({"access_token": 7})
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed material decoded")
+
+
 TERMINAL_ERRORS: tuple[Exception, ...] = (
     ReauthorizationRequiredError(),
     ObjectNotFoundError(),
     ConnectionNotSelectedError(),
     CredentialBrokerRejectedError(),
+    CredentialMaterialError("Microsoft Outlook Calendar credential access_token is required"),
+    _sdk_decoding_failure(),
 )
 TRANSIENT_ERRORS: tuple[Exception, ...] = (
     CredentialBrokerUnavailableError(),
@@ -85,3 +105,20 @@ async def test_invalid_credential_material_and_an_unconfigured_connection() -> N
     other = ConnectionRef("microsoft", "other")
     unconfigured = StaticCredentialProvider({other: Credentials(access_token=SecretString("token"))})
     assert await _outcomes(unconfigured) == ("retry", "retry")
+
+
+class _LaterAttemptContext:
+    attempt = 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("error", TERMINAL_ERRORS)
+async def test_a_later_update_attempt_retries_a_terminal_credential_failure(error: Exception) -> None:
+    """A later attempt may follow an applied PATCH, so defect would misreport it."""
+    async with httpx.AsyncClient(transport=httpx.MockTransport(_respond)) as http_client:
+        client = Client(Config(), FailingCredentials(error), http_client)  # type: ignore[arg-type]
+        operation = OperationRef("microsoft-outlook-calendar", "updateEvent")
+        call = Call(CallID("write-call"), CONNECTION, operation, context=_LaterAttemptContext())  # type: ignore[arg-type]
+        update = UpdateEventInput(event_id="event-1", subject="Renamed")
+        updated = await client.update_event().invoke(call, update)
+    assert updated.kind == "retry"
