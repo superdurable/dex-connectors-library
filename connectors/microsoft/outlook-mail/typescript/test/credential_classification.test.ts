@@ -5,7 +5,7 @@ import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call, type CredentialProvider, type CredentialRefreshDriver } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
 import { OutlookMailClient } from '../src/client.js';
-import type { Credentials } from '../src/generated/models.js';
+import { decodeCredentials, type Credentials } from '../src/generated/models.js';
 import { HeartbeatContext, scenarioCall, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
 const connection = { provider: 'microsoft', name: 'outlook-mail-test' };
@@ -45,4 +45,14 @@ it('retries a static connection that is not configured', async () => {
   const other = new StaticCredentialProvider([[{ provider: 'microsoft', name: 'other' }, credentials]]);
   const client = new OutlookMailClient({}, other, { refreshDriver: driver, transport: noRequest });
   expect(await client.sendMessage().invoke(sendCall(undefined), sendInput)).toMatchObject({ kind: 'retry' });
+});
+
+it('selects defect for malformed stored credentials before a send and uncertain after one', async () => {
+  let wrapped: Error | undefined;
+  try { decodeCredentials({ unexpected_field: 'value' }); }
+  catch { wrapped = new TypeError('project credential decoding failed'); }
+  const client = new OutlookMailClient({}, failing(wrapped!), { refreshDriver: driver, transport: noRequest });
+  expect(await client.sendMessage().invoke(sendCall(undefined), sendInput)).toMatchObject({ kind: 'branch', branch: 'defect' });
+  const dispatched = { value: { outlookMailSendPhase: 'sendDispatched', outlookMailDraftMessageId: 'draft1', outlookMailSendCount: 1 }, attempt: 1 };
+  expect(await client.sendMessage().invoke(sendCall(dispatched), sendInput)).toMatchObject({ kind: 'uncertain' });
 });

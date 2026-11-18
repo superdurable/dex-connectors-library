@@ -232,7 +232,19 @@ class Client:
                     "Microsoft authorization must be renewed: authorize the connection again or replace the client secret",  # noqa: E501
                 ),
             )
-        except Exception:
+        except Exception as error:
+            # Imported here because the generated connection module imports this one.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return None, Exchange(
+                    "defect",
+                    problem=failure(
+                        operation,
+                        FailureKind.AUTHENTICATION,
+                        "Outlook Mail stored connection credentials are malformed",
+                    ),
+                )
             return None, Exchange(
                 "retry",
                 problem=failure(
