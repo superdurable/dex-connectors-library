@@ -7,7 +7,7 @@ import { ReauthorizationRequiredError, SecretString, resolveCredential, resolveC
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, Credentials, CredentialSource } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials, type CredentialSource } from './generated/models.js';
 import { GetAuthenticatedProfileOperation, ListPublicRepositoriesOperation, ListMergedPullRequestsOperation, ListPullRequestFilesOperation, ListReleasesOperation, ListCommitsOperation } from './operations.js';
 import { CreateIssueCommentOperation, CreateIssueOperation, ListIssuesOperation, ReplaceIssueLabelsOperation, SetIssueStateOperation } from './issues.js';
 
@@ -121,7 +121,7 @@ export class GitHubClient {
       credential = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
     } catch (error) {
       // Only a revoked, missing, unselected, broker-refused, or malformed credential needs reconnection.
-      return unavailable(error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError);
+      return unavailable(error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error));
     }
     const token = credential.accessToken instanceof SecretString ? credential.accessToken.reveal() : '';
     if (!token) return unavailable(true);

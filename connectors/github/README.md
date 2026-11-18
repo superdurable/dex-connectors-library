@@ -495,5 +495,5 @@ connection wiring, with provider calls in hand-written Query invocations. The
 and a real Dex integration test using an inert provider stand-in. Python
 provider replay uses the Go-recorded scenarios under
 [`conformance/connectors/github`](../../conformance/connectors/github/).
-The Python package has its own `v0.1.0` release version; the Go connector remains
+The Python package has its own `v0.1.1` release version; the Go connector remains
 at its current release version.

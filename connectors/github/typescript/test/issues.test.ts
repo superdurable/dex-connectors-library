@@ -147,7 +147,7 @@ it('retries a transient credential failure after a possible send and selects unc
   for (const transient of [new CredentialBrokerUnavailableError(), new Error('connection is not configured'), new TypeError('fetch failed')]) {
     expect((await failing(transient).createIssue().invoke(call(), input)).kind).toBe('retry');
   }
-  for (const terminal of [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError()]) {
+  for (const terminal of [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError(), new TypeError('project credential decoding failed')]) {
     expect((await failing(terminal).createIssue().invoke(call(), input)).kind).toBe('uncertain');
   }
 });
@@ -160,7 +160,8 @@ it('classifies credential failures before any send', async () => {
     const call = { id: callId, connection, operation: { connectorId: 'github', operationId: 'createIssue' }, context } as unknown as Call;
     expect((await failing(transient).createIssue().invoke(call, input)).kind).toBe('retry');
   }
-  for (const terminal of [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError()]) {
+  // The SDK project provider replaces a malformed-material decoder error with the decoding TypeError.
+  for (const terminal of [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError(), new TypeError('project credential decoding failed')]) {
     const context = new FenceContext();
     const call = { id: callId, connection, operation: { connectorId: 'github', operationId: 'createIssue' }, context } as unknown as Call;
     expect(await failing(terminal).createIssue().invoke(call, input)).toMatchObject({ kind: 'branch', branch: 'defect' });
