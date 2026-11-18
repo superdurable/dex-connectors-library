@@ -107,7 +107,7 @@ UPDATE_TICKET_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "The request holds the requested labels and priority, written now or by an earlier attempt.", False),
         BranchDefinition(NOT_FOUND, "The issue does not exist or the connection cannot browse it.", True),
         BranchDefinition(PROVIDER_REJECTED, "Jira conclusively rejected the change, such as an unknown priority, a field missing from the edit screen, or missing Edit Issues permission.", True),
-        BranchDefinition(INVALID_RESPONSE, "Jira returned an invalid or oversized issue.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and no longer selected: an invalid or oversized issue returns Retry.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

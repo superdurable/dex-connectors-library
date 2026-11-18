@@ -1414,13 +1414,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "labels": []
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1435,7 +1432,7 @@
           "hardware"
         ]
       },
-      "name": "updateTicket-invalid-response",
+      "name": "updateTicket-invalid-read-retries",
       "operation": "updateTicket"
     },
     {

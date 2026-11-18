@@ -142,6 +142,8 @@ async def run(
                 return moved  # type: ignore[return-value]
             if operation_name == "createTicket":
                 return await sdk.run_mutation(client.create_ticket(), call, TICKET_INPUT)  # type: ignore[return-value]
+            if operation_name == "updateTicket":
+                return await sdk.run_mutation(client.update_ticket(), call, UPDATE_INPUT)  # type: ignore[return-value]
             return await sdk.run_mutation(client.add_comment(), call, COMMENT_INPUT)  # type: ignore[return-value]
         except sdk.RetryError as error:
             return error
@@ -149,6 +151,45 @@ async def run(
 
 def always(status: int, body: str = "{}") -> Answer:
     return lambda _: (status, body)
+
+
+UPDATE_INPUT = jsm.UpdateTicketInput(issue_id_or_key="ITH-42", add_labels=("vip",))
+LABELS_AND_PRIORITY = (
+    '{"id":"10042","key":"ITH-42","fields":{"labels":["hardware"],"priority":{"id":"3","name":"Medium"}}}'
+)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("method", "status", "body"),
+    [
+        ("GET", 400, TRUNCATED_BODY),
+        ("GET", 403, '{"errorMessages":["jsm-access-token"]}'),
+        ("GET", 409, "{}"),
+        ("GET", 200, '{"id":"x"}'),
+        ("GET", 200, '{"id":"10042","key":"ITH-42","fields":{"labels":"vip"}}'),
+        ("GET", 404, TRUNCATED_BODY),
+        ("PUT", 400, TRUNCATED_BODY),
+        ("PUT", 400, '{"errors":{"priority":"jsm-access-token"}}'),
+    ],
+)
+async def test_update_ticket_retries_an_unknown_read_or_refusal(method: str, status: int, body: str) -> None:
+    requests: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> tuple[int, str]:
+        return (status, body) if request.method == method else (200, LABELS_AND_PRIORITY)
+
+    assert branch_of(await run("updateTicket", answer, AttemptContext(), requests)) == "retry"
+
+
+@pytest.mark.asyncio
+async def test_update_ticket_keeps_a_readable_definite_refusal() -> None:
+    requests: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> tuple[int, str]:
+        return (400, '{"errors":{"labels":"bad"}}') if request.method == "PUT" else (200, LABELS_AND_PRIORITY)
+
+    assert branch_of(await run("updateTicket", answer, AttemptContext(), requests)) == "providerRejected"
 
 
 def branch_of(result: sdk.MutationResult[object] | sdk.RetryError) -> str:
@@ -420,6 +461,43 @@ async def test_transition_rate_limit_allows_the_next_attempt_to_send() -> None:
     repeated = await run("transitionTicket", answer, context, requests, transition=PENDING)
     assert branch_of(repeated) == "transitioned"
     assert transition_posts(requests) == 2
+
+
+@pytest.mark.asyncio
+async def test_transition_sends_on_the_third_attempt_after_two_rate_limits() -> None:
+    requests: list[httpx.Request] = []
+    statuses = [(429, "{}"), (429, "{}"), (204, "")]
+
+    def answer(request: httpx.Request) -> tuple[int, str]:
+        return (200, TRANSITION_CALL_ISSUE_IN_PROGRESS) if request.method == "GET" else statuses.pop(0)
+
+    context = AttemptContext()
+    for attempt in (1, 2):
+        context.attempt = attempt
+        repeated = await run("transitionTicket", answer, context, requests, transition=PENDING)
+        assert branch_of(repeated) == "retry"
+    context.attempt = 3
+    final = await run("transitionTicket", answer, context, requests, transition=PENDING)
+    assert branch_of(final) == "transitioned"
+    assert transition_posts(requests) == 3
+
+
+@pytest.mark.asyncio
+async def test_transition_sends_on_the_third_attempt_after_two_pre_send_retries() -> None:
+    requests: list[httpx.Request] = []
+    answer = issue_then_post([TRANSITION_CALL_ISSUE_IN_PROGRESS], (204, ""))
+    context = AttemptContext()
+    for attempt in (1, 2):
+        context.attempt = attempt
+        repeated = await run(
+            "transitionTicket", answer, context, requests,
+            credential_provider=ScriptedCredentials("transient"), transition=PENDING,
+        )
+        assert branch_of(repeated) == "retry"
+    context.attempt = 3
+    final = await run("transitionTicket", answer, context, requests, transition=PENDING)
+    assert branch_of(final) == "transitioned"
+    assert transition_posts(requests) == 1
 
 
 @pytest.mark.asyncio

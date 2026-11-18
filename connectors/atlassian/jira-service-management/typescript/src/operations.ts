@@ -50,7 +50,6 @@ function trimID(value: string, name: string, pattern = numericID): string { cons
 function issuePath(value: string): string { return `/issue/${pathEscape(value)}`; }
 function requestPath(value: string): string { return `/request/${pathEscape(value)}`; }
 function invalid<T>(operation: string, output: T, receipt: ReceiptDraft): QueryAttempt<T> { return newQueryBranch('invalidResponse', output, receipt, failure(operation, 'PROTOCOL', 'Jira returned an invalid response')); }
-function invalidMutation<T>(operation: string, output: T, receipt: ReceiptDraft): MutationAttempt<T> { return newMutationBranch('invalidResponse', output, receipt, failure(operation, 'PROTOCOL', 'Jira returned an invalid response')); }
 
 /** Read exact email matches from one service desk customer page. */
 export class FindCustomerByEmailOperation implements Query<FindCustomerByEmailInput, CustomerMatches> {
@@ -603,18 +602,24 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
     const session = await this.client.start(call, 'updateTicket');
     if ('kind' in session) return mutationClassified(session, zero);
     let result = await this.client.exchange(call, session, { method: 'GET', api: 'platform', path: issuePath(issue), query: { fields: 'labels,priority' } });
-    let classification = this.client.read(call, 'updateTicket', 'request', result, issue);
+    let classification = this.client.repeatableWrite(call, 'updateTicket', 'request', result, issue);
     if (classification.kind !== 'success') return mutationClassified(classification, zero);
-    let current: Record<string, unknown>;
     let fields: Record<string, unknown>;
+    let key: string;
+    let labels: string[];
+    let output: UpdateTicketOutput;
     try {
-      current = parsedObject(result);
+      const current = parsedObject(result);
       if (!numericID.test(requiredString(current.id)) || !issueKey.test(requiredString(current.key)) || !isRecord(current.fields)) throw new TypeError('issue invalid');
       fields = current.fields;
-    } catch { return invalidMutation('updateTicket', zero, classification.receipt); }
-    const key = requiredString(current.key), labels = fields.labels === undefined || fields.labels === null ? [] : requiredArray(fields.labels).map(requiredString);
-    const output: UpdateTicketOutput = { issueId: requiredString(current.id), issueKey: key, labels: [...labels] };
-    if (isRecord(fields.priority)) output.priority = { id: optionalString(fields.priority.id), name: optionalString(fields.priority.name) };
+      key = requiredString(current.key);
+      labels = fields.labels === undefined || fields.labels === null ? [] : requiredArray(fields.labels).map(requiredString);
+      output = { issueId: requiredString(current.id), issueKey: key, labels: [...labels] };
+      if (isRecord(fields.priority)) output.priority = { id: optionalString(fields.priority.id), name: optionalString(fields.priority.name) };
+    } catch {
+      // An unusable read proves nothing about the request, so a later attempt reads it again.
+      return newMutationRetry(failure('updateTicket', 'PROTOCOL', 'Jira returned an invalid request issue'));
+    }
     const present = new Set(labels), removed = new Set<string>();
     const operations: Array<{ remove?: string; add?: string }> = [];
     for (const label of input.removeLabels || []) if (present.has(label) && !removed.has(label)) { operations.push({ remove: label }); removed.add(label); }
@@ -640,9 +645,9 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
 /** Explains why a repeated attempt does not transition again. */
 const unprovenEarlierTransitionMessage = 'an earlier attempt may have transitioned the request and its status does not prove the destination, so the transition is not sent again; set destinationStatusName so a retried Step recognizes it';
 
-/** Report a possible earlier send, including `sendAllowed` after a canResend marker. */
-function hasPossibleEarlierSend(decision: Decision): boolean {
-  return decision.kind !== 'sendAllowed' || (decision.priorSendUpperBound ?? 0) > 0 || !!decision.marker?.providerId;
+/** Ignore `priorSendUpperBound`: a cap-1 fence writes no send count, so `sendAllowed` proves no earlier send. */
+function hasPossibleEarlierTransition(decision: Decision): boolean {
+  return decision.kind !== 'sendAllowed' || !!decision.marker?.providerId;
 }
 
 /** One attempt's fence and whether an earlier attempt may have transitioned the request. */
@@ -685,7 +690,7 @@ export class TransitionTicketOperation implements Mutation<TransitionTicketInput
     const fence = newFence(call, TransitionTicketDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000);
     const decision = fence.decide();
     if (decision.kind === 'failClosed') return newMutationRetry(failure('transitionTicket', 'AVAILABILITY', 'Jira Service Management dispatch checkpoint is unreadable, so nothing was sent in this attempt'));
-    const attempt = new TransitionAttempt(fence, hasPossibleEarlierSend(decision));
+    const attempt = new TransitionAttempt(fence, hasPossibleEarlierTransition(decision));
     const session = await this.client.start(call, 'transitionTicket');
     if ('kind' in session) {
       if (session.kind === 'retry' || attempt.hasPossibleEarlierTransition) return attempt.retryBeforeSend(session.failure!, session.retryAfterMs);

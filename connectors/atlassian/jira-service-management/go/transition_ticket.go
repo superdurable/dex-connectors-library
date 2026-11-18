@@ -152,7 +152,7 @@ func (operation TransitionTicketOperation) Invoke(call sdkgo.Call, input Transit
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[TransitionTicketOutput](newFailure(transitionTicketOperationID, sdkgo.FailureAvailability, "Jira Service Management dispatch checkpoint is unreadable, so nothing was sent in this attempt"), 0)
 	}
-	attempt := transitionAttempt{fence: fence, hasPossibleEarlierTransition: hasPossibleEarlierSend(decision)}
+	attempt := transitionAttempt{fence: fence, hasPossibleEarlierTransition: hasPossibleEarlierTransition(decision)}
 	session, cancel, sessionErr := client.startSession(call, transitionTicketOperationID)
 	if sessionErr != nil {
 		if sessionErr.isRetryable || attempt.hasPossibleEarlierTransition {
@@ -242,9 +242,9 @@ type transitionAttempt struct {
 	hasPossibleEarlierTransition bool
 }
 
-// hasPossibleEarlierSend reports a possible earlier send, including SendAllowed after a canResend marker.
-func hasPossibleEarlierSend(decision singledispatch.Decision) bool {
-	return decision.Kind != singledispatch.SendAllowed || decision.MaximumPriorSends > 0 || decision.Marker.ProviderID != ""
+// hasPossibleEarlierTransition ignores MaximumPriorSends: a cap-1 fence writes no send count, so SendAllowed proves no earlier send.
+func hasPossibleEarlierTransition(decision singledispatch.Decision) bool {
+	return decision.Kind != singledispatch.SendAllowed || decision.Marker.ProviderID != ""
 }
 
 // retryBeforeSend returns Retry before any send; a first attempt records notSent so the next may send.

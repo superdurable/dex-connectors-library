@@ -524,14 +524,23 @@ class Client:
     def classify_repeatable_write(
         self, operation: str, subject: str, response: ProviderResponse
     ) -> Classification:
-        """Classify an edit that the next attempt rereads before repeating.
+        """Classify an edit, or the read before it, that the next attempt repeats.
 
-        Only a definite refusal is terminal; any other unexpected response returns Retry.
+        Only a definite refusal with a readable body is terminal; any other unexpected
+        response returns Retry.
         """
         classification = self.classify_read(operation, subject, response)
-        is_unknown = classification.outcome == "invalidResponse" or (
-            classification.outcome == "providerRejected"
-            and response.status_code not in DEFINITE_WRITE_REFUSAL_STATUSES
+        is_complete = not (
+            response.has_body_read_failed or response.is_body_too_large or response.reflects_secret
+        )
+        is_refusal = classification.outcome in {"providerRejected", "notFound"}
+        is_unknown = (
+            classification.outcome == "invalidResponse"
+            or (
+                classification.outcome == "providerRejected"
+                and response.status_code not in DEFINITE_WRITE_REFUSAL_STATUSES
+            )
+            or (is_refusal and not is_complete)
         )
         if is_unknown:
             return Classification(

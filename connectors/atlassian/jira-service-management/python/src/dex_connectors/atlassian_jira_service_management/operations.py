@@ -1354,7 +1354,7 @@ class UpdateTicketOperation:
             query={"fields": "labels,priority"},
         )
         receipt = self.client.receipt(call, response, issue)
-        classification = self.client.classify_read("updateTicket", "request", response)
+        classification = self.client.classify_repeatable_write("updateTicket", "request", response)
         if classification.outcome != "success":
             return _mutation_failure(classification, empty, receipt)
         try:
@@ -1372,11 +1372,9 @@ class UpdateTicketOperation:
             )
             output = UpdateTicketOutput(issue_id, issue_key, labels, _priority(fields.get("priority")))
         except (ValueError, TypeError, KeyError):
-            return MutationAttempt.branch_result(
-                defs.INVALID_RESPONSE,
-                empty,
-                receipt,
-                failure("updateTicket", FailureKind.PROTOCOL, "Jira returned an invalid request issue"),
+            # An unusable read proves nothing about the request, so a later attempt reads it again.
+            return MutationAttempt.retry(
+                failure("updateTicket", FailureKind.PROTOCOL, "Jira returned an invalid request issue")
             )
         receipt = replace(receipt, provider_object_id=issue_key)
         present = set(output.labels)
@@ -1429,12 +1427,13 @@ _UNPROVEN_EARLIER_TRANSITION = (
 )
 
 
-def _has_possible_earlier_send(decision: Decision) -> bool:
-    """Report a possible earlier send, including SEND_ALLOWED after a canResend marker."""
-    return (
-        decision.kind != DecisionKind.SEND_ALLOWED
-        or decision.prior_send_upper_bound > 0
-        or bool(decision.marker and decision.marker.provider_id)
+def _has_possible_earlier_transition(decision: Decision) -> bool:
+    """Ignore prior_send_upper_bound: a cap-1 fence writes no send count.
+
+    SEND_ALLOWED at cap 1 already proves that no earlier send took effect.
+    """
+    return decision.kind != DecisionKind.SEND_ALLOWED or bool(
+        decision.marker and decision.marker.provider_id
     )
 
 
@@ -1647,7 +1646,7 @@ class TransitionTicketOperation:
                     "so nothing was sent in this attempt",
                 )
             )
-        attempt = _TransitionAttempt(fence, _has_possible_earlier_send(decision))
+        attempt = _TransitionAttempt(fence, _has_possible_earlier_transition(decision))
         credentials, session_error = await self.client.resolve(call, "transitionTicket")
         if session_error:
             if session_error.outcome == "retry" or attempt.has_possible_earlier_transition:

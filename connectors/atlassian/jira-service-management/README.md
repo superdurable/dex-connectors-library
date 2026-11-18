@@ -218,7 +218,12 @@ and the `priority` name that differ. When nothing differs it selects `updated`
 with `WasAlreadyApplied` and writes nothing. The write is absolute, so every
 unconfirmed outcome, including a 5xx or a lost response, is retried, and the
 next attempt reads first. A conclusive 4xx selects `providerRejected` with the
-rejected field IDs.
+rejected field IDs. The read before the write follows the same rule on every
+attempt: only a readable 404 selects `notFound` and only a readable definite
+refusal selects `providerRejected`. An unparseable, oversized, or
+credential-echoing body, a refusal body that broke, or an unlisted status
+returns Retry, so `invalidResponse` stays declared for compatibility but is no
+longer selected.
 
 ### transitionTicket
 
@@ -235,6 +240,8 @@ The transition POST goes through the single-dispatch fence with a cap of one
 send, because a workflow can offer a transition with the same name back and a
 second POST could undo the first. A 429, 503, refusal, or provably unsent
 request records `canResend`, and only then may the next attempt transition.
+Any number of such Retries in a row still let the next attempt send, because a
+cap-one fence permits a send only when no earlier send can have taken effect.
 After a possible earlier send, an attempt rereads the request and selects
 `transitioned` when its status equals `DestinationStatusName` or the matched
 transition leads to the current status; otherwise it returns Retry, never a
@@ -346,13 +353,14 @@ token, such as
 | Response | Reads, updateTicket, transitionTicket | createTicket, addComment |
 | --- | --- | --- |
 | 400, 401 after one refresh, 403, 411, 413, 414, 415, 422 | `providerRejected` | `providerRejected` on the first POST; `uncertain` after an earlier possible POST |
-| 409 | Reads: `providerRejected`; writes: Retry | Read back by a returned ID; otherwise Retry and resend below the send cap, `uncertain` at the cap |
+| 409 | Reads: `providerRejected`; updateTicket and writes: Retry | Read back by a returned ID; otherwise Retry and resend below the send cap, `uncertain` at the cap |
+| definite refusal or 404 whose body broke, is oversized, or echoes the token | Reads: as above; updateTicket: Retry | As the next row with an unreadable body: Retry and resend below the send cap, `uncertain` at the cap |
 | 404 | `notFound` where declared | `notFound` (`addComment`), `providerRejected` (`createTicket`), as above |
 | 429, 503 | Retry after `Retry-After` | Checkpoint `canResend`, then Retry |
 | connection refused before sending | Retry | Retry |
 | 408, other 4xx or 5xx, response lost before its status | Retry | Retry and resend below the send cap, `uncertain` at the cap |
-| 3xx | Reads: `invalidResponse`; writes: Retry | Retry and resend below the send cap, `uncertain` at the cap |
-| interrupted, oversized, malformed, or token-reflecting 2xx | Reads: `invalidResponse`; writes: Retry | Read back by a returned ID; otherwise `uncertain`, never resent |
+| 3xx | Reads: `invalidResponse`; updateTicket and writes: Retry | Retry and resend below the send cap, `uncertain` at the cap |
+| interrupted, oversized, malformed, or token-reflecting 2xx | Reads: `invalidResponse`; updateTicket and writes: Retry | Read back by a returned ID; otherwise `uncertain`, never resent |
 | invalid input or terminal credential failure | `defect`, no request | `defect`, no request |
 | credential store or broker outage | Retry, no request | Retry, no request |
 

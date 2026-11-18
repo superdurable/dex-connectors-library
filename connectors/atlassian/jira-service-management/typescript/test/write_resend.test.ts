@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, StaticCredentialProvider, type Call, type MutationResult } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { JiraServiceManagementClient } from '../src/client.js';
-import { AddCommentDefinition, CreateTicketDefinition, TransitionTicketDefinition } from '../src/generated/definitions.js';
+import { AddCommentDefinition, CreateTicketDefinition, TransitionTicketDefinition, UpdateTicketDefinition } from '../src/generated/definitions.js';
 import type { TransitionTicketInput } from '../src/generated/models.js';
 
 const callId = 'ab66bfde-d934-5d47-9e00-bdf172b83392';
@@ -280,6 +280,33 @@ describe('Jira Service Management transition behind the single-dispatch fence', 
     expect(transitionPosts(requests)).toBe(2);
   });
 
+  it('sends on the third attempt after two rate limits', async () => {
+    const statuses = [429, 429, 204];
+    const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: inProgress } : { status: statuses.shift()!, body: '' });
+    const context = new AttemptContext();
+    for (const attempt of [1, 2]) {
+      context.attempt = attempt;
+      expect(await runTransition(client, context)).toBe('retry');
+    }
+    context.attempt = 3;
+    expect(await runTransition(client, context)).toBe('transitioned');
+    expect(transitionPosts(requests)).toBe(3);
+  });
+
+  it('sends on the third attempt after two pre-send Retries', async () => {
+    const answer: Answer = request => request.method === 'GET' ? { status: 200, body: inProgress } : { status: 204, body: '' };
+    const unavailable = newStallingClient(answer, failingCredentials(() => new Error('credential broker unavailable')));
+    const context = new AttemptContext();
+    for (const attempt of [1, 2]) {
+      context.attempt = attempt;
+      expect(await runTransition(unavailable.client, context)).toBe('retry');
+    }
+    const { client, requests } = newStallingClient(answer);
+    context.attempt = 3;
+    expect(await runTransition(client, context)).toBe('transitioned');
+    expect(transitionPosts(requests)).toBe(1);
+  });
+
   it('is transitioned when the write deadline cuts a 2xx body', async () => {
     const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: inProgress } : { status: 200, body: stalledBody });
     expect(await runTransition(client, new ShortWindowContext())).toBe('transitioned');
@@ -296,5 +323,34 @@ describe('Jira Service Management transition behind the single-dispatch fence', 
     expect(await runTransition(client, context)).toBe('retry');
     expect(JSON.stringify(context.marker)).toContain('"state":"notSent"');
     expect(requests).toEqual([]);
+  });
+});
+
+const labelsAndPriority = '{"id":"10042","key":"ITH-42","fields":{"labels":["hardware"],"priority":{"id":"3","name":"Medium"}}}';
+
+async function runUpdate(client: JiraServiceManagementClient): Promise<string> {
+  const call = { id: callId, connection, operation: UpdateTicketDefinition.operation, context: new AttemptContext() } as unknown as Call;
+  try { return (await runMutation(client.updateTicket(), call, { issueIdOrKey: 'ITH-42', addLabels: ['vip'] })).branch; }
+  catch (error) { if (error instanceof RetryError) return 'retry'; throw error; }
+}
+
+describe('Jira Service Management updateTicket unknown answers', () => {
+  it.each([
+    ['read refusal with a cut body', 'GET', 400, truncatedBody],
+    ['read refusal echoing the token', 'GET', 403, '{"errorMessages":["jsm-access-token"]}'],
+    ['read refusal with an unlisted status', 'GET', 409, '{}'],
+    ['unparseable read', 'GET', 200, '{"id":"x"}'],
+    ['mistyped labels', 'GET', 200, '{"id":"10042","key":"ITH-42","fields":{"labels":"vip"}}'],
+    ['missing issue with a cut body', 'GET', 404, truncatedBody],
+    ['write refusal with a cut body', 'PUT', 400, truncatedBody],
+    ['write refusal echoing the token', 'PUT', 400, '{"errors":{"priority":"jsm-access-token"}}'],
+  ])('retries a %s', async (_name, method, status, body) => {
+    const { client } = newScriptedClient(request => request.method === method ? { status, body } : { status: 200, body: labelsAndPriority });
+    expect(await runUpdate(client)).toBe('retry');
+  });
+
+  it('keeps a readable definite refusal', async () => {
+    const { client } = newScriptedClient(request => request.method === 'PUT' ? { status: 400, body: '{"errors":{"labels":"bad"}}' } : { status: 200, body: labelsAndPriority });
+    expect(await runUpdate(client)).toBe('providerRejected');
   });
 });

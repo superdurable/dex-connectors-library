@@ -345,7 +345,7 @@ func UpdateTicketProviderRejected(value jiraservicemanagement.UpdateTicketOutput
 	return connectormock.Branch(jiraservicemanagement.UpdateTicketBranchProviderRejected, value, failure)
 }
 
-// UpdateTicketInvalidResponse selects the invalidResponse branch: Jira returned an invalid or oversized issue.
+// UpdateTicketInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized issue returns Retry.
 func UpdateTicketInvalidResponse(value jiraservicemanagement.UpdateTicketOutput, failure *sdkgo.Failure) connectormock.Case[jiraservicemanagement.UpdateTicketOutput] {
 	return connectormock.Branch(jiraservicemanagement.UpdateTicketBranchInvalidResponse, value, failure)
 }

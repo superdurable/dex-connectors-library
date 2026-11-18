@@ -46,7 +46,7 @@ export interface Config {
   cloudId?: string;
   /** Atlassian API gateway base URL for the accessible-resources site lookup and for the /ex/jira/{cloudId}/rest/servicedeskapi and /ex/jira/{cloudId}/rest/api/3 paths; leave blank for Atlassian's public gateway. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway: Atlassian rejects OAuth tokens sent to site URLs such as https://your-site.atlassian.net. */
   endpoint?: string;
-  /** Maximum complete Jira Service Management or Jira API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse, and an oversized response to an accepted createTicket or addComment selects uncertain. */
+  /** Maximum complete Jira Service Management or Jira API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse, except that updateTicket returns Retry, and an oversized response to an accepted createTicket or addComment selects uncertain. */
   maxResponseBytes?: number;
 }
 
