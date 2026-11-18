@@ -61,6 +61,13 @@ class Exchange:
     field_errors: tuple[str, ...] = ()
 
 
+@dataclass
+class ResponseObservation:
+    """The status of the last response whose headers arrived, kept when a timeout cuts its body read."""
+
+    status: int = 0
+
+
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
     """Build a secret-safe Zoho Desk failure."""
     return Failure(kind, "zoho-desk", operation, message)
@@ -232,17 +239,21 @@ class Client:
         query: dict[str, str] | None = None,
         payload: dict[str, Any] | None = None,
         resend_after_unauthorized: bool = True,
+        observation: ResponseObservation | None = None,
     ) -> Exchange:
         """Send once, or refresh and resend once after HTTP 401.
 
-        A fenced write passes ``resend_after_unauthorized=False`` and refreshes outside the fence.
+        A fenced write passes ``resend_after_unauthorized=False`` and refreshes outside the fence,
+        and passes ``observation`` to learn the status of a response a timeout cut short.
         """
         target = base_url + path
         if query:
             target += "?" + "&".join(
                 f"{_query_escape(key)}={_query_escape(value)}" for key, value in sorted(query.items())
             )
+        observation = observation or ResponseObservation()
         for attempt in range(2):
+            observation.status = 0
             if self._remaining_seconds(call) <= 0:
                 return Exchange(
                     "not_sent",
@@ -254,18 +265,11 @@ class Client:
                 )
             try:
                 result = await asyncio.wait_for(
-                    self._exchange_once(operation, credentials, method, target, payload),
+                    self._exchange_once(operation, credentials, method, target, payload, observation),
                     self._remaining_seconds(call),
                 )
             except TimeoutError:
-                return Exchange(
-                    "unavailable",
-                    failure=failure(
-                        operation,
-                        FailureKind.TRANSPORT,
-                        "the operation deadline passed before Zoho Desk answered",
-                    ),
-                )
+                return deadline_exchange(operation, observation)
             if (
                 result.status != 401
                 or attempt
@@ -325,6 +329,7 @@ class Client:
         method: str,
         target: str,
         payload: dict[str, Any] | None,
+        observation: ResponseObservation,
     ) -> Exchange:
         token = credentials.access_token.reveal() if credentials.access_token else ""
         headers = {
@@ -346,6 +351,7 @@ class Client:
             )
             response, _ = await send_traced(self.http_client, request)
             status = response.status_code
+            observation.status = status
             response_headers = response.headers
             try:
                 body = await read_bounded_body(
@@ -488,6 +494,22 @@ class Client:
         return Receipt(
             call.id, "zoho-desk", datetime.now(UTC), call.idempotency_key, object_id, metadata=metadata
         )
+
+
+def deadline_exchange(operation: str, observation: ResponseObservation) -> Exchange:
+    """Classify a request a timeout cut short, keeping a status whose headers had arrived."""
+    if observation.status:
+        return Exchange(
+            "unavailable",
+            observation.status,
+            failure=failure(operation, FailureKind.TRANSPORT, "Zoho Desk response could not be read"),
+        )
+    return Exchange(
+        "unavailable",
+        failure=failure(
+            operation, FailureKind.TRANSPORT, "the operation deadline passed before Zoho Desk answered"
+        ),
+    )
 
 
 def _query_escape(value: str) -> str:

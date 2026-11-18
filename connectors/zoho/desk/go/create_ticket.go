@@ -89,6 +89,8 @@ func (CreateTicketOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateTicketI
 // Invoke sends POST /api/v1/tickets under the single-dispatch fence and the manifest send cap.
 // A 429, 503, or request that never left the process retries; another unknown outcome resends
 // while the cap allows and selects uncertain at the cap, because Zoho Desk has no ticket read-back by Call ID.
+// A 2xx is never resent: a returned or checkpointed ticket ID is read back with GET
+// /api/v1/tickets/{id} and selects created, and a 2xx without a readable ID selects uncertain.
 func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicketInput) sdkgo.MutationAttempt[CreateTicketOutput] {
 	branches := singleDispatchBranches{providerRejected: CreateTicketBranchProviderRejected, defect: CreateTicketBranchDefect}
 	if err := validateCreateTicketInput(input); err != nil {
@@ -104,6 +106,10 @@ func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicke
 		return sessionAttemptForWrite[CreateTicketOutput](permit, failure, branches)
 	}
 	defer cancel()
+	readBack := operation.readBackCreatedTicket(call, session)
+	if permit.savedProviderID != "" {
+		return readBack(permit.savedProviderID, true)
+	}
 	result, dispatchAttempt := sendDeskWrite[CreateTicketOutput](permit, operation.client, session, createTicketOperation, deskRequest{
 		method: http.MethodPost, path: "/tickets", payload: buildCreateTicketRequest(input),
 	})
@@ -116,11 +122,23 @@ func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicke
 	}
 	ticket, _, err := decodeTicketBody(result.response.body, "")
 	if err != nil {
-		return acceptedWriteAttempt[CreateTicketOutput](permit, acceptedProviderID(result.response.body), deskFailure(sdkgo.FailureProtocol, createTicketOperation,
-			"Zoho Desk accepted the ticket but returned an invalid ticket: "+err.Error()), receipt)
+		return acceptedWriteAttempt(permit, acceptedProviderID(result.response.body), deskFailure(sdkgo.FailureProtocol, createTicketOperation,
+			"Zoho Desk accepted the ticket but returned an invalid ticket: "+err.Error()), receipt, readBack)
 	}
 	recordAcceptedWrite(permit, ticket.ID)
 	return sdkgo.NewMutationBranch(CreateTicketBranchCreated, CreateTicketOutput{Ticket: ticket}, nil, operation.client.receipt(call, result.response, ticket.ID))
+}
+
+// readBackCreatedTicket reads an accepted ticket with GET /api/v1/tickets/{id}.
+func (operation CreateTicketOperation) readBackCreatedTicket(call sdkgo.Call, session *operationSession) deskWriteReadBack[CreateTicketOutput] {
+	return func(ticketID string, isProviderIDSaved bool) sdkgo.MutationAttempt[CreateTicketOutput] {
+		return readBackAcceptedDeskWrite(call, operation.client, session, createTicketOperation, ticketID, isProviderIDSaved,
+			deskRequest{method: http.MethodGet, path: ticketPath(ticketID)}, CreateTicketBranchCreated,
+			func(body []byte) (CreateTicketOutput, error) {
+				ticket, _, err := decodeTicketBody(body, ticketID)
+				return CreateTicketOutput{Ticket: ticket}, err
+			})
+	}
 }
 
 func validateCreateTicketInput(input CreateTicketInput) error {

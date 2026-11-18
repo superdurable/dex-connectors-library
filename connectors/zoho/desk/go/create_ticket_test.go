@@ -6,6 +6,7 @@ package desk_test
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -80,12 +81,6 @@ func TestCreateTicketResendsAnUnknownOutcomeBelowTheSendCap(t *testing.T) {
 		{name: "conflict", reply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusConflict, `{"errorCode":"CONFLICT","message":"SENTINEL"}`)
 		}, kind: sdkgo.FailureConflict},
-		{name: "malformed ticket", reply: func(response http.ResponseWriter) {
-			writeJSON(t, response, http.StatusOK, `{"id":"SENTINEL"}`)
-		}, kind: sdkgo.FailureProtocol},
-		{name: "reflected token", reply: func(response http.ResponseWriter) {
-			writeJSON(t, response, http.StatusOK, `{"id":"1","subject":"`+testAccessToken+`"}`)
-		}, kind: sdkgo.FailureProtocol},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, index int) {
@@ -185,23 +180,259 @@ func TestCreateTicketRefusalAfterAnEarlierPossibleSendIsUncertain(t *testing.T) 
 	require.Equal(t, 2, provider.requestCount())
 }
 
-func TestCreateTicketNeverResendsAnAcceptedTicket(t *testing.T) {
-	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
-		writeJSON(t, response, http.StatusOK, `{"id":"1892000000099004","subject":"SENTINEL"}`)
+// TestCreateTicketReadsBackAnAcceptedTicketByID covers a 2xx whose ticket does not decode but
+// carries its ID: it is read back by ID in the same attempt and never resent.
+func TestCreateTicketReadsBackAnAcceptedTicketByID(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodPost {
+			writeJSON(t, response, http.StatusOK, `{"id":"1892000000099004","subject":"SENTINEL"}`)
+			return
+		}
+		writeJSON(t, response, http.StatusOK, ticketBodyJSON("1892000000099004", "Open", "Open"))
 	})
-	client := newDeskClient(t, provider.URL)
 	ctx := newDeskDexContext("create-accepted-invalid")
-	result, err := sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+	result, err := sdkgo.RunMutation(ctx, newDeskClient(t, provider.URL).CreateTicket(), deskConnection, validCreateTicketInput())
 	require.NoError(t, err)
-	require.Equal(t, desk.CreateTicketBranchUncertain, result.Branch, "a returned ticket ID proves the ticket exists")
+	require.Equal(t, desk.CreateTicketBranchCreated, result.Branch, "a returned ticket ID proves the ticket exists")
+	require.Equal(t, "1892000000099004", result.Value.Ticket.ID)
 	require.Equal(t, "1892000000099004", result.Receipt.ProviderObjectID)
 	require.Equal(t, "1892000000099004", recordedMarker(t, ctx).ProviderID)
+	require.Equal(t, 2, provider.requestCount())
+	require.Equal(t, http.MethodGet, provider.request(1).method)
+	require.Equal(t, "/api/v1/tickets/1892000000099004", provider.request(1).path)
+}
 
-	result, err = sdkgo.RunMutation(ctx.nextAttempt(), client.CreateTicket(), deskConnection, validCreateTicketInput())
+// TestCreateTicketReadsBackASavedTicketIDOnLaterAttempts covers a read-back that fails transiently
+// after the ID was checkpointed: later attempts read back again and never resend.
+func TestCreateTicketReadsBackASavedTicketIDOnLaterAttempts(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		switch {
+		case request.Method == http.MethodPost:
+			writeJSON(t, response, http.StatusOK, `{"id":"1892000000099004","subject":"SENTINEL"}`)
+		case index == 1:
+			writeJSON(t, response, http.StatusInternalServerError, `{"errorCode":"INTERNAL_SERVER_ERROR"}`)
+		case index == 2:
+			response.Header().Set("Retry-After", "3")
+			writeJSON(t, response, http.StatusTooManyRequests, `{"errorCode":"TOO_MANY_REQUESTS"}`)
+		default:
+			writeJSON(t, response, http.StatusOK, ticketBodyJSON("1892000000099004", "Open", "Open"))
+		}
+	})
+	client := newDeskClient(t, provider.URL)
+	ctx := newDeskDexContext("create-read-back-later")
+	_, err := sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Equal(t, "1892000000099004", recordedMarker(t, ctx).ProviderID)
+
+	ctx = ctx.nextAttempt()
+	_, err = sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+	requireRetry(t, err, sdkgo.FailureRateLimit)
+	require.Zero(t, ctx.heartbeatCount, "a read-back records nothing, so the saved ID stays")
+
+	result, err := sdkgo.RunMutation(ctx.nextAttempt(), client.CreateTicket(), deskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, desk.CreateTicketBranchCreated, result.Branch)
+	require.Equal(t, "1892000000099004", result.Value.Ticket.ID)
+	require.Equal(t, 4, provider.requestCount())
+	for index := 1; index < 4; index++ {
+		require.Equal(t, http.MethodGet, provider.request(index).method, "a saved ticket ID is never resent")
+	}
+}
+
+// TestCreateTicketReadsBackASavedIDAtTheSendCap covers finding 39: a saved ID is read back even when
+// the send cap is reached, and only an unconfirmed read-back selects uncertain.
+func TestCreateTicketReadsBackASavedIDAtTheSendCap(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		reply   func(http.ResponseWriter)
+		branch  sdkgo.BranchID
+		isRetry bool
+	}{
+		{name: "found", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, ticketBodyJSON("1892000000099004", "Open", "Open"))
+		}, branch: desk.CreateTicketBranchCreated},
+		{name: "unavailable", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusBadGateway, ``)
+		}, isRetry: true},
+		{name: "not found", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusNotFound, `{"errorCode":"URL_NOT_FOUND"}`)
+		}, branch: desk.CreateTicketBranchUncertain},
+		{name: "forbidden", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusForbidden, `{"errorCode":"SCOPE_MISMATCH"}`)
+		}, branch: desk.CreateTicketBranchUncertain},
+		{name: "another ticket", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, ticketBodyJSON("1892000000099005", "Open", "Open"))
+		}, branch: desk.CreateTicketBranchUncertain},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := capClaimWithSavedProviderID(t, "create-saved-id-"+test.name, func(client *desk.Client, ctx *deskDexContext) {
+				_, err := sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+				require.NoError(t, err)
+			}, ticketBodyJSON("1892000000099004", "Open", "Open"))
+			provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) { test.reply(response) })
+			result, err := sdkgo.RunMutation(ctx, newDeskClient(t, provider.URL).CreateTicket(), deskConnection, validCreateTicketInput())
+			require.Equal(t, 1, provider.requestCount())
+			require.Equal(t, http.MethodGet, provider.request(0).method)
+			require.Equal(t, "/api/v1/tickets/1892000000099004", provider.request(0).path)
+			if test.isRetry {
+				requireRetry(t, err, sdkgo.FailureAvailability)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, test.branch, result.Branch)
+			require.Equal(t, "1892000000099004", result.Receipt.ProviderObjectID)
+		})
+	}
+}
+
+// TestCreateTicketNeverResendsA2xx covers 2xx answers that cannot be used: with no readable ticket ID
+// the write was still accepted, so it selects uncertain instead of resending.
+func TestCreateTicketNeverResendsA2xx(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		reply    func(http.ResponseWriter)
+		kind     sdkgo.FailureKind
+		maxBytes int64
+	}{
+		{name: "no ticket ID", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"id":"SENTINEL"}`)
+		}, kind: sdkgo.FailureProtocol},
+		{name: "reflected token", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"id":"1","subject":"`+testAccessToken+`"}`)
+		}, kind: sdkgo.FailureProtocol},
+		{name: "oversized", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, ticketBodyJSON("1892000000099004", "Open", "Open"))
+		}, kind: sdkgo.FailureResponseTooLarge, maxBytes: 64},
+		{name: "body breaks after the headers", reply: func(response http.ResponseWriter) {
+			response.Header().Set("Content-Length", "4096")
+			response.WriteHeader(http.StatusOK)
+			_, err := io.WriteString(response, `{"id":"1892000000099004"`)
+			require.NoError(t, err)
+			response.(http.Flusher).Flush()
+		}, kind: sdkgo.FailureTransport},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) { test.reply(response) })
+			client, err := desk.New(desk.Config{OrgID: testOrganizationID, MaxResponseBytes: test.maxBytes}, testCredentialProvider(),
+				desk.WithAPIBaseURL(provider.URL+"/api/v1"))
+			require.NoError(t, err)
+			ctx := newDeskDexContext("create-2xx-" + test.name)
+			result, err := sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+			require.NoError(t, err)
+			require.Equal(t, desk.CreateTicketBranchUncertain, result.Branch, "a 2xx accepted the ticket")
+			require.Equal(t, test.kind, result.Failure.Kind)
+			requireNoSentinel(t, result)
+			require.Equal(t, 1, provider.requestCount())
+			require.Equal(t, singledispatch.StateClaimed, recordedMarker(t, ctx).State)
+		})
+	}
+}
+
+// TestCreateTicketWithAnUnsavedTicketIDNeverRetriesAFailedReadBack covers a failed provider-ID
+// checkpoint: a retry could resend, so a transient read-back failure selects uncertain.
+func TestCreateTicketWithAnUnsavedTicketIDNeverRetriesAFailedReadBack(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodPost {
+			writeJSON(t, response, http.StatusOK, `{"id":"1892000000099004","subject":"SENTINEL"}`)
+			return
+		}
+		writeJSON(t, response, http.StatusInternalServerError, `{"errorCode":"INTERNAL_SERVER_ERROR"}`)
+	})
+	ctx := newDeskDexContext("create-unsaved-id")
+	ctx.acceptedHeartbeatLimit = 1
+	result, err := sdkgo.RunMutation(ctx, newDeskClient(t, provider.URL).CreateTicket(), deskConnection, validCreateTicketInput())
 	require.NoError(t, err)
 	require.Equal(t, desk.CreateTicketBranchUncertain, result.Branch)
-	require.Equal(t, "Zoho Desk accepted an earlier attempt's write, and its answer was lost", result.Failure.Message)
-	require.Equal(t, 1, provider.requestCount(), "a saved provider ID is never resent")
+	require.Equal(t, 2, provider.requestCount())
+	require.Empty(t, recordedMarker(t, ctx).ProviderID, "only the claim was recorded")
+}
+
+// TestCreateTicketCountsEarlierSendsAfterACanResendMarker covers X1: after an unknown outcome and a
+// 429 resend, the next attempt is SendAllowed but still knows an earlier send may have applied.
+func TestCreateTicketCountsEarlierSendsAfterACanResendMarker(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		third func(t *testing.T, ctx *deskDexContext, provider *recordingDesk)
+	}{
+		{name: "refusal is uncertain", third: func(t *testing.T, ctx *deskDexContext, provider *recordingDesk) {
+			result, err := sdkgo.RunMutation(ctx, newDeskClient(t, provider.URL).CreateTicket(), deskConnection, validCreateTicketInput())
+			require.NoError(t, err)
+			require.Equal(t, desk.CreateTicketBranchUncertain, result.Branch, "the first send may have created the ticket")
+		}},
+		{name: "revoked credentials are uncertain", third: func(t *testing.T, ctx *deskDexContext, provider *recordingDesk) {
+			revoked := failingCredentialProvider{err: sdkgo.NewReauthorizationRequiredError(errors.New("invalid_code"))}
+			client, err := desk.New(desk.Config{OrgID: testOrganizationID}, revoked, desk.WithAPIBaseURL(provider.URL+"/api/v1"))
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+			require.NoError(t, err)
+			require.Equal(t, desk.CreateTicketBranchUncertain, result.Branch)
+			require.Zero(t, ctx.heartbeatCount, "notSent would hide the earlier possible send")
+		}},
+		{name: "transient refresh after 401 retries without canResend", third: func(t *testing.T, ctx *deskDexContext, provider *recordingDesk) {
+			credentials := &failingRejectionRefreshCredentialProvider{err: errors.New("Zoho token endpoint returned HTTP 503")}
+			client, err := desk.New(desk.Config{OrgID: testOrganizationID}, credentials, desk.WithAPIBaseURL(provider.URL+"/api/v1"))
+			require.NoError(t, err)
+			_, err = sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+			retry := requireRetry(t, err, sdkgo.FailureAuthentication)
+			require.Equal(t, "Zoho Desk rejected the access token (HTTP 401); credential refresh is temporarily unavailable", retry.Failure.Message)
+			require.Equal(t, singledispatch.StateClaimed, recordedMarker(t, ctx).State, "the claim stays, so the next attempt counts it")
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+				switch index {
+				case 0:
+					writeJSON(t, response, http.StatusInternalServerError, `{"errorCode":"INTERNAL_SERVER_ERROR"}`)
+				case 1:
+					writeJSON(t, response, http.StatusTooManyRequests, `{"errorCode":"TOO_MANY_REQUESTS"}`)
+				case 2:
+					if test.name == "transient refresh after 401 retries without canResend" {
+						writeJSON(t, response, http.StatusUnauthorized, `{"errorCode":"INVALID_OAUTH"}`)
+						return
+					}
+					writeJSON(t, response, http.StatusUnprocessableEntity, `{"errorCode":"INVALID_DATA"}`)
+				default:
+					t.Fatal("no fourth request is expected")
+				}
+			})
+			client := newDeskClient(t, provider.URL)
+			ctx := newDeskDexContext("create-x1-" + test.name)
+			_, err := sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+			requireRetry(t, err, sdkgo.FailureAvailability)
+			ctx = ctx.nextAttempt()
+			_, err = sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+			requireRetry(t, err, sdkgo.FailureRateLimit)
+			marker := recordedMarker(t, ctx)
+			require.Equal(t, singledispatch.StateCanResend, marker.State)
+			require.Equal(t, int32(1), marker.SendCount, "the first send still counts")
+			test.third(t, ctx.nextAttempt(), provider)
+		})
+	}
+}
+
+// TestCreateTicketRetriesATransientRefreshAfterAFirst401 covers a first send refused with 401 whose
+// refresh fails transiently: the 401 created nothing, so canResend is recorded and the Step retries.
+func TestCreateTicketRetriesATransientRefreshAfterAFirst401(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusUnauthorized, `{"errorCode":"INVALID_OAUTH"}`)
+	})
+	credentials := &failingRejectionRefreshCredentialProvider{err: errors.New("Zoho token endpoint returned HTTP 503")}
+	client, err := desk.New(desk.Config{OrgID: testOrganizationID}, credentials, desk.WithAPIBaseURL(provider.URL+"/api/v1"))
+	require.NoError(t, err)
+	ctx := newDeskDexContext("create-first-401-transient")
+	_, err = sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+	requireRetry(t, err, sdkgo.FailureAuthentication)
+	require.Equal(t, singledispatch.StateCanResend, recordedMarker(t, ctx).State)
+	require.Equal(t, 1, provider.requestCount())
+
+	revoked := &failingRejectionRefreshCredentialProvider{err: sdkgo.NewReauthorizationRequiredError(errors.New("invalid_code"))}
+	client, err = desk.New(desk.Config{OrgID: testOrganizationID}, revoked, desk.WithAPIBaseURL(provider.URL+"/api/v1"))
+	require.NoError(t, err)
+	fresh := newDeskDexContext("create-first-401-revoked")
+	result, err := sdkgo.RunMutation(fresh, client.CreateTicket(), deskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, desk.CreateTicketBranchProviderRejected, result.Branch, "a revoked refresh after a first 401 created nothing")
+	require.Equal(t, singledispatch.StateCanResend, recordedMarker(t, fresh).State)
 }
 
 func TestCreateTicketRetries429AndUnsentRequests(t *testing.T) {
