@@ -18,6 +18,7 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     RetryError,
     SecretString,
+    projectconfig,
     run_mutation,
 )
 from dex_connectors.sdk.singledispatch import Marker
@@ -212,7 +213,15 @@ async def test_reads_back_before_resending_after_a_rate_limited_resend() -> None
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("error", "is_uncertain"),
-    [(ReauthorizationRequiredError(), True), (RuntimeError("broker unavailable"), False)],
+    [
+        (ReauthorizationRequiredError(), True),
+        (projectconfig.ObjectNotFoundError("connection"), True),
+        (projectconfig.ConnectionNotSelectedError("connection"), True),
+        (projectconfig.CredentialBrokerRejectedError("broker"), True),
+        (RuntimeError("broker unavailable"), False),
+        (projectconfig.CredentialBrokerUnavailableError("broker"), False),
+        (ValueError("connection is not configured"), False),
+    ],
 )
 async def test_credential_failure_after_a_possible_send_never_selects_defect(
     error: Exception, is_uncertain: bool
@@ -237,7 +246,15 @@ async def test_credential_failure_after_a_possible_send_never_selects_defect(
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("error", "is_defect"),
-    [(ReauthorizationRequiredError(), True), (RuntimeError("broker unavailable"), False)],
+    [
+        (ReauthorizationRequiredError(), True),
+        (projectconfig.ObjectNotFoundError("connection"), True),
+        (projectconfig.ConnectionNotSelectedError("connection"), True),
+        (projectconfig.CredentialBrokerRejectedError("broker"), True),
+        (RuntimeError("broker unavailable"), False),
+        (projectconfig.CredentialBrokerUnavailableError("broker"), False),
+        (ValueError("connection is not configured"), False),
+    ],
 )
 async def test_credential_failure_on_a_first_send(error: Exception, is_defect: bool) -> None:
     credentials = SwitchableCredentials()

@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ZendeskClient } from '../src/client.js';
 import { CreateTicketDefinition, UpdateTicketDefinition } from '../src/generated/definitions.js';
 import type { CreateTicketOutput, UpdateTicketInput, UpdateTicketOutput } from '../src/generated/models.js';
@@ -102,7 +103,12 @@ describe('updateTicket after a possible or accepted write', () => {
 
   it.each([
     ['terminal', new ReauthorizationRequiredError(), 'uncertain'],
+    ['missing connection object', new ObjectNotFoundError(), 'uncertain'],
+    ['unselected connection', new ConnectionNotSelectedError(), 'uncertain'],
+    ['broker refusal', new CredentialBrokerRejectedError(), 'uncertain'],
     ['transient', new Error('broker unavailable'), 'retry'],
+    ['broker outage', new CredentialBrokerUnavailableError(), 'retry'],
+    ['unconfigured static connection', new Error('connection is not configured'), 'retry'],
   ])('never selects defect for a %s credential failure after a possible send', async (_name, error, branch) => {
     const requests: ProviderRequest[] = [];
     const context = new AttemptContext();
@@ -119,7 +125,11 @@ describe('updateTicket after a possible or accepted write', () => {
 
   it.each([
     ['terminal', new ReauthorizationRequiredError(), 'defect'],
+    ['missing connection object', new ObjectNotFoundError(), 'defect'],
+    ['unselected connection', new ConnectionNotSelectedError(), 'defect'],
+    ['broker refusal', new CredentialBrokerRejectedError(), 'defect'],
     ['transient', new Error('broker unavailable'), 'retry'],
+    ['broker outage', new CredentialBrokerUnavailableError(), 'retry'],
   ])('records notSent for a %s credential failure on a first send', async (_name, error, branch) => {
     const credentials = new SwitchableCredentials();
     credentials.error = error;

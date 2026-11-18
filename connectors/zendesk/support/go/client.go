@@ -268,8 +268,9 @@ func (client *Client) resolveWriteCredentials(call sdkgo.Call, operation string)
 
 // isTerminalCredentialError reports a credential failure that a later attempt cannot recover from.
 func isTerminalCredentialError(err error) bool {
-	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrObjectNotFound) ||
-		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // exchange sends one authenticated request and classifies its response without choosing a branch.
