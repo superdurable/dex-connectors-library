@@ -5,12 +5,12 @@ import { createHash, createHmac } from 'node:crypto';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, type Call, type CredentialProvider, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { GetObjectTextOperation, HeadObjectOperation, ListObjectsOperation, PutObjectOperation } from './operations.js';
 
 /** Report a credential failure that no later attempt resolves without a person. */
 function isTerminalCredentialError(error: unknown): boolean {
-  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+  return isCredentialMaterialError(error) || error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
     error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
 }
 
@@ -98,11 +98,13 @@ export class S3Client {
   /** Bind the text query. */ getObjectText(): GetObjectTextOperation { return new GetObjectTextOperation(this); }
   /** Bind the object write mutation. */ putObject(): PutObjectOperation { return new PutObjectOperation(this); }
 
-  /**
-   * Resolve current credentials once per Invoke without exposing secret-bearing errors.
-   * Returns null for a transient credential failure and undefined for a terminal or invalid credential.
-   */
-  async startSession(call: Call): Promise<S3Session | null | undefined> {
+  /** Resolve current credentials once per Invoke without exposing secret-bearing errors. */
+  async startSession(call: Call): Promise<S3Session | undefined> {
+    return (await this.resolveSession(call)) ?? undefined;
+  }
+
+  /** Return null for a transient credential failure and undefined for a terminal or invalid one. */
+  private async resolveSession(call: Call): Promise<S3Session | null | undefined> {
     let credentials: Credentials;
     try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
     catch (error) { return isTerminalCredentialError(error) ? undefined : null; }

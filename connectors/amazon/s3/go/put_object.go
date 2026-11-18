@@ -133,6 +133,11 @@ func (operation PutObjectOperation) Invoke(call sdkgo.Call, input PutObjectInput
 		return operation.resolveExistingObject(session, location, requested)
 	}
 	classified := classifyErrorResponse(putObjectOperationID, "object write", errorResponse, false)
+	if classified.outcome == outcomeRejected && !isDefiniteWriteRefusalStatus(errorResponse.statusCode) {
+		// Repeating the same PUT converges, so an ambiguous refusal retries instead of selecting a branch.
+		return sdkgo.NewMutationRetry[StoredObject](newFailure(putObjectOperationID, sdkgo.FailureAvailability,
+			statusMessage("S3 answered the object write ambiguously", errorResponse)), classified.retryAfter)
+	}
 	if input.IsCreateOnly && errorResponse.code == "NotImplemented" {
 		classified.failure.Message = statusMessage("S3 rejected the create-only write", errorResponse) +
 			"; the store does not support If-None-Match, so leave isCreateOnly false"
@@ -170,6 +175,17 @@ func (operation PutObjectOperation) resolveExistingObject(session *operationSess
 	}
 	return sdkgo.NewMutationBranch(PutObjectBranchAlreadyExists, stored, failurePointer(putObjectOperationID, sdkgo.FailureConflict,
 		"an object that this Step did not write already exists at the key"), receipt)
+}
+
+// isDefiniteWriteRefusalStatus reports an HTTP refusal, a permanent Region redirect, or NotImplemented for create-only writes.
+func isDefiniteWriteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusMovedPermanently, http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity, http.StatusNotImplemented:
+		return true
+	}
+	return false
 }
 
 // validateInput resolves the location and returns the content to send.

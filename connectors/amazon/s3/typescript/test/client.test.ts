@@ -5,6 +5,7 @@ import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { S3Client } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 
 const testCredentials = { accessKeyId: new SecretString('AKIAS3CONNECTORTEST1'), secretAccessKey: new SecretString('s3-connector-test/secret+value') };
@@ -65,6 +66,8 @@ it.each([
   ['connection object not found', new ObjectNotFoundError(), true],
   ['connection not selected', new ConnectionNotSelectedError(), true],
   ['credential broker rejected', new CredentialBrokerRejectedError(), true],
+  ['malformed credential material', new CredentialMaterialError('credential access_key_id is required'), true],
+  ['SDK provider decoding failure', new TypeError('project credential decoding failed'), true],
   ['credential broker unavailable', new CredentialBrokerUnavailableError(), false],
   ['static connection not configured', new Error('connection is not configured'), false],
   ['unlisted error', new TypeError('unlisted'), false],
@@ -77,4 +80,17 @@ it.each([
   expect(await client.putObject().invoke(call, { key: 'report.txt', contentType: 'text/plain', textContent: 'hello' })).toMatchObject(expected);
   expect(await client.listObjects().invoke(call, {})).toMatchObject(expected);
   expect(requests).toBe(0);
+});
+
+it('keeps the released startSession result for a transient credential failure', async () => {
+  const client = new S3Client({ endpoint: 'http://127.0.0.1:12345', region: 'eu-west-1' },
+    { resolve: async () => { throw new CredentialBrokerUnavailableError(); } });
+  expect(await client.startSession(call)).toBeUndefined();
+});
+
+it.each([405, 409, 425, 451])('retries a putObject answered with unlisted HTTP %i', async status => {
+  const client = new S3Client({ endpoint: 'http://127.0.0.1:12345', region: 'eu-west-1', defaultBucket: 'acme-reports' },
+    { resolve: async () => testCredentials },
+    { now: () => new Date('2026-10-25T09:00:00Z'), send: async () => ({ status, headers: {}, body: new Uint8Array() }) });
+  expect(await client.putObject().invoke(call, { key: 'report.txt', contentType: 'text/plain', textContent: 'hello' })).toMatchObject({ kind: 'retry' });
 });

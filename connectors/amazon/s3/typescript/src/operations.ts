@@ -30,7 +30,7 @@ export class ListObjectsOperation implements Query<ListObjectsInput, ListObjects
     } catch (error) { return defectQuery(operation, zeroList, errorMessage(error)); }
     const maxKeys = input.maxKeys || this.client.listPageSize;
     if (!Number.isSafeInteger(maxKeys) || maxKeys < 1 || maxKeys > 1000) return defectQuery(operation, zeroList, 'maxKeys must be from 1 to 1000');
-    const session = await this.client.startSession(call);
+    const session = await this.client['resolveSession'](call);
     if (session === null) return newQueryRetry(credentialRetryFailure(operation));
     if (!session) return credentialDefectQuery(operation, zeroList);
     const query: Record<string, string> = { 'list-type': '2', 'encoding-type': 'url', 'max-keys': String(maxKeys) };
@@ -65,7 +65,7 @@ export class HeadObjectOperation implements Query<HeadObjectInput, ObjectMetadat
     let bucket: string;
     try { bucket = this.client.bucket(input.bucket); validateKey(input.key); }
     catch (error) { return defectQuery(operation, zeroMetadata, errorMessage(error)); }
-    const session = await this.client.startSession(call);
+    const session = await this.client['resolveSession'](call);
     if (session === null) return newQueryRetry(credentialRetryFailure(operation));
     if (!session) return credentialDefectQuery(operation, zeroMetadata);
     const identity = { bucket, key: input.key, sizeBytes: 0 };
@@ -91,7 +91,7 @@ export class GetObjectTextOperation implements Query<GetObjectTextInput, ObjectT
     let bucket: string;
     try { bucket = this.client.bucket(input.bucket); validateKey(input.key); }
     catch (error) { return defectQuery(operation, zeroText, errorMessage(error)); }
-    const session = await this.client.startSession(call);
+    const session = await this.client['resolveSession'](call);
     if (session === null) return newQueryRetry(credentialRetryFailure(operation));
     if (!session) return credentialDefectQuery(operation, zeroText);
     const identity: ObjectText = { bucket, key: input.key, sizeBytes: 0 };
@@ -145,7 +145,7 @@ export class PutObjectOperation implements Mutation<PutObjectInput, StoredObject
       validatePutHeaders(input);
       if (!/^[!-~]+$/.test(call.id) || call.id.length > 128) throw new TypeError('idempotency key is missing or not header-safe');
     } catch (error) { return defectMutation(zeroStored, errorMessage(error)); }
-    const session = await this.client.startSession(call);
+    const session = await this.client['resolveSession'](call);
     if (session === null) return newMutationRetry(credentialRetryFailure(operation));
     if (!session) return newMutationBranch('defect', zeroStored, {}, failure(operation, 'AUTHENTICATION', 'S3 connection credentials are unavailable'));
     const requested: StoredObject = { bucket, key: input.key, sizeBytes: content.length, contentType: input.contentType };
@@ -164,6 +164,8 @@ export class PutObjectOperation implements Mutation<PutObjectInput, StoredObject
     if (input.isCreateOnly && response.status === 412) return this.readExisting(call, session, requested);
     const classified = classify(operation, 'object write', response, session, false, this.client.currentTime());
     if (classified.retry) return newMutationRetry(classified.failure, classified.retryAfterMs);
+    if (!definiteWriteRefusalStatuses.has(response.status))
+      return newMutationRetry(failure(operation, 'AVAILABILITY', 'S3 answered the object write ambiguously'));
     return newMutationBranch('providerRejected', requested, receipt, classified.failure);
   }
 
@@ -190,6 +192,8 @@ export class PutObjectOperation implements Mutation<PutObjectInput, StoredObject
   }
 }
 
+// HTTP refusals, a permanent Region redirect, and NotImplemented for create-only writes; other refusals are unknown.
+const definiteWriteRefusalStatuses = new Set([301, 400, 401, 403, 404, 411, 413, 414, 415, 422, 501]);
 function failure(operation: string, kind: FailureKind, message: string): Failure { return { provider: 'amazon-s3', operation, kind, message }; }
 function errorMessage(error: unknown): string { return error instanceof Error ? error.message : 'S3 input is invalid'; }
 function defectQuery<T>(operation: string, value: T, message: string): QueryAttempt<T> { return newQueryBranch('defect', value, {}, failure(operation, 'VALIDATION', message)); }

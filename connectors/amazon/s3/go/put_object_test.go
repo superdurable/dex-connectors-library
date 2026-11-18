@@ -190,6 +190,17 @@ func TestCreateOnlyDependsOnTheStoreHonoringIfNoneMatch(t *testing.T) {
 	require.Equal(t, reportText, string(overwritten.Body))
 }
 
+func TestPutObjectRetriesAnUnlistedStatusBecauseItsOutcomeIsUnknown(t *testing.T) {
+	for _, status := range []int{http.StatusMethodNotAllowed, http.StatusConflict, http.StatusTooEarly, http.StatusUnavailableForLegalReasons} {
+		store := newFakeStore(t)
+		store.Intercept(func(s3fake.Request) *s3fake.Response {
+			return &s3fake.Response{StatusCode: status, Code: "Unlisted"}
+		})
+		_, err := runMutation(t, newDexContext("unlisted"), newPathStyleClient(t, store).PutObject(), reportInput(false))
+		requireRetry(t, err, sdkgo.FailureAvailability)
+	}
+}
+
 func TestPutObjectRetriesATransportFailureBecauseARepeatConverges(t *testing.T) {
 	store := newFakeStore(t)
 	client := newPathStyleClient(t, store)

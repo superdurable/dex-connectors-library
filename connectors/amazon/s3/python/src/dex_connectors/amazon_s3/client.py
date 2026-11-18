@@ -50,13 +50,16 @@ _ENDPOINT_PATH = re.compile(r"^(/[A-Za-z0-9._~-]+)*$")
 _EMPTY_HASH = hashlib.sha256(b"").hexdigest()
 
 
-class CredentialUnavailableError(Exception):
+class _CredentialUnavailableError(Exception):
     """A transient credential failure that a later attempt may resolve; nothing was sent."""
 
 
 def _is_terminal_credential_error(error: Exception) -> bool:
     """Report a credential failure that no later attempt resolves without a person."""
-    return isinstance(
+    # The generated connection module imports this module, so its predicate loads lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
         error,
         (
             ReauthorizationRequiredError,
@@ -181,16 +184,19 @@ class Client:
         return bucket
 
     async def start_session(self, call: Call) -> Session | None:
-        """Resolve credentials and reject invalid values without exposing them.
+        """Resolve credentials and reject invalid values without exposing them."""
+        try:
+            return await self._resolve_session(call)
+        except _CredentialUnavailableError:
+            return None
 
-        Returns None for a terminal or invalid credential, and raises CredentialUnavailableError
-        for any other credential failure, which a later attempt may resolve.
-        """
+    async def _resolve_session(self, call: Call) -> Session | None:
+        """Return None for a terminal or invalid credential; raise _CredentialUnavailableError otherwise."""
         try:
             credentials = await self.credentials.resolve(call)
         except Exception as error:
             if not _is_terminal_credential_error(error):
-                raise CredentialUnavailableError() from None
+                raise _CredentialUnavailableError() from None
             return None
         try:
             access_key_id = credentials.access_key_id.reveal()
