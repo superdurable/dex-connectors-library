@@ -4,7 +4,14 @@
 import { resolveCredential, resolveCredentialAfterRejection, ReauthorizationRequiredError, type Call, type CredentialRefreshDriver, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
+
+/** A credential failure no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError
+    || error instanceof CredentialBrokerRejectedError;
+}
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
 import { SearchConversationsOperation, GetConversationOperation, ReplyToConversationOperation, UpdateConversationOperation, FindCustomerByEmailOperation } from './operations.js';
 
@@ -83,7 +90,7 @@ export class HelpScoutClient {
       if (!isHeaderSafeCredential(token)) return { kind: 'terminal', message: 'the Help Scout access token is blank or contains characters a header cannot carry' };
       return { kind: 'resolved', credentials, token };
     } catch (error) {
-      if (error instanceof ReauthorizationRequiredError) return { kind: 'terminal', message: "Help Scout rejected the App ID or App Secret; save the app's current credentials in Dex Web Connections" };
+      if (isTerminalCredentialError(error)) return { kind: 'terminal', message: "Help Scout rejected the App ID or App Secret; save the app's current credentials in Dex Web Connections" };
       return { kind: 'retry', message: 'the Help Scout access token could not be loaded or obtained yet' };
     }
   }

@@ -19,6 +19,11 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -167,7 +172,12 @@ class Client:
         """Return token and error class: terminal, retry, or empty on success."""
         try:
             credentials = await self.credentials.resolve(call)
-        except ReauthorizationRequiredError:
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
             return "", "terminal"
         except Exception:
             return "", "retry"

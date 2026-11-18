@@ -359,7 +359,8 @@ and the Receipt carries Help Scout's `logRef` for support.
 | 408, 429, 5xx, transport failure | Retry, after `X-RateLimit-Retry-After` or `Retry-After`; see the reply's exceptions above |
 | oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for reads and the `updateConversation` read before any write; Retry after a write; a reply uses `Resource-Id` to confirm acceptance, or selects `uncertain` without it |
 | unreadable or foreign fence checkpoint | Retry without sending for the fenced reply |
-| invalid input or credentials | `defect`, with no request |
+| invalid input, or credentials that need reauthorization, belong to a missing or unselected connection, are refused by the credential broker, or carry an unusable token | `defect`, with no request; `uncertain` after a possible reply send |
+| any other credential failure, such as a token endpoint or broker outage or a connection the static provider does not configure | Retry, with no request |
 
 ## Security boundary
 

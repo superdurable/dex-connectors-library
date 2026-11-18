@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
@@ -204,7 +205,7 @@ func (client *Client) FindCustomerByEmail() FindCustomerByEmailOperation {
 func (client *Client) resolveCredentials(call sdkgo.Call) (Credentials, error) {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case isTerminalCredentialError(err):
 		return Credentials{}, errHelpScoutReauthorizationRequired
 	case err != nil:
 		return Credentials{}, errHelpScoutCredentialsUnavailable
@@ -212,6 +213,13 @@ func (client *Client) resolveCredentials(call sdkgo.Call) (Credentials, error) {
 		return Credentials{}, errHelpScoutAccessTokenUnusable
 	}
 	return credentials, nil
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // send repeats once after a 401 and a new token for reads and repeatable writes.
