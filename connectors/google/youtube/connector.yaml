@@ -328,7 +328,7 @@ spec:
       inputType: AddPlaylistItemInput
       outputType: AddedPlaylistItem
       kind: mutation
-      description: Add a video to a playlist the authorized account owns unless the playlist already holds it. After an unknown insert outcome, list the playlist first and insert again only while possible inserts stay below the send cap; select uncertain at the cap when the listing does not show the video.
+      description: Add a video to a playlist the authorized account owns unless the playlist already holds it. After an unknown insert outcome, list the playlist first and insert again only while possible inserts stay below the send cap; select uncertain at the cap when the listing does not show the video, after an accepted insert whose response is unusable and whose listing does not show it, or after a refusal that follows a possible earlier insert.
       idempotency: required
       authorization: required
       agent:
@@ -336,7 +336,7 @@ spec:
         approval: recommended
         # notFound, quotaExhausted, and providerRejected come from the pre-insert check or a definite refusal of the insert;
         # after a possible earlier insert the read-back selects only added or uncertain. defect precedes any send.
-        # invalidResponse comes only from the pre-insert check; an invalid insert response is resent or uncertain.
+        # invalidResponse comes only from the pre-insert check; an accepted insert with an invalid body is read back once, never resent.
         branches: {notFound: rejected, quotaExhausted: rejected, providerRejected: rejected, invalidResponse: rejected, uncertain: unknown, defect: rejected}
         description: Add one video to the end of a YouTube playlist that the authorized account owns. Give the playlist ID and the 11-character video ID. It skips the insert when the playlist listing already shows the video, but that listing can lag behind a recent insert, so do not call again for the same video to retry.
       branches:
@@ -345,7 +345,7 @@ spec:
         - {id: quotaExhausted, goName: QuotaExhausted, description: "The project's daily YouTube Data API quota is spent; it resets at midnight Pacific Time.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "YouTube conclusively rejected the insert, such as a playlist of another account, a full playlist, or a revoked grant.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "YouTube returned an invalid or oversized response to the check before any insert.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "An earlier insert may have added the video, and the playlist listing does not show it at the send cap; check the playlist before adding it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "An insert may have added the video and cannot be confirmed: the listing does not show it at the send cap or after an accepted insert with an unusable response, or YouTube refused a resend; check the playlist before adding it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s

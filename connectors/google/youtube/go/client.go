@@ -140,6 +140,8 @@ const (
 	outcomeRetryUnprocessed
 	// outcomeWriteUnconfirmed is a fenced write that may have taken effect without a usable response.
 	outcomeWriteUnconfirmed
+	// outcomeAcceptedUnreadable is a fenced write YouTube accepted with a 2xx whose body could not be read.
+	outcomeAcceptedUnreadable
 )
 
 // providerOutcome is one unsuccessful exchange: a Retry or a terminal branch class.
@@ -247,10 +249,10 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request provid
 	return response, &classified
 }
 
-// exchangeFencedWrite sends a write once through its fence. Only a rate-limit refusal or a
-// connection that never opened proves YouTube did not act, so only those are an unprocessed
-// Retry; any other failure after the claim, including HTTP 503, may have applied the write.
-// Only a definite refusal status or Google's quota reason stays a terminal outcome.
+// exchangeFencedWrite sends a write once through its fence. A rate-limit refusal, HTTP 503, or a
+// connection that never opened is an unprocessed Retry; any other failure after the claim may have
+// applied the write. A 2xx whose body cannot be read is accepted, never resent. Only a definite
+// refusal status or Google's quota reason stays a terminal outcome.
 func (client *Client) exchangeFencedWrite(call sdkgo.Call, operation string, request providerRequest, objectID string, credential Credentials) (providerResponse, *providerOutcome) {
 	observation := &writeDispatchObservation{}
 	var response providerResponse
@@ -270,7 +272,9 @@ func (client *Client) exchangeFencedWrite(call sdkgo.Call, operation string, req
 	case errors.Is(sendErr, errRequestNotBuilt):
 		return response, client.outcome(outcomeDefect, operation, sdkgo.FailureLocalDefect, errRequestNotBuilt.Error(), receipt)
 	case errors.Is(sendErr, errResponseTooLarge):
-		return response, client.outcome(outcomeWriteUnconfirmed, operation, sdkgo.FailureResponseTooLarge, errResponseTooLarge.Error(), receipt)
+		return response, client.outcome(outcomeAcceptedUnreadable, operation, sdkgo.FailureResponseTooLarge, errResponseTooLarge.Error(), receipt)
+	case sendErr != nil && response.statusCode >= 200 && response.statusCode < 300:
+		return response, client.outcome(outcomeAcceptedUnreadable, operation, sdkgo.FailureTransport, "YouTube accepted the insert but its response body could not be read", receipt)
 	case sendErr != nil && observation.isProvablyUndispatched():
 		return response, client.outcome(outcomeRetryUnprocessed, operation, sdkgo.FailureTransport, "YouTube could not be reached before sending", receipt)
 	case sendErr != nil:
@@ -281,7 +285,10 @@ func (client *Client) exchangeFencedWrite(call sdkgo.Call, operation string, req
 	classified := classifyErrorResponse(operation, response, client.now())
 	classified.receipt = receipt
 	switch {
-	case classified.disposition == outcomeRetry && classified.failure.Kind == sdkgo.FailureRateLimit:
+	case classified.disposition == outcomeRetry && bodyIndicatesInsertedItem(response.body):
+		classified.disposition = outcomeWriteUnconfirmed
+	case classified.disposition == outcomeRetry &&
+		(classified.failure.Kind == sdkgo.FailureRateLimit || response.statusCode == http.StatusServiceUnavailable):
 		classified.disposition = outcomeRetryUnprocessed
 	case classified.disposition == outcomeRetry:
 		classified.disposition = outcomeWriteUnconfirmed
