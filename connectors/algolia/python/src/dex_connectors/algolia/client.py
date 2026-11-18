@@ -29,6 +29,8 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk import OperationRef as OperationRef
 from dex_connectors.sdk import SecretString as SecretString
 from dex_connectors.sdk import StepDefaults as StepDefaults
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -139,7 +141,16 @@ class Client:
         Failure means defect, and any other Failure means invalidResponse."""
         try:
             credentials = await self.credentials.resolve(call)
-        except (ValueError, LookupError, OSError, ReauthorizationRequiredError):
+        except Exception as error:
+            if not _is_terminal_credential_error(error):
+                return (
+                    _failure(
+                        operation,
+                        FailureKind.AVAILABILITY,
+                        "Algolia credentials are temporarily unavailable; nothing was sent",
+                    ),
+                    0.0,
+                )
             credentials = None
         application_id = "" if credentials is None else credentials.application_id
         api_key = "" if credentials is None else credentials.api_key.reveal()
@@ -360,6 +371,19 @@ def _rejection_kind(status: int) -> FailureKind:
     if status == 403:
         return FailureKind.AUTHORIZATION
     return FailureKind.PROVIDER_REJECTION
+
+
+def _is_terminal_credential_error(error: Exception) -> bool:
+    """Report a credential failure that no later attempt resolves without a person."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:

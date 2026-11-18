@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -200,8 +201,18 @@ func (operation SaveObjectOperation) Invoke(call sdkgo.Call, input SaveObjectInp
 	return sdkgo.NewMutationBranch(SaveObjectBranchSaved, result, nil, sdkgo.Receipt{})
 }
 
+// isTerminalCredentialError reports a credential failure that no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
 func (client *Client) send(call sdkgo.Call, method, path string, payload []byte, operation string) ([]byte, int, *sdkgo.Failure, time.Duration) {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return nil, -1, algoliaFailure(operation, sdkgo.FailureAvailability, "Algolia credentials are temporarily unavailable; nothing was sent"), 0
+	}
 	if err != nil || credentials.Validate() != nil || !applicationIDPattern.MatchString(credentials.ApplicationID) || !providerhttp.IsHeaderSafeCredential(credentials.APIKey.Reveal()) {
 		return nil, 0, algoliaFailure(operation, sdkgo.FailureAuthentication, "Algolia credentials are unavailable or invalid"), 0
 	}

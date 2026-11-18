@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Client } from '../src/index.js';
 
 const call = { id: 'algolia-test-call', context: { cancellationSignal: new AbortController().signal } } as Call;
@@ -28,6 +29,23 @@ describe('Algolia client configuration and credential safety', () => {
     expect(observedUrl).toBe('https://TESTAPP.algolia.net/1/indexes/products/query');
     expect(observedUrl).not.toContain('safe-key');
     expect(observedKey).toBe('safe-key');
+  });
+
+  it.each([
+    ['reauthorization required', new ReauthorizationRequiredError(), true],
+    ['connection object not found', new ObjectNotFoundError(), true],
+    ['connection not selected', new ConnectionNotSelectedError(), true],
+    ['credential broker rejected', new CredentialBrokerRejectedError(), true],
+    ['credential broker unavailable', new CredentialBrokerUnavailableError(), false],
+    ['static connection not configured', new Error('connection is not configured'), false],
+    ['unlisted error', new TypeError('unlisted'), false],
+  ])('classifies a %s credential failure without sending', async (_name, credentialFailure, isTerminal) => {
+    let requests = 0;
+    const client = new Client({}, { resolve: async () => { throw credentialFailure; } }, async () => { requests++; throw new Error('unexpected send'); });
+    const expected = isTerminal ? { kind: 'branch', branch: 'defect' } : { kind: 'retry', failure: { kind: 'AVAILABILITY' } };
+    expect(await client.saveObject().invoke(call, { indexName: 'products', objectID: 'product-1', attributes: { name: 'Meridian' } })).toMatchObject(expected);
+    expect(await client.search().invoke(call, { indexName: 'products', query: '' })).toMatchObject(expected);
+    expect(requests).toBe(0);
   });
 
   it('does not dispatch when credentials contain a line break', async () => {
