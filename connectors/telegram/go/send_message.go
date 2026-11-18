@@ -80,20 +80,23 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 	// An earlier send may have created the message, so a refusal of this resend cannot prove nothing changed.
 	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
 	credentials, err := operation.client.credentials.Resolve(call)
-	if err != nil || credentials.Validate() != nil || !botTokenPattern.MatchString(credentials.BotToken.Reveal()) {
-		return localSendFailure(fence, hasPossibleEarlierSend, sdkgo.FailureAuthentication, "bot token is unavailable or invalid")
+	if err != nil {
+		return localSendFailure(fence, hasPossibleEarlierSend, false, sdkgo.FailureAuthentication, "bot token is unavailable")
+	}
+	if credentials.Validate() != nil || !botTokenPattern.MatchString(credentials.BotToken.Reveal()) {
+		return localSendFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureAuthentication, "bot token is invalid")
 	}
 	token := credentials.BotToken.Reveal()
 	form := url.Values{"chat_id": {input.ChatID}, "text": {input.Text}}.Encode()
 	endpoint := operation.client.baseURL + "/bot" + token + "/sendMessage"
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, endpoint, strings.NewReader(form))
 	if err != nil {
-		return localSendFailure(fence, hasPossibleEarlierSend, sdkgo.FailureLocalDefect, "Telegram send request could not be built")
+		return localSendFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureLocalDefect, "Telegram send request could not be built")
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	if err := singledispatch.PrepareHTTPWrite(request); err != nil {
-		return localSendFailure(fence, hasPossibleEarlierSend, sdkgo.FailureLocalDefect, "Telegram send request is invalid")
+		return localSendFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureLocalDefect, "Telegram send request is invalid")
 	}
 	observation := &dispatchObservation{}
 	var response *http.Response
@@ -126,29 +129,31 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		}
 		return retrySend(kind, "Telegram did not process the send", retryAfterFromResponse(response, operation.client.maxResponseBytes))
 	}
-	isDefiniteRefusalStatus := isDefiniteRefusalStatus(response.StatusCode)
 	isSuccessStatus := response.StatusCode >= 200 && response.StatusCode < 300
-	if !isDefiniteRefusalStatus && !isSuccessStatus {
-		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureAvailability, "Telegram message outcome is unknown after HTTP "+strconv.Itoa(response.StatusCode), 0)
-	}
-	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
-	if err != nil {
-		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureTransport, "Telegram send response could not be read", 0)
-	}
+	body, readErr := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+	isBodyReadable := readErr == nil
 	var envelope struct {
 		OK     bool            `json:"ok"`
 		Result json.RawMessage `json:"result"`
 	}
-	isEnvelopeDecoded := json.Unmarshal(body, &envelope) == nil
-	if isDefiniteRefusalStatus {
-		if isEnvelopeDecoded && envelope.OK {
-			// The body reports acceptance, so a resend could duplicate the message.
-			return uncertainSend(sdkgo.FailureProtocol, "Telegram returned a contradictory send response")
-		}
-		return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, rejectionFailureKind(response.StatusCode), "Telegram rejected the message with HTTP "+strconv.Itoa(response.StatusCode))
+	// Telegram reports every refusal with an error status, so ok:true or a 2xx means it created the message.
+	isAccepted := isBodyReadable && json.Unmarshal(body, &envelope) == nil && envelope.OK
+	if isSuccessStatus && !isBodyReadable {
+		return uncertainSend(sdkgo.FailureTransport, "Telegram accepted the message, but its response could not be read")
 	}
-	if !isEnvelopeDecoded || !envelope.OK {
-		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureProtocol, "Telegram send response is malformed", 0)
+	if isSuccessStatus && !isAccepted {
+		return uncertainSend(sdkgo.FailureProtocol, "Telegram accepted the message, but its response is malformed")
+	}
+	if !isSuccessStatus && isAccepted {
+		// The body reports acceptance, so a resend could duplicate the message.
+		return uncertainSend(sdkgo.FailureProtocol, "Telegram returned a contradictory send response")
+	}
+	if !isSuccessStatus {
+		// An unreadable or oversized error body cannot prove a refusal.
+		if isBodyReadable && isDefiniteRefusalStatus(response.StatusCode) {
+			return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, rejectionFailureKind(response.StatusCode), "Telegram rejected the message with HTTP "+strconv.Itoa(response.StatusCode))
+		}
+		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureAvailability, "Telegram message outcome is unknown after HTTP "+strconv.Itoa(response.StatusCode), 0)
 	}
 	var result struct {
 		MessageID int64 `json:"message_id"`
@@ -207,8 +212,12 @@ func rejectOrSelectUncertain(fence *singledispatch.Fence, hasPossibleEarlierSend
 	return failedSend(SendMessageBranchProviderRejected, kind, message)
 }
 
-// localSendFailure selects defect only when no earlier send may have created the message.
-func localSendFailure(fence *singledispatch.Fence, hasPossibleEarlierSend bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentMessage] {
+// localSendFailure selects defect only when no earlier send may have created the message. After
+// a possible send, a terminal failure selects uncertain and a transient one returns Retry.
+func localSendFailure(fence *singledispatch.Fence, hasPossibleEarlierSend bool, isTerminal bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentMessage] {
+	if hasPossibleEarlierSend && isTerminal {
+		return uncertainSend(kind, message+"; an earlier attempt may have sent the message")
+	}
 	if hasPossibleEarlierSend {
 		// notSent would hide the earlier possible send, so nothing is recorded.
 		return retrySend(kind, message+"; no message was sent in this attempt", 0)
