@@ -181,6 +181,15 @@ async def test_refusal_after_a_rate_limited_resend_is_uncertain() -> None:
     assert posts(requests) == 3
 
 
+async def test_locked_conversation_status_is_an_unknown_outcome() -> None:
+    for status in (412, 423):
+        requests: list[httpx.Request] = []
+        context = AttemptContext()
+        assert await run(lambda _, code=status: error_response(code), context, requests) == "retry"
+        assert context.marker is not None and context.marker.state == State.CLAIMED
+        assert posts(requests) == 1
+
+
 class FailingCredentials:
     """Fail every credential resolution with one error."""
 

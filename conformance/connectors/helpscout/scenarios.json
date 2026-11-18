@@ -706,12 +706,12 @@
               "application/json; charset=UTF-8"
             ]
           },
-          "status": 412
+          "status": 422
         }
       ],
       "expected": {
         "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
+        "failureKind": "VALIDATION",
         "heartbeat": {
           "attempt": 1,
           "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
@@ -1163,12 +1163,12 @@
               "application/json; charset=UTF-8"
             ]
           },
-          "status": 412
+          "status": 422
         }
       ],
       "expected": {
         "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
+        "failureKind": "VALIDATION",
         "output": {
           "conversation": {
             "createdAt": "2026-09-29T22:46:22Z",

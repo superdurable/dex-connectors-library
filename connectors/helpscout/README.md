@@ -176,8 +176,9 @@ operation uses the Connector SDK's single-dispatch fence with sync durability:
   effect, which can add a duplicate thread; the send that reaches the cap
   selects `uncertain`;
 - a `404`, or a merged conversation on the read before a reply, selects
-  `notFound`; a `400`, `401`, `403`, `411`, `412` or `423` for a locked
-  conversation, `413`, `414`, `415`, or `422` selects `providerRejected`.
+  `notFound`; a `400`, `401`, `403`, `411`, `413`, `414`, `415`, or `422`
+  selects `providerRejected`. A `412` or `423` for a locked conversation is
+  an unknown outcome like any other unlisted status.
   Each records `canResend` first, and nothing was added. After a possible
   earlier send, any of these refusals selects `uncertain` instead;
 - an earlier send is possible whenever the decision is not a plain first
@@ -343,7 +344,7 @@ and the Receipt carries Help Scout's `logRef` for support.
 | 404 | `notFound` where declared, otherwise `providerRejected` |
 | 410 | `notFound` for reads; Retry for an `updateConversation` write; the fenced reply resends within the send cap |
 | 409, other unlisted 4xx | `providerRejected`, `CONFLICT` for reads; Retry for an `updateConversation` write; the fenced reply resends within the send cap, then selects `uncertain` |
-| 412, 423 | `providerRejected`, a locked conversation or customer |
+| 412, 423 | `providerRejected`, a locked conversation or customer, for reads; Retry for an `updateConversation` write; the fenced reply resends within the send cap, then selects `uncertain` |
 | 301 | `merged` for `getConversation`; the fenced reply resends within the send cap if its POST receives one |
 | other 3xx | `providerRejected`, `PROTOCOL` on reads; Retry for an `updateConversation` write; the fenced reply resends within the send cap |
 | 408, 429, 5xx, transport failure | Retry, after `X-RateLimit-Retry-After` or `Retry-After`; see the reply's exceptions above |

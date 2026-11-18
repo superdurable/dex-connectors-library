@@ -297,20 +297,20 @@ func (client *Client) classifyReplyExchange(
 	case isDefiniteRefusalStatus(status):
 		return client.rejectReply(call, output, permit, ReplyToConversationBranchProviderRejected, outcome.failure, receipt)
 	default:
-		// A 3xx, 408, 409, 410, another unlisted status, or a 5xx other than 503 can follow a created thread.
+		// A 3xx, 408, 409, 410, 412, 423, another unlisted status, or a 5xx other than 503 can follow a created thread.
 		failure := outcome.failure
 		failure.Message += "; the thread may exist"
 		return client.resendOrSelectUncertain(call, output, permit, failure, outcome.retryAfter, receipt)
 	}
 }
 
-// isDefiniteRefusalStatus reports a status that proves Help Scout created nothing. Help Scout
-// documents 412 and 423 as a locked conversation or customer that refuses the change.
+// isDefiniteRefusalStatus reports a status that proves Help Scout created nothing. Every other
+// 4xx, including 412 and 423 for a locked conversation, is an unknown outcome.
 func isDefiniteRefusalStatus(statusCode int) bool {
 	switch statusCode {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
-		http.StatusLengthRequired, http.StatusPreconditionFailed, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
-		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity, http.StatusLocked:
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
 		return true
 	default:
 		return false

@@ -356,8 +356,8 @@ function classifyMutation<T>(client: HelpScoutClient, call: Call, operation: str
   return newMutationBranch([404, 410].includes(response.status) ? notFoundBranch : rejectedBranch, value, client.receipt(call, objectId, outcome.logRef), outcome.failure);
 }
 
-/** Only these statuses prove Help Scout applied nothing; it documents 412 and 423 as a locked conversation. */
-const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 412, 413, 414, 415, 422, 423]);
+/** Only these statuses prove Help Scout applied nothing; 412, 423, and every other 4xx are unknown. */
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 
 /** Report an answer to a sent write that neither confirms nor definitely refuses it; classifyMutation retries 408, 429, and 5xx. */
 function isUnknownWriteOutcome(exchange: HelpScoutExchange | CredentialResolution): boolean {

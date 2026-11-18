@@ -153,8 +153,8 @@ def _mutation_exchange(
     return MutationAttempt.branch_result(branch, value, client.receipt(call, object_id, request_id), failure)
 
 
-# Only these statuses prove Help Scout applied nothing; it documents 412 and 423 as a locked conversation.
-DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 412, 413, 414, 415, 422, 423})
+# Only these statuses prove Help Scout applied nothing; 412, 423, and every other 4xx are unknown.
+DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
 
 
 def _is_unknown_write_outcome(exchange: Exchange) -> bool:

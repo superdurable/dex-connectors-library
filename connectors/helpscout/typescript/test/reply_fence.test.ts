@@ -99,6 +99,14 @@ describe('Help Scout fenced reply decisions', () => {
     expect(posts(requests)).toBe(3);
   });
 
+  it.each([412, 423])('treats a locked conversation status %i as an unknown outcome', async status => {
+    const { client, requests } = newClient(async () => errorResponse(status));
+    const context = new AttemptContext();
+    expect(await run(client, context)).toBe('retry');
+    expect(context.markerState()).toBe('claimed');
+    expect(posts(requests)).toBe(1);
+  });
+
   it.each([
     ['transient', new Error('token endpoint unavailable'), 'retry'],
     ['terminal', new ReauthorizationRequiredError(), 'uncertain'],

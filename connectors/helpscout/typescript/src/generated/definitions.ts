@@ -87,7 +87,7 @@ export const ReplyToConversationBranch = {
 export const ReplyToConversationBranchReplied = ReplyToConversationBranch.Replied;
 /** The conversation does not exist, was merged, or is not visible to the app's Help Scout user; nothing was added. */
 export const ReplyToConversationBranchNotFound = ReplyToConversationBranch.NotFound;
-/** Help Scout conclusively rejected the thread, such as a locked conversation with 100 threads or an unknown customer; nothing was added. */
+/** Help Scout conclusively rejected the thread with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as invalid text or an unknown customer; nothing was added. */
 export const ReplyToConversationBranchProviderRejected = ReplyToConversationBranch.ProviderRejected;
 /** The thread may exist: the send cap is reached after answers that were lost, a server error other than 503, or an unlisted status; Help Scout accepted the thread with a 2xx but no valid thread ID; an accepted thread could not be confirmed by read-back; or a refusal, local failure, or authorization failure followed a possible earlier send. Below the cap, an unknown outcome is resent. */
 export const ReplyToConversationBranchUncertain = ReplyToConversationBranch.Uncertain;
@@ -99,7 +99,7 @@ export const ReplyToConversationDefinition: MutationDefinition = {
   branches: [
     { id: "replied", description: "Help Scout created the reply or note and returned its thread ID." },
     { id: "notFound", description: "The conversation does not exist, was merged, or is not visible to the app's Help Scout user; nothing was added.", optional: true },
-    { id: "providerRejected", description: "Help Scout conclusively rejected the thread, such as a locked conversation with 100 threads or an unknown customer; nothing was added.", optional: true },
+    { id: "providerRejected", description: "Help Scout conclusively rejected the thread with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as invalid text or an unknown customer; nothing was added.", optional: true },
     { id: "uncertain", description: "The thread may exist: the send cap is reached after answers that were lost, a server error other than 503, or an unlisted status; Help Scout accepted the thread with a 2xx but no valid thread ID; an accepted thread could not be confirmed by read-back; or a refusal, local failure, or authorization failure followed a possible earlier send. Below the cap, an unknown outcome is resent.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
