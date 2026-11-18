@@ -249,7 +249,7 @@ func TestInvalidInputAndCredentialsDoNotDispatch(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, UpdateTaskBranchDefect, result.Branch)
 	}
-	for _, terminal := range []error{projectconfig.ErrObjectNotFound, sdkgo.ErrReauthorizationRequired, projectconfig.ErrConnectionNotSelected, projectconfig.ErrCredentialBrokerRejected} {
+	for _, terminal := range []error{projectconfig.ErrObjectNotFound, sdkgo.ErrReauthorizationRequired, projectconfig.ErrReauthorizationRequired, projectconfig.ErrConnectionNotSelected, projectconfig.ErrCredentialBrokerRejected} {
 		failing, err := New(Config{BaseURL: server.URL}, failingCredentials{fmt.Errorf("resolve project credential: %w", terminal)})
 		require.NoError(t, err)
 		requireCredentialDefects(t, failing)

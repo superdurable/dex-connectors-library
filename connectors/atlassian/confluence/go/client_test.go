@@ -195,6 +195,8 @@ func TestTransientCredentialFailuresRetryWithoutAProviderRequest(t *testing.T) {
 	for name, cause := range map[string]error{
 		"broker unavailable": fmt.Errorf("resolve: %w", projectconfig.ErrCredentialBrokerUnavailable),
 		"untyped store read": errors.New("project object read failed"),
+		"not configured":     errors.New("connection is not configured"),
+		"not refreshed":      projectconfig.ErrRejectedCredentialNotRefreshed,
 	} {
 		client, err := confluence.New(confluence.Config{CloudID: testCloudID, Endpoint: provider.URL}, failingConfluenceCredentials{cause})
 		require.NoError(t, err)

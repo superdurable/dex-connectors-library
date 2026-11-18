@@ -98,15 +98,18 @@ export class ConfluenceClient {
   /** Resolve the OAuth token and the single selected Confluence Cloud site. */
   async startSession(call: Call, operation: string): Promise<ConfluenceSessionResult> {
     let credentials: Credentials;
+    const terminal: ConfluenceSessionResult = { error: { failure: confluenceFailure(operation, 'AUTHENTICATION', 'Confluence connection credentials are unavailable; reconnect the connection'), isRetryable: false, retryAfterMs: 0 } };
     try {
       credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
-      const token = credentials.accessToken.reveal();
-      if (!isHeaderSafeCredential(token)) throw new TypeError('invalid access token');
     } catch (error) {
       if (!isTerminalCredentialError(error)) return { error: { failure: confluenceFailure(operation, 'AVAILABILITY', 'Confluence connection credentials could not be read, so nothing was sent'), isRetryable: true, retryAfterMs: 0 } };
-      return { error: { failure: confluenceFailure(operation, 'AUTHENTICATION', 'Confluence connection credentials are unavailable; reconnect the connection'), isRetryable: false, retryAfterMs: 0 } };
+      return terminal;
     }
-    const session: ConfluenceSession = { call, cloudId: this.configuredCloudId || this.resolvedCloudId, token: credentials.accessToken.reveal() };
+    // Resolved material that fails a local check cannot pass on a later attempt.
+    let token = '';
+    try { token = credentials.accessToken.reveal(); } catch { /* A wrongly typed token is invalid material. */ }
+    if (!token || !isHeaderSafeCredential(token)) return terminal;
+    const session: ConfluenceSession = { call, cloudId: this.configuredCloudId || this.resolvedCloudId, token };
     if (session.cloudId) return { session };
     const response = await this.exchange(session, 'GET', 'gateway', '/oauth/token/accessible-resources');
     if (response.error) return { error: { failure: confluenceFailure(operation, 'TRANSPORT', 'Atlassian accessible resources are temporarily unavailable'), isRetryable: true, retryAfterMs: 0 } };
@@ -220,7 +223,7 @@ export class ConfluenceClient {
 
 /** Report a credential failure that no retry fixes; others, such as broker outages, may pass. */
 function isTerminalCredentialError(error: unknown): boolean {
-  return error instanceof TypeError || error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError ||
+  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError ||
     error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
 }
 

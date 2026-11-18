@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { SentryClient } from '../src/client.js';
 
@@ -20,14 +21,30 @@ describe('Sentry provider adapter', () => {
     expect(request?.url).not.toContain('test-secret-token');
   });
   it('keeps missing credentials terminal and a refused transport retryable', async () => {
-    const missing = new SentryClient({}, { resolve: async () => { throw new Error('secret unavailable'); } });
+    const missing = new SentryClient({}, { resolve: async () => { throw new ObjectNotFoundError(); } });
     const invalid = await missing.getIssue().invoke(call, { organization: 'acme', id: '123' });
     expect(invalid.kind === 'branch' && invalid.branch).toBe('defect');
+    const unreadable = new SentryClient({}, { resolve: async () => { throw new Error('secret unavailable'); } });
+    const unreadableResult = await unreadable.getIssue().invoke(call, { organization: 'acme', id: '123' });
+    expect(unreadableResult.kind).toBe('retry');
+    expect(JSON.stringify(unreadableResult)).not.toContain('secret unavailable');
     const refused = new SentryClient({ baseUrl: 'http://127.0.0.1:12345' }, {
       resolve: async () => ({ apiKey: new SecretString('test-secret-token') }),
     }, { send: async () => { throw new Error('connect ECONNREFUSED'); } });
     const retry = await refused.getIssue().invoke(call, { organization: 'acme', id: '123' });
     expect(retry.kind).toBe('retry');
+  });
+  it.each([
+    ['reauthorization', () => new ReauthorizationRequiredError(), 'defect'],
+    ['not selected', () => new ConnectionNotSelectedError(), 'defect'],
+    ['broker rejected', () => new CredentialBrokerRejectedError(), 'defect'],
+    ['broker unavailable', () => new CredentialBrokerUnavailableError(), 'retry'],
+    ['not configured', () => new Error('connection is not configured'), 'retry'],
+  ])('classifies a credential resolve failure (%s) for the status write', async (_name, newError, expected) => {
+    const error = newError();
+    const client = new SentryClient({}, { resolve: async () => { throw error; } }, { send: async () => { throw new Error('unexpected request'); } });
+    const result = await client.updateIssueStatus().invoke(call, { organization: 'acme', id: '123', status: 'resolved' });
+    expect(result.kind === 'branch' ? result.branch : result.kind).toBe(expected);
   });
   it('encodes search query bytes like Go url.QueryEscape', async () => {
     let request: ProviderRequest | undefined;

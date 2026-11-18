@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import { MaxErrorBodyBytes, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ConfluenceClient } from '../src/client.js';
 import { AddCommentDefinition } from '../src/generated/definitions.js';
 
@@ -186,5 +187,20 @@ describe('Confluence bounded resend of unconfirmed comments', () => {
     expect(await run(failing(new Error('credential store unavailable')), later)).toBe('retry');
     expect(later.marker).toBe(earlier);
     expect(await run(failing(new ReauthorizationRequiredError()), new AttemptContext(3, earlier))).toBe('uncertain');
+  });
+
+  it.each([
+    ['not configured', () => new Error('connection is not configured'), 'retry'],
+    ['unlisted type error', () => new TypeError('unlisted'), 'retry'],
+    ['broker unavailable', () => new CredentialBrokerUnavailableError(), 'retry'],
+    ['not selected', () => new ConnectionNotSelectedError(), 'defect'],
+    ['broker rejected', () => new CredentialBrokerRejectedError(), 'defect'],
+    ['object not found', () => new ObjectNotFoundError(), 'defect'],
+  ])('classifies a credential failure (%s) before any send', async (_name, newError, expected) => {
+    const error = newError();
+    const client = new ConfluenceClient({ endpoint: 'http://127.0.0.1:12345', cloudId: '11223344-a1b2-4b33-8c44-def123456789' },
+      { resolve: async () => { throw error; }, resolveWithRefresh: async () => { throw error; } } as never,
+      { send: async () => { throw new Error('no request is expected'); } });
+    expect(await run(client, new AttemptContext())).toBe(expected);
   });
 });

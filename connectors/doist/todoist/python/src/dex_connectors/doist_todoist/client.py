@@ -28,6 +28,8 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -121,6 +123,19 @@ def _attempt_budget(call: Call) -> _AttemptBudget:
     available = max(0.0, available)
     started = time.monotonic()
     return _AttemptBudget(started + available * 7 / 12, started + available * 5 / 6, available / 10)
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential resolution failure that no retry fixes; every other error is transient."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -235,16 +250,16 @@ class Client:
     async def _authorize(self, call: Call, operation: str) -> tuple[str | None, _Exchange | None]:
         try:
             credentials = await self.credentials.resolve(call)
-        except (ValueError, LookupError, ReauthorizationRequiredError):
-            return None, _Exchange(
-                failure=_failure(
-                    operation,
-                    FailureKind.AUTHENTICATION,
-                    "connection credentials are missing or need reauthorization",
-                ),
-                local_defect=True,
-            )
-        except OSError:
+        except Exception as error:
+            if _is_terminal_credential_error(error):
+                return None, _Exchange(
+                    failure=_failure(
+                        operation,
+                        FailureKind.AUTHENTICATION,
+                        "connection credentials are missing or need reauthorization",
+                    ),
+                    local_defect=True,
+                )
             return None, _Exchange(
                 failure=_failure(
                     operation,

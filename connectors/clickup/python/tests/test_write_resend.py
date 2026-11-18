@@ -412,14 +412,28 @@ async def test_terminal_credential_failure_after_a_possible_send_is_uncertain(
 
 
 @pytest.mark.asyncio
-async def test_missing_connection_after_a_possible_send_is_uncertain() -> None:
+async def test_unconfigured_static_connection_after_a_possible_send_retries() -> None:
     marker = Marker(CALL_ID, 1, State.CLAIMED, send_count=1)
     context, requests = AttemptContext(2, marker), []
     result = await run(
         "createTask", lambda _: pytest.fail("request sent"), context, requests, has_credentials=False
     )
-    assert branch_of(result) == "uncertain"
+    assert result == "retry"
     assert marker_of(context).state == State.CLAIMED
+    assert requests == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "error",
+    [ValueError("connection is not configured"), RuntimeError("unlisted"), LookupError("unlisted")],
+    ids=["not configured", "unlisted runtime", "unlisted lookup"],
+)
+async def test_unlisted_credential_failure_before_any_send_retries(error: Exception) -> None:
+    context, requests = AttemptContext(), []
+    result = await run_with_credential_error("createTask", error, context, requests)
+    assert result == "retry"
+    assert marker_of(context).state == State.NOT_SENT
     assert requests == []
 
 

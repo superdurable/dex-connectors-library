@@ -56,16 +56,17 @@ export class JiraServiceManagementClient {
 
   /** Resolve a credential and select one accessible site. */
   async start(call: Call, operation: string): Promise<{ token: string; cloudID: string } | Classification> {
-    let token: string;
+    let credential: Credentials;
     try {
-      const credential = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
-      token = credential.accessToken.reveal();
-      if (!isHeaderSafeCredential(token)) throw new TypeError('invalid credential');
+      credential = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
     } catch (error) {
-      if (isTerminalCredentialError(error)) return this.classification('defect', operation, 'AUTHENTICATION', 'Jira Service Management connection credentials are unavailable; reconnect the connection', {});
+      if (isTerminalCredentialError(error)) return this.unusableCredential(operation);
       // A credential store or broker outage is transient; a later attempt resolves again.
       return this.classification('retry', operation, 'AVAILABILITY', 'Jira Service Management credential lookup is temporarily unavailable', {});
     }
+    let token = '';
+    try { token = credential.accessToken.reveal(); } catch { /* A wrongly typed token is invalid material. */ }
+    if (!token || !isHeaderSafeCredential(token)) return this.unusableCredential(operation);
     if (this.configuredCloudID || this.resolvedCloudID) return { token, cloudID: this.configuredCloudID || this.resolvedCloudID };
     const result = await this.exchange(call, { token, cloudID: '' }, { method: 'GET', api: 'gateway', path: '/oauth/token/accessible-resources' });
     if (result.error) return this.classification('retry', operation, 'TRANSPORT', 'Atlassian accessible resources are temporarily unavailable', {});
@@ -179,12 +180,16 @@ export class JiraServiceManagementClient {
     return { kind, failure: { kind: failureKind, provider: 'jira-service-management', operation, message }, retryAfterMs, receipt };
   }
 
+  private unusableCredential(operation: string): Classification {
+    return this.classification('defect', operation, 'AUTHENTICATION', 'Jira Service Management connection credentials are unavailable; reconnect the connection', {});
+  }
+
   private retryAfter(response: JiraResponse): number { return parseRetryAfter(String(response.headers['retry-after'] ?? ''), this.now()); }
 }
 
 /** Report a credential failure no retry fixes; a store or broker outage may pass. */
 function isTerminalCredentialError(error: unknown): boolean {
-  return error instanceof TypeError || error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
+  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
 }
 
 /** Report a response whose body was read in full; only then can it prove a refusal. */

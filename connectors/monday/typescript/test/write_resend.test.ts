@@ -152,6 +152,7 @@ describe('monday.com bounded resend of unconfirmed writes', () => {
   it.each([
     ['broker unavailable', () => new CredentialBrokerUnavailableError(), true],
     ['store read', () => new Error('project storage read timed out'), true],
+    ['connection not configured', () => new Error('connection is not configured'), true],
     ['object not found', () => new ObjectNotFoundError(), false],
     ['connection not selected', () => new ConnectionNotSelectedError(), false],
     ['broker rejected', () => new CredentialBrokerRejectedError(), false],

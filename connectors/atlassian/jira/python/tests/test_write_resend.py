@@ -9,6 +9,12 @@ from datetime import UTC, datetime, timedelta
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.atlassian_jira as jira
@@ -328,6 +334,43 @@ async def test_credential_failure_after_a_possible_send_records_no_not_sent_mark
     result = await run("createIssue", answer, context, requests, credential_provider=credentials)
     assert isinstance(result, sdk.MutationResult) and result.branch == "uncertain"
     assert posts(requests, "/issue") == 2
+
+
+class FailingCredentials:
+    """Credentials whose every lookup raises one error."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: sdk.Call) -> jira.Credentials:
+        """Raise the configured error."""
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (sdk.ReauthorizationRequiredError(), "defect"),
+        (ObjectNotFoundError("absent"), "defect"),
+        (ConnectionNotSelectedError(), "defect"),
+        (CredentialBrokerRejectedError(), "defect"),
+        (CredentialBrokerUnavailableError(), "retry"),
+        (ValueError("connection is not configured"), "retry"),
+        (LookupError("unlisted"), "retry"),
+    ],
+)
+async def test_credential_failure_before_any_send_uses_the_shared_terminal_set(
+    error: Exception, expected: str
+) -> None:
+    requests: list[httpx.Request] = []
+    answer = scripted_writes([(201, '{"id":"10043","key":"OPS-43"}')])
+    result = await run(
+        "createIssue", answer, AttemptContext(), requests, credential_provider=FailingCredentials(error)
+    )
+    branch = "retry" if isinstance(result, sdk.RetryError) else result.branch
+    assert branch == expected
+    assert requests == []
 
 
 def short_write_window_context() -> AttemptContext:

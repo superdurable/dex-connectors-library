@@ -4,6 +4,7 @@
 import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, SecretString, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
 import { AddCommentOperation, CreateIssueOperation, GetIssueOperation, SearchIssuesOperation, TransitionIssueOperation } from './operations.js';
@@ -85,7 +86,7 @@ export class JiraClient {
       credentials = await resolveCredential(this.credentials, call, this.refreshDriver, signal);
     } catch (error) {
       if (signal.aborted) throw new JiraSessionFailure(jiraFailure(operation, 'AVAILABILITY', 'Jira credential lookup did not finish within the Execute budget'), true);
-      if (error instanceof ReauthorizationRequiredError) throw new JiraSessionFailure(jiraFailure(operation, 'AUTHENTICATION', 'Jira connection credentials are unavailable; reconnect the connection'), false);
+      if (isTerminalCredentialError(error)) throw new JiraSessionFailure(jiraFailure(operation, 'AUTHENTICATION', 'Jira connection credentials are unavailable; reconnect the connection'), false);
       throw new JiraSessionFailure(jiraFailure(operation, 'AVAILABILITY', 'Jira credential lookup is temporarily unavailable'), true);
     }
     const token = credentials.accessToken instanceof SecretString ? credentials.accessToken.reveal() : '';
@@ -193,4 +194,9 @@ export function statusFailureKind(status: number): Failure['kind'] { return stat
 export function retryAfter(response: ProviderResponse): number { return parseRetryAfter(firstHeader(response.headers, 'retry-after')); }
 /** Return the first value of a response header, matched case-insensitively, or an empty string. */
 export function firstHeader(headers: ProviderResponse['headers'] | undefined, name: string): string { const key = Object.keys(headers ?? {}).find(candidate => candidate.toLowerCase() === name); const value = key ? headers?.[key] : undefined; return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }
+/** Report a credential resolution failure that no retry fixes; every other error is transient. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
+}
+
 function isObject(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value); }

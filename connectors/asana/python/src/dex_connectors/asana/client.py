@@ -17,6 +17,8 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -140,9 +142,9 @@ class Client:
         )
         try:
             credentials = await self._credentials.resolve(call)
-        except (ValueError, LookupError, ReauthorizationRequiredError):
-            return None, terminal
-        except Exception:
+        except Exception as error:
+            if is_terminal_credential_error(error):
+                return None, terminal
             return None, failure(
                 operation,
                 FailureKind.AVAILABILITY,
@@ -213,6 +215,19 @@ class Client:
     def retry_after(self, exchange: Exchange) -> float:
         """Read a bounded provider Retry-After hint."""
         return parse_retry_after(exchange.headers.get("Retry-After", ""), self._now())
+
+
+def is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential resolution failure that no retry fixes; every other error is transient."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:

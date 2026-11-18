@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { TrelloClient } from '../src/client.js';
 import { AddCommentDefinition, CreateCardDefinition, UpdateCardDefinition } from '../src/generated/definitions.js';
 
@@ -145,6 +146,24 @@ describe('Trello bounded resend of unconfirmed writes', () => {
     expect(await run(failingClient(new Error('credential store unavailable')), 'createCard', later)).toBe('retry');
     expect(later.marker).toMatchObject({ state: 'canResend', sendCount: 1 });
     expect(await run(failingClient(new ReauthorizationRequiredError()), 'createCard', new AttemptContext(3, earlier))).toBe('uncertain');
+  });
+
+  it.each([
+    ['not selected', () => new ConnectionNotSelectedError(), 'defect'],
+    ['broker rejected', () => new CredentialBrokerRejectedError(), 'defect'],
+    ['object not found', () => new ObjectNotFoundError(), 'defect'],
+    ['broker unavailable', () => new CredentialBrokerUnavailableError(), 'retry'],
+    ['not configured', () => new Error('connection is not configured'), 'retry'],
+    ['unlisted type error', () => new TypeError('unlisted'), 'retry'],
+  ])('classifies a credential resolve failure (%s) before any send', async (_name, newError, expected) => {
+    const error = newError();
+    const client = new TrelloClient({}, { resolve: async () => { throw error; } }, { send: async () => { throw new Error('no request is expected'); } });
+    expect(await run(client, 'createCard', new AttemptContext())).toBe(expected);
+  });
+
+  it('selects defect for header-unsafe resolved credentials', async () => {
+    const client = new TrelloClient({}, { resolve: async () => ({ apiKey: new SecretString('key'), token: new SecretString('to"ken') }) }, { send: async () => { throw new Error('no request is expected'); } });
+    expect(await run(client, 'createCard', new AttemptContext())).toBe('defect');
   });
 
   it('retries an update whose refusal body broke', async () => {

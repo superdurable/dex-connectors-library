@@ -217,6 +217,17 @@ describe('ClickUp read-back and bounded resend of unknown writes', () => {
     expect([...transient.requests, ...terminal.requests]).toHaveLength(0);
   });
 
+  it.each([
+    ['not configured', () => new Error('connection is not configured')],
+    ['unlisted', () => new TypeError('unlisted credential store error')],
+  ])('retries an unlisted credential failure (%s) before any send', async (_name, newError) => {
+    const { client, requests } = newClientWithCredentialError(newError());
+    const context = new AttemptContext();
+    expect(await run(client, 'createTask', context)).toBe('retry');
+    expect(context.marker).toMatchObject({ state: 'canResend' });
+    expect(requests).toHaveLength(0);
+  });
+
   it.each(['createTask', 'addComment'] as const)('%s selects uncertain when the write window aborts a 2xx body', async operation => {
     const requests: ProviderRequest[] = [];
     const client = new ClickUpClient({}, { resolve: async () => ({ apiToken: new SecretString('pk_4411723_TESTTOKEN') }) }, {

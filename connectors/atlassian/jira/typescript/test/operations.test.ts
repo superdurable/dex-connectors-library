@@ -4,6 +4,7 @@
 import { expect, it } from 'vitest';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
 import { type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { JiraClient, pathEscape, encodeQuery } from '../src/client.js';
 
 const connection = { provider: 'atlassian', name: 'jira-test' };
@@ -68,6 +69,20 @@ it('treats reauthorization as terminal and transient credential lookup as Retry'
   expect(second.kind).toBe('retry');
   if (second.kind !== 'retry') throw new TypeError('expected retry');
   expect(second.failure.kind).toBe('AVAILABILITY');
+});
+
+it.each([
+  ['not selected', () => new ConnectionNotSelectedError(), 'defect'],
+  ['broker rejected', () => new CredentialBrokerRejectedError(), 'defect'],
+  ['object not found', () => new ObjectNotFoundError(), 'defect'],
+  ['broker unavailable', () => new CredentialBrokerUnavailableError(), 'retry'],
+  ['not configured', () => new Error('connection is not configured'), 'retry'],
+  ['unlisted type error', () => new TypeError('unlisted'), 'retry'],
+])('classifies a credential failure (%s) with the shared terminal set', async (_name, newError, expected) => {
+  const error = newError();
+  const client = new JiraClient({ cloudId }, { resolve: async () => { throw error; }, resolveWithRefresh: async () => { throw error; } });
+  const answer = await client.getIssue().invoke(call, { issueIdOrKey: 'OPS-42' });
+  expect(answer.kind === 'branch' ? answer.branch : answer.kind).toBe(expected);
 });
 
 it('refreshes once after a rejected access token and sends the replacement', async () => {

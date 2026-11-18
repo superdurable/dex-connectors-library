@@ -158,6 +158,7 @@ func TestUnkeyedWritesTerminalCredentialFailureAfterAPossibleSendIsUncertain(t *
 	for _, operation := range unkeyedWriteTestOperations {
 		for name, resolveErr := range map[string]error{
 			"reauthorization required": sdkgo.ErrReauthorizationRequired,
+			"project reauthorization":  projectconfig.ErrReauthorizationRequired,
 			"connection not selected":  projectconfig.ErrConnectionNotSelected,
 			"broker rejected":          projectconfig.ErrCredentialBrokerRejected,
 			"object not found":         projectconfig.ErrObjectNotFound,

@@ -19,6 +19,8 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -109,7 +111,15 @@ class Classification:
 
 def _is_terminal_credential_error(error: BaseException) -> bool:
     """Report a credential failure no retry fixes; others, such as broker outages, may pass."""
-    return isinstance(error, (ValueError, LookupError, AttributeError, ReauthorizationRequiredError))
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -186,11 +196,15 @@ class Client:
 
     async def start_session(self, call: Call, operation: str) -> Session:
         """Resolve a safe access token and a unique Confluence site."""
+        terminal = SessionError(
+            failure(
+                operation,
+                FailureKind.AUTHENTICATION,
+                "Confluence connection credentials are unavailable; reconnect the connection",
+            )
+        )
         try:
             credential = await self.credentials.resolve(call)
-            token = credential.access_token.reveal()
-            if not is_header_safe_credential(token):
-                raise ValueError("invalid token")
         except Exception as error:
             if not _is_terminal_credential_error(error):
                 raise SessionError(
@@ -201,13 +215,14 @@ class Client:
                     ),
                     True,
                 ) from error
-            raise SessionError(
-                failure(
-                    operation,
-                    FailureKind.AUTHENTICATION,
-                    "Confluence connection credentials are unavailable; reconnect the connection",
-                )
-            ) from error
+            raise terminal from error
+        # Resolved material that fails a local check cannot pass on a later attempt.
+        try:
+            token = credential.access_token.reveal()
+        except AttributeError:
+            token = ""
+        if not isinstance(token, str) or not token or not is_header_safe_credential(token):
+            raise terminal
         session = Session(call, self.cloud_id or self.resolved_cloud_id, token)
         if session.cloud_id:
             return session

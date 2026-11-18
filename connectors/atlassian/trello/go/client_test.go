@@ -155,11 +155,30 @@ func TestUnavailableOrUnsafeCredentialsSelectDefectWithoutAProviderRequest(t *te
 	require.Equal(t, trello.GetCardBranchDefect, result.Branch)
 }
 
+func TestTerminalCredentialResolveErrorsSelectDefect(t *testing.T) {
+	provider := newRecordingTrello(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	for name, resolveErr := range map[string]error{
+		"reauthorization":         sdkgo.ErrReauthorizationRequired,
+		"project reauthorization": projectconfig.ErrReauthorizationRequired,
+		"object not found":        projectconfig.ErrObjectNotFound,
+		"connection not selected": projectconfig.ErrConnectionNotSelected,
+		"broker rejected":         projectconfig.ErrCredentialBrokerRejected,
+	} {
+		client, err := trello.New(trello.Config{Endpoint: provider.URL}, failingTrelloCredentials{resolveErr})
+		require.NoError(t, err)
+		result, err := sdkgo.RunMutation(newTrelloDexContext("terminal-credentials"), client.CreateCard(), trelloConnection, validCreateCardInput())
+		require.NoError(t, err, name)
+		require.Equal(t, trello.CreateCardBranchDefect, result.Branch, name)
+	}
+}
+
 func TestTransientCredentialFailuresRetryAndRecordNotSentOnAFirstSend(t *testing.T) {
 	provider := newRecordingTrello(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
 	for name, source := range map[string]sdkgo.CredentialProvider[trello.Credentials]{
 		"broker unavailable": failingTrelloCredentials{fmt.Errorf("resolve: %w", projectconfig.ErrCredentialBrokerUnavailable)},
 		"untyped store read": failingTrelloCredentials{errors.New("project object read failed")},
+		"not configured":     sdkgo.StaticCredentialProvider[trello.Credentials]{},
+		"not refreshed":      failingTrelloCredentials{projectconfig.ErrRejectedCredentialNotRefreshed},
 	} {
 		client, err := trello.New(trello.Config{Endpoint: provider.URL}, source)
 		require.NoError(t, err)

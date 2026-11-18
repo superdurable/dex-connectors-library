@@ -8,6 +8,8 @@ from datetime import UTC, datetime, timedelta
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker, State
 
 import dex_connectors.atlassian_trello as trello
@@ -178,20 +180,27 @@ async def test_credential_failure_after_a_possible_send_keeps_the_checkpoint() -
     # Attempt 1 may have created the card; attempt 2's resend got a 429.
     earlier = Marker(CALL_ID, 2, State.CAN_RESEND, send_count=1)
     context = AttemptContext(attempt=3, heartbeat_value=earlier)
-    client = trello.Client(
-        trello.Config("http://127.0.0.1:12345/1"),
-        sdk.StaticCredentialProvider({}),
-        httpx.AsyncClient(transport=httpx.MockTransport(lambda _request: httpx.Response(500))),
-    )
+    invalid = trello.Credentials(sdk.SecretString("key"), sdk.SecretString('to"ken'))
     operation = sdk.OperationRef("trello", "createCard")
     call = sdk.Call(CALL_ID, CONNECTION, operation, context=context, max_sends=3)
     card = trello.CreateCardInput(LIST_ID, "Approved")
-    try:
-        result = await sdk.run_mutation(client.create_card(), call, card)
-    finally:
-        await client.http_client.aclose()
-    assert result.branch == "uncertain"
-    assert context.heartbeat_value is earlier, "notSent would hide the earlier possible send"
+    for credentials, is_terminal in (({}, False), ({CONNECTION: invalid}, True)):
+        client = trello.Client(
+            trello.Config("http://127.0.0.1:12345/1"),
+            sdk.StaticCredentialProvider(credentials),
+            httpx.AsyncClient(transport=httpx.MockTransport(lambda _request: httpx.Response(500))),
+        )
+        try:
+            if is_terminal:
+                result = await sdk.run_mutation(client.create_card(), call, card)
+                assert result.branch == "uncertain"
+            else:
+                # The static provider's missing connection is transient.
+                with pytest.raises(sdk.RetryError):
+                    await sdk.run_mutation(client.create_card(), call, card)
+        finally:
+            await client.http_client.aclose()
+        assert context.heartbeat_value is earlier, "notSent would hide the earlier possible send"
 
 
 class _BrokerUnavailableCredentials:
@@ -199,6 +208,49 @@ class _BrokerUnavailableCredentials:
 
     async def resolve(self, call: sdk.Call) -> trello.Credentials:
         raise OSError("credential broker is unavailable")
+
+
+class _FailingCredentials:
+    """Fail every resolution with one error."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: sdk.Call) -> trello.Credentials:
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (sdk.ReauthorizationRequiredError(), "defect"),
+        (ObjectNotFoundError("absent"), "defect"),
+        (ConnectionNotSelectedError(), "defect"),
+        (CredentialBrokerRejectedError(), "defect"),
+        (ValueError("connection is not configured"), "retry"),
+        (LookupError("unlisted"), "retry"),
+    ],
+)
+async def test_credential_failure_before_any_send_uses_the_shared_terminal_set(
+    error: Exception, expected: str
+) -> None:
+    client = trello.Client(
+        trello.Config("http://127.0.0.1:12345/1"),
+        _FailingCredentials(error),
+        httpx.AsyncClient(transport=httpx.MockTransport(lambda _request: httpx.Response(500))),
+    )
+    operation = sdk.OperationRef("trello", "createCard")
+    call = sdk.Call(CALL_ID, CONNECTION, operation, context=AttemptContext(), max_sends=3)
+    card = trello.CreateCardInput(LIST_ID, "Approved")
+    try:
+        result = await sdk.run_mutation(client.create_card(), call, card)
+        branch = result.branch
+    except sdk.RetryError:
+        branch = "retry"
+    finally:
+        await client.http_client.aclose()
+    assert branch == expected
 
 
 async def _run_with_broker_outage(context: AttemptContext) -> str:

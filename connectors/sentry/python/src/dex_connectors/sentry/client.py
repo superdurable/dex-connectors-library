@@ -29,6 +29,8 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk import OperationRef as OperationRef
 from dex_connectors.sdk import SecretString as SecretString
 from dex_connectors.sdk import StepDefaults as StepDefaults
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -165,10 +167,19 @@ class Client:
         """Send once and classify exactly like the Go runQuery and runMutation helpers."""
         try:
             credentials = await self.credentials.resolve(call)
-        except (ValueError, LookupError, OSError, ReauthorizationRequiredError):
-            return _defect_outcome()
-        token = credentials.api_key.reveal()
-        if not token.strip() or not is_header_safe_credential(token):
+        except Exception as error:
+            if _is_terminal_credential_error(error):
+                return _defect_outcome()
+            return _Outcome(
+                kind=FailureKind.AVAILABILITY,
+                message="connection credentials could not be read, so nothing was sent",
+                is_retry=True,
+            )
+        try:
+            token = credentials.api_key.reveal()
+        except AttributeError:
+            token = ""
+        if not isinstance(token, str) or not token.strip() or not is_header_safe_credential(token):
             return _defect_outcome()
         headers = {
             "Authorization": "Bearer " + token,
@@ -382,6 +393,19 @@ def _query_attempt(
             "provider response is incomplete or malformed",
         )
     return QueryAttempt.branch_result(success, value, Receipt())
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential resolution failure that no retry fixes; every other error is transient."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def _defect_outcome() -> _Outcome:

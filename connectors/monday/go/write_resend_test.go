@@ -292,6 +292,9 @@ func TestFencedWritesRetryATransientCredentialFailureAndSelectDefectOnlyForATerm
 	}{
 		{"broker unavailable", unavailable, true},
 		{"store read", errors.New("project storage read timed out"), true},
+		{"connection not configured", errors.New("connection is not configured"), true},
+		{"credential not refreshed", projectconfig.ErrRejectedCredentialNotRefreshed, true},
+		{"project reauthorization", projectconfig.ErrReauthorizationRequired, false},
 		{"object not found", projectconfig.ErrObjectNotFound, false},
 		{"connection not selected", projectconfig.ErrConnectionNotSelected, false},
 		{"broker rejected", projectconfig.ErrCredentialBrokerRejected, false},

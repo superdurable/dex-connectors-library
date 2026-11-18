@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -199,6 +200,9 @@ func decodeIssue(body []byte) (Issue, error) {
 
 func (client *Client) newRequest(call sdkgo.Call, method, path string, body []byte) (*http.Request, error) {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return nil, errCredentialsUnreadable
+	}
 	if err != nil {
 		return nil, fmt.Errorf("credentials unavailable")
 	}
@@ -220,6 +224,9 @@ func (client *Client) newRequest(call sdkgo.Call, method, path string, body []by
 
 func runQuery[T any](client *Client, call sdkgo.Call, operation, path string, success, notFound, rejected, invalid, defect sdkgo.BranchID, decode func([]byte) (T, error)) sdkgo.QueryAttempt[T] {
 	request, err := client.newRequest(call, http.MethodGet, path, nil)
+	if errors.Is(err, errCredentialsUnreadable) {
+		return sdkgo.NewQueryRetry[T](newFailure(operation, sdkgo.FailureAvailability, "connection credentials could not be read, so nothing was sent"), 0)
+	}
 	if err != nil {
 		return queryFailure[T](operation, defect, sdkgo.FailureAuthentication, "connection credentials or request are invalid")
 	}
@@ -256,6 +263,9 @@ func runQuery[T any](client *Client, call sdkgo.Call, operation, path string, su
 
 func runMutation[T any](client *Client, call sdkgo.Call, operation, method, path string, body []byte, extraHeader, extraValue string, success, notFound, rejected, invalid, defect sdkgo.BranchID, decode func([]byte) (T, error)) sdkgo.MutationAttempt[T] {
 	request, err := client.newRequest(call, method, path, body)
+	if errors.Is(err, errCredentialsUnreadable) {
+		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "connection credentials could not be read, so nothing was sent"), 0)
+	}
 	if err != nil {
 		return mutationFailure[T](operation, defect, sdkgo.FailureAuthentication, "connection credentials or request are invalid")
 	}
@@ -309,6 +319,17 @@ func mutationFailure[T any](operation string, branch sdkgo.BranchID, kind sdkgo.
 	failure := newFailure(operation, kind, message)
 	return sdkgo.NewMutationBranch(branch, zero, &failure, sdkgo.Receipt{})
 }
+
+// errCredentialsUnreadable marks a transient credential resolution failure before any request.
+var errCredentialsUnreadable = errors.New("Sentry connection credentials could not be read")
+
+// isTerminalCredentialError reports a credential resolution failure that no retry fixes; every other error is transient.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
 func newFailure(operation string, kind sdkgo.FailureKind, message string) sdkgo.Failure {
 	return sdkgo.Failure{Kind: kind, Provider: "sentry", Operation: operation, Message: message}
 }

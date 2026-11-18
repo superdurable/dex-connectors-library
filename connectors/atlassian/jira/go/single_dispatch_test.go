@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/atlassian/jira/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 	"github.com/superdurable/dex/sdk-go/dex"
@@ -633,6 +634,10 @@ func TestPermanentCredentialFailuresBeforeDispatchSelectDefect(t *testing.T) {
 		hasInvalidCredentials bool
 	}{
 		{name: "reauthorization", failure: sdkgo.NewReauthorizationRequiredError(errors.New("SENTINEL private detail"))},
+		{name: "project reauthorization", failure: projectconfig.ErrReauthorizationRequired},
+		{name: "object not found", failure: projectconfig.ErrObjectNotFound},
+		{name: "connection not selected", failure: projectconfig.ErrConnectionNotSelected},
+		{name: "broker rejected", failure: projectconfig.ErrCredentialBrokerRejected},
 		{name: "invalid credentials", hasInvalidCredentials: true},
 	} {
 		for _, operationName := range []string{"create issue", "add comment"} {
@@ -670,6 +675,24 @@ func TestPermanentCredentialFailuresBeforeDispatchSelectDefect(t *testing.T) {
 	}
 }
 
+func TestUnlistedCredentialFailuresBeforeDispatchRetry(t *testing.T) {
+	for name, credentialFailure := range map[string]error{
+		"broker unavailable": projectconfig.ErrCredentialBrokerUnavailable,
+		"not refreshed":      projectconfig.ErrRejectedCredentialNotRefreshed,
+		"not configured":     errors.New("connection is not configured"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingJira(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+			client, err := jira.New(jira.Config{CloudID: testCloudID, Endpoint: provider.URL}, &delayedJiraCredentials{isReady: true, failure: credentialFailure})
+			require.NoError(t, err)
+			ctx := singledispatchtest.NewContext("jira-flow", "unlisted-credential-"+name)
+			_, err = sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
+			requireRetry(t, err, sdkgo.FailureAvailability)
+			require.Zero(t, provider.requestCount())
+		})
+	}
+}
+
 func TestPermanentCredentialFailuresDuringReadbackSelectUncertain(t *testing.T) {
 	for _, credentialFailure := range []struct {
 		name                  string
@@ -677,6 +700,7 @@ func TestPermanentCredentialFailuresDuringReadbackSelectUncertain(t *testing.T) 
 		hasInvalidCredentials bool
 	}{
 		{name: "reauthorization", failure: sdkgo.NewReauthorizationRequiredError(errors.New("SENTINEL private detail"))},
+		{name: "connection not selected", failure: projectconfig.ErrConnectionNotSelected},
 		{name: "invalid credentials", hasInvalidCredentials: true},
 	} {
 		for _, operationName := range []string{"create issue", "add comment"} {

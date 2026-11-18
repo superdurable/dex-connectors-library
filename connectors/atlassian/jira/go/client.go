@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -285,7 +286,7 @@ func (client *Client) startSession(call sdkgo.Call, operationID string) (*operat
 	}
 	if err != nil {
 		cancel()
-		if errors.Is(err, sdkgo.ErrReauthorizationRequired) {
+		if isTerminalCredentialError(err) {
 			return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAuthentication, "Jira connection credentials are unavailable; reconnect the connection")}
 		}
 		return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAvailability, "Jira credential lookup is temporarily unavailable"), isRetryable: true}
@@ -816,6 +817,13 @@ func isSafeProviderToken(value string) bool {
 
 func newFailure(operationID string, kind sdkgo.FailureKind, message string) sdkgo.Failure {
 	return sdkgo.Failure{Kind: kind, Provider: providerName, Operation: operationID, Message: message}
+}
+
+// isTerminalCredentialError reports a credential resolution failure that no retry fixes; every other error is transient.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func failurePointer(operationID string, kind sdkgo.FailureKind, message string) *sdkgo.Failure {
