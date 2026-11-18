@@ -17,6 +17,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/postgresql/go/internal/scriptedpostgresql"
 	"github.com/superdurable/dex-connectors-library/connectors/postgresql/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 const (
@@ -63,6 +64,35 @@ func startScriptedDatabase(t *testing.T, database *scriptedDatabase, mutate func
 	}, postgresql.WithClock(func() time.Time { return time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC) }))
 	require.NoError(t, err)
 	return server, client
+}
+
+// unavailableBrokerCredentials fails every Resolve as a temporarily unavailable credential broker.
+type unavailableBrokerCredentials struct{}
+
+func (unavailableBrokerCredentials) Resolve(sdkgo.Call) (postgresql.Credentials, error) {
+	return postgresql.Credentials{}, fmt.Errorf("read password: %w", projectconfig.ErrCredentialBrokerUnavailable)
+}
+
+func newClientWithCredentials(t *testing.T, server *scriptedpostgresql.Server, credentials sdkgo.CredentialProvider[postgresql.Credentials]) *postgresql.Client {
+	t.Helper()
+	config := postgresql.Config{Host: "127.0.0.1", Port: int64(server.Port()), Database: "app", User: "dex_app", SSLMode: postgresql.SSLModeDisable}
+	client, err := postgresql.New(config, credentials)
+	require.NoError(t, err)
+	return client
+}
+
+func TestQueryAndExecuteRetryAnUnavailableCredentialBroker(t *testing.T) {
+	database := &scriptedDatabase{shape: scriptedpostgresql.Shape{ParameterCount: 2}, execution: scriptedpostgresql.Execution{CommandTag: "UPDATE 1"}}
+	server, _ := startScriptedDatabase(t, database, nil)
+	client := newClientWithCredentials(t, server, unavailableBrokerCredentials{})
+	var retry *sdkgo.RetryError
+	_, err := query(t, client, postgresql.QueryRowsInput{Statement: "SELECT 1"})
+	require.ErrorAs(t, err, &retry, "an unavailable broker is transient")
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	_, err = execute(t, client, newStep(), addToBalanceInput)
+	require.ErrorAs(t, err, &retry, "an unavailable broker is transient and nothing was sent")
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.Empty(t, server.EventsOfKind(scriptedpostgresql.EventStartup))
 }
 
 var stepSequence atomic.Int64

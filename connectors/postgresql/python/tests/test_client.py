@@ -21,6 +21,7 @@ from dex_connectors.sdk import (
     SecretString,
     StaticCredentialProvider,
 )
+from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
 from dex_connectors.sdk.singledispatch import Marker, State
 from psycopg import generators, pq
 
@@ -783,8 +784,42 @@ async def test_non_idempotent_never_records_not_sent_after_a_possible_earlier_co
     context.heartbeat_value = seeded
     context.attempt = 3
     outcome = await _client().execute_non_idempotent().invoke(_fenced_call(context), _BALANCE_INPUT)
-    assert outcome.kind == "uncertain" and _commit_count(connection) == 0
+    # A transient failure returns Retry; the attempt after it still treats the earlier send as possible.
+    assert outcome.kind == "retry" and _commit_count(connection) == 0
     assert context.heartbeat_value is seeded, "notSent would hide the earlier possible COMMIT"
+    connection.statements.clear()
+    context.attempt = 4
+    later = await _client().execute_non_idempotent().invoke(_fenced_call(context), _BALANCE_INPUT)
+    assert later.kind == "uncertain" and connection.statements == []
+
+    refused = _balance_connection(monkeypatch)
+    refused.statement_error = psycopg.errors.CheckViolation("secret value")
+    refused_context = _AttemptContext()
+    refused_context.heartbeat_value = seeded
+    refused_context.attempt = 3
+    terminal = await _client().execute_non_idempotent().invoke(_fenced_call(refused_context), _BALANCE_INPUT)
+    assert terminal.kind == "uncertain" and _commit_count(refused) == 0
+    assert refused_context.heartbeat_value is seeded
+
+
+@pytest.mark.asyncio
+async def test_an_unavailable_credential_broker_returns_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    connection = _balance_connection(monkeypatch)
+
+    class _UnavailableBroker:
+        async def resolve(self, call: Call) -> Credentials:
+            raise CredentialBrokerUnavailableError()
+
+    client = Client(Config("localhost", "test", "test", ssl_mode="disable"), _UnavailableBroker())
+    query = await client.query().invoke(_call("query"), QueryRowsInput("SELECT 1"))
+    execute = await client.execute().invoke(_call("execute"), _BALANCE_INPUT)
+    context = _AttemptContext()
+    fenced = await client.execute_non_idempotent().invoke(_fenced_call(context), _BALANCE_INPUT)
+    assert query.kind == "retry" and query.failure.kind == FailureKind.AVAILABILITY
+    assert execute.kind == "retry" and execute.failure.kind == FailureKind.AVAILABILITY
+    assert fenced.kind == "retry" and fenced.failure.kind == FailureKind.AVAILABILITY
+    assert context.marker is not None and context.marker.state == State.NOT_SENT
+    assert connection.statements == []
 
 
 @pytest.mark.asyncio

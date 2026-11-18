@@ -21,6 +21,7 @@ package postgresql
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -32,6 +33,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 const (
@@ -163,12 +165,22 @@ func (client *Client) newCallContext(call sdkgo.Call) (context.Context, context.
 	return context.WithTimeout(call.Context, client.connectTimeout+client.statementTimeout+commitAllowance)
 }
 
-func (client *Client) resolvePassword(call sdkgo.Call) (string, bool) {
+// resolvePassword returns the password, or the failure to report before connecting: Retry for a
+// temporarily unavailable credential broker, defect for any other credential failure.
+func (client *Client) resolvePassword(call sdkgo.Call) (string, classifiedFailure, bool) {
 	credentials, err := client.credentials.Resolve(call)
-	if err != nil || credentials.Password.Reveal() == "" {
-		return "", false
+	if errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) {
+		return "", classifiedFailure{
+			disposition: dispositionRetry, kind: sdkgo.FailureAvailability,
+			message: "the credential broker is temporarily unavailable, so nothing was sent",
+		}, false
 	}
-	return credentials.Password.Reveal(), true
+	if err != nil || credentials.Password.Reveal() == "" {
+		return "", classifiedFailure{
+			disposition: dispositionDefect, kind: sdkgo.FailureAuthentication, message: "PostgreSQL connection credentials are unavailable",
+		}, false
+	}
+	return credentials.Password.Reveal(), classifiedFailure{}, true
 }
 
 // connect opens one authenticated connection; PG* environment variables cannot replace configured fields.
