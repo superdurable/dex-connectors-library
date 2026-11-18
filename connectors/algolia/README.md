@@ -1,6 +1,6 @@
 # Algolia connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/algolia/go@v0.3.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/algolia/go@v0.3.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/algolia`.
 
@@ -29,12 +29,12 @@ The displayed `baseUrl` default is a host template: the connector changes `https
 | Condition | Route |
 | --- | --- |
 | Valid search or queued replacement | `searched` or `saved` |
-| Definite provider rejection | `providerRejected` |
-| Malformed or oversized response | `invalidResponse` |
-| Invalid input, invalid credentials, a required reauthorization, a missing or unselected connection, or a credential broker refusal | `defect` |
-| Transport failure, 408, 409, 429, 5xx, or a transient credential failure such as an unavailable credential broker | Retry with Dex's default one-hour budget |
+| Definite provider rejection: HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 | `providerRejected` |
+| Malformed or oversized search response | `invalidResponse` |
+| Invalid input, invalid credentials, a required reauthorization, a missing or unselected connection, a credential broker refusal, or malformed stored credentials | `defect` |
+| Transport failure, 408, 409, 429, 5xx, any other status, a malformed or oversized `saveObject` confirmation, or a transient credential failure such as an unavailable credential broker | Retry with Dex's default one-hour budget |
 
-Only the happy branch is wired in the [index search example](go/examples/index-search). Optional branches fail its Flow. There is no `uncertain` branch because full replacement by `objectID` is repeat-safe.
+Only the happy branch is wired in the [index search example](go/examples/index-search). Optional branches fail its Flow. There is no `uncertain` branch because full replacement by `objectID` is repeat-safe, so `saveObject` declares `repeatOnUnknown: safe`.
 
 ## Mocks
 

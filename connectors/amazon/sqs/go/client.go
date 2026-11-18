@@ -358,10 +358,24 @@ func classifyErrorResponse(operationID string, subject string, response provider
 			statusMessage("SQS rejected the connection credentials for the "+subject, response)+"; replace the access key or session token")
 	case isAuthorizationErrorCode(code) || status == http.StatusForbidden:
 		classified.outcome, classified.failure = outcomeRejected, newFailure(operationID, sdkgo.FailureAuthorization, statusMessage("SQS denied the "+subject, response))
+	case !isDefiniteRefusalStatus(status):
+		// Every SQS operation is safe to repeat, so a status that does not prove a refusal retries.
+		classified.outcome, classified.failure = outcomeRetry, newFailure(operationID, sdkgo.FailureAvailability, statusMessage("SQS answered the "+subject+" ambiguously", response))
 	default:
 		classified.outcome, classified.failure = outcomeRejected, newFailure(operationID, sdkgo.FailureProviderRejection, statusMessage("SQS rejected the "+subject, response))
 	}
 	return classified
+}
+
+// isDefiniteRefusalStatus reports an HTTP status that proves SQS refused the request.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity,
+		http.StatusNotImplemented:
+		return true
+	}
+	return false
 }
 
 func (client *Client) receipt(call sdkgo.Call, requestID string, providerObjectID string) sdkgo.Receipt {

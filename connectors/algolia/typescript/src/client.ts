@@ -4,14 +4,14 @@
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { AddressRefusal, BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { SearchOperation, SaveObjectOperation } from './operations.js';
 
 const publicHostTemplate = 'https://algolia.net/1';
 
 /** Report a credential failure that no later attempt resolves without a person. */
 function isTerminalCredentialError(error: unknown): boolean {
-  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+  return isCredentialMaterialError(error) || error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
     error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
 }
 

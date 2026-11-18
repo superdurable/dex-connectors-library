@@ -4,10 +4,12 @@
 
 import base64
 import json
+from dataclasses import replace
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import cast
 
+import httpx
 import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
@@ -31,7 +33,20 @@ from dex_connectors.sdk.projectconfig.broker import (
 from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.snowflake import Client, Config, Credentials
+from dex_connectors.snowflake._generated.connection import CredentialMaterialError
 from dex_connectors.snowflake.operations import _bind_statement, _rejection
+
+
+def _sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError that the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Snowflake credential user is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("unreachable")
 
 
 @pytest.mark.parametrize(
@@ -207,6 +222,8 @@ def test_result_byte_limit_counts_go_json_string_escapes() -> None:
         (ObjectNotFoundError(), True),
         (ConnectionNotSelectedError(), True),
         (CredentialBrokerRejectedError(), True),
+        (CredentialMaterialError("Snowflake credential user is required"), True),
+        (_sdk_wrapped_material_error(), True),
         (CredentialBrokerUnavailableError(), False),
         (ValueError("connection is not configured"), False),
         (RuntimeError("unlisted"), False),
@@ -239,3 +256,55 @@ async def test_credential_failures_select_defect_only_when_terminal(
         else:
             assert attempt.kind == "retry"
             assert attempt.failure is not None and attempt.failure.kind == FailureKind.AVAILABILITY
+
+
+def _answering_client(status: int, body: object) -> Client:
+    reference = ConnectionRef("snowflake", "warehouse")
+    credentials = Credentials(
+        auth_method_id="programmatic-access-token",
+        programmatic_access_token=SecretString("pat-secret-value-0123456789"),
+    )
+    return Client(
+        Config(account_identifier="myorg-analytics"),
+        StaticCredentialProvider({reference: credentials}),
+        httpx.AsyncClient(transport=httpx.MockTransport(lambda request: httpx.Response(status, json=body))),
+        local_provider_url="http://127.0.0.1",
+    )
+
+
+def _call(attempt: int) -> Call:
+    handle = "00000000-0000-4000-8000-000000000003"
+    call = Call(
+        CallID(handle),
+        ConnectionRef("snowflake", "warehouse"),
+        OperationRef("snowflake", "x"),
+        IdempotencyKey(handle),
+    )
+    return replace(call, context=SimpleNamespace(attempt=attempt))  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("status", [405, 408, 409, 307])
+async def test_writes_retry_unlisted_statuses(status: int) -> None:
+    from dex_connectors.snowflake import CancelStatementInput, SubmitStatementInput
+
+    client = _answering_client(status, {})
+    submitted = await client.submit_statement().invoke(_call(1), SubmitStatementInput(statement="SELECT 1"))
+    canceled = await client.cancel_statement().invoke(
+        _call(1), CancelStatementInput(statement_handle="00000000-0000-4000-8000-000000000003")
+    )
+    assert submitted.kind == "retry" and canceled.kind == "retry"
+
+
+async def test_a_repeated_cancel_refused_for_a_known_handle_selects_canceled() -> None:
+    from dex_connectors.snowflake import CancelStatementInput
+
+    handle = "00000000-0000-4000-8000-000000000003"
+    cancel = CancelStatementInput(statement_handle=handle)
+    refused = _answering_client(422, {"code": "000605", "sqlState": "01000", "statementHandle": handle})
+    repeated = await refused.cancel_statement().invoke(_call(2), cancel)
+    assert repeated.branch == "canceled"
+    first = await refused.cancel_statement().invoke(_call(1), cancel)
+    assert first.branch == "providerRejected"
+    unknown = _answering_client(422, {"code": "000709", "sqlState": "02000"})
+    missing = await unknown.cancel_statement().invoke(_call(2), cancel)
+    assert missing.branch == "providerRejected"

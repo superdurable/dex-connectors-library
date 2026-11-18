@@ -10,6 +10,7 @@ import { buildFindRecordsQuery, buildListModifiedRecordsQuery } from '../src/coq
 import { decodeModuleFields, decodeRecordPage, parseZohoTime, validateWriteFields } from '../src/records.js';
 import type { CredentialSource } from '../src/models.js';
 import { ZohoHTTPClient } from '../src/http.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const bytes = (value: unknown) => Buffer.from(JSON.stringify(value));
 
@@ -53,6 +54,8 @@ describe('Go wire parity at provider boundaries', () => {
     ['missing connection object', () => new ObjectNotFoundError(), 'branch'],
     ['unselected connection', () => new ConnectionNotSelectedError(), 'branch'],
     ['broker refusal', () => new CredentialBrokerRejectedError(), 'branch'],
+    ['malformed credential material', () => new CredentialMaterialError('credential access_token is required'), 'branch'],
+    ['SDK provider decoding failure', () => new TypeError('project credential decoding failed'), 'branch'],
     ['broker outage', () => new CredentialBrokerUnavailableError(), 'retry'],
     ['unconfigured static connection', () => new Error('connection is not configured'), 'retry'],
   ] as const)('classifies a %s resolve failure before sending', async (_name, error, kind) => {

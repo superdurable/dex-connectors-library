@@ -95,8 +95,6 @@ func TestUpsertRecordMapsRecordAndRequestRejections(t *testing.T) {
 		"no permission":         {http.StatusForbidden, map[string]any{"code": "NO_PERMISSION", "details": map[string]any{}, "message": "SENTINEL", "status": "error"}, crm.UpsertRecordBranchProviderRejected, sdkgo.FailureAuthorization},
 		"authorization failed":  {http.StatusBadRequest, recordErrorJSON("AUTHORIZATION_FAILED", "Email", nil), crm.UpsertRecordBranchProviderRejected, sdkgo.FailureAuthorization},
 		"invalid module":        {http.StatusBadRequest, map[string]any{"code": "INVALID_MODULE", "details": map[string]any{}, "message": "SENTINEL", "status": "error"}, crm.UpsertRecordBranchProviderRejected, sdkgo.FailureValidation},
-		"success without an id": {http.StatusOK, map[string]any{"data": []any{map[string]any{"code": "SUCCESS", "status": "success", "details": map[string]any{}}}}, crm.UpsertRecordBranchInvalidResponse, sdkgo.FailureProtocol},
-		"two results for one":   {http.StatusOK, map[string]any{"data": []any{map[string]any{}, map[string]any{}}}, crm.UpsertRecordBranchInvalidResponse, sdkgo.FailureProtocol},
 	} {
 		t.Run(name, func(t *testing.T) {
 			provider := newRecordingCRM(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
@@ -108,6 +106,27 @@ func TestUpsertRecordMapsRecordAndRequestRejections(t *testing.T) {
 			require.Equal(t, scenario.kind, result.Failure.Kind)
 			requireNoSentinel(t, result)
 			require.Equal(t, 1, provider.requestCount())
+		})
+	}
+}
+
+func TestUpsertRecordRetriesUnusableAnswersAndUnlistedStatuses(t *testing.T) {
+	for name, scenario := range map[string]struct {
+		status int
+		body   any
+		kind   sdkgo.FailureKind
+	}{
+		"success without an id": {http.StatusOK, map[string]any{"data": []any{map[string]any{"code": "SUCCESS", "status": "success", "details": map[string]any{}}}}, sdkgo.FailureProtocol},
+		"two results for one":   {http.StatusOK, map[string]any{"data": []any{map[string]any{}, map[string]any{}}}, sdkgo.FailureProtocol},
+		"method not allowed":    {http.StatusMethodNotAllowed, map[string]any{"code": "UNLISTED", "details": map[string]any{}, "status": "error"}, sdkgo.FailureAvailability},
+		"conflict status":       {http.StatusConflict, map[string]any{"code": "UNLISTED", "details": map[string]any{}, "status": "error"}, sdkgo.FailureAvailability},
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingCRM(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				writeValue(t, response, scenario.status, scenario.body)
+			})
+			_, err := sdkgo.RunMutation(newCRMDexContext("upsert"), newCRMClient(t, provider.URL).UpsertRecord(), crmConnection, contactUpsertInput())
+			requireRetry(t, err, scenario.kind)
 		})
 	}
 }

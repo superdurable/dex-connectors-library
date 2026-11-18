@@ -4,7 +4,7 @@
 
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from datetime import timedelta as timedelta
 from typing import Any, TypeVar
@@ -110,6 +110,7 @@ class _Outcome:
     failure: Failure
     is_retry: bool = False
     retry_after_seconds: float = 0
+    status: int = 0
 
     def as_query(self, empty: Output) -> QueryAttempt[Output]:
         if self.is_retry:
@@ -217,7 +218,8 @@ class Client:
             if status != 200:
                 branch = NOT_FOUND if status == 404 and has_not_found else PROVIDER_REJECTED
                 kind = _STATUS_KINDS.get(status, FailureKind.PROVIDER_REJECTION)
-                return _outcome(branch, operation, kind, f"Cloudflare returned HTTP {status}")
+                rejected = _outcome(branch, operation, kind, f"Cloudflare returned HTTP {status}")
+                return replace(rejected, status=status)
             try:
                 response_body = await read_bounded_body(response, self.max_response_bytes)
             except BodyTooLargeError:
@@ -308,6 +310,15 @@ class PurgeCacheByURLsOperation:
         path = "/zones/" + quote(input.zone_id, safe=_PATH_SEGMENT_SAFE) + "/purge_cache"
         result = await self.client.execute(call, operation, "POST", path, body, True, _decode_cache_purge)
         if isinstance(result, _Outcome):
+            # Repeating a purge has the same effect, so an ambiguous answer retries.
+            if result.branch == INVALID_RESPONSE:
+                return MutationAttempt.retry(result.failure)
+            if (
+                result.branch == PROVIDER_REJECTED
+                and result.status
+                and result.status not in (400, 401, 403, 404, 411, 413, 414, 415, 422)
+            ):
+                return MutationAttempt.retry(replace(result.failure, kind=FailureKind.AVAILABILITY))
             return result.as_mutation(CachePurge())
         return MutationAttempt.branch_result(PURGED, result.value, Receipt())
 
@@ -382,7 +393,10 @@ def _optional(document: dict[str, Any], name: str, default: Any) -> Any:
 
 def _is_terminal_credential_error(error: Exception) -> bool:
     """Report a credential failure that no later attempt resolves without a person."""
-    return isinstance(
+    # The generated connection module imports this module, so its predicate loads lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
         error,
         (
             ReauthorizationRequiredError,

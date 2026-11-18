@@ -5,14 +5,14 @@ import { createHash, createHmac } from 'node:crypto';
 import { ReauthorizationRequiredError, type Call, type CredentialProvider, type Failure, type Receipt } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { type Config, type Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { ChangeMessageVisibilityOperation, DeleteMessageOperation, ReceiveMessagesOperation } from './operations.js';
 
 const provider = 'amazon-sqs';
 
 /** Report a credential failure that no later attempt resolves without a person. */
 function isTerminalCredentialError(error: unknown): boolean {
-  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+  return isCredentialMaterialError(error) || error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
     error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
 }
 const regionPattern = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
@@ -102,11 +102,13 @@ export class SQSClient {
     return { url: queueUrl, isFIFO };
   }
 
-  /**
-   * Resolve one current access key without retaining it in a result.
-   * Returns null for a transient credential failure and undefined for a terminal or invalid credential.
-   */
-  async resolveCredentials(call: Call): Promise<Credentials | null | undefined> {
+  /** Resolve one current access key without retaining it in a result. */
+  async resolveCredentials(call: Call): Promise<Credentials | undefined> {
+    return (await this.resolveCredentialsOrTransient(call)) ?? undefined;
+  }
+
+  /** Return null for a transient credential failure and undefined for a terminal or invalid one. */
+  private async resolveCredentialsOrTransient(call: Call): Promise<Credentials | null | undefined> {
     let credentials: Credentials;
     try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
     catch (error) { return isTerminalCredentialError(error) ? undefined : null; }
@@ -210,6 +212,8 @@ export function classifyResponse(operation: string, subject: string, response: S
   else if (['RequestTimeTooSkewed', 'SignatureExpired'].includes(code)) { kind = 'AUTHENTICATION'; description = `SQS rejected the ${subject} because the Worker clock differs from AWS by more than 5 minutes`; }
   else if (['InvalidClientTokenId', 'UnrecognizedClientException', 'SignatureDoesNotMatch', 'IncompleteSignature', 'ExpiredToken', 'InvalidSecurity', 'MissingAuthenticationToken', 'InvalidAccessKeyId', 'AWS.SimpleQueueService.InvalidSecurity'].includes(code) || status === 401) { kind = 'AUTHENTICATION'; description = `${withStatus(`SQS rejected the connection credentials for the ${subject}`)}; replace the access key or session token`; }
   else if (['AccessDenied', 'AccessDeniedException', 'KmsAccessDenied', 'KmsDisabled', 'KmsInvalidState', 'KmsNotFound', 'KmsOptInRequired', 'KmsInvalidKeyUsage'].includes(code) || status === 403) { kind = 'AUTHORIZATION'; description = withStatus(`SQS denied the ${subject}`); }
+  // Every SQS operation is safe to repeat, so a status that does not prove a refusal retries.
+  else if (![400, 401, 403, 404, 411, 413, 414, 415, 422, 501].includes(status)) { branch = 'retry'; kind = 'AVAILABILITY'; description = withStatus(`SQS answered the ${subject} ambiguously`); }
   const failure: Failure = { provider, operation, kind, message: description };
   return { branch, failure, retryAfterMs: branch === 'retry' ? parseRetryAfter(header(response.headers, 'retry-after'), now) : 0 };
 }

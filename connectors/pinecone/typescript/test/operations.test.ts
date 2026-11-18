@@ -6,6 +6,7 @@ import { ReauthorizationRequiredError, SecretString, type Call } from '@superdur
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
 import { PineconeClient } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const call = { id: 'pinecone-unit-call', context: { cancellationSignal: new AbortController().signal } } as Call;
 const credentials = { resolve: async () => ({ apiKey: new SecretString('safe-test-key') }) };
@@ -16,6 +17,8 @@ describe('Pinecone credential classification', () => {
     ['connection object not found', new ObjectNotFoundError(), true],
     ['connection not selected', new ConnectionNotSelectedError(), true],
     ['credential broker rejected', new CredentialBrokerRejectedError(), true],
+    ['malformed credential material', new CredentialMaterialError('credential api_key is required'), true],
+    ['SDK provider decoding failure', new TypeError('project credential decoding failed'), true],
     ['credential broker unavailable', new CredentialBrokerUnavailableError(), false],
     ['static connection not configured', new Error('connection is not configured'), false],
     ['unlisted error', new TypeError('unlisted'), false],
@@ -26,6 +29,13 @@ describe('Pinecone credential classification', () => {
     expect(await client.upsertVectors().invoke(call, { vectors: [{ id: 'one', values: [1] }] })).toMatchObject(expected);
     expect(await client.queryVectors().invoke(call, { vector: [1], topK: 1 })).toMatchObject(expected);
     expect(requests).toBe(0);
+  });
+});
+
+describe('Pinecone upsert unknown outcomes', () => {
+  it.each([[405, '{}'], [425, '{}'], [200, '{"missing":true}'], [200, '{'], [200, '{"upsertedCount":3}']])('retries HTTP %i body %s', async (status, body) => {
+    const client = new PineconeClient({ baseUrl: 'https://example.com' }, credentials, { send: async () => ({ status, headers: {}, body: Buffer.from(body) }) });
+    expect(await client.upsertVectors().invoke(call, { vectors: [{ id: 'one', values: [1] }] })).toMatchObject({ kind: 'retry' });
   });
 });
 

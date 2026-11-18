@@ -5,7 +5,7 @@
 import json
 import math
 import struct
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from datetime import timedelta as timedelta
 from decimal import Decimal
@@ -109,6 +109,7 @@ class _Outcome:
     failure: Failure
     is_retry: bool = False
     retry_after_seconds: float = 0
+    status: int = 0
 
     def as_query(self, empty: Output) -> QueryAttempt[Output]:
         if self.is_retry:
@@ -206,9 +207,10 @@ class Client:
                 return _outcome("", operation, kind, "provider is temporarily unavailable", True, retry_after)
             if status != 200:
                 kind = _STATUS_KINDS.get(status, FailureKind.PROVIDER_REJECTION)
-                return _outcome(
+                rejected = _outcome(
                     PROVIDER_REJECTED, operation, kind, f"provider rejected the request with HTTP {status}"
                 )
+                return replace(rejected, status=status)
             try:
                 response_body = await read_bounded_body(response, self.max_response_bytes)
             except BodyTooLargeError:
@@ -260,15 +262,23 @@ class UpsertVectorsOperation:
             return _mutation_failed(DEFECT, FailureKind.VALIDATION, body)
         response = await self.client.send(call, operation, "/vectors/upsert", body)
         if isinstance(response, _Outcome):
+            # A repeated upsert replaces the same vector IDs, so an unknown outcome retries.
+            if response.branch == INVALID_RESPONSE or (
+                response.branch == PROVIDER_REJECTED
+                and response.status not in (400, 401, 403, 404, 411, 413, 414, 415, 422)
+            ):
+                return MutationAttempt.retry(response.failure)
             return response.as_mutation(UpsertVectorsOutput())
         if not has_response_shape(response, "upsertedCount"):
-            return _mutation_failed(
-                INVALID_RESPONSE, FailureKind.PROTOCOL, "provider returned an incomplete response"
+            return MutationAttempt.retry(
+                Failure(
+                    FailureKind.PROTOCOL, CONNECTOR_ID, operation, "provider returned an incomplete response"
+                )
             )
         count = response["upsertedCount"]
         if type(count) is not int or not 0 <= count <= len(input.vectors):
-            return _mutation_failed(
-                INVALID_RESPONSE, FailureKind.PROTOCOL, "provider returned an invalid count"
+            return MutationAttempt.retry(
+                Failure(FailureKind.PROTOCOL, CONNECTOR_ID, operation, "provider returned an invalid count")
             )
         return MutationAttempt.branch_result(UPSERTED, UpsertVectorsOutput(count), Receipt())
 
@@ -390,7 +400,10 @@ def _dump_json(value: object) -> str:
 
 def _is_terminal_credential_error(error: Exception) -> bool:
     """Report a credential failure that no later attempt resolves without a person."""
-    return isinstance(
+    # The generated connection module imports this module, so its predicate loads lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
         error,
         (
             ReauthorizationRequiredError,

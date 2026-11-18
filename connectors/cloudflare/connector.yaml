@@ -6,16 +6,16 @@ metadata:
   description: "Use the Cloudflare REST API through typed Dex connector Steps."
   company: Cloudflare
   categories: [developer-tools]
-  version: v0.2.0
+  version: v0.2.1
 spec:
   provider: cloudflare
   languages:
     typescript:
-      version: v0.1.1
+      version: v0.1.2
       operations: [purgeCacheByURLs, listZones]
       triggers: []
     python:
-      version: v0.1.0
+      version: v0.1.1
       operations: [purgeCacheByURLs, listZones]
       triggers: []
   codegen:
@@ -92,6 +92,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Purging the same URLs again has the same cache-removal effect.
+        repeatOnUnknown: safe
       mocks:
         - name: purgedDefault
           branch: purged

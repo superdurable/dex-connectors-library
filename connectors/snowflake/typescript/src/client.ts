@@ -5,7 +5,7 @@ import { createHash, createPrivateKey, createPublicKey, sign } from 'node:crypto
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { SubmitStatementOperation, GetStatementResultOperation, CancelStatementOperation } from './operations.js';
 
 const handlePattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -30,6 +30,8 @@ export interface SnowflakeFailure {
   failure: Failure;
   retryAfterMs: number;
   status: SnowflakeStatus;
+  /** HTTP status of a classified provider answer; absent for a local or transport failure. */
+  httpStatus?: number;
 }
 /** Validated fields from a SQL API status body. */
 export interface SnowflakeStatus {
@@ -185,7 +187,7 @@ export class SnowflakeClient {
     if (code === 408 || status.code === '000604') message += '; the statement exceeded statementTimeoutSeconds or was canceled';
     else if (code >= 300 && code < 400) message += '; the connector never follows redirects, so check accountIdentifier';
     const retry = response.headers['retry-after'];
-    return this.failure(disposition, operation, kind, message, status, disposition === 'retry' ? parseRetryAfter(Array.isArray(retry) ? retry[0] ?? '' : retry ?? '', this.now()) : 0);
+    return { ...this.failure(disposition, operation, kind, message, status, disposition === 'retry' ? parseRetryAfter(Array.isArray(retry) ? retry[0] ?? '' : retry ?? '', this.now()) : 0), httpStatus: code };
   }
 }
 
@@ -207,7 +209,7 @@ export function isStatementHandle(value: string): boolean { return handlePattern
 
 /** Report a credential failure that no later attempt resolves without a person. */
 function isTerminalCredentialError(error: unknown): boolean {
-  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+  return isCredentialMaterialError(error) || error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
     error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
 }
 

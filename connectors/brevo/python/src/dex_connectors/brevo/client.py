@@ -140,13 +140,18 @@ class Client:
             CredentialBrokerRejectedError,
         ):
             credentials = None
-        except Exception:
-            # AVAILABILITY tells callers to Retry; nothing was sent.
-            return _failure(
-                operation,
-                FailureKind.AVAILABILITY,
-                "Brevo connection credentials are temporarily unavailable",
-            )
+        except Exception as error:
+            # The generated connection module imports this module, so its predicate loads lazily.
+            from ._generated.connection import is_credential_material_error
+
+            if not is_credential_material_error(error):
+                # AVAILABILITY tells callers to Retry; nothing was sent.
+                return _failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "Brevo connection credentials are temporarily unavailable",
+                )
+            credentials = None
         try:
             key = "" if credentials is None else credentials.api_key.reveal()
         except AttributeError:
@@ -227,6 +232,15 @@ class CreateOrUpdateContactOperation:
                     _retry_after_seconds(response),
                 )
             if status not in (201, 204):
+                if status not in (400, 401, 403, 404, 411, 413, 414, 415, 422):
+                    # A repeated upsert by email converges, so an ambiguous answer retries.
+                    return MutationAttempt.retry(
+                        _failure(
+                            operation,
+                            FailureKind.AVAILABILITY,
+                            f"Brevo answered the contact request with HTTP {status}",
+                        )
+                    )
                 return _mutation_branch(
                     PROVIDER_REJECTED,
                     _rejection_kind(status),
@@ -237,10 +251,10 @@ class CreateOrUpdateContactOperation:
             try:
                 content = await read_bounded_body(response, self.client.max_response_bytes)
             except BodyTooLargeError:
-                return _mutation_branch(
-                    INVALID_RESPONSE,
-                    FailureKind.RESPONSE_TOO_LARGE,
-                    "Brevo contact response exceeded the limit",
+                return MutationAttempt.retry(
+                    _failure(
+                        operation, FailureKind.RESPONSE_TOO_LARGE, "Brevo contact response exceeded the limit"
+                    )
                 )
             except ProviderTransportError:
                 return MutationAttempt.retry(
@@ -248,8 +262,8 @@ class CreateOrUpdateContactOperation:
                 )
             contact_id = _created_id(content)
             if contact_id is None:
-                return _mutation_branch(
-                    INVALID_RESPONSE, FailureKind.PROTOCOL, "Brevo returned an invalid contact ID"
+                return MutationAttempt.retry(
+                    _failure(operation, FailureKind.PROTOCOL, "Brevo returned an invalid contact ID")
                 )
             return MutationAttempt.branch_result(
                 SAVED, ContactWriteResult(input.email, True, contact_id), Receipt()

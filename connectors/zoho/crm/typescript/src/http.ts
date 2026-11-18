@@ -5,11 +5,12 @@ import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfter
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { isCredentialMaterialError } from './generated/models.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 
 /** A credential failure no later attempt resolves without a person. */
 function isTerminalCredentialError(error: unknown): boolean {
-  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError
+  return isCredentialMaterialError(error) || error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError
     || error instanceof CredentialBrokerRejectedError;
 }
 import type { Config, CredentialSource, Credentials, ProviderError } from './models.js';

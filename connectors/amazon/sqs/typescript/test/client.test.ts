@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { SQSClient } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const queueUrl = 'https://sqs.eu-west-1.amazonaws.com/123456789012/orders.fifo';
 const call: Call = {
@@ -32,6 +33,8 @@ describe('SQS client', () => {
     ['connection object not found', new ObjectNotFoundError(), true],
     ['connection not selected', new ConnectionNotSelectedError(), true],
     ['credential broker rejected', new CredentialBrokerRejectedError(), true],
+    ['malformed credential material', new CredentialMaterialError('credential access_key_id is required'), true],
+    ['SDK provider decoding failure', new TypeError('project credential decoding failed'), true],
     ['credential broker unavailable', new CredentialBrokerUnavailableError(), false],
     ['static connection not configured', new Error('connection is not configured'), false],
     ['unlisted error', new TypeError('unlisted'), false],
@@ -67,5 +70,28 @@ describe('SQS client', () => {
     expect(resolves).toBe(2);
     expect(signatures).toHaveLength(2);
     expect(signatures[0]).not.toBe(signatures[1]);
+  });
+
+  it('keeps the released resolveCredentials result for a transient credential failure', async () => {
+    const client = new SQSClient({ region: 'eu-west-1' }, { resolve: async () => { throw new CredentialBrokerUnavailableError(); } });
+    expect(await client.resolveCredentials(call)).toBeUndefined();
+  });
+
+  it.each([405, 409, 425, 451])('retries a write answered with unlisted HTTP %i', async status => {
+    const client = new SQSClient({ region: 'eu-west-1', endpoint: 'http://127.0.0.1:21096', defaultQueueUrl: queueUrl }, { resolve: async () => credentials('example-secret') }, {
+      send: async () => ({ status, headers: {}, body: new TextEncoder().encode('{"__type":"Unlisted"}') }),
+    });
+    expect(await client.deleteMessage().invoke(call, { receiptHandle: 'receipt-1' })).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+  });
+
+  it('selects changed when a repeated release finds the message released', async () => {
+    const client = new SQSClient({ region: 'eu-west-1', endpoint: 'http://127.0.0.1:21096', defaultQueueUrl: queueUrl }, { resolve: async () => credentials('example-secret') }, {
+      send: async () => ({ status: 400, headers: {}, body: new TextEncoder().encode('{"__type":"com.amazonaws.sqs#MessageNotInflight"}') }),
+    });
+    const repeated = { ...call, context: { ...call.context, attempt: 2 } } as Call;
+    const operation = client.changeMessageVisibility();
+    expect(await operation.invoke(repeated, { receiptHandle: 'receipt-1', visibilityTimeoutSeconds: 0 })).toMatchObject({ kind: 'branch', branch: 'changed' });
+    expect(await operation.invoke(call, { receiptHandle: 'receipt-1', visibilityTimeoutSeconds: 0 })).toMatchObject({ kind: 'branch', branch: 'receiptHandleInvalid' });
+    expect(await operation.invoke(repeated, { receiptHandle: 'receipt-1', visibilityTimeoutSeconds: 90 })).toMatchObject({ kind: 'branch', branch: 'receiptHandleInvalid' });
   });
 });

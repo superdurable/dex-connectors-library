@@ -110,6 +110,7 @@ type providerResponse struct {
 	failure    *sdkgo.Failure
 	retry      bool
 	retryAfter time.Duration
+	status     int
 }
 
 func (client *Client) send(call sdkgo.Call, operationID, method, path string, query url.Values, body []byte, hasNotFound bool, successStatus int) providerResponse {
@@ -163,7 +164,7 @@ func (client *Client) send(call sdkgo.Call, operationID, method, path string, qu
 		} else if response.StatusCode == http.StatusBadRequest || response.StatusCode == http.StatusUnprocessableEntity {
 			kind = sdkgo.FailureValidation
 		}
-		return providerResponse{branch: "providerRejected", failure: failure(operationID, kind, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))}
+		return providerResponse{branch: "providerRejected", status: response.StatusCode, failure: failure(operationID, kind, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))}
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
@@ -232,15 +233,19 @@ func (operation UpsertVectorsOperation) Invoke(call sdkgo.Call, input UpsertVect
 	if response.retry {
 		return sdkgo.NewMutationRetry[UpsertVectorsOutput](*response.failure, response.retryAfter)
 	}
+	// A repeated upsert replaces the same vector IDs, so an unknown outcome retries.
+	if response.branch == UpsertVectorsBranchInvalidResponse || (response.branch == UpsertVectorsBranchProviderRejected && !isDefiniteRefusalStatus(response.status)) {
+		return sdkgo.NewMutationRetry[UpsertVectorsOutput](*response.failure, 0)
+	}
 	if response.failure != nil {
 		return sdkgo.NewMutationBranch(response.branch, UpsertVectorsOutput{}, response.failure, sdkgo.Receipt{})
 	}
 	if !hasResponseShape(response.body, "upsertedCount") {
-		return sdkgo.NewMutationBranch(UpsertVectorsBranchInvalidResponse, UpsertVectorsOutput{}, failure("upsertVectors", sdkgo.FailureProtocol, "provider returned an incomplete response"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[UpsertVectorsOutput](*failure("upsertVectors", sdkgo.FailureProtocol, "provider returned an incomplete response"), 0)
 	}
 	var output UpsertVectorsOutput
 	if err := json.Unmarshal(response.body, &output); err != nil || output.UpsertedCount < 0 || output.UpsertedCount > len(input.Vectors) {
-		return sdkgo.NewMutationBranch(UpsertVectorsBranchInvalidResponse, UpsertVectorsOutput{}, failure("upsertVectors", sdkgo.FailureProtocol, "provider returned an invalid count"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[UpsertVectorsOutput](*failure("upsertVectors", sdkgo.FailureProtocol, "provider returned an invalid count"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpsertVectorsBranchUpserted, output, nil, sdkgo.Receipt{})
 }
@@ -250,6 +255,16 @@ func isTerminalCredentialError(err error) bool {
 	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
 		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
 		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
+// isDefiniteRefusalStatus reports a status that proves Pinecone refused the write; any other status is unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func encodeUpsertVectorsInput(input UpsertVectorsInput) (string, url.Values, []byte, error) {

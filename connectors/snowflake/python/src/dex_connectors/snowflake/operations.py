@@ -6,6 +6,7 @@ import base64
 import json
 import math
 import re
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import TypeVar
@@ -31,7 +32,7 @@ from dex_connectors.sdk.providerhttp import (
 )
 
 from ._generated import definitions as definitions
-from .client import Client, CredentialError, CredentialUnavailableError
+from .client import Client, CredentialError, _CredentialUnavailableError
 from .models import (
     CancelStatementInput,
     Column,
@@ -145,7 +146,7 @@ async def _request(
 ) -> tuple[int, object, dict[str, str]] | Failure:
     try:
         response = await client.send(call, method, target, body)
-    except CredentialUnavailableError as error:
+    except _CredentialUnavailableError as error:
         return _failure(operation, FailureKind.AVAILABILITY, str(error))
     except CredentialError as error:
         return _failure(operation, FailureKind.AUTHENTICATION, str(error))
@@ -398,7 +399,14 @@ class CancelStatementOperation:
         code, document, headers = answer
         status = _status(document)
         receipt = _receipt(self.client, call, input.statement_handle, status)
-        if code == 200:
+        is_repeated_refusal = (
+            code == 422
+            and call.context is not None
+            and call.context.attempt > 1
+            and status.get("code") != "000709"
+        )
+        # An earlier attempt may have canceled it; canceled already allows a statement that finished first.
+        if code == 200 or is_repeated_refusal:
             return MutationAttempt.branch_result(
                 definitions.CANCELED, StatementCancellation(input.statement_handle), receipt
             )
@@ -444,6 +452,9 @@ def _mutation_http_failure(
     failure, retry, delay = _classify(client, operation, code, document, headers)
     if retry:
         return MutationAttempt.retry(failure, delay)
+    if code not in (400, 401, 403, 404, 411, 413, 414, 415, 422):
+        # Both writes are safe to repeat, so a status that does not prove a refusal retries.
+        return MutationAttempt.retry(replace(failure, kind=FailureKind.AVAILABILITY))
     status = _status(document)
     receipt = receipt or _receipt(client, call, str(status.get("statementHandle") or ""), status)
     return MutationAttempt.branch_result(definitions.PROVIDER_REJECTED, empty, receipt, failure)

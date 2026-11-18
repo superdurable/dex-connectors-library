@@ -50,7 +50,6 @@ func TestUpdateRecordMapsMissingRecordsConflictsAndRejections(t *testing.T) {
 		"invalid stage":      {http.StatusBadRequest, recordErrorJSON("INVALID_DATA", "Stage", nil), crm.UpdateRecordBranchRecordRejected, sdkgo.FailureValidation},
 		"locked by approval": {http.StatusBadRequest, recordErrorJSON("RECORD_LOCKED", "Stage", nil), crm.UpdateRecordBranchRecordRejected, sdkgo.FailureValidation},
 		"scope mismatch":     {http.StatusUnauthorized, map[string]any{"code": "OAUTH_SCOPE_MISMATCH", "details": map[string]any{}, "message": "SENTINEL", "status": "error"}, crm.UpdateRecordBranchProviderRejected, sdkgo.FailureAuthorization},
-		"another record":     {http.StatusOK, writeSuccessJSON("", "4150868000003194099", nil), crm.UpdateRecordBranchInvalidResponse, sdkgo.FailureProtocol},
 	} {
 		t.Run(name, func(t *testing.T) {
 			provider := newRecordingCRM(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
@@ -64,6 +63,14 @@ func TestUpdateRecordMapsMissingRecordsConflictsAndRejections(t *testing.T) {
 			require.Equal(t, 1, provider.requestCount())
 		})
 	}
+}
+
+func TestUpdateRecordRetriesAWriteReportedForAnotherRecord(t *testing.T) {
+	provider := newRecordingCRM(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeValue(t, response, http.StatusOK, writeSuccessJSON("", "4150868000003194099", nil))
+	})
+	_, err := sdkgo.RunMutation(newCRMDexContext("update"), newCRMClient(t, provider.URL).UpdateRecord(), crmConnection, dealStageUpdateInput())
+	requireRetry(t, err, sdkgo.FailureProtocol)
 }
 
 func TestUpdateRecordRetriesALostResponseAndRejectsInvalidInputWithoutARequest(t *testing.T) {

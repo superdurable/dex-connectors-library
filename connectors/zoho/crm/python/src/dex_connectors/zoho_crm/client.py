@@ -307,7 +307,17 @@ class Client:
                     "Zoho authorization is revoked or expired; reconnect the connection",
                 ),
             )
-        except Exception:
+        except Exception as error:
+            # The generated connection module imports this module, so its predicate loads lazily.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return Exchange(
+                    "rejected",
+                    failure=failure(
+                        operation, FailureKind.AUTHENTICATION, "Zoho CRM stored credentials are malformed"
+                    ),
+                )
             return Exchange(
                 "retry",
                 failure=failure(

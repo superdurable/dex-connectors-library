@@ -2,7 +2,7 @@
 
 ## Python package
 
-Install `dex-connector-zoho-crm==0.1.0` with `dex-connectors-sdk==0.7.0`.
+Install `dex-connector-zoho-crm==0.1.1` with `dex-connectors-sdk==0.7.0`.
 It implements all six manifest operations with the same branch identities and
 OAuth data-center methods as Go. The package uses generated OAuth credential
 decoding, refresh declarations, connection bindings, definitions, models, Step
@@ -17,9 +17,9 @@ verification commands. Zoho OAuth authorization and live provider requests
 have not been tested with an account; the Go-recorded provider fixture uses
 synthetic credentials and a local HTTP responder.
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoho/crm/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoho/crm/go@v0.24.1`.
 
-The TypeScript package `@superdurable/connector-zoho-crm@0.1.0` supports all six
+The TypeScript package `@superdurable/connector-zoho-crm@0.1.1` supports all six
 record operations and no Triggers. Its [runnable record lookup example](typescript/examples/record-lookup/README.md)
 uses the static `zoho-crm-main` connection and verifies retry and optional-branch
 behavior with a real Dex Worker and a local Zoho stand-in. The
@@ -370,11 +370,12 @@ contains the access token is dropped.
 | COQL `SYNTAX_ERROR`, `INVALID_QUERY`, `LIMIT_EXCEEDED` | `providerRejected`, `VALIDATION` | not used |
 | 401 (`INVALID_TOKEN`), after one refresh and resend only when the stored token has expired | `providerRejected`, `AUTHENTICATION` | same |
 | `OAUTH_SCOPE_MISMATCH` (401), `NO_PERMISSION` (403), `AUTHORIZATION_FAILED` | `providerRejected`, `AUTHORIZATION` | same |
-| 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed | same |
+| 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed | Retry |
+| any other status outside 400, 401, 403, 404, 411, 413, 414, 415, and 422 | `providerRejected` | Retry; both writes declare `repeatOnUnknown: safe` |
 | 429 | Retry, after `Retry-After` when present | same |
 | 408, 5xx, a dropped connection or unreadable response | Retry | same |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | `invalidResponse` |
-| revoked authorization (`invalid_code` on refresh), a missing or unselected connection, or a credential broker refusal | `providerRejected`, `AUTHENTICATION` | same |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | Retry |
+| revoked authorization (`invalid_code` on refresh), a missing or unselected connection, a credential broker refusal, or malformed stored credentials | `providerRejected`, `AUTHENTICATION` | same |
 | any other credential failure, such as a token refresh or broker outage or a connection the static provider does not configure | Retry | same |
 | invalid input, an unknown data center, a foreign `api_domain`, or an unusable token | `defect`, with no request | same |
 

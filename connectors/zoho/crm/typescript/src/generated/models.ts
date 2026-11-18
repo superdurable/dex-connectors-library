@@ -42,7 +42,7 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
-  /** Maximum complete Zoho CRM API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when a module has unusually many fields or records carry long text. An oversized response selects invalidResponse and is never partly read. */
+  /** Maximum complete Zoho CRM API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when a module has unusually many fields or records carry long text. An oversized response is never partly read; a read selects invalidResponse and a write retries. */
   maxResponseBytes?: number;
 }
 

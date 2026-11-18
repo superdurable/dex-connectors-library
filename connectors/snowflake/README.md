@@ -1,6 +1,6 @@
 # Snowflake Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/snowflake/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/snowflake/go@v0.23.1`.
 
 The [TypeScript package](typescript/README.md), `@superdurable/connector-snowflake`,
 provides the same three operations for Dex TypeScript Flows. Its runnable
@@ -174,10 +174,11 @@ the connection's warehouse, role, database, schema, and `timeout`, and `MULTI_ST
 | Branch | Selected when |
 | --- | --- |
 | `submitted` | Snowflake answered 202 (or 200) with a statement handle |
-| `providerRejected` | 422 (a compilation error, an unknown object, a privilege error), 400, 401, 403, 404, 408, a redirect, or another 4xx; nothing ran |
+| `providerRejected` | 422 (a compilation error, an unknown object, a privilege error), 400, 401, 403, 404, 411, 413, 414, or 415; nothing ran |
 | `defect` | Invalid input, a placeholder mismatch, or unusable credentials; no request was sent |
 
-429, 500, 502, 503, 504, a dropped connection, and a 2xx without a readable handle return Retry,
+Both writes declare `repeatOnUnknown: safe`. 429, 500, 502, 503, 504, 408, a redirect, any other
+status, a dropped connection, and a 2xx without a readable handle return Retry,
 after `Retry-After` when Snowflake sends one. A credential failure selects `defect` only for a
 required reauthorization, a missing or unselected connection, a credential broker refusal, or
 credential material that fails a local check; any other credential failure returns Retry.
@@ -206,8 +207,8 @@ bounds are skipped, never buffered.
 
 | Branch | Selected when |
 | --- | --- |
-| `canceled` | 200: Snowflake accepted the cancellation |
-| `providerRejected` | 422, such as `000709` for an unknown handle, or 401, 403, 404, or another 4xx |
+| `canceled` | 200: Snowflake accepted the cancellation; or, on a repeated attempt, a 422 for a known handle, because an earlier attempt may have canceled it |
+| `providerRejected` | 422, such as `000709` for an unknown handle, or 400, 401, 403, 404, 411, 413, 414, or 415; any other status returns Retry |
 | `defect` | A handle that is not UUID-shaped, or unusable credentials |
 
 Only the happy path of each operation is required; every other branch is optional, and an unwired
@@ -260,7 +261,7 @@ statement when its wait budget runs out. A rejected statement fails the Flow.
 
 ### Python package
 
-Install `dex-connector-snowflake==0.1.0` for typed Python factories for all three operations.
+Install `dex-connector-snowflake==0.1.1` for typed Python factories for all three operations.
 [`python/examples/account_usage_summary`](python/examples/account_usage_summary/README.md)
 contains two runnable Flows with the static `snowflake-warehouse` connection: one submits a
 statement and reads a result that is ready immediately, and the other cancels a known handle.

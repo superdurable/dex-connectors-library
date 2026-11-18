@@ -1,6 +1,6 @@
 # Amazon S3 Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/amazon/s3/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/amazon/s3/go@v0.23.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/amazon/s3`.
 
@@ -169,7 +169,10 @@ by 12 seconds, below the 30-second Execute timeout. Transport failures, 408,
 429, 503 `SlowDown`, other 5xx except 501, 400 `RequestTimeout`, 307
 `TemporaryRedirect`, and 409 `ConditionalRequestConflict` or `OperationAborted`
 return Retry, honoring `Retry-After` up to one hour. 401, 403, 400, 404 for a
-bucket, 501, and other 4xx select `providerRejected`. Failures name the HTTP
+bucket, 501, and other 4xx select `providerRejected`, except that `putObject`,
+which declares `repeatOnUnknown: safe`, selects `providerRejected` only for 301,
+400, 401, 403, 404, 411, 413, 414, 415, 422, or 501 and retries any other
+status because a repeated PUT of the same bytes converges. Failures name the HTTP
 status and the S3 error code, such as `HTTP 403 SignatureDoesNotMatch`, never
 the error message text. Receipts carry the Call ID, `bucket/key`, and the
 `x-amz-request-id` response header. A credential failure selects `defect` only
@@ -301,7 +304,7 @@ under `reports/<reportId>.md`, reads its metadata and text back, and lists the
 archive folder.
 
 The [TypeScript package](typescript/) implements all four operations at its
-independent `v0.1.0` package version. Its [report archive
+independent `v0.1.2` package version. Its [report archive
 example](typescript/examples/report-archive/) writes a create-only text object,
 then inspects, reads, and lists it through a real Dex Flow. The TypeScript
 conformance fixture replays Go-verified provider responses for every branch,

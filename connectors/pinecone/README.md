@@ -1,6 +1,6 @@
 # Pinecone connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/pinecone/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/pinecone/go@v0.2.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/pinecone`.
 
@@ -32,10 +32,10 @@ Start at [https://app.pinecone.io](https://app.pinecone.io) and follow the autho
 | Provider outcome | Dex outcome |
 | --- | --- |
 | Documented success response with valid JSON shape | Happy-path branch |
-| 400, 401, 403, or another definite 4xx | Optional `providerRejected` branch |
-| 408, 409, 429, 5xx, transport interruption, or a transient credential failure such as an unavailable credential broker | Retry until the Step budget expires |
-| Malformed, incomplete, or oversized success response | Optional `invalidResponse` branch |
-| Invalid input, an invalid credential, a required reauthorization, a missing or unselected connection, or a credential broker refusal | Optional `defect` branch |
+| 400, 401, 403, or another definite 4xx; for `upsertVectors` only 400, 401, 403, 404, 411, 413, 414, 415, or 422 | Optional `providerRejected` branch |
+| 408, 409, 429, 5xx, transport interruption, any other `upsertVectors` status, or a transient credential failure such as an unavailable credential broker | Retry until the Step budget expires |
+| Malformed, incomplete, or oversized `queryVectors` response | Optional `invalidResponse` branch; `upsertVectors` declares `repeatOnUnknown: safe` and retries it |
+| Invalid input, an invalid credential, a required reauthorization, a missing or unselected connection, a credential broker refusal, or malformed stored credentials | Optional `defect` branch |
 
 Provider error bodies are never copied into Failures. A Flow fails when an optional branch is selected without wiring. The default retry policy is exponential from one second to five minutes, with unlimited attempts within one hour.
 

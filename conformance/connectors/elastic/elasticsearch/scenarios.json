@@ -225,6 +225,53 @@
       "callId": "d06cf1ca-9dd1-52c1-ae88-84c6074b1ad5",
       "exchanges": [
         {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products/_doc/sku-42",
+          "requestBody": {
+            "category": "release",
+            "title": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d06cf1ca-9dd1-52c1-ae88-84c6074b1ad5",
+      "input": {
+        "documentId": "sku-42",
+        "index": "products",
+        "source": {
+          "category": "release",
+          "title": "Meridian"
+        }
+      },
+      "name": "indexDocument-unlisted-status-retries",
+      "operation": "indexDocument"
+    },
+    {
+      "callId": "d06cf1ca-9dd1-52c1-ae88-84c6074b1ad5",
+      "exchanges": [
+        {
           "keyMode": "absent",
           "method": "PUT",
           "path": "/products/_doc/sku-42",
@@ -653,6 +700,42 @@
         "index": "products"
       },
       "name": "deleteDocument-server-error",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "7fdea409-526e-5179-83a3-010dfd811be7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products/_doc/sku-42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7fdea409-526e-5179-83a3-010dfd811be7",
+      "input": {
+        "documentId": "sku-42",
+        "index": "products"
+      },
+      "name": "deleteDocument-unlisted-status-retries",
       "operation": "deleteDocument"
     },
     {

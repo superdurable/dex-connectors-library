@@ -42,8 +42,21 @@ from dex_connectors.algolia import (
     SaveObjectInput,
     SearchInput,
 )
+from dex_connectors.algolia._generated.connection import CredentialMaterialError
 
 CONNECTION = ConnectionRef("algolia", "algolia")
+
+
+def _sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError that the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Algolia credential api_key is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("unreachable")
 KEY = "algolia-test-key"
 PAGE = {"nbHits": 1, "hits": [{"objectID": "product-1", "name": "Meridian notebook"}]}
 SAVED_BODY = {"objectID": "product-1", "taskID": 1514562690001}
@@ -85,6 +98,8 @@ def save_call() -> Call:
         (ObjectNotFoundError(), True),
         (ConnectionNotSelectedError(), True),
         (CredentialBrokerRejectedError(), True),
+        (CredentialMaterialError("Algolia credential api_key is required"), True),
+        (_sdk_wrapped_material_error(), True),
         (CredentialBrokerUnavailableError(), False),
         (ValueError("connection is not configured"), False),
         (RuntimeError("unlisted"), False),
@@ -231,12 +246,18 @@ async def test_save_object_rejects_bad_input_before_dispatch(value: SaveObjectIn
     "body",
     [{"objectID": "other", "taskID": 1}, {"objectID": "product-1", "taskID": 0}, {"objectID": "product-1"}],
 )
-async def test_save_object_requires_matching_task(body: dict[str, object]) -> None:
-    result = await run_mutation(
-        make_client(httpx.Response(200, json=body)).save_object(), save_call(), RECORD
-    )
-    assert result.branch == INVALID_RESPONSE
-    assert result.failure is not None and result.failure.kind == FailureKind.PROTOCOL
+async def test_save_object_retries_an_unmatched_task(body: dict[str, object]) -> None:
+    with pytest.raises(RetryError) as raised:
+        await run_mutation(make_client(httpx.Response(200, json=body)).save_object(), save_call(), RECORD)
+    assert raised.value.failure.kind == FailureKind.PROTOCOL
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [405, 425, 451])
+async def test_save_object_retries_unlisted_statuses(status: int) -> None:
+    with pytest.raises(RetryError) as raised:
+        await run_mutation(make_client(httpx.Response(status, json={})).save_object(), save_call(), RECORD)
+    assert raised.value.failure.kind == FailureKind.AVAILABILITY
 
 
 @pytest.mark.asyncio
