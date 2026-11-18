@@ -210,6 +210,53 @@ describe('Zoom bounded resend of unconfirmed meeting creates', () => {
     expect(requests).toHaveLength(0);
   });
 
+  it.each([
+    { status: 401, body: '', bodyError: 'transport' },
+    { status: 401, body: '', bodyError: 'tooLarge' },
+  ] as ZoomAnswer[])('treats an unreadable 401 body as an unknown outcome: %j', async answer => {
+    const { client, requests } = newClient([answer, { status: 401, body: '{"code":124,"message":"Invalid access token"}' }]);
+    const context = new AttemptContext();
+    expect(await create(client, context)).toBeInstanceOf(RetryError);
+    expect(context.marker).toMatchObject({ state: 'claimed' });
+    context.attempt = 2;
+    expect(await create(client, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(2);
+  });
+
+  it('never resends when the write deadline cuts a body after 2xx headers', async () => {
+    const requests: ProviderRequest[] = [];
+    const credentials = { accessToken: new SecretString('zoom-test-access-token'), oauthClientId: 'client-id',
+      oauthClientSecret: new SecretString('client-secret'), refreshToken: new SecretString('refresh-token') };
+    const resolve = async () => credentials;
+    const client = new ZoomClient({ endpoint: 'http://127.0.0.1:12345/v2' } as never, { resolve, resolveWithRefresh: resolve } as never, {
+      send: (request: ProviderRequest) => {
+        requests.push(request);
+        // Headers arrived; the Fence write window then aborts the body read, as sendProviderRequest reports it.
+        return new Promise((_, reject) => request.signal?.addEventListener('abort', () => reject(new ProviderTransportError(false, 201, {})), { once: true }));
+      },
+    });
+    const context = new AttemptContext();
+    // A Step deadline 1.2 seconds away shortens the Fence write window to about 0.7 seconds.
+    (context as { deadline: Date }).deadline = new Date(Date.now() + 1_200);
+    expect(await create(client, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('retries without sending when the window is short and notSent cannot be recorded at the send cap', async () => {
+    const { client, requests } = newClient([serverFailure, serverFailure, { status: 429, body: '{"code":429}' }]);
+    const context = new AttemptContext();
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      context.attempt = attempt;
+      expect(await create(client, context)).toBeInstanceOf(RetryError);
+    }
+    expect(context.marker).toMatchObject({ state: 'canResend', sendCount: 2 });
+    context.attempt = 4;
+    (context as { deadline: Date }).deadline = new Date(0);
+    context.recordHeartbeat = async () => { throw new Error('heartbeat unavailable'); };
+    expect(await create(client, context)).toBeInstanceOf(RetryError);
+    expect(requests).toHaveLength(3);
+  });
+
   it('retries a credential failure after a possible send', async () => {
     const { client, requests } = newClient([serverFailure]);
     const context = new AttemptContext();

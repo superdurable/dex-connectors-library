@@ -177,7 +177,8 @@ func (operation CreateMeetingOperation) Invoke(call sdkgo.Call, input CreateMeet
 	classification := client.classifyErrorStatus(createMeetingOperationID, response)
 	isBodyUnreadable := response.isBodyTooLarge || response.hasBodyReadFailed
 	switch {
-	case response.statusCode == http.StatusUnauthorized:
+	case response.statusCode == http.StatusUnauthorized && !isBodyUnreadable:
+		// An unreadable 401 body cannot prove a refusal, so it falls through to the unknown outcome.
 		if _, isRejectionRefreshing := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !isRejectionRefreshing {
 			failure := newFailure(createMeetingOperationID, sdkgo.FailureAuthentication, "Zoom rejected the connection credential; reconnect the connection")
 			return client.rejectOrSelectUncertain(call, fence, hasPossibleEarlierSend, requested, failure, classification.errorCode)
