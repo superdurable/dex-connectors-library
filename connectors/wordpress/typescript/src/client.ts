@@ -13,9 +13,9 @@ import {
 } from '@superdurable/connectors-sdk/providerhttp';
 import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
 import { CreatePostDefinition, GetPostDefinition, ListPostsDefinition } from './generated/definitions.js';
-import type {
-  Config, CreatePostInput, CreatedPost, Credentials, GetPostInput, ListPostsInput,
-  Post, PostPage,
+import {
+  isCredentialMaterialError, type Config, type CreatePostInput, type CreatedPost, type Credentials, type GetPostInput,
+  type ListPostsInput, type Post, type PostPage,
 } from './generated/models.js';
 
 const createdStatuses = new Set(['draft', 'publish', 'pending', 'private', 'future']);
@@ -271,7 +271,7 @@ async function localCreateFailure(fence: ReturnType<typeof newFence>, hasPossibl
 /** Report a credential failure that only reconnecting the connection can fix. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
-    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 
 function rejectionKind(status: number): Failure['kind'] {
