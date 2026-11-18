@@ -333,9 +333,25 @@ func classifyFailureStatus(response providerResponse) statusClassification {
 		return statusClassification{isRetryable: true, retryAfter: delay, kind: sdkgo.FailureAvailability, message: describeStatus("provider is temporarily unavailable", reason)}
 	case reason == "quotaExceeded" || reason == "dailyLimitExceeded":
 		return statusClassification{kind: sdkgo.FailureQuotaExhausted, message: describeStatus("provider quota is exhausted", reason)}
-	default:
+	case isDefiniteRefusalStatus(response.statusCode):
 		return statusClassification{kind: statusFailureKind(response.statusCode), message: describeStatus(fmt.Sprintf("provider rejected the request with HTTP %d", response.statusCode), reason)}
+	default:
+		delay, err := retryAfterDelay(response.header)
+		if err != nil {
+			return statusClassification{isRetryable: true, kind: sdkgo.FailureProtocol, message: "provider returned an invalid Retry-After header"}
+		}
+		return statusClassification{isRetryable: true, retryAfter: delay, kind: sdkgo.FailureAvailability, message: describeStatus(fmt.Sprintf("provider answered HTTP %d, which leaves the outcome unknown", response.statusCode), reason)}
 	}
+}
+
+// isDefiniteRefusalStatus reports the statuses that prove Google refused the request; any other one is unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func googleErrorReason(body []byte) string {

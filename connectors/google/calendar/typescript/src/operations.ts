@@ -37,6 +37,9 @@ export function googleErrorReason(response: CalendarResponse): string {
   return '';
 }
 
+/** Only these statuses prove Google refused the request; any other one is unknown. */
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
 /** Classify a non-success response with the Go connector's status policy: retry, its delay in milliseconds, and the failure. */
 export function classifyFailureStatus(operation: string, response: CalendarResponse): { retry: boolean; delay: number; failure: Failure } {
   const code = googleErrorReason(response);
@@ -49,6 +52,11 @@ export function classifyFailureStatus(operation: string, response: CalendarRespo
     return { retry: true, delay: raw ? Number(raw) * 1000 : 0, failure: failure(operation, isRate ? 'RATE_LIMIT' : 'AVAILABILITY', describe(isRate ? 'provider rate limited the request' : 'provider is temporarily unavailable')) };
   }
   if (['quotaExceeded', 'dailyLimitExceeded'].includes(code)) return { retry: false, delay: 0, failure: failure(operation, 'QUOTA_EXHAUSTED', describe('provider quota is exhausted')) };
+  if (!definiteRefusalStatuses.has(response.status)) {
+    const raw = header(response, 'retry-after');
+    if (raw && (!/^[+-]?\d+$/.test(raw) || Number(raw) < 0 || !Number.isSafeInteger(Number(raw)))) return { retry: true, delay: 0, failure: failure(operation, 'PROTOCOL', 'provider returned an invalid Retry-After header') };
+    return { retry: true, delay: raw ? Number(raw) * 1000 : 0, failure: failure(operation, 'AVAILABILITY', describe(`provider answered HTTP ${response.status}, which leaves the outcome unknown`)) };
+  }
   const kinds: Record<number, Failure['kind']> = { 400: 'VALIDATION', 401: 'AUTHENTICATION', 403: 'AUTHORIZATION', 404: 'NOT_FOUND', 410: 'NOT_FOUND', 409: 'CONFLICT', 412: 'CONFLICT' };
   return { retry: false, delay: 0, failure: failure(operation, kinds[response.status] ?? 'PROVIDER_REJECTION', describe(`provider rejected the request with HTTP ${response.status}`)) };
 }
@@ -152,11 +160,12 @@ export class CreateEventOperation implements Mutation<CreateEventInput, CreateEv
     try { response = await this.client.request(call, token, 'POST', calendarEventsPath(input.calendarId), query, payload); }
     catch { return newMutationRetry(failure(operation, 'TRANSPORT', 'insert outcome is unknown; the stable event ID makes the retry safe')); }
     const receipt = this.client.receipt(call, response, eventId);
-    if (response.isTooLarge) return newMutationBranch('invalidResponse', zeroCreate, receipt, failure(operation, 'RESPONSE_TOO_LARGE', 'provider response exceeds configured limit'));
+    // Both writes are safe to repeat, so an unusable response retries and the pre-read finds an accepted event.
+    if (response.isTooLarge) return newMutationRetry(failure(operation, 'RESPONSE_TOO_LARGE', 'provider response exceeds configured limit'));
     if (response.status === 409) return this.existing(call, await readEvent(this.client, call, token, operation, input.calendarId, eventId), eventId);
     if (response.status < 200 || response.status >= 300) { const result = classifyFailureStatus(operation, response); return result.retry ? newMutationRetry(result.failure, result.delay) : newMutationBranch('providerRejected', zeroCreate, receipt, result.failure); }
     try { const event = decodeEvent(jsonBody(response), input.calendarId); if (event.id !== eventId) throw new Error('provider returned an event with another ID'); return newMutationBranch('created', { event, wasAlreadyCreated: false }, receipt); }
-    catch (error) { return newMutationBranch('invalidResponse', zeroCreate, receipt, failure(operation, 'PROTOCOL', `provider returned an invalid event: ${message(error)}`)); }
+    catch (error) { return newMutationRetry(failure(operation, 'PROTOCOL', `provider returned an invalid event: ${message(error)}`)); }
   }
   private existing(call: Call, read: ReadOutcome, eventId: string): MutationAttempt<CreateEventOutput> {
     const operation = 'createEvent';
@@ -164,8 +173,11 @@ export class CreateEventOperation implements Mutation<CreateEventInput, CreateEv
     if (read.kind === 'defect') return newMutationBranch('defect', zeroCreate, zeroReceipt(), read.failure);
     const receipt = this.client.receipt(call, read.response, eventId);
     if (read.kind === 'found') return read.event.status === 'cancelled' ? newMutationBranch('conflict', { event: read.event, wasAlreadyCreated: false }, receipt, failure(operation, 'CONFLICT', 'event ID belongs to a deleted event')) : newMutationBranch('created', { event: read.event, wasAlreadyCreated: true }, receipt);
+    // After an earlier attempt, the unreadable event may be this Step's.
+    if (read.kind === 'missing' && (call.context?.attempt ?? 1) > 1) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Google reports the event ID as taken but does not return the event yet'));
     if (read.kind === 'missing') return newMutationBranch('conflict', zeroCreate, receipt, failure(operation, 'CONFLICT', 'event ID is used by an event the connection cannot read'));
-    return newMutationBranch(read.kind === 'invalid' ? 'invalidResponse' : 'providerRejected', zeroCreate, receipt, read.failure);
+    if (read.kind === 'invalid') return newMutationRetry(read.failure!, read.delay);
+    return newMutationBranch('providerRejected', zeroCreate, receipt, read.failure);
   }
 }
 
@@ -186,7 +198,8 @@ export class UpdateEventOperation implements Mutation<UpdateEventInput, UpdateEv
     if (current.kind === 'retry') return newMutationRetry(current.failure!, current.delay);
     if (current.kind === 'defect') return newMutationBranch('defect', zeroUpdate, zeroReceipt(), current.failure);
     const readReceipt = this.client.receipt(call, current.response, input.eventId);
-    if (current.kind !== 'found') return newMutationBranch(current.kind === 'missing' ? 'notFound' : current.kind === 'invalid' ? 'invalidResponse' : 'providerRejected', zeroUpdate, readReceipt, current.failure);
+    if (current.kind === 'invalid') return newMutationRetry(current.failure!, current.delay);
+    if (current.kind !== 'found') return newMutationBranch(current.kind === 'missing' ? 'notFound' : 'providerRejected', zeroUpdate, readReceipt, current.failure);
     if (current.event.status === 'cancelled') return newMutationBranch('notFound', zeroUpdate, readReceipt, failure(operation, 'NOT_FOUND', 'event is cancelled'));
     if (alreadyApplied(current.event, input)) return newMutationBranch('updated', { event: current.event, wasAlreadyApplied: true }, readReceipt);
     const payload: Record<string, unknown> = {};
@@ -198,12 +211,12 @@ export class UpdateEventOperation implements Mutation<UpdateEventInput, UpdateEv
     try { response = await this.client.request(call, token, 'PATCH', eventPath(input.calendarId, input.eventId), input.sendUpdates ? { sendUpdates: input.sendUpdates } : undefined, payload, current.event.etag); }
     catch { return newMutationRetry(failure(operation, 'TRANSPORT', 'patch outcome is unknown; the retry rereads the event first')); }
     const receipt = this.client.receipt(call, response, input.eventId);
-    if (response.isTooLarge) return newMutationBranch('invalidResponse', zeroUpdate, receipt, failure(operation, 'RESPONSE_TOO_LARGE', 'provider response exceeds configured limit'));
+    if (response.isTooLarge) return newMutationRetry(failure(operation, 'RESPONSE_TOO_LARGE', 'patch response is unusable; the retry rereads the event first'));
     if (response.status === 412) return newMutationRetry(failure(operation, 'CONFLICT', 'event changed after it was read'));
     if (response.status === 404 || response.status === 410) return newMutationBranch('notFound', zeroUpdate, receipt, failure(operation, 'NOT_FOUND', 'calendar or event was not found'));
     if (response.status < 200 || response.status >= 300) { const result = classifyFailureStatus(operation, response); return result.retry ? newMutationRetry(result.failure, result.delay) : newMutationBranch('providerRejected', zeroUpdate, receipt, result.failure); }
     try { return newMutationBranch('updated', { event: decodeEvent(jsonBody(response), input.calendarId), wasAlreadyApplied: false }, receipt); }
-    catch (error) { return newMutationBranch('invalidResponse', zeroUpdate, receipt, failure(operation, 'PROTOCOL', `provider returned an invalid event: ${message(error)}`)); }
+    catch (error) { return newMutationRetry(failure(operation, 'PROTOCOL', `provider returned an invalid event: ${message(error)}`)); }
   }
 }
 

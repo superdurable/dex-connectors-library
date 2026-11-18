@@ -6,7 +6,7 @@ import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oa
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Receipt } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { ListEventsOperation, GetEventOperation, CreateEventOperation, UpdateEventOperation, QueryFreeBusyOperation } from './operations.js';
 
 const defaultEndpoint = 'https://www.googleapis.com/calendar/v3';
@@ -118,7 +118,7 @@ export class CalendarClient {
 /** Report a resolve failure that only reconnection repairs; any other one is transient. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
-    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 
 export function header(response: CalendarResponse, name: string): string {

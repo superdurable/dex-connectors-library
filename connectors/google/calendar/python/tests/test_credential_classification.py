@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Credential resolve failures follow one terminal or transient classification."""
 
+from types import SimpleNamespace
 from typing import Any, cast
 from uuid import uuid4
 
@@ -15,13 +16,21 @@ from dex_connectors.sdk import (
     StaticCredentialProvider,
 )
 from dex_connectors.sdk.projectconfig import (
+    ConnectionKey,
     ConnectionNotSelectedError,
     CredentialBrokerRejectedError,
     CredentialBrokerUnavailableError,
+    CredentialMaterial,
     ObjectNotFoundError,
+    Scope,
 )
+from dex_connectors.sdk.projectconfig.provider import CredentialProvider
 
 from dex_connectors.google_calendar import Client, Config, Credentials, GetEventInput
+from dex_connectors.google_calendar._generated.connection import (
+    CredentialMaterialError,
+    decode_credentials,
+)
 
 CALL = Call(
     CallID(str(uuid4())), ConnectionRef("google", "calendar"), OperationRef("google-calendar", "getEvent")
@@ -48,6 +57,7 @@ class FailingCredentials:
         (ObjectNotFoundError(), True),
         (ConnectionNotSelectedError(), True),
         (CredentialBrokerRejectedError(), True),
+        (CredentialMaterialError("stored credential is malformed"), True),
         (CredentialBrokerUnavailableError(), False),
         (ValueError("connection is not configured"), False),
         (RuntimeError("unlisted"), False),
@@ -63,6 +73,29 @@ async def test_get_event_credential_failures_retry_unless_terminal(
         assert result.kind == "branch" and result.branch == "defect"
     else:
         assert result.kind == "retry"
+
+
+class MalformedMaterialStore:
+    """Serve stored material whose fields the connector does not declare."""
+
+    scope = Scope("project-1", "live")
+
+    def _shared_connection(self, key: ConnectionKey) -> None:
+        return None
+
+    async def read_credential_material(self, key: ConnectionKey) -> tuple[CredentialMaterial, Any]:
+        """Return malformed material through the SDK's trusted read."""
+        material = CredentialMaterial({"unexpected": "value"}, None, "google-oauth")
+        return material, SimpleNamespace(expires_at=None)
+
+
+@pytest.mark.asyncio
+async def test_malformed_stored_credentials_are_terminal_behind_the_sdk_wrapper() -> None:
+    """The released SDK provider hides the decoder error; the read still selects defect."""
+    key = ConnectionKey("google-calendar", "calendar")
+    provider = CredentialProvider(cast(Any, MalformedMaterialStore()), key, decode_credentials)
+    result = await Client(Config(), provider).get_event().invoke(CALL, INPUT)
+    assert result.kind == "branch" and result.branch == "defect"
 
 
 @pytest.mark.asyncio

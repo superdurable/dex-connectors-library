@@ -311,11 +311,12 @@ func newCalendarClient(t *testing.T, endpoint string) *calendar.Client {
 
 type calendarDexContext struct {
 	context.Context
-	step string
+	step    string
+	attempt int32
 }
 
 func newCalendarDexContext(step string) *calendarDexContext {
-	return &calendarDexContext{Context: context.Background(), step: step}
+	return &calendarDexContext{Context: context.Background(), step: step, attempt: 1}
 }
 func (*calendarDexContext) FlowID() string                                  { return "calendar-flow" }
 func (*calendarDexContext) RunID() string                                   { return "run" }
@@ -324,7 +325,7 @@ func (context *calendarDexContext) StepExecutionID() string                 { re
 func (*calendarDexContext) FromStepExecutionID() string                     { return "" }
 func (*calendarDexContext) RecoveryError() *dex.RecoveryErrorInfo           { return nil }
 func (*calendarDexContext) FirstAttemptAt() time.Time                       { return time.Unix(1, 0) }
-func (*calendarDexContext) Attempt() int32                                  { return 1 }
+func (context *calendarDexContext) Attempt() int32                          { return context.attempt }
 func (*calendarDexContext) HasTimerFired() bool                             { return false }
 func (*calendarDexContext) HasTimerFiredByIndex(int) bool                   { return false }
 func (*calendarDexContext) WaitForMethodFailed() bool                       { return false }

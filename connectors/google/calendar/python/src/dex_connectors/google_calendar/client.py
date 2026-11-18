@@ -114,6 +114,10 @@ def google_error_reason(body: bytes) -> str:
     return ""
 
 
+# Only these statuses prove Google refused the request; any other one is unknown.
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
 def classify_status(response: ProviderResponse) -> tuple[bool, FailureKind, str, float]:
     """Classify a non-success response using Go's Calendar status policy."""
     reason = google_error_reason(response.body)
@@ -125,9 +129,12 @@ def classify_status(response: ProviderResponse) -> tuple[bool, FailureKind, str,
     elif status == 408 or status >= 500:
         category = FailureKind.AVAILABILITY
         message = "provider is temporarily unavailable" + suffix
+    elif reason in ("quotaExceeded", "dailyLimitExceeded"):
+        return False, FailureKind.QUOTA_EXHAUSTED, "provider quota is exhausted" + suffix, 0
+    elif status not in _DEFINITE_REFUSAL_STATUSES:
+        category = FailureKind.AVAILABILITY
+        message = f"provider answered HTTP {status}, which leaves the outcome unknown" + suffix
     else:
-        if reason in ("quotaExceeded", "dailyLimitExceeded"):
-            return False, FailureKind.QUOTA_EXHAUSTED, "provider quota is exhausted" + suffix, 0
         kinds = {
             400: FailureKind.VALIDATION,
             401: FailureKind.AUTHENTICATION,
@@ -233,7 +240,14 @@ class Client:
             result = await self.credentials.resolve(call)
         except TERMINAL_CREDENTIAL_ERRORS:
             return failure(FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable")
-        except Exception:
+        except Exception as error:
+            # The generated connection module imports this one, so the predicate loads lazily.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return failure(
+                    FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable"
+                )
             return failure(
                 FailureKind.AVAILABILITY, operation, "connection credentials are temporarily unavailable"
             )
