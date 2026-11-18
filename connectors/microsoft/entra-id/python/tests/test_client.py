@@ -3,6 +3,8 @@
 """Graph request safety and malformed provider response checks."""
 
 import json
+from types import SimpleNamespace
+from typing import Any, cast
 
 import httpx
 import pytest
@@ -10,20 +12,34 @@ from dex_connectors.sdk import (
     Call,
     CallID,
     ConnectionRef,
+    IdempotencyKey,
     OperationRef,
     ReauthorizationRequiredError,
     SecretString,
     StaticCredentialProvider,
 )
+from dex_connectors.sdk.projectconfig import ConnectionKey, CredentialMaterial, Scope
 from dex_connectors.sdk.projectconfig.broker import (
     ConnectionNotSelectedError,
     CredentialBrokerRejectedError,
     CredentialBrokerUnavailableError,
     RejectedCredentialNotRefreshedError,
 )
+from dex_connectors.sdk.projectconfig.provider import CredentialProvider
 from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
-from dex_connectors.microsoft_entra_id import AddUserToGroupInput, Client, Config, Credentials, GetUserInput
+from dex_connectors.microsoft_entra_id import (
+    AddUserToGroupInput,
+    Client,
+    Config,
+    CreateUserInput,
+    Credentials,
+    GetUserInput,
+)
+from dex_connectors.microsoft_entra_id._generated.connection import (
+    CredentialMaterialError,
+    decode_credentials,
+)
 from dex_connectors.microsoft_entra_id.client import convert_user, odata_query, path_escape, query_escape
 
 USER_ID = "11111111-2222-4333-8444-555555555555"
@@ -105,6 +121,7 @@ TERMINAL_CREDENTIAL_ERRORS: tuple[Exception, ...] = (
     ObjectNotFoundError(),
     ConnectionNotSelectedError(),
     CredentialBrokerRejectedError(),
+    CredentialMaterialError("stored credential is malformed"),
 )
 TRANSIENT_CREDENTIAL_ERRORS: tuple[Exception, ...] = (
     CredentialBrokerUnavailableError(),
@@ -132,6 +149,70 @@ async def test_every_operation_classifies_credential_failures_the_same_way(error
         mutation_call = Call(CallID("mutation-call"), CONNECTION, add_operation)
         added = await client.add_user_to_group().invoke(mutation_call, AddUserToGroupInput(USER_ID, USER_ID))
     assert (read.kind, added.kind) == (expected, expected)
+
+
+class MalformedMaterialStore:
+    """Serve stored material whose fields the connector does not declare."""
+
+    scope = Scope("project-1", "live")
+
+    def _shared_connection(self, key: ConnectionKey) -> None:
+        return None
+
+    async def read_credential_material(self, key: ConnectionKey) -> tuple[CredentialMaterial, Any]:
+        """Return malformed material through the SDK's trusted read."""
+        material = CredentialMaterial({"unexpected": "value"}, None, "microsoft-oauth")
+        return material, SimpleNamespace(expires_at=None)
+
+
+@pytest.mark.asyncio
+async def test_malformed_stored_credentials_are_terminal_behind_the_sdk_wrapper() -> None:
+    """The released SDK provider hides the decoder error; the write still selects defect."""
+    key = ConnectionKey("microsoft-entra-id", "entra-test")
+    provider = CredentialProvider(cast(Any, MalformedMaterialStore()), key, decode_credentials)
+    client = Client(Config(), provider, local_provider_url="http://127.0.0.1:44888")
+    call = Call(CallID("mutation-call"), CONNECTION, OperationRef("microsoft-entra-id", "addUserToGroup"))
+    added = await client.add_user_to_group().invoke(call, AddUserToGroupInput(USER_ID, USER_ID))
+    assert added.kind == "branch" and added.branch == "defect"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("attempt", "branch", "methods"), [(1, "providerRejected", ["POST"]), (2, "created", ["POST", "GET"])]
+)
+async def test_create_user_reads_back_a_refusal_only_after_an_earlier_attempt(
+    attempt: int, branch: str, methods: list[str]
+) -> None:
+    """A later attempt's refusal reads the name back and finds this Step's account."""
+    seen: list[str] = []
+    account = {
+        "id": USER_ID,
+        "userPrincipalName": "ada.lovelace@contoso.com",
+        "accountEnabled": True,
+        "onPremisesExtensionAttributes": {"extensionAttribute15": "dex-creation-key:hire-42"},
+    }
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        seen.append(request.method)
+        if request.method == "POST":
+            return httpx.Response(403, json={"error": {"code": "Authorization_RequestDenied"}})
+        return httpx.Response(200, json=account)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
+        client = Client(Config(), CREDENTIALS, http_client, local_provider_url="http://127.0.0.1:44888")
+        call = Call(
+            CallID("create-call"),
+            CONNECTION,
+            OperationRef("microsoft-entra-id", "createUser"),
+            IdempotencyKey("hire-42"),
+            cast(Any, SimpleNamespace(attempt=attempt, first_attempt_at=None)),
+        )
+        create_input = CreateUserInput(
+            user_principal_name="ada.lovelace@contoso.com", given_name="Ada", surname="Lovelace"
+        )
+        result = await client.create_user().invoke(call, create_input)
+    assert result.kind == "branch" and result.branch == branch
+    assert seen == methods
 
 
 @pytest.mark.asyncio

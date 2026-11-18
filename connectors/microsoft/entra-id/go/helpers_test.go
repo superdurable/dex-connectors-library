@@ -57,15 +57,16 @@ type testDexContext struct {
 	context.Context
 	step           string
 	firstAttemptAt time.Time
+	attempt        int32
 }
 
 func newTestDexContext(step string) *testDexContext {
-	return &testDexContext{Context: context.Background(), step: step, firstAttemptAt: time.Now()}
+	return &testDexContext{Context: context.Background(), step: step, firstAttemptAt: time.Now(), attempt: 1}
 }
 
 // newLateTestDexContext is a Step whose first attempt started after the propagation window ended.
 func newLateTestDexContext(step string) *testDexContext {
-	return &testDexContext{Context: context.Background(), step: step, firstAttemptAt: time.Now().Add(-2 * time.Minute)}
+	return &testDexContext{Context: context.Background(), step: step, firstAttemptAt: time.Now().Add(-2 * time.Minute), attempt: 1}
 }
 
 func (*testDexContext) FlowID() string                                  { return "entra-id-flow" }
@@ -75,7 +76,7 @@ func (context *testDexContext) StepExecutionID() string                 { return
 func (*testDexContext) FromStepExecutionID() string                     { return "" }
 func (*testDexContext) RecoveryError() *dex.RecoveryErrorInfo           { return nil }
 func (context *testDexContext) FirstAttemptAt() time.Time               { return context.firstAttemptAt }
-func (*testDexContext) Attempt() int32                                  { return 1 }
+func (context *testDexContext) Attempt() int32                          { return context.attempt }
 func (*testDexContext) HasTimerFired() bool                             { return false }
 func (*testDexContext) HasTimerFiredByIndex(int) bool                   { return false }
 func (*testDexContext) WaitForMethodFailed() bool                       { return false }

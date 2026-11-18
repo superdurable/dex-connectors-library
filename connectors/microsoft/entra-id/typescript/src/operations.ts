@@ -77,7 +77,11 @@ function failedQuery<T>(client: EntraClient, call: Call, exchange: GraphExchange
   if (exchange.outcome === 'retry') return newQueryRetry(exchange.failure!, exchange.retryAfterMs);
   return newQueryBranch(branchFor(exchange, hasNotFound), empty, exchange.outcome === 'defect' ? zeroReceipt() : client.receipt(call, exchange.response), exchange.failure);
 }
+/** Report a later attempt, whose predecessor may have sent the write. */
+function hasPossibleEarlierAttempt(call: Call): boolean { return (call.context?.attempt ?? 1) > 1; }
+/** Every write is safe to repeat, so an unusable response retries instead of selecting invalidResponse. */
 function failedMutation<T>(client: EntraClient, call: Call, exchange: GraphExchange, empty: T, hasNotFound = true): MutationAttempt<T> {
+  if (exchange.outcome === 'invalidResponse') return newMutationRetry(exchange.failure!, exchange.retryAfterMs);
   if (exchange.outcome === 'retry') return newMutationRetry(exchange.failure!, exchange.retryAfterMs);
   return newMutationBranch(branchFor(exchange, hasNotFound), empty, exchange.outcome === 'defect' ? zeroReceipt() : client.receipt(call, exchange.response), exchange.failure);
 }
@@ -171,15 +175,12 @@ async function setAccountEnabled(client: EntraClient, call: Call, rawKey: string
   const read = await client.readUser(call, credentials, operation, key, userSelect);
   if (read.outcome === 'notFound' && client.withinPropagationWindow(call)) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Microsoft Graph accepted the change but does not return the account yet'));
   if (read.outcome !== 'succeeded') return failedMutation(client, call, read, zeroUser);
-  const receipt = client.receipt(call, read.response);
   let user: User;
   try { user = decodeUser(parseObject(read.response!.body), true); }
-  catch (error) { return newMutationBranch('invalidResponse', zeroUser, receipt, failure(operation, 'PROTOCOL', `provider returned an invalid account: ${(error as Error).message}`)); }
+  catch (error) { return newMutationRetry(failure(operation, 'PROTOCOL', `provider returned an invalid account: ${(error as Error).message}`)); }
   const userReceipt = client.receipt(call, read.response, user.id);
-  if (user.isAccountEnabled !== enabled) {
-    if (client.withinPropagationWindow(call)) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Microsoft Graph does not report the change yet'));
-    return newMutationBranch('providerRejected', user, userReceipt, failure(operation, 'PROVIDER_REJECTION', 'Microsoft Graph returned the account without the requested accountEnabled value'));
-  }
+  // A read that contradicts the accepted absolute write is unknown, and the write is safe to repeat.
+  if (user.isAccountEnabled !== enabled) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Microsoft Graph does not report the change yet'));
   return newMutationBranch(enabled ? EnableUserBranch.Enabled : DisableUserBranch.Disabled, user, userReceipt);
 }
 
@@ -222,7 +223,7 @@ export class RevokeSignInSessionsOperation {
       const parsed = response as { value?: unknown };
       if (parsed.value != null && typeof parsed.value !== 'boolean') throw new TypeError('invalid value');
       if (parsed.value === false) return newMutationBranch(RevokeSignInSessionsBranch.ProviderRejected, output, receipt, failure('revokeSignInSessions', 'PROVIDER_REJECTION', 'Microsoft Graph reported that it did not revoke the sessions'));
-    } catch { return newMutationBranch(RevokeSignInSessionsBranch.InvalidResponse, output, receipt, failure('revokeSignInSessions', 'PROTOCOL', 'provider returned an invalid revocation response')); }
+    } catch { return newMutationRetry(failure('revokeSignInSessions', 'PROTOCOL', 'provider returned an invalid revocation response')); }
     return newMutationBranch(RevokeSignInSessionsBranch.Revoked, output, receipt);
   }
 }
@@ -291,7 +292,6 @@ export class CreateUserOperation {
     if (written.outcome === 'badRequest') {
       const read = await this.client.readUser(call, credentials, operation, String(payload.userPrincipalName), creationSelect);
       if (read.outcome === 'succeeded') {
-        const receipt = this.client.receipt(call, read.response);
         try {
           const resource = parseObject(read.response!.body);
           const user = decodeUser(resource, true);
@@ -299,18 +299,36 @@ export class CreateUserOperation {
           const attributes = resource.onPremisesExtensionAttributes;
           if (attributes && typeof attributes === 'object' && !Array.isArray(attributes) && (attributes as Record<string, unknown>)[this.client.creationKeyAttribute] === `dex-creation-key:${key}`) return newMutationBranch(CreateUserBranch.Created, { user, wasAlreadyCreated: true }, userReceipt);
           return newMutationBranch(CreateUserBranch.AlreadyExists, { user, wasAlreadyCreated: false }, userReceipt, failure(operation, 'CONFLICT', 'user principal name belongs to an account this Step did not create'));
-        } catch (error) { return newMutationBranch(CreateUserBranch.InvalidResponse, zeroCreate, receipt, failure(operation, 'PROTOCOL', `provider returned an invalid account: ${(error as Error).message}`)); }
+        } catch (error) { return newMutationRetry(failure(operation, 'PROTOCOL', `provider returned an invalid account: ${(error as Error).message}`)); }
       }
       if (read.outcome === 'notFound') {
-        if (this.client.withinPropagationWindow(call)) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Microsoft Graph rejected the account but does not return the user principal name yet'));
+        // After an earlier attempt, the unreadable account may be this Step's.
+        if (hasPossibleEarlierAttempt(call) || this.client.withinPropagationWindow(call)) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Microsoft Graph rejected the account but does not return the user principal name yet'));
         const details = readErrorTokens(written.response!.body, ['/error/details/0/code', '/error/details/1/code', '/error/details/2/code']);
         if (details.includes('ObjectConflict')) return newMutationBranch(CreateUserBranch.AlreadyExists, zeroCreate, this.client.receipt(call, read.response), failure(operation, 'CONFLICT', 'user principal name or mail alias belongs to an object outside the user directory, such as a deleted account'));
         return newMutationBranch(CreateUserBranch.ProviderRejected, zeroCreate, this.client.receipt(call, written.response), written.failure);
       }
       return failedMutation(this.client, call, read, zeroCreate, false);
     }
-    if (written.outcome === 'notFound' || written.outcome === 'rejected') return newMutationBranch(CreateUserBranch.ProviderRejected, zeroCreate, this.client.receipt(call, written.response), written.failure);
+    if (written.outcome === 'notFound' || written.outcome === 'rejected') {
+      const refusal = newMutationBranch(CreateUserBranch.ProviderRejected, zeroCreate, this.client.receipt(call, written.response), written.failure);
+      return hasPossibleEarlierAttempt(call) ? this.confirmRefusal(call, credentials, String(payload.userPrincipalName), key, refusal) : refusal;
+    }
     return failedMutation(this.client, call, written, zeroCreate, false);
+  }
+
+  /** Read the name back, because an earlier attempt may have created the account. */
+  private async confirmRefusal(call: Call, credentials: Parameters<EntraClient['readUser']>[1], principal: string, key: string, refusal: MutationAttempt<CreateUserOutput>): Promise<MutationAttempt<CreateUserOutput>> {
+    const read = await this.client.readUser(call, credentials, 'createUser', principal, creationSelect);
+    if (read.outcome === 'notFound') return refusal;
+    if (read.outcome !== 'succeeded') return failedMutation(this.client, call, read, zeroCreate, false);
+    try {
+      const resource = parseObject(read.response!.body);
+      const user = decodeUser(resource, true);
+      const attributes = resource.onPremisesExtensionAttributes;
+      const isThisStep = !!attributes && typeof attributes === 'object' && !Array.isArray(attributes) && (attributes as Record<string, unknown>)[this.client.creationKeyAttribute] === `dex-creation-key:${key}`;
+      return isThisStep ? newMutationBranch(CreateUserBranch.Created, { user, wasAlreadyCreated: true }, this.client.receipt(call, read.response, user.id)) : refusal;
+    } catch (error) { return newMutationRetry(failure('createUser', 'PROTOCOL', `provider returned an invalid account: ${(error as Error).message}`)); }
   }
 }
 
@@ -340,9 +358,10 @@ export class AddUserToGroupOperation {
       const receipt = this.client.receipt(call, check.response, userId);
       let isMember = false;
       try { const page = parseObject(check.response!.body); if (page.value != null && !Array.isArray(page.value)) throw new TypeError('invalid members'); isMember = Array.isArray(page.value) && page.value.some((item: unknown) => { if (!item || typeof item !== 'object' || Array.isArray(item)) throw new TypeError('invalid member'); const id = (item as Record<string, unknown>).id; if (id != null && typeof id !== 'string') throw new TypeError('invalid member ID'); return typeof id === 'string' && id.toLowerCase() === userId; }); }
-      catch { return newMutationBranch(AddUserToGroupBranch.InvalidResponse, zero, receipt, failure(operation, 'PROTOCOL', 'provider returned an invalid membership check')); }
+      catch { return newMutationRetry(failure(operation, 'PROTOCOL', 'provider returned an invalid membership check')); }
       if (isMember) return newMutationBranch(AddUserToGroupBranch.Added, { ...output, wasAlreadyMember: true }, receipt);
-      if (this.client.withinPropagationWindow(call)) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Microsoft Graph rejected the membership but does not list it yet'));
+      // After an earlier attempt, the unlisted membership may be this Step's.
+      if (hasPossibleEarlierAttempt(call) || this.client.withinPropagationWindow(call)) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Microsoft Graph rejected the membership but does not list it yet'));
       return newMutationBranch(AddUserToGroupBranch.ProviderRejected, zero, this.client.receipt(call, written.response), written.failure);
     }
     if (written.outcome === 'notFound') {

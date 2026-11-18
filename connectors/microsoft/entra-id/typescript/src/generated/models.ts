@@ -8,7 +8,7 @@ import type { RefreshingCredentialProvider } from '@superdurable/connectors-sdk'
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
-  /** Maximum complete Microsoft Graph response in bytes; enter a positive integer only to change the safety limit, for example when listUsers pages of up to 999 accounts are larger. Blank keeps the limit, and an oversized response selects invalidResponse. */
+  /** Maximum complete Microsoft Graph response in bytes; enter a positive integer only to change the safety limit, for example when listUsers pages of up to 999 accounts are larger. Blank keeps the limit; an oversized response selects invalidResponse on a read and retries a write. */
   maxResponseBytes?: number;
   /** Number of accounts listUsers requests per page when the Step input leaves pageSize at zero; enter a whole number from 1 to 999, the Microsoft Graph maximum, only to trade smaller, faster pages for fewer requests. Blank uses the displayed default. */
   listUsersPageSize?: number;

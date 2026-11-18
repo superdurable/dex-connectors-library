@@ -27,7 +27,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		options = append(options, withInitialPasswordRandomSource(newConformanceSyntheticRandomReader(scenario.RandomSeed)))
 	}
 	config := Config{}
-	if scenario.Name == "removeUserFromGroup-invalid-response" {
+	if scenario.Name == "removeUserFromGroup-unusable-response-retries" {
 		config.MaxResponseBytes = 2
 	}
 	var credentials CredentialSource = sdkgo.StaticCredentialProvider[Credentials]{

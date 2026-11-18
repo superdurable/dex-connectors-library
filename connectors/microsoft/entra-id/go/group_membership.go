@@ -133,13 +133,14 @@ func (operation AddUserToGroupOperation) confirmExistingMembership(
 	receipt := operation.client.receipt(call, check.response, output.UserID)
 	isMember, err := pageContainsObject(check.response.body, output.UserID)
 	if err != nil {
-		return sdkgo.NewMutationBranch(AddUserToGroupBranchInvalidResponse, AddUserToGroupOutput{}, failurePointer(sdkgo.FailureProtocol, operationID, "provider returned an invalid membership check"), receipt)
+		return sdkgo.NewMutationRetry[AddUserToGroupOutput](graphFailure(sdkgo.FailureProtocol, operationID, "provider returned an invalid membership check"), 0)
 	}
 	if isMember {
 		output.WasAlreadyMember = true
 		return sdkgo.NewMutationBranch(AddUserToGroupBranchAdded, output, nil, receipt)
 	}
-	if operation.client.isWithinPropagationWindow(call) {
+	// After an earlier attempt, the unlisted membership may be this Step's, so only the retry budget ends the wait.
+	if hasPossibleEarlierAttempt(call) || operation.client.isWithinPropagationWindow(call) {
 		return sdkgo.NewMutationRetry[AddUserToGroupOutput](graphFailure(sdkgo.FailureAvailability, operationID, "Microsoft Graph rejected the membership but does not list it yet"), 0)
 	}
 	failure := addExchange.failure
