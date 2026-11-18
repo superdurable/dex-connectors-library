@@ -6,18 +6,18 @@ metadata:
   description: Submit one parameterized SQL statement to a Snowflake warehouse through the SQL API, read its status and result partitions, and cancel it.
   company: Snowflake
   categories: [databases-storage, analytics]
-  version: v0.23.0
+  version: v0.23.1
 spec:
   provider: snowflake
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-snowflake
       operations: [submitStatement, getStatementResult, cancelStatement]
       triggers: []
     typescript:
       package: '@superdurable/connector-snowflake'
-      version: v0.1.0
+      version: v0.1.1
       operations: [submitStatement, getStatementResult, cancelStatement]
       triggers: []
   codegen:
@@ -130,6 +130,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Every attempt sends the same requestId with retry=true, which Snowflake deduplicates.
+        repeatOnUnknown: safe
       mocks:
         - name: acceptedAccountUsageQuery
           branch: submitted
@@ -197,6 +199,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Canceling the same handle again leaves it canceled; a repeated refusal for a known handle selects canceled.
+        repeatOnUnknown: safe
       mocks:
         - name: canceledAccountUsageQuery
           branch: canceled

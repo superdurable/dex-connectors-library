@@ -43,13 +43,16 @@ class CredentialError(Exception):
     """A safe credential failure that must select the defect branch."""
 
 
-class CredentialUnavailableError(Exception):
+class _CredentialUnavailableError(CredentialError):
     """A transient credential failure that a later attempt may resolve; nothing was sent."""
 
 
-def is_terminal_credential_error(error: Exception) -> bool:
+def _is_terminal_credential_error(error: Exception) -> bool:
     """Report a credential failure that no later attempt resolves without a person."""
-    return isinstance(
+    # The generated connection module imports this module, so its predicate loads lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
         error,
         (
             ReauthorizationRequiredError,
@@ -156,8 +159,8 @@ class Client:
         try:
             credentials = await self.credentials.resolve(call)
         except Exception as error:
-            if not is_terminal_credential_error(error):
-                raise CredentialUnavailableError(
+            if not _is_terminal_credential_error(error):
+                raise _CredentialUnavailableError(
                     "Snowflake connection credentials are temporarily unavailable; nothing was sent"
                 ) from error
             raise CredentialError("Snowflake connection credentials are unavailable") from error

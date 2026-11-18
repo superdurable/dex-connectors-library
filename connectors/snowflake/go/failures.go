@@ -87,12 +87,13 @@ type classifiedFailure struct {
 	message     string
 	retryAfter  time.Duration
 	status      statementStatus
+	httpStatus  int
 }
 
 // classifyUnsuccessfulResponse maps a status code outside the operation's success codes; body is at most a bounded prefix.
 func classifyUnsuccessfulResponse(response *http.Response, body []byte, now time.Time) classifiedFailure {
 	status := decodeStatementStatus(body)
-	failure := classifiedFailure{disposition: dispositionRejected, kind: sdkgo.FailureProviderRejection, status: status}
+	failure := classifiedFailure{disposition: dispositionRejected, kind: sdkgo.FailureProviderRejection, status: status, httpStatus: response.StatusCode}
 	switch code := response.StatusCode; {
 	case code == http.StatusTooManyRequests:
 		failure.disposition, failure.kind = dispositionRetry, sdkgo.FailureRateLimit
@@ -123,6 +124,20 @@ func classifyUnsuccessfulResponse(response *http.Response, body []byte, now time
 	case response.StatusCode >= 300 && response.StatusCode < 400:
 		failure.message += "; the connector never follows redirects, so check accountIdentifier"
 	}
+	return failure
+}
+
+// retryUnknownWriteRefusal turns a refusal whose HTTP status does not prove one into Retry, for the safe writes.
+func retryUnknownWriteRefusal(failure classifiedFailure) classifiedFailure {
+	if failure.disposition != dispositionRejected {
+		return failure
+	}
+	switch failure.httpStatus {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return failure
+	}
+	failure.disposition, failure.kind = dispositionRetry, sdkgo.FailureAvailability
 	return failure
 }
 
