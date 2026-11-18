@@ -298,7 +298,8 @@ Every operation returns Retry, which Dex retries with the Step's one-hour defaul
 - server shutdown, killed connections, and network errors;
 - deadlocks (1213, also a Galera certification conflict) and lock-wait
   timeouts (1205);
-- a connection lost before `COMMIT` was sent.
+- a connection lost before `COMMIT` was sent;
+- a temporarily unavailable credential broker, before connecting.
 
 The server rolls back an open transaction when its connection ends, so a
 write that fails before `COMMIT` left nothing behind and is safe to retry. The
@@ -318,8 +319,11 @@ records a claim in the Step heartbeat. After an unknown outcome it selects
 a lost Worker, selects `uncertain` without connecting. Only a proven rollback,
 such as a connection lost before `COMMIT` or a deadlock at `COMMIT`, records
 that nothing was committed and returns Retry. A failure before `COMMIT` on an
-attempt whose checkpoint still counts a possible earlier `COMMIT` selects
-`uncertain` and records nothing. An unreadable checkpoint returns
+attempt whose checkpoint still counts a possible earlier `COMMIT` records
+nothing: a transient one returns Retry, after which the next attempt selects
+`uncertain` without connecting, and any other one selects `uncertain`. A
+driver error that cannot be read after `COMMIT` was sent also selects
+`uncertain`. An unreadable checkpoint returns
 Retry without connecting. The server has no generic read-back for an
 arbitrary statement, so the application reconciles `uncertain` itself; the
 Result's `Receipt.IdempotencyKey` identifies the Step execution.

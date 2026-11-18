@@ -65,10 +65,9 @@ func (operation ExecuteStatementNonIdempotentOperation) Invoke(call sdkgo.Call, 
 	}
 	// Overcounts when an earlier attempt proved its COMMIT unsent, which only costs a rejection branch.
 	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
-	password, isResolved := client.resolvePassword(call)
+	password, credentialFailure, isResolved := client.resolvePassword(call)
 	if !isResolved {
-		failure := classifiedFailure{disposition: dispositionDefect, kind: sdkgo.FailureAuthentication, message: "MySQL connection credentials are unavailable"}
-		return settleBeforeCommit(fence, hasPossibleEarlierSend, failure, sdkgo.Receipt{})
+		return settleBeforeCommit(fence, hasPossibleEarlierSend, credentialFailure, sdkgo.Receipt{})
 	}
 	ctx, cancel := client.newCallContext(call)
 	defer cancel()
@@ -114,11 +113,14 @@ func (operation ExecuteStatementNonIdempotentOperation) Invoke(call sdkgo.Call, 
 }
 
 // settleBeforeCommit reports a failure before COMMIT. Without a possible earlier send it records
-// notSent first; after one, every failure selects uncertain, since that send may have committed.
+// notSent first. After one it records nothing: a transient failure returns Retry, and any other
+// failure selects uncertain, since that send may have committed.
 func settleBeforeCommit(fence *singledispatch.Fence, hasPossibleEarlierSend bool, failure classifiedFailure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[StatementExecution] {
 	if hasPossibleEarlierSend {
-		// notSent would hide the earlier possible COMMIT, and the cap forbids another one.
-		failure.disposition = dispositionUncertain
+		// notSent would hide the earlier possible COMMIT; without it the next attempt selects uncertain.
+		if failure.disposition != dispositionRetry {
+			failure.disposition = dispositionUncertain
+		}
 		return writeAttemptForFailure(executeNonIdempotentOperationID, failure, receipt)
 	}
 	// A lost notSent checkpoint only makes the next attempt select uncertain, never send twice.
