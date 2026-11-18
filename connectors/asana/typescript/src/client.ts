@@ -4,7 +4,7 @@
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { ListTasksOperation, GetTaskOperation, CreateTaskOperation, UpdateTaskOperation, AddCommentOperation } from './operations.js';
 
 const publicEndpoint = 'https://app.asana.com/api/1.0';
@@ -136,7 +136,8 @@ export class Client {
 /** Secret-free Asana failure for one manifest operation. */
 /** Report a credential resolution failure that no retry fixes; others, such as store reads, may pass. */
 function isTerminalCredentialError(error: unknown): boolean {
-  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
+  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError
+    || isCredentialMaterialError(error);
 }
 
 export function failure(operation: string, kind: Failure['kind'], message: string): Failure {

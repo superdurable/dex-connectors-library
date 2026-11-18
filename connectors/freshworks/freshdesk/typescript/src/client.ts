@@ -4,7 +4,7 @@
 import { SecretString, ReauthorizationRequiredError, defaultTriggerLogger, type TriggerLogger, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { SearchTicketsOperation, GetTicketOperation, CreateTicketOperation, UpdateTicketOperation, AddNoteOperation } from './operations.js';
 
 const domainPattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
@@ -82,7 +82,7 @@ export class FreshdeskClient {
     let credential: Credentials;
     try { credential = await this.credentials.resolve(call, call.context.cancellationSignal); }
     catch (error) {
-      const terminal = error instanceof ObjectNotFoundError || error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+      const terminal = error instanceof ObjectNotFoundError || error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
       return { failure: this.failure(operation, terminal ? 'AUTHENTICATION' : 'AVAILABILITY', terminal ? 'connection credentials are unavailable' : 'connection credentials could not be read; no request was sent'), transient: !terminal };
     }
     if (!(credential.apiKey instanceof SecretString) || !isHeaderSafeCredential(credential.apiKey.reveal()) || credential.apiKey.reveal().includes(':')) {

@@ -127,7 +127,10 @@ def _attempt_budget(call: Call) -> _AttemptBudget:
 
 def _is_terminal_credential_error(error: BaseException) -> bool:
     """Report a credential resolution failure that no retry fixes; every other error is transient."""
-    return isinstance(
+    # Imported here because the generated connection module imports this module.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
         error,
         (
             ReauthorizationRequiredError,

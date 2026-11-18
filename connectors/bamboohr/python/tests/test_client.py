@@ -8,9 +8,15 @@ from dex_connectors.sdk import (
     Call,
     CallID,
     ConnectionRef,
+    FailureKind,
     OperationRef,
+    ReauthorizationRequiredError,
     SecretString,
     StaticCredentialProvider,
+)
+from dex_connectors.sdk.projectconfig import (
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
 )
 
 from dex_connectors.bamboohr import (
@@ -21,6 +27,7 @@ from dex_connectors.bamboohr import (
     ListTimeOffRequestsInput,
     UpdateEmployeeInput,
 )
+from dex_connectors.bamboohr._generated.connection import CredentialMaterialError
 
 CONNECTION = ConnectionRef("bamboohr", "bamboohr-test")
 
@@ -93,6 +100,60 @@ async def test_oversized_error_body_does_not_extract_partial_code() -> None:
 
 
 @pytest.mark.asyncio
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: Call) -> Credentials:
+        raise self.error
+
+
+def _sdk_decoding_failure() -> ValueError:
+    """Return the error the SDK project provider raises when the generated decoder rejects material."""
+    try:
+        try:
+            raise CredentialMaterialError("BambooHR credential api_key is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "expected_kind"),
+    [
+        (RuntimeError("store unavailable"), "retry"),
+        (ValueError("connection is not configured"), "retry"),
+        (CredentialBrokerUnavailableError("credential broker is unavailable"), "retry"),
+        (ReauthorizationRequiredError(), "branch"),
+        (CredentialBrokerRejectedError(), "branch"),
+        (CredentialMaterialError("BambooHR stored credential does not match"), "branch"),
+        (_sdk_decoding_failure(), "branch"),
+    ],
+)
+async def test_query_retries_transient_credentials_and_selects_defect_for_terminal_ones(
+    error: Exception, expected_kind: str
+) -> None:
+    def answer(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request may be sent")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
+        client = Client(Config("acme"), _FailingCredentials(error), http_client, "http://127.0.0.1:22180/api/v1")
+        call = Call(
+            CallID("0f6b3c1e-4b7a-5c3d-9e2f-1a2b3c4d5e6f"),
+            CONNECTION,
+            OperationRef("bamboohr", "getEmployee"),
+        )
+        result = await client.get_employee().invoke(call, GetEmployeeInput("123", ("firstName",)))
+    assert result.kind == expected_kind
+    assert result.failure is not None
+    if expected_kind == "retry":
+        assert result.failure.kind == FailureKind.AVAILABILITY
+    else:
+        assert result.branch == "defect" and result.failure.kind == FailureKind.AUTHENTICATION
+
+
 async def test_reflected_key_selects_invalid_response_without_persisting_key() -> None:
     """A provider echo must never enter a Dex result or failure message."""
     key = "inert-test-key"

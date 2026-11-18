@@ -6,6 +6,7 @@ import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider } 
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { AddressRefusal, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { JiraServiceManagementClient, pathEscape, queryEscape } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const connection = { provider: 'atlassian', name: 'jsm-test' };
 const credentials = new StaticCredentialProvider([[connection, { accessToken: new SecretString('inert-access-token'), oauthClientId: 'inert-client-id', oauthClientSecret: new SecretString('inert-secret'), refreshToken: new SecretString('inert-refresh') }]]);
@@ -48,6 +49,8 @@ describe('Atlassian request boundary', () => {
     ['not selected', () => new ConnectionNotSelectedError(), 'defect'],
     ['broker rejected', () => new CredentialBrokerRejectedError(), 'defect'],
     ['object not found', () => new ObjectNotFoundError(), 'defect'],
+    ['malformed stored material', () => new CredentialMaterialError('stored credential does not match the connector credential fields'), 'defect'],
+    ['SDK decoding failure', () => new TypeError('project credential decoding failed'), 'defect'],
     ['broker unavailable', () => new CredentialBrokerUnavailableError(), 'retry'],
     ['not configured', () => new Error('connection is not configured'), 'retry'],
     ['unlisted type error', () => new TypeError('unlisted'), 'retry'],

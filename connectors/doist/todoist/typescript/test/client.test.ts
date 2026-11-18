@@ -5,6 +5,7 @@ import { expect, it } from 'vitest';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
 import { TodoistClient } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 import { AttemptContext } from './attempt-context.js';
 
 const call = {
@@ -20,6 +21,20 @@ it('classifies oversized rejected bodies by HTTP status', async () => {
   expect(answer.status).toBe(429);
   expect(answer.failure?.kind).toBe('RATE_LIMIT');
   expect(answer.retryAfterMs).toBe(1_000);
+});
+
+it.each([
+  ['malformed stored material', () => new CredentialMaterialError('stored credential does not match the connector credential fields'), false],
+  ['SDK decoding failure', () => new TypeError('project credential decoding failed'), false],
+  ['unlisted type error', () => new TypeError('unlisted'), true],
+])('classifies a %s credential failure', async (_name, newError, isTransient) => {
+  const client = new TodoistClient({}, { resolve: async () => { throw newError(); } }, {
+    send: async () => { throw new Error('no request is expected'); },
+  });
+  const attempt = await client.attempt(call, 'getTask');
+  expect(attempt.token).toBeUndefined();
+  expect(attempt.failure?.isTransient).toBe(isTransient);
+  expect(attempt.failure?.failure?.kind).toBe(isTransient ? 'AVAILABILITY' : 'AUTHENTICATION');
 });
 
 it('ignores a successful DELETE body as Go does', async () => {

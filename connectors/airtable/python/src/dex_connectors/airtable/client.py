@@ -301,16 +301,18 @@ class Client:
             )
         except (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError):
             credentials = None
-        except Exception:
-            # A write may have applied in an earlier attempt, so a passing outage must not select defect.
-            return _Outcome(
-                _Disposition.RETRY,
-                _failure(
-                    operation,
-                    FailureKind.AVAILABILITY,
-                    "Airtable connection credentials are temporarily unavailable",
-                ),
-            )
+        except Exception as error:
+            if not _is_credential_material_error(error):
+                # A write may have applied in an earlier attempt, so a passing outage must not select defect.
+                return _Outcome(
+                    _Disposition.RETRY,
+                    _failure(
+                        operation,
+                        FailureKind.AVAILABILITY,
+                        "Airtable connection credentials are temporarily unavailable",
+                    ),
+                )
+            credentials = None
         token = "" if credentials is None else credentials.personal_access_token.reveal()
         if not token or not is_header_safe_credential(token):
             return _Outcome(
@@ -1044,3 +1046,10 @@ def _mutation_failure(operation: str, value: Output, message: str) -> MutationAt
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
     return Failure(kind, CONNECTOR_ID, operation, message)
+
+
+def _is_credential_material_error(error: BaseException) -> bool:
+    # Imported here because the generated connection module imports this module.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error)

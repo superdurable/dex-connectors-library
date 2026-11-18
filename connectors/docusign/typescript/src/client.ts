@@ -7,7 +7,7 @@ import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oa
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type FailureKind, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { CreateEnvelopeFromTemplateOperation, DownloadCombinedDocumentOperation, GetEnvelopeOperation, ListEnvelopeRecipientsOperation, VoidEnvelopeOperation } from './operations.js';
 
 const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -139,7 +139,7 @@ export class DocuSignClient {
     let credentials: Credentials;
     try { credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal); }
     catch (error) {
-      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError) throw new SessionError('defect', failure(operation, 'AUTHENTICATION', 'the DocuSign connection credentials are missing or not selected for this project; authorize the connection in Dex Web Connections'));
+      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error)) throw new SessionError('defect', failure(operation, 'AUTHENTICATION', 'the DocuSign connection credentials are missing or not selected for this project; authorize the connection in Dex Web Connections'));
       const isTerminal = error instanceof Error && error.name === 'ReauthorizationRequiredError';
       throw new SessionError(isTerminal ? 'defect' : 'retry', failure(operation, isTerminal ? 'AUTHENTICATION' : 'AVAILABILITY', isTerminal
         ? 'the DocuSign connection needs reauthorization; authorize it again in Dex Web Connections'

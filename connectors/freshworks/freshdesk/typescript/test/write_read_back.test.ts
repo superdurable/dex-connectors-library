@@ -6,7 +6,7 @@ import { ReauthorizationRequiredError, SecretString, type Call, type CredentialP
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { FreshdeskClient } from '../src/client.js';
-import type { AddNoteOutput, CreateTicketOutput, Credentials } from '../src/generated/models.js';
+import { CredentialMaterialError, type AddNoteOutput, type CreateTicketOutput, type Credentials } from '../src/generated/models.js';
 
 const callID = '703d7ec0-692e-50db-a914-86d5fecf7dcc';
 const createInput = { subject: 'Billing issue', description: 'Charged twice', requester: { email: 'jane@example.com' } };
@@ -135,7 +135,9 @@ describe('Freshdesk accepted and possibly sent writes', () => {
   for (const [name, error, kind] of [
     ['terminal', new ReauthorizationRequiredError(), 'uncertain'], ['missing connection object', new ObjectNotFoundError(), 'uncertain'],
     ['unselected connection', new ConnectionNotSelectedError(), 'uncertain'], ['broker refusal', new CredentialBrokerRejectedError(), 'uncertain'],
-    ['transient', new Error('store unavailable'), 'retry'], ['broker outage', new CredentialBrokerUnavailableError(), 'retry'],
+    ['malformed stored material', new CredentialMaterialError('stored credential does not match the connector credential fields'), 'uncertain'],
+    ['SDK decoding failure', new TypeError('project credential decoding failed'), 'uncertain'],
+    ['transient',new Error('store unavailable'), 'retry'], ['broker outage', new CredentialBrokerUnavailableError(), 'retry'],
     ['unconfigured static connection', new Error('connection is not configured'), 'retry'],
   ] as const) {
     it(`records nothing for a ${name} credential failure after a possible send`, async () => {

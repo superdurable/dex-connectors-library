@@ -115,7 +115,7 @@ func (fetcher *employeeChangeFetcher) listChangedEmployees(ctx context.Context, 
 	if err := pollingtrigger.WaitForPollRequest(ctx); err != nil {
 		return bambooHRResponse{}, err
 	}
-	credentials, failure := fetcher.client.resolveCredentials(fetcher.call, employeeChangedTriggerName)
+	credentials, failure, _ := fetcher.client.resolveCredentials(fetcher.call, employeeChangedTriggerName)
 	if failure != nil {
 		return bambooHRResponse{}, errors.New("BambooHR employeeChanged poll: " + failure.Message)
 	}

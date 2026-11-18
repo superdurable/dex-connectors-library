@@ -16,6 +16,10 @@ from dex_connectors.sdk.projectconfig.broker import (
 from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.atlassian_jira_service_management import Client, Config
+from dex_connectors.atlassian_jira_service_management._generated.connection import (
+    CredentialMaterialError,
+    decode_credentials,
+)
 from dex_connectors.atlassian_jira_service_management.client import (
     _operation_deadline,
     _query_escape,
@@ -27,6 +31,18 @@ from dex_connectors.atlassian_jira_service_management.operations import (
     _json_object,
     _ticket,
 )
+
+
+def sdk_decoding_failure() -> ValueError:
+    """Return the SDK project provider's error after the generated decoder rejects malformed material."""
+    try:
+        try:
+            decode_credentials({"unknown_field": "value"})
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed material decoded")
 
 
 @pytest.mark.parametrize(
@@ -135,6 +151,8 @@ class _FailingCredentials:
         (ObjectNotFoundError("absent"), "defect"),
         (ConnectionNotSelectedError(), "defect"),
         (CredentialBrokerRejectedError(), "defect"),
+        (CredentialMaterialError("JSM stored credential does not match"), "defect"),
+        (sdk_decoding_failure(), "defect"),
         (CredentialBrokerUnavailableError(), "retry"),
         (ValueError("connection is not configured"), "retry"),
         (LookupError("unlisted"), "retry"),

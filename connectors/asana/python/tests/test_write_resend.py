@@ -18,9 +18,21 @@ from dex_connectors.sdk.projectconfig import (
 from dex_connectors.sdk.singledispatch import Marker, State
 
 import dex_connectors.asana as asana
+from dex_connectors.asana._generated.connection import CredentialMaterialError
 from dex_connectors.asana._generated.definitions import ADD_COMMENT_DEFINITION, CREATE_TASK_DEFINITION
 
 CONNECTION = sdk.ConnectionRef("asana", "asana-test")
+
+
+def sdk_decoding_failure() -> ValueError:
+    """Return the error the SDK project provider raises when the generated decoder rejects material."""
+    try:
+        try:
+            raise CredentialMaterialError("Asana credential personal_access_token is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
 CALL_ID = sdk.CallID("6072a0ce-9ddb-5937-8998-675e48cfa406")
 TASK_ID = "1204567890123456"
 CREATED = f'{{"data":{{"gid":"{TASK_ID}"}}}}'
@@ -250,8 +262,10 @@ async def test_transient_credential_failure_after_a_possible_send_retries_withou
         ConnectionNotSelectedError(),
         CredentialBrokerRejectedError(),
         ObjectNotFoundError("absent"),
+        CredentialMaterialError("Asana stored credential does not match"),
+        sdk_decoding_failure(),
     ],
-    ids=["reauthorization", "not selected", "broker rejected", "object not found"],
+    ids=["reauthorization", "not selected", "broker rejected", "object not found", "malformed", "decoding"],
 )
 async def test_terminal_credential_failure_after_a_possible_send_is_uncertain(
     operation: str, error: Exception
@@ -279,6 +293,9 @@ async def test_credential_failure_before_any_send() -> None:
     assert context.marker is not None and context.marker.state == State.NOT_SENT
     reauthorize = sdk.ReauthorizationRequiredError("reauthorize")
     result = await run("addComment", 201, CREATED, AttemptContext(), requests, credential_error=reauthorize)
+    assert result == "defect"
+    malformed = sdk_decoding_failure()
+    result = await run("createTask", 201, CREATED, AttemptContext(), requests, credential_error=malformed)
     assert result == "defect"
     assert requests == []
 

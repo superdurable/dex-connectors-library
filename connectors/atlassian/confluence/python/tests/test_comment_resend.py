@@ -18,7 +18,23 @@ from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.atlassian_confluence as confluence
+from dex_connectors.atlassian_confluence._generated.connection import (
+    CredentialMaterialError,
+    decode_credentials,
+)
 from dex_connectors.atlassian_confluence._generated.definitions import ADD_COMMENT_DEFINITION
+
+
+def sdk_decoding_failure() -> ValueError:
+    """Return the SDK project provider's error after the generated decoder rejects malformed material."""
+    try:
+        try:
+            decode_credentials({"unknown_field": "value"})
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed material decoded")
 
 CONNECTION = sdk.ConnectionRef("atlassian", "confluence-site")
 CALL_ID = sdk.CallID("1d4a9b66-087a-52c9-aee1-005513d3b6ac")
@@ -319,6 +335,8 @@ async def test_credential_failures_retry_when_transient_and_are_uncertain_after_
         (ConnectionNotSelectedError(), "defect"),
         (CredentialBrokerRejectedError(), "defect"),
         (ObjectNotFoundError("absent"), "defect"),
+        (CredentialMaterialError("Confluence stored credential does not match"), "defect"),
+        (sdk_decoding_failure(), "defect"),
     ],
 )
 async def test_credential_failure_before_any_send_is_classified(error: Exception, expected: str) -> None:

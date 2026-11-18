@@ -18,9 +18,25 @@ from dex_connectors.sdk.projectconfig import (
 from dex_connectors.sdk.singledispatch import Marker, State
 
 import dex_connectors.calendly as calendly
+from dex_connectors.calendly._generated.connection import (
+    CredentialMaterialError,
+    decode_credentials,
+)
 from dex_connectors.calendly._generated.definitions import CREATE_SCHEDULING_LINK_DEFINITION
 
 CONNECTION = sdk.ConnectionRef("calendly", "scheduling")
+
+
+def sdk_decoding_failure() -> ValueError:
+    """Return the SDK project provider's error after the generated decoder rejects malformed material."""
+    try:
+        try:
+            decode_credentials({"unknown_field": "value"})
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed material decoded")
 CALL_ID = sdk.CallID("345b8fc6-bc68-513b-af1b-4f197c2e59f6")
 EVENT_TYPE = "https://api.calendly.com/event_types/TYPE0001"
 BOOKING_URL = "https://calendly.com/d/abcd-1234/30-minute-meeting"
@@ -264,6 +280,8 @@ async def create_link_with_failing_credentials(
         (ObjectNotFoundError(), True),
         (ConnectionNotSelectedError(), True),
         (CredentialBrokerRejectedError(), True),
+        (CredentialMaterialError("Calendly stored credential does not match"), True),
+        (sdk_decoding_failure(), True),
         (CredentialBrokerUnavailableError("credential broker is unavailable"), False),
         (ValueError("connection is not configured"), False),
         (RuntimeError("credential store hiccup"), False),

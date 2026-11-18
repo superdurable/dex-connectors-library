@@ -97,7 +97,10 @@ DEFINITE_WRITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 
 
 def _is_terminal_credential_error(error: BaseException) -> bool:
     """Report a credential resolution failure that no retry fixes; every other error is transient."""
-    return isinstance(
+    # Imported here because the generated connection module imports this module.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
         error,
         (
             ReauthorizationRequiredError,

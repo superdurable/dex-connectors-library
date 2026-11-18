@@ -27,6 +27,10 @@ from dex_connectors.docusign import (
     TemplateRole,
     VoidEnvelopeInput,
 )
+from dex_connectors.docusign._generated.connection import (
+    CredentialMaterialError,
+    decode_credentials,
+)
 from dex_connectors.docusign.client import (
     ProviderResponse,
     Session,
@@ -44,6 +48,18 @@ from dex_connectors.docusign.operations import (
     _go_timestamp,
     _time,
 )
+
+
+def sdk_decoding_failure() -> ValueError:
+    """Return the SDK project provider's error after the generated decoder rejects malformed material."""
+    try:
+        try:
+            decode_credentials({"unknown_field": "value"})
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed material decoded")
 
 
 @pytest.mark.parametrize(
@@ -503,8 +519,20 @@ class _FailingCredentials:
         (ConnectionNotSelectedError(), "defect"),
         (CredentialBrokerRejectedError(), "defect"),
         (sdk.ReauthorizationRequiredError(), "defect"),
+        (CredentialMaterialError("DocuSign stored credential does not match"), "defect"),
+        (sdk_decoding_failure(), "defect"),
+        (ValueError("unlisted"), "retry"),
     ],
-    ids=["broker unavailable", "credentials missing", "connection unselected", "broker rejected", "reauth"],
+    ids=[
+        "broker unavailable",
+        "credentials missing",
+        "connection unselected",
+        "broker rejected",
+        "reauth",
+        "malformed",
+        "sdk decoding",
+        "unlisted",
+    ],
 )
 async def test_open_session_classifies_credential_failures(error: Exception, expected: str) -> None:
     client = Client(Config(), _FailingCredentials(error))  # type: ignore[arg-type]

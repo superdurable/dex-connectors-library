@@ -56,8 +56,20 @@ from dex_connectors.airtable import (
     UpsertRecordsInput,
     build_filter_formula,
 )
+from dex_connectors.airtable._generated.connection import CredentialMaterialError
 
 CONNECTION = ConnectionRef("airtable", "airtable")
+
+
+def sdk_decoding_failure() -> ValueError:
+    """Return the error the SDK project provider raises when the generated decoder rejects material."""
+    try:
+        try:
+            raise CredentialMaterialError("Airtable credential personal_access_token is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
 TOKEN = "patTEST.token"
 BASE = "appABCDEFGHIJKLMN"
 RECORD_ID = "recABCDEFGHIJKLMN"
@@ -342,6 +354,8 @@ async def test_write_retries_temporarily_unavailable_credentials(error: Exceptio
         (ObjectNotFoundError(), DEFECT),
         (ConnectionNotSelectedError(), DEFECT),
         (CredentialBrokerRejectedError(), DEFECT),
+        (CredentialMaterialError("Airtable stored credential does not match"), DEFECT),
+        (sdk_decoding_failure(), DEFECT),
     ],
 )
 async def test_write_selects_a_terminal_branch_for_terminal_credentials(

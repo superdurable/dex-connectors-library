@@ -7,6 +7,7 @@ import { BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, type Prov
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { TrelloClient } from '../src/client.js';
 import { AddCommentDefinition, CreateCardDefinition, UpdateCardDefinition } from '../src/generated/definitions.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const callId = 'fed5a116-c5f6-53ac-81b1-a823fb443a88';
 const listId = '6512f0a1c2d3e4f5a6b70101';
@@ -152,6 +153,8 @@ describe('Trello bounded resend of unconfirmed writes', () => {
     ['not selected', () => new ConnectionNotSelectedError(), 'defect'],
     ['broker rejected', () => new CredentialBrokerRejectedError(), 'defect'],
     ['object not found', () => new ObjectNotFoundError(), 'defect'],
+    ['malformed stored material', () => new CredentialMaterialError('stored credential does not match the connector credential fields'), 'defect'],
+    ['SDK decoding failure', () => new TypeError('project credential decoding failed'), 'defect'],
     ['broker unavailable', () => new CredentialBrokerUnavailableError(), 'retry'],
     ['not configured', () => new Error('connection is not configured'), 'retry'],
     ['unlisted type error', () => new TypeError('unlisted'), 'retry'],

@@ -6,6 +6,7 @@ import { SecretString, type Call } from '@superdurable/connectors-sdk';
 import { type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { JiraClient, pathEscape, encodeQuery } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const connection = { provider: 'atlassian', name: 'jira-test' };
 const call: Call = { id: 'jira-unit-call', connection, operation: { connectorId: 'jira', operationId: 'getIssue' }, context: { flowId: 'jira-unit', cancellationSignal: new AbortController().signal } as Call['context'], reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false };
@@ -75,6 +76,8 @@ it.each([
   ['not selected', () => new ConnectionNotSelectedError(), 'defect'],
   ['broker rejected', () => new CredentialBrokerRejectedError(), 'defect'],
   ['object not found', () => new ObjectNotFoundError(), 'defect'],
+  ['malformed stored material', () => new CredentialMaterialError('stored credential does not match the connector credential fields'), 'defect'],
+  ['SDK decoding failure', () => new TypeError('project credential decoding failed'), 'defect'],
   ['broker unavailable', () => new CredentialBrokerUnavailableError(), 'retry'],
   ['not configured', () => new Error('connection is not configured'), 'retry'],
   ['unlisted type error', () => new TypeError('unlisted'), 'retry'],

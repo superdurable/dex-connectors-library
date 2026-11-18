@@ -7,6 +7,7 @@ import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBr
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { Client } from '../src/client.js';
 import { AddCommentDefinition, CreateTaskDefinition } from '../src/generated/definitions.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const callId = '6072a0ce-9ddb-5937-8998-675e48cfa406';
 const taskId = '1204567890123456';
@@ -138,6 +139,8 @@ describe('Asana bounded resend of unconfirmed writes', () => {
     ['not selected', () => new ConnectionNotSelectedError()],
     ['broker rejected', () => new CredentialBrokerRejectedError()],
     ['object not found', () => new ObjectNotFoundError()],
+    ['malformed stored material', () => new CredentialMaterialError('stored credential does not match the connector credential fields')],
+    ['SDK decoding failure', () => new TypeError('project credential decoding failed')],
   ])('selects uncertain for a terminal credential failure (%s) after a possible or accepted send', async (_name, newError) => {
     for (const operation of ['createTask', 'addComment'] as const) {
       for (const marker of [{ callId, attempt: 1, state: 'claimed', sendCount: 1 }, { callId, attempt: 1, state: 'claimed', sendCount: 1, providerId: taskId }]) {
@@ -157,7 +160,9 @@ describe('Asana bounded resend of unconfirmed writes', () => {
     expect(context.marker).toMatchObject({ state: 'notSent' });
     const terminal = newClientWithCredentialError(new ReauthorizationRequiredError());
     expect(await run(terminal.client, 'addComment', new AttemptContext())).toBe('defect');
-    expect([...transient.requests, ...terminal.requests]).toEqual([]);
+    const malformed = newClientWithCredentialError(new TypeError('project credential decoding failed'));
+    expect(await run(malformed.client, 'createTask', new AttemptContext())).toBe('defect');
+    expect([...transient.requests, ...terminal.requests, ...malformed.requests]).toEqual([]);
   });
 
   it.each([

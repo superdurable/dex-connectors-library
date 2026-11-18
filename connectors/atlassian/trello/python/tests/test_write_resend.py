@@ -13,12 +13,24 @@ from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker, State
 
 import dex_connectors.atlassian_trello as trello
+from dex_connectors.atlassian_trello._generated.connection import CredentialMaterialError
 from dex_connectors.atlassian_trello._generated.definitions import (
     ADD_COMMENT_DEFINITION,
     CREATE_CARD_DEFINITION,
 )
 
 CONNECTION = sdk.ConnectionRef("trello", "trello-test")
+
+
+def sdk_decoding_failure() -> ValueError:
+    """Return the error the SDK project provider raises when the generated decoder rejects material."""
+    try:
+        try:
+            raise CredentialMaterialError("Trello credential api_key is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
 CALL_ID = sdk.CallID("fed5a116-c5f6-53ac-81b1-a823fb443a88")
 LIST_ID = "6512f0a1c2d3e4f5a6b70101"
 CARD_ID = "6512f0a1c2d3e4f5a6b7c8d9"
@@ -228,6 +240,8 @@ class _FailingCredentials:
         (ObjectNotFoundError("absent"), "defect"),
         (ConnectionNotSelectedError(), "defect"),
         (CredentialBrokerRejectedError(), "defect"),
+        (CredentialMaterialError("Trello stored credential does not match"), "defect"),
+        (sdk_decoding_failure(), "defect"),
         (ValueError("connection is not configured"), "retry"),
         (LookupError("unlisted"), "retry"),
     ],

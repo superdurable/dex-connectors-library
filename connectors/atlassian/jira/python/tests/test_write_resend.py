@@ -18,12 +18,28 @@ from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.atlassian_jira as jira
+from dex_connectors.atlassian_jira._generated.connection import (
+    CredentialMaterialError,
+    decode_credentials,
+)
 from dex_connectors.atlassian_jira._generated.definitions import (
     ADD_COMMENT_DEFINITION,
     CREATE_ISSUE_DEFINITION,
 )
 
 CONNECTION = sdk.ConnectionRef("atlassian", "jira-test")
+
+
+def sdk_decoding_failure() -> ValueError:
+    """Return the SDK project provider's error after the generated decoder rejects malformed material."""
+    try:
+        try:
+            decode_credentials({"unknown_field": "value"})
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed material decoded")
 CALL_ID = sdk.CallID("62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd")
 CLOUD_ID = "11223344-a1b2-4b33-8c44-def123456789"
 ISSUE_INPUT = jira.CreateIssueInput(project_key="OPS", issue_type_name="Task", summary="Fire panel wiring")
@@ -355,6 +371,8 @@ class FailingCredentials:
         (ObjectNotFoundError("absent"), "defect"),
         (ConnectionNotSelectedError(), "defect"),
         (CredentialBrokerRejectedError(), "defect"),
+        (CredentialMaterialError("Jira stored credential does not match"), "defect"),
+        (sdk_decoding_failure(), "defect"),
         (CredentialBrokerUnavailableError(), "retry"),
         (ValueError("connection is not configured"), "retry"),
         (LookupError("unlisted"), "retry"),

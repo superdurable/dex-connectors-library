@@ -7,7 +7,7 @@ import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBr
 import { BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { CalendlyClient } from '../src/client.js';
 import { CreateSchedulingLinkDefinition } from '../src/generated/definitions.js';
-import type { Credentials, SchedulingLink } from '../src/generated/models.js';
+import { CredentialMaterialError, type Credentials, type SchedulingLink } from '../src/generated/models.js';
 
 const callId = '345b8fc6-bc68-513b-af1b-4f197c2e59f6';
 const connection = { provider: 'calendly', name: 'scheduling' };
@@ -136,6 +136,8 @@ describe('Calendly createSchedulingLink bounded resend', () => {
     ['object not found', new ObjectNotFoundError(), true],
     ['connection not selected', new ConnectionNotSelectedError(), true],
     ['broker rejected', new CredentialBrokerRejectedError(), true],
+    ['malformed stored material', new CredentialMaterialError('stored credential does not match the connector credential fields'), true],
+    ['SDK decoding failure', new TypeError('project credential decoding failed'), true],
     ['broker unavailable', new CredentialBrokerUnavailableError(), false],
     ['static not configured', new Error('connection is not configured'), false],
     ['unlisted error', new RangeError('credential store hiccup'), false],

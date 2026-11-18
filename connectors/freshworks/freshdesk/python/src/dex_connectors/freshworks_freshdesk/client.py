@@ -165,7 +165,18 @@ class Client:
                 self.failure(operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"),
                 False,
             )
-        except Exception:
+        except Exception as error:
+            # Imported here because the generated connection module imports this module.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return (
+                    "",
+                    self.failure(
+                        operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
+                    ),
+                    False,
+                )
             return (
                 "",
                 self.failure(

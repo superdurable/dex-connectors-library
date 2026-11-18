@@ -4,7 +4,7 @@
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { AddCommentOperation, CreateTaskOperation, FindMemberByEmailOperation, GetTaskOperation, SearchTasksOperation, UpdateTaskOperation, UpdateTaskTagsOperation } from './operations.js';
 
 const apiBaseURL = 'https://api.clickup.com/api/v2';
@@ -137,7 +137,8 @@ export class ClickUpClient {
 
 /** Report a credential resolution failure that no retry fixes; others, such as store reads, may pass. */
 function isTerminalCredentialError(error: unknown): boolean {
-  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
+  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError
+    || isCredentialMaterialError(error);
 }
 
 function readErrorCode(body: Uint8Array): string {
