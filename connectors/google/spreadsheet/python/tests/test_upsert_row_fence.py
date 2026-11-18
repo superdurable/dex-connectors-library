@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
 import httpx
+import pytest
 from dex_connectors.sdk import (
     Call,
     CallID,
@@ -16,14 +17,22 @@ from dex_connectors.sdk import (
     CredentialProvider,
     MutationResult,
     OperationRef,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
+    StaticCredentialProvider,
     run_mutation,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
 )
 
 from dex_connectors.google_spreadsheet import Client, Config, Credentials
 from dex_connectors.google_spreadsheet._generated.definitions import UPSERT_ROW_DEFINITION
-from dex_connectors.google_spreadsheet.models import UpsertRowInput, UpsertRowOutput
+from dex_connectors.google_spreadsheet.models import GetValuesInput, UpsertRowInput, UpsertRowOutput
 
 REFERENCE = ConnectionRef("google-sheets", "workspace")
 CALL_ID = CallID("74390522-858d-5ed6-bdf7-04e979ba9e4f")
@@ -62,15 +71,16 @@ class AttemptContext:
 class FailingResolutionCredentials(CredentialProvider[Credentials]):
     """Fail one numbered credential resolution transiently."""
 
-    def __init__(self, failed_resolution: int = 0) -> None:
+    def __init__(self, failed_resolution: int = 0, error: Exception | None = None) -> None:
         self.failed_resolution = failed_resolution
+        self.error = error or RuntimeError("credential refresh unavailable")
         self.resolutions = 0
 
     async def resolve(self, call: Call) -> Credentials:
         """Resolve a static token, except on the failed resolution."""
         self.resolutions += 1
         if self.resolutions == self.failed_resolution:
-            raise RuntimeError("credential refresh unavailable")
+            raise self.error
         empty = SecretString("")
         return Credentials("", empty, SecretString("sheets-token"), empty)
 
@@ -150,6 +160,54 @@ async def run_attempts(
     result = await upsert(sheet, context, credentials)
     assert isinstance(result, MutationResult), result
     return result
+
+
+CREDENTIAL_FAILURES: list[tuple[Exception, bool]] = [
+    (ReauthorizationRequiredError(), True),
+    (ObjectNotFoundError(), True),
+    (ConnectionNotSelectedError(), True),
+    (CredentialBrokerRejectedError(), True),
+    (CredentialBrokerUnavailableError(), False),
+    (ValueError("connection is not configured"), False),
+    (RuntimeError("unlisted"), False),
+]
+
+
+@pytest.mark.parametrize(("error", "is_terminal"), CREDENTIAL_FAILURES)
+async def test_credential_failure_on_a_first_send(error: Exception, is_terminal: bool) -> None:
+    """Only a reconnection-only failure selects defect; nothing is appended either way."""
+    sheet = ScriptedSheet([])
+    outcome = await upsert(sheet, AttemptContext(), FailingResolutionCredentials(1, error))
+    if is_terminal:
+        assert isinstance(outcome, MutationResult) and outcome.branch == "defect"
+    else:
+        assert isinstance(outcome, RetryError)
+    assert sheet.posts == 0
+
+
+@pytest.mark.parametrize(("error", "is_terminal"), CREDENTIAL_FAILURES)
+async def test_credential_failure_after_a_possible_append(error: Exception, is_terminal: bool) -> None:
+    """After an unknown append, a terminal failure selects uncertain and a transient one Retries."""
+    sheet = ScriptedSheet([append_status(500)])
+    context = AttemptContext()
+    credentials = FailingResolutionCredentials(2, error)
+    assert isinstance(await upsert(sheet, context, credentials), RetryError)
+    context.advance()
+    outcome = await upsert(sheet, context, credentials)
+    if is_terminal:
+        assert isinstance(outcome, MutationResult) and outcome.branch == "uncertain"
+    else:
+        assert isinstance(outcome, RetryError)
+    assert sheet.posts == 1
+
+
+async def test_get_values_retries_an_unconfigured_static_connection() -> None:
+    """A static provider without the connection is transient, so the read retries."""
+    async with httpx.AsyncClient(transport=httpx.MockTransport(ScriptedSheet([]).respond)) as transport:
+        client = Client(Config(endpoint="http://localhost"), StaticCredentialProvider({}), transport)
+        call = Call(CALL_ID, REFERENCE, OperationRef("google-sheets", "getValues"))
+        result = await client.get_values().invoke(call, GetValuesInput("sheet", "Customers!A:B"))
+    assert result.kind == "retry"
 
 
 async def test_duplicate_key_rows_in_the_sending_attempt_read_back_are_uncertain() -> None:

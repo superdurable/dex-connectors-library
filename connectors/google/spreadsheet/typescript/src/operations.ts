@@ -22,6 +22,7 @@ export class GetValuesOperation {
     const operation = 'getValues';
     if (isBlank(input.spreadsheetId) || isBlank(input.range)) return newQueryBranch('defect', emptyValues(), {}, this.client.failure(operation, 'VALIDATION', 'spreadsheet ID and range are required'));
     const selected = await this.client.resolve(call);
+    if (!selected.credential && !selected.reauthorization) return newQueryRetry(selected.failure!);
     if (!selected.credential) return newQueryBranch('defect', emptyValues(), {}, selected.failure);
     const { exchange } = await this.client.request(call, selected.credential, 'GET', input.spreadsheetId, `/values/${goPathEscape(input.range)}`, { majorDimension: 'ROWS', valueRenderOption: 'FORMATTED_VALUE' });
     if (exchange.isTooLarge) return newQueryBranch('invalidResponse', emptyValues(), this.client.receipt(call, exchange), this.client.failure(operation, 'RESPONSE_TOO_LARGE', 'provider response exceeds configured limit'));
@@ -47,6 +48,7 @@ export class FindRowOperation {
     const operation = 'findRow';
     if ([input.spreadsheetId, input.sheetName, input.keyColumn, input.keyValue].some(isBlank)) return newQueryBranch('defect', emptyRow(), {}, this.client.failure(operation, 'VALIDATION', 'spreadsheet ID, sheet name, key column, and key value are required'));
     const selected = await this.client.resolve(call);
+    if (!selected.credential && !selected.reauthorization) return newQueryRetry(selected.failure!);
     if (!selected.credential) return newQueryBranch('defect', emptyRow(), {}, selected.failure);
     const { exchange } = await this.client.request(call, selected.credential, 'GET', input.spreadsheetId, `/values/${goPathEscape(quoteSheet(input.sheetName))}`, { majorDimension: 'ROWS', valueRenderOption: 'FORMATTED_VALUE' });
     if (exchange.isTooLarge) return newQueryBranch('invalidResponse', emptyRow(), this.client.receipt(call, exchange), this.client.failure(operation, 'RESPONSE_TOO_LARGE', 'provider response exceeds configured limit'));

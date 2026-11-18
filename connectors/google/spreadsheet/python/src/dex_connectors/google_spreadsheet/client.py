@@ -21,6 +21,11 @@ from dex_connectors.sdk import (
     Receipt,
 )
 from dex_connectors.sdk.pollingtrigger import MAXIMUM_CHANGES_PER_PAGE
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -37,6 +42,13 @@ if TYPE_CHECKING:
     from .operations import FindRowOperation, GetValuesOperation, UpsertRowOperation
 
 _PATH_SAFE = "-._~$&+=:@"
+# Resolve failures that only reconnection repairs; any other resolve failure is transient.
+TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
 
 MAXIMUM_ROW_ADDED_POLL_PAGE_SIZE: Final = MAXIMUM_CHANGES_PER_PAGE
 """The largest `Config.poll_page_size`, which keeps one rowAdded poll page within the poll kit's bound."""
@@ -135,20 +147,23 @@ class Client:
 
     async def resolve(self, call: Call, operation: str) -> tuple[Credentials | None, Failure | None, bool]:
         """Resolve generated OAuth credentials and classify terminal revocation."""
+        terminal = False
         try:
             credential = await self.credentials.resolve(call)
-            if not isinstance(credential, Credentials) or not credential.access_token.reveal():
-                raise ValueError("missing access token")
-            return credential, None, False
         except Exception as error:
-            terminal = isinstance(error, ReauthorizationRequiredError)
-            kind = FailureKind.AUTHENTICATION if terminal else FailureKind.AVAILABILITY
-            message = (
-                "connection credentials are unavailable; reconnect the connection"
-                if terminal
-                else "credential resolution is temporarily unavailable"
-            )
-            return None, failure(operation, kind, message), terminal
+            terminal = isinstance(error, TERMINAL_CREDENTIAL_ERRORS)
+        else:
+            if isinstance(credential, Credentials) and credential.access_token.reveal():
+                return credential, None, False
+            # Resolved material that fails local checks is terminal.
+            terminal = True
+        kind = FailureKind.AUTHENTICATION if terminal else FailureKind.AVAILABILITY
+        message = (
+            "connection credentials are unavailable; reconnect the connection"
+            if terminal
+            else "credential resolution is temporarily unavailable"
+        )
+        return None, failure(operation, kind, message), terminal
 
     async def refresh_after_rejection(
         self, call: Call, rejected: Credentials
@@ -165,7 +180,7 @@ class Client:
                 return None, True
             return credential, False
         except Exception as error:
-            return None, isinstance(error, ReauthorizationRequiredError)
+            return None, isinstance(error, TERMINAL_CREDENTIAL_ERRORS)
 
     async def request(
         self,
