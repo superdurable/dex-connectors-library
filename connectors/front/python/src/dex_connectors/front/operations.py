@@ -7,7 +7,7 @@ import json
 import re
 import unicodedata
 from dataclasses import dataclass, replace
-from datetime import timedelta
+from datetime import datetime, timedelta
 from email.utils import parseaddr
 from typing import Any
 from urllib.parse import quote
@@ -557,7 +557,28 @@ class UpdateConversationOperation:
             return MutationAttempt.branch_result(
                 "defect", empty, Receipt(), failure(FailureKind.VALIDATION, operation, str(error))
             )
-        credentials, credential_failure, _ = await self.client.resolve_credentials(call, operation)
+        credentials, credential_failure, credential_error = await self.client.resolve_credentials(
+            call, operation
+        )
+        if credential_failure and not (
+            credential_error is None or isinstance(credential_error, ReauthorizationRequiredError)
+        ):
+            return MutationAttempt.retry(
+                failure(
+                    FailureKind.AVAILABILITY,
+                    operation,
+                    "Front credentials were temporarily unavailable; nothing was written in this attempt",
+                )
+            )
+        if credential_failure and call.context is not None and call.context.attempt > 1:
+            # defect would hide writes an earlier attempt may have sent; repeating them is safe.
+            return MutationAttempt.retry(
+                failure(
+                    FailureKind.AUTHENTICATION,
+                    operation,
+                    "Reconnect the Front connection; an earlier attempt may have written some changes",
+                )
+            )
         if credential_failure:
             return MutationAttempt.branch_result("defect", empty, Receipt(), credential_failure)
         assert credentials is not None
@@ -613,6 +634,9 @@ class UpdateConversationOperation:
         writes = _planned_writes(input, current, path)
         for index, (method, write_path, payload) in enumerate(writes):
             answer = await self.client.exchange(credentials, operation, method, write_path, payload=payload)
+            if answer.is_error_body_unreadable and not answer.retryable:
+                # An unreadable refusal body cannot rule out the write, and repeating it is safe.
+                return _retry_mutation(answer)
             if answer.outcome == "notFound":
                 answer = replace(answer, outcome="rejected")
             if answer.outcome == "invalid" or (
@@ -915,8 +939,10 @@ class ReplyToConversationOperation:
         assert credentials is not None
         path, payload = _reply_payload(input)
 
-        async def send(deadline: Any) -> Exchange:
-            return await self.client.exchange(credentials, operation, "POST", path, payload=payload)
+        async def send(deadline: datetime) -> Exchange:
+            return await self.client.exchange(
+                credentials, operation, "POST", path, payload=payload, deadline=deadline
+            )
 
         try:
             answer = await fence.dispatch(send)
@@ -929,6 +955,18 @@ class ReplyToConversationOperation:
                     "the reply was not dispatched; retry after the checkpoint or attempt budget recovers",
                 )
             )
+        except TimeoutError:
+            # The write window closed after dispatch, so Front may have the reply or comment.
+            return permit.resend_or_uncertain(
+                call,
+                output,
+                failure(
+                    FailureKind.TRANSPORT,
+                    operation,
+                    "the Front request may have been sent, but no answer arrived; "
+                    "the reply or comment may exist",
+                ),
+            )
         if 200 <= answer.status < 300:
             try:
                 body = decode_json(answer.body)
@@ -938,13 +976,13 @@ class ReplyToConversationOperation:
             pattern = r"com_[A-Za-z0-9]{1,40}\Z" if input.is_internal_note else r"[A-Za-z0-9]{1,64}\Z"
             if not isinstance(provider_id, str) or not re.fullmatch(pattern, provider_id):
                 kind = answer.error.kind if answer.error else FailureKind.PROTOCOL
-                # Without a provider ID the answer cannot be read back, so it counts as an unknown outcome.
-                return permit.resend_or_uncertain(
+                # A 2xx means Front accepted the write; without an ID nothing confirms it, so never resend.
+                return self._uncertain(
                     call,
                     output,
-                    failure(
-                        kind, operation, "Front answered the reply or comment without a usable provider ID"
-                    ),
+                    kind,
+                    "Front accepted the reply or comment but answered without a usable provider ID; "
+                    "it is not resent",
                 )
             try:
                 await fence.record_provider_id(provider_id)
@@ -957,10 +995,22 @@ class ReplyToConversationOperation:
             )
             return MutationAttempt.branch_result("replied", output, receipt(call, provider_id))
         assert answer.error is not None
+        if answer.is_error_body_unreadable and answer.outcome in ("rejected", "notFound", "merged"):
+            # An unreadable refusal body cannot rule out acceptance, so the outcome is unknown.
+            return permit.resend_or_uncertain(
+                call,
+                output,
+                failure(
+                    answer.error.kind,
+                    operation,
+                    answer.error.message
+                    + "; its error body could not be read, so the reply or comment may exist",
+                ),
+            )
         if answer.outcome == "defect":
             if not permit.is_first_send:
-                # defect would hide an earlier possible send.
-                return permit.resend_or_uncertain(call, output, answer.error)
+                # A local request failure repeats, and defect would hide an earlier possible send.
+                return MutationAttempt.uncertain(output, answer.error, receipt(call, output.conversation_id))
             return await permit.reject(call, output, "defect", answer.error)
         if answer.outcome in ("notSent", "rateLimited") or answer.status == 503:
             try:
@@ -977,18 +1027,22 @@ class ReplyToConversationOperation:
                 ),
                 answer.retry_after,
             )
-        if (answer.outcome == "notFound" and answer.status == 404) or answer.outcome == "merged":
-            # Front documents its 301 as a merged conversation, a definite refusal of the write.
-            reply_failure = answer.error
-            if answer.outcome == "merged":
-                merged = merged_conversation_id(answer.headers.get("Location", "") if answer.headers else "")
-                if merged:
-                    reply_failure = failure(
-                        reply_failure.kind,
-                        operation,
-                        f"the conversation was merged into {merged}; reply to that conversation",
-                    )
-            return await permit.reject(call, output, "notFound", reply_failure)
+        if answer.outcome == "merged":
+            # A 3xx after a write is not a definite refusal, so the merged 301 is an unknown outcome.
+            merged = merged_conversation_id(answer.headers.get("Location", "") if answer.headers else "")
+            return permit.resend_or_uncertain(
+                call,
+                output,
+                failure(
+                    answer.error.kind,
+                    operation,
+                    f"the conversation was merged into {merged}; the reply or comment may exist"
+                    if merged
+                    else answer.error.message + "; the reply or comment may exist",
+                ),
+            )
+        if answer.outcome == "notFound" and answer.status == 404:
+            return await permit.reject(call, output, "notFound", answer.error)
         if answer.status == 401:
             return await self._rejected_credential(call, output, credentials, permit)
         if answer.outcome == "rejected" and answer.status in DEFINITE_REFUSAL_STATUSES:

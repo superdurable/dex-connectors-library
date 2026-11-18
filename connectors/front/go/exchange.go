@@ -59,6 +59,9 @@ type frontExchange struct {
 	response   frontResponse
 	failure    sdkgo.Failure
 	retryAfter time.Duration
+	// isErrorBodyUnreadable reports a non-2xx body that was oversized or failed to read; a write
+	// cannot rule out acceptance from it.
+	isErrorBodyUnreadable bool
 }
 
 // dispatchObservation records whether a request could have reached Front.

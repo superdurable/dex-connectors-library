@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/front/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 // statefulConversation is a fake Front conversation that applies PATCH and tag writes.
@@ -209,6 +211,54 @@ func TestUpdateConversationMapsWriteFailures(t *testing.T) {
 		_, err = sdkgo.RunMutation(newTestDexContext("update-unknown"), newFrontClient(t, provider.URL).UpdateConversation(), frontConnection,
 			front.UpdateConversationInput{ConversationID: testConversationID, AddTagIDs: []string{testTagID}})
 		require.ErrorAs(t, err, &retry, "HTTP %d is an unknown outcome, so the absolute write repeats", status)
+	}
+}
+
+func TestUpdateConversationRetriesARefusalWhoseBodyCannotBeRead(t *testing.T) {
+	provider := newRecordingFront(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodGet {
+			writeJSON(t, response, http.StatusOK, conversationJSON(t, testConversation{id: testConversationID, status: "archived"}))
+			return
+		}
+		writeOversizedRefusal(response)
+	})
+	_, err := sdkgo.RunMutation(newTestDexContext("update-oversized-refusal"), newFrontClient(t, provider.URL).UpdateConversation(), frontConnection,
+		front.UpdateConversationInput{ConversationID: testConversationID, AddTagIDs: []string{testTagID}})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an oversized 400 body cannot prove the safe write was refused")
+}
+
+func TestUpdateConversationClassifiesCredentialFailures(t *testing.T) {
+	for name, test := range map[string]struct {
+		failure     error
+		attempt     int
+		isRetry     bool
+		failureKind sdkgo.FailureKind
+	}{
+		"transient first attempt":      {failure: projectconfig.ErrCredentialBrokerUnavailable, attempt: 1, isRetry: true, failureKind: sdkgo.FailureAvailability},
+		"terminal first attempt":       {failure: sdkgo.ErrReauthorizationRequired, attempt: 1, failureKind: sdkgo.FailureAuthentication},
+		"terminal after earlier write": {failure: sdkgo.ErrReauthorizationRequired, attempt: 2, isRetry: true, failureKind: sdkgo.FailureAuthentication},
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingFront(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request may be sent") })
+			client, err := front.New(front.Config{}, failingFrontCredentials{failure: test.failure}, front.WithAPIBaseURL(provider.URL))
+			require.NoError(t, err)
+			dexContext := singledispatchtest.NewContext("front-flow", "update-credentials-"+name)
+			for range test.attempt - 1 {
+				dexContext.AdvanceAttempt()
+			}
+			result, err := sdkgo.RunMutation(dexContext, client.UpdateConversation(), frontConnection,
+				front.UpdateConversationInput{ConversationID: testConversationID, AddTagIDs: []string{testTagID}})
+			if test.isRetry {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				require.Equal(t, test.failureKind, retry.Failure.Kind)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, front.UpdateConversationBranchDefect, result.Branch)
+			require.Equal(t, test.failureKind, result.Failure.Kind)
+		})
 	}
 }
 

@@ -77,13 +77,13 @@ export interface ReplyToConversationStepConfig<StepInput, OperationInput = Reply
   connectionName: string;
   /** Front accepted the reply for delivery or created the comment. */
   replied: StepTarget<MutationResult<OperationOutput>>;
-  /** The conversation does not exist, was merged, or is not visible to the API token; nothing was sent. */
+  /** The conversation does not exist or is not visible to the API token (HTTP 404); nothing was sent. A merged conversation's 301 is an unknown outcome instead. */
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Front conclusively rejected the reply or comment, such as a token without send permission or an unknown author; nothing was sent. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, an unlisted status, an ambiguous server error, or a 2xx without a provider ID, or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows. */
+  /** The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, a 3xx such as a merged conversation's 301, an unlisted status, an ambiguous server error, or a refusal with an unreadable body; Front accepted it with a 2xx that carries no usable provider ID; a refusal or a reconnection requirement follows a possible earlier send; or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows; a 2xx is never resent. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
-  /** Local input, connection credentials that require reauthorization or are unusable before sending, or the connector definition is invalid; transient credential failures Retry. */
+  /** Local input, connection credentials that require reauthorization or are unusable before a first send, or the connector definition is invalid; transient credential failures Retry. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
 }
 
@@ -114,7 +114,7 @@ export interface UpdateConversationStepConfig<StepInput, OperationInput = Update
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Front returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** Local input, connection configuration, or connector definition is invalid. */
+  /** Local input, connection configuration, or connector definition is invalid, or the connection needs reconnection on the first attempt; a transient credential failure, or one after an earlier attempt, Retries. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
   /** Accepted for compatibility; ignored because the operation is safe to repeat. */
   maxSends?: number;

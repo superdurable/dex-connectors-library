@@ -2782,6 +2782,247 @@
         "sendCount": 3,
         "state": "claimed"
       }
+    },
+    {
+      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"accepted\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/cnv_100/messages",
+          "requestBody": {
+            "body": "\u003cp\u003eHello\u003c/p\u003e",
+            "options": {
+              "archive": false
+            },
+            "text": "Hello"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "conversationId": "cnv_100"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "input": {
+        "conversationId": "cnv_100",
+        "text": "Hello"
+      },
+      "name": "reply-accepted-without-id-uncertain",
+      "operation": "replyToConversation"
+    },
+    {
+      "attempts": 3,
+      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/cnv_100/messages",
+          "requestBody": {
+            "body": "\u003cp\u003eHello\u003c/p\u003e",
+            "options": {
+              "archive": false
+            },
+            "text": "Hello"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/cnv_100/messages",
+          "requestBody": {
+            "body": "\u003cp\u003eHello\u003c/p\u003e",
+            "options": {
+              "archive": false
+            },
+            "text": "Hello"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/cnv_100/messages",
+          "requestBody": {
+            "body": "\u003cp\u003eHello\u003c/p\u003e",
+            "options": {
+              "archive": false
+            },
+            "text": "Hello"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "conversationId": "cnv_100"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "input": {
+        "conversationId": "cnv_100",
+        "text": "Hello"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "RATE_LIMIT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+            "sendCount": 1,
+            "state": "canResend"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "reply-refusal-after-can-resend-uncertain",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Location": "https://api2.frontapp.com/conversations/cnv_200"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/cnv_100/messages",
+          "requestBody": {
+            "body": "\u003cp\u003eHello\u003c/p\u003e",
+            "options": {
+              "archive": false
+            },
+            "text": "Hello"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 301
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "input": {
+        "conversationId": "cnv_100",
+        "text": "Hello"
+      },
+      "name": "reply-merged-unknown-retry",
+      "operation": "replyToConversation"
     }
   ],
   "schemaVersion": 1
