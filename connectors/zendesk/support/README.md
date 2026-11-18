@@ -1,6 +1,6 @@
 # Zendesk Support Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zendesk/support/go@v0.24.1`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zendesk/support/go@v0.25.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/zendesk/support`.
 
@@ -29,7 +29,7 @@ attempt sends the same Idempotency-Key. `updateTicket` keeps six attempts
 within five minutes because comment reconciliation scans only the latest audit
 page, and uses the default `limited` tier with three sends.
 
-Release v0.24.1 (Python and TypeScript v0.2.1) retries an invalid, oversized,
+Release v0.25.0 (Python and TypeScript v0.3.0) retries an invalid, oversized,
 or credential-reflecting answer to `createTicket` under the same
 Idempotency-Key. `createTicket` still declares `invalidResponse` so existing
 wiring compiles, but never selects it. The same release adds the optional
@@ -491,8 +491,8 @@ Center paths in the setup guidance.
 
 ## Python package
 
-The independent `dex-connector-zendesk-support` Python `v0.2.1` package implements all four ticket operations and, from 0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with Go on the Python Connector SDK's poll Trigger kit (`dex-connectors-sdk` 0.12.0). Its cursor documents match Go's byte for byte, so Go and Python replicas can share one binding, and each ticket version keeps Go's event ID. Its [README](python/README.md), [read-ticket example](python/examples/read_ticket/README.md), and [ticket change example](python/examples/ticket_changed/README.md) show the static connection and Worker path. Go-recorded provider conformance scenarios cover Python request and outcome parity, Go-recorded export fetches cover the Trigger's requests, cursors, and events, and both examples run against a real local Dex Worker with a provider stand-in. Live Zendesk authorization and provider behavior remain unverified.
+The independent `dex-connector-zendesk-support` Python `v0.3.0` package implements all four ticket operations and, from 0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with Go on the Python Connector SDK's poll Trigger kit (`dex-connectors-sdk` 0.12.0). Its cursor documents match Go's byte for byte, so Go and Python replicas can share one binding, and each ticket version keeps Go's event ID. Its [README](python/README.md), [read-ticket example](python/examples/read_ticket/README.md), and [ticket change example](python/examples/ticket_changed/README.md) show the static connection and Worker path. Go-recorded provider conformance scenarios cover Python request and outcome parity, Go-recorded export fetches cover the Trigger's requests, cursors, and events, and both examples run against a real local Dex Worker with a provider stand-in. Live Zendesk authorization and provider behavior remain unverified.
 
 ## TypeScript package
 
-`@superdurable/connector-zendesk-support@0.2.1` implements all four ticket operations with generated operation-specific Step factories and, from 0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with Go on `@superdurable/connectors-sdk` 0.12.0. Its cursor documents match Go's byte for byte, so Go and TypeScript replicas can share one binding, and each ticket version keeps Go's event ID. See the runnable [TypeScript customer-issue Flow](typescript/examples/customer-issue/flow.ts) and [ticket-changed Flow](typescript/examples/ticket-changed/README.md). The TypeScript conformance suite replays Go-recorded provider requests and outcomes, Go-recorded export fetches cover the Trigger's requests, cursors, and events, and both examples run through a real Dex Worker and Client against provider stand-ins. Live Zendesk authorization and API behavior are unverified.
+`@superdurable/connector-zendesk-support@0.3.0` implements all four ticket operations with generated operation-specific Step factories and, from 0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with Go on `@superdurable/connectors-sdk` 0.12.0. Its cursor documents match Go's byte for byte, so Go and TypeScript replicas can share one binding, and each ticket version keeps Go's event ID. See the runnable [TypeScript customer-issue Flow](typescript/examples/customer-issue/flow.ts) and [ticket-changed Flow](typescript/examples/ticket-changed/README.md). The TypeScript conformance suite replays Go-recorded provider requests and outcomes, Go-recorded export fetches cover the Trigger's requests, cursors, and events, and both examples run through a real Dex Worker and Client against provider stand-ins. Live Zendesk authorization and API behavior are unverified.

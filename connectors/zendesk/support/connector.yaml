@@ -6,17 +6,17 @@ metadata:
   description: Search, read, create, and update Zendesk Support tickets, with duplicate-safe ticket creation and follow-up comments, and receive each created, updated, or deleted ticket.
   company: Zendesk
   categories: [customer-support]
-  version: v0.24.1
+  version: v0.25.0
 spec:
   provider: zendesk
   languages:
     python:
-      version: v0.2.1
+      version: v0.3.0
       package: dex-connector-zendesk-support
       operations: [searchTickets, getTicket, createTicket, updateTicket]
       triggers: [ticketChanged]
     typescript:
-      version: v0.2.1
+      version: v0.3.0
       package: "@superdurable/connector-zendesk-support"
       operations: [searchTickets, getTicket, createTicket, updateTicket]
       triggers: [ticketChanged]
