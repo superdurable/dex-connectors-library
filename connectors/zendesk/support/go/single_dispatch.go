@@ -122,7 +122,7 @@ func (permit ticketWritePermit) writeAttempt(result zendeskExchange, receipt sdk
 		return permit.rejectWrite(result, receipt, value)
 	}
 	// A 3xx, 408, 409, 410, other 5xx, unlisted status, lost answer, oversized error body, or error body
-	// carrying a ticket may follow an applied write.
+	// carrying a ticket or echoing the token may follow an applied write.
 	return retryUnknownWriteOutcome(result.failure, result.retryAfter)
 }
 
@@ -144,10 +144,12 @@ func retryUnknownWriteOutcome(failure sdkgo.Failure, retryAfter time.Duration) s
 	return sdkgo.NewMutationRetry[UpdateTicketOutput](failure, retryAfter)
 }
 
-// isDefiniteRefusal reports a refusal status whose readable body carries no ticket, which proves Zendesk applied nothing.
+// isDefiniteRefusal reports a refusal status whose readable body carries no ticket and does not echo the
+// API token, which proves Zendesk applied nothing.
 func isDefiniteRefusal(result zendeskExchange) bool {
 	return (result.outcome == exchangeRejected || result.outcome == exchangeNotFound) &&
-		isDefiniteRefusalStatus(result.response.statusCode) && !result.response.hasOversizedBody && !result.response.hasTicketIdentity
+		isDefiniteRefusalStatus(result.response.statusCode) && !result.response.hasOversizedBody &&
+		!result.response.hasTicketIdentity && !result.response.hasCredentialEcho
 }
 
 // isDefiniteRefusalStatus reports a status that proves Zendesk applied nothing.

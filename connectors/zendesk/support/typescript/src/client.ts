@@ -54,6 +54,7 @@ export interface ZendeskResponse {
   status: number; headers: ProviderResponse['headers']; body: Uint8Array; requestId: string;
   /** A non-2xx body exceeded maxResponseBytes, so it cannot prove a refusal. */ hasOversizedBody?: boolean;
   /** A non-2xx body carries a ticket ID, which contradicts a refusal. */ hasTicketIdentity?: boolean;
+  /** A non-2xx body contains the API token, so it cannot prove a refusal. */ hasCredentialEcho?: boolean;
 }
 
 /** Resolved credentials, or a failure that only reconnecting fixes (terminal) or that may pass (transient). */
@@ -170,7 +171,8 @@ export class ZendeskClient {
       return { outcome: 'success', response };
     }
     const summary = describeError(response.body, credentials.apiToken);
-    response = { ...response, hasOversizedBody: oversized, hasTicketIdentity: hasTicketIdentity(response.body) };
+    const hasCredentialEcho = credentials.apiToken !== '' && Buffer.from(response.body).includes(Buffer.from(credentials.apiToken));
+    response = { ...response, hasOversizedBody: oversized, hasTicketIdentity: hasTicketIdentity(response.body), ...(hasCredentialEcho ? { hasCredentialEcho } : {}) };
     const status = response.status;
     const retryAfterMs = parseRetryAfter(header(response.headers, 'retry-after'), this.now());
     if (status === 429) return { outcome: 'retry', response, failure: zendeskFailure(operation, 'RATE_LIMIT', `Zendesk rate limited the request (HTTP 429)${summary}`), retryAfterMs };

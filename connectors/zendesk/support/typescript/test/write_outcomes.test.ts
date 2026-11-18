@@ -254,11 +254,27 @@ describe('updateTicket after a possible or accepted write', () => {
 describe('refusals with an unreadable or contradictory body', () => {
   const oversized = (): ProviderResponse => { throw new BodyTooLargeError(422, {}); };
   const carryingTicket = (): ProviderResponse => json(422, { error: 'RecordInvalid', ticket: { id: 5512 } });
+  const echoingToken = (): ProviderResponse => json(422, { error: 'RecordInvalid', description: 'inert-token' });
+  it('resends an updateTicket refusal that echoes the token below the cap and selects uncertain at the cap', async () => {
+    const requests: ProviderRequest[] = [];
+    const context = new AttemptContext();
+    const answer = updateAnswers(echoingToken, () => emptyAudits);
+    for (const attempt of [1, 2, 3]) {
+      context.attempt = attempt;
+      expect(branchOf(await run('updateTicket', answer, context, requests))).toBe('retry');
+      expect(context.marker?.state).toBe('claimed');
+    }
+    context.attempt = 4;
+    expect(branchOf(await run('updateTicket', answer, context, requests))).toBe('uncertain');
+    expect(requests.filter(request => request.method === 'PUT')).toHaveLength(3);
+  });
   it.each([
     ['updateTicket', 'oversized', oversized],
     ['updateTicket', 'carrying a ticket', carryingTicket],
+    ['updateTicket', 'echoing the token', echoingToken],
     ['createTicket', 'oversized', oversized],
     ['createTicket', 'carrying a ticket', carryingTicket],
+    ['createTicket', 'echoing the token', echoingToken],
   ] as const)('%s retries a 422 %s', async (operation, _name, refusal) => {
     const answer: Answer = request => {
       if (request.method === 'PUT' || request.method === 'POST') return refusal();

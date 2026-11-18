@@ -174,10 +174,12 @@ sends the same key and the same body. The key
 is also stored as `dex_idempotency_key` audit metadata. As a result:
 
 - only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 with a readable
-  body that carries no ticket selects `providerRejected`;
+  body that carries no ticket and does not echo the API token selects
+  `providerRejected`;
 - every other outcome is unknown and is retried with the identical request:
   a lost connection, a timeout, a redirect, a 408, 409, 410, 429, or 5xx, any
-  other status, a refusal whose body is oversized or carries a ticket, and a
+  other status, a refusal whose body is oversized, carries a ticket, or echoes
+  the API token, and a
   2xx response whose body breaks, is oversized, cannot be decoded, or
   reflects the credential. The operation therefore has no `uncertain` branch
   and never selects its compatibility `invalidResponse` branch, and the retry
@@ -226,7 +228,8 @@ with `MaxSends`):
 - An unknown write outcome, such as a lost answer, the end of the write
   window, a redirect, a 408, a `409 UpdateConflict` from a concurrent change,
   a 410, a 5xx other than 503, any other status, or a refusal whose body is
-  oversized or carries a ticket, returns Retry, also on the last send the cap
+  oversized, carries a ticket, or echoes the API token, returns Retry and
+  records nothing, also on the last send the cap
   allows. The next attempt starts again at step 1, so a found audit or
   already-held values select `updated`, and only an absent read-back resends.
   Every attempt after a possible send reads back first, including one that
@@ -247,7 +250,8 @@ with `MaxSends`):
 - A 429, a 503, or a request that provably never left the process records
   that nothing was processed and retries without counting the send.
 - A definite refusal of the first send (400, 401, 403, 404, 411, 413, 414,
-  415, or 422 with a readable body that carries no ticket) records that
+  415, or 422 with a readable body that carries no ticket and does not echo
+  the API token) records that
   nothing was processed and selects `providerRejected` or `notFound`, such as
   for a closed ticket. After a possible earlier send the same answer selects
   `uncertain`, and so does a missing ticket or a rejected read.

@@ -74,7 +74,7 @@ export interface CreateTicketStepConfig<StepInput, OperationInput = CreateTicket
   connectionName: string;
   /** The ticket exists; a repeated attempt returns the ticket the first attempt created. */
   created: StepTarget<MutationResult<OperationOutput>>;
-  /** Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 and a readable body that carries no ticket, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created. */
+  /** Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 and a readable body that carries no ticket and does not echo the API token, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Kept for compatibility and never selected: an invalid or oversized answer is an unknown outcome that repeats the identical keyed request. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
@@ -109,7 +109,7 @@ export interface UpdateTicketStepConfig<StepInput, OperationInput = UpdateTicket
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** The ticket read before the first write changed after expectedUpdatedAt, so nothing was written. */
   conflict?: StepTarget<MutationResult<OperationOutput>>;
-  /** Zendesk conclusively rejected the reads or the first write with HTTP 400, 401, 403, 411, 413, 414, 415, or 422 and a readable body that carries no ticket, such as updating a closed ticket or assigning an unknown agent; nothing was written. */
+  /** Zendesk conclusively rejected the reads or the first write with HTTP 400, 401, 403, 411, 413, 414, 415, or 422 and a readable body that carries no ticket and, for the write, does not echo the API token, such as updating a closed ticket or assigning an unknown agent; nothing was written. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Zendesk returned an invalid or oversized ticket or audit page on the read before the first write, so nothing was written. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;

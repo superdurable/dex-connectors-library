@@ -69,7 +69,7 @@ CREATE_TICKET_DEFINITION = MutationDefinition(
     OperationRef(CONNECTOR_ID, CREATE_TICKET_OPERATION_ID),
     (
         BranchDefinition(CREATED, "The ticket exists; a repeated attempt returns the ticket the first attempt created.", False),
-        BranchDefinition(PROVIDER_REJECTED, "Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 and a readable body that carries no ticket, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created.", True),
+        BranchDefinition(PROVIDER_REJECTED, "Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 and a readable body that carries no ticket and does not echo the API token, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created.", True),
         BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and never selected: an invalid or oversized answer is an unknown outcome that repeats the identical keyed request.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
@@ -87,7 +87,7 @@ UPDATE_TICKET_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "The ticket holds the requested change; a repeated attempt finds its own earlier change instead of adding a second comment.", False),
         BranchDefinition(NOT_FOUND, "The ticket does not exist or is not visible to the connection's agent, and no earlier attempt of this Step may have written it.", True),
         BranchDefinition(CONFLICT, "The ticket read before the first write changed after expectedUpdatedAt, so nothing was written.", True),
-        BranchDefinition(PROVIDER_REJECTED, "Zendesk conclusively rejected the reads or the first write with HTTP 400, 401, 403, 411, 413, 414, 415, or 422 and a readable body that carries no ticket, such as updating a closed ticket or assigning an unknown agent; nothing was written.", True),
+        BranchDefinition(PROVIDER_REJECTED, "Zendesk conclusively rejected the reads or the first write with HTTP 400, 401, 403, 411, 413, 414, 415, or 422 and a readable body that carries no ticket and, for the write, does not echo the API token, such as updating a closed ticket or assigning an unknown agent; nothing was written.", True),
         BranchDefinition(INVALID_RESPONSE, "Zendesk returned an invalid or oversized ticket or audit page on the read before the first write, so nothing was written.", True),
         BranchDefinition(UNCERTAIN, "The ticket and its latest audit page show no change by this Step, yet the change and its comment may still appear: the send cap is reached, Zendesk refused or contradicted the request after an earlier send whose outcome could not be confirmed, Zendesk accepted a write that the read-back cannot confirm, or the credentials became unusable after a possible send. Below the cap, an unconfirmed write that Zendesk did not accept is read back and then resent.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),

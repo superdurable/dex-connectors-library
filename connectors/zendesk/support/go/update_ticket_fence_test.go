@@ -91,6 +91,34 @@ func TestUpdateTicketReadsBackAfterTheLastAllowedSendBeforeSelectingUncertain(t 
 	require.NotContains(t, mustJSON(t, result), "SENTINEL")
 }
 
+func TestUpdateTicketCredentialEchoingRefusalResendsBelowTheCapAndIsUncertainAtTheCap(t *testing.T) {
+	provider := newRecordingZendesk(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		switch index % 3 {
+		case 0:
+			writeJSON(t, response, http.StatusOK, ticketEnvelopeJSON(5512, "pending", nil))
+		case 1:
+			writeJSON(t, response, http.StatusOK, `{"audits":[]}`)
+		default:
+			require.Equal(t, http.MethodPut, request.Method)
+			writeJSON(t, response, http.StatusUnprocessableEntity, `{"error":"RecordInvalid","description":"`+testAPIToken+`"}`)
+		}
+	})
+	dexContext := newZendeskDexContext("update-echoing-refusal")
+	client := newZendeskClient(t, provider.URL)
+	for attempt := 1; attempt <= 3; attempt++ {
+		_, err := sdkgo.RunMutation(dexContext, client.UpdateTicket(), zendeskConnection, followUpInput())
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "attempt %d: a refusal that echoes the token is an unknown outcome", attempt)
+		require.Equal(t, "claimed", recordedMarker(t, dexContext).State, "nothing records canResend")
+		dexContext.advanceAttempt()
+	}
+	result, err := sdkgo.RunMutation(dexContext, client.UpdateTicket(), zendeskConnection, followUpInput())
+	require.NoError(t, err)
+	require.Equal(t, support.UpdateTicketBranchUncertain, result.Branch)
+	require.Equal(t, 11, provider.requestCount(), "three sends reach the cap, then the attempt only reads back")
+	require.NotContains(t, mustJSON(t, result), testAPIToken)
+}
+
 func TestUpdateTicketReadBackAfterTheLastAllowedSendFindsTheChange(t *testing.T) {
 	dexContext := newZendeskDexContext("update-cap-found")
 	key := stepIdempotencyKey(t, dexContext)

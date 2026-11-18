@@ -268,10 +268,10 @@ function decodeTicketFor(body: Uint8Array, agentTicketURL: string, ticketId: num
   catch { return undefined; }
 }
 
-/** Report a refusal status whose readable body carries no ticket, proving Zendesk applied nothing. */
+/** Report a refusal status whose readable body carries no ticket and no API token, proving Zendesk applied nothing. */
 function isDefiniteRefusal(result: ZendeskExchange): boolean {
   return (result.outcome === 'rejected' || result.outcome === 'notFound') && definiteRefusalStatuses.has(result.response.status)
-    && !result.response.hasOversizedBody && !result.response.hasTicketIdentity;
+    && !result.response.hasOversizedBody && !result.response.hasTicketIdentity && !result.response.hasCredentialEcho;
 }
 
 function errorMessage(error: unknown): string { return error instanceof Error ? error.message : String(error); }

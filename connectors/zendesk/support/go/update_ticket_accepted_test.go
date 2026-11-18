@@ -270,6 +270,7 @@ func TestUpdateTicketRefusalWithAnUnreadableOrContradictoryBodyIsAnUnknownOutcom
 	for name, body := range map[string]string{
 		"oversized":        `{"error":"RecordInvalid","description":"` + strings.Repeat("x", 4096) + `"}`,
 		"carries a ticket": `{"error":"RecordInvalid","ticket":{"id":5512}}`,
+		"echoes the token": `{"error":"RecordInvalid","description":"` + testAPIToken + `"}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			provider := newRecordingZendesk(t, func(response http.ResponseWriter, request *http.Request, _ int) {
