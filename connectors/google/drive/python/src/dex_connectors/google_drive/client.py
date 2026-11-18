@@ -17,6 +17,11 @@ from dex_connectors.sdk import (
     Receipt,
 )
 from dex_connectors.sdk.pollingtrigger import MAXIMUM_CHANGES_PER_PAGE
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -43,6 +48,13 @@ if TYPE_CHECKING:
     )
 
 PROVIDER = "google-drive"
+# Resolve failures that only reconnection repairs; any other resolve failure is transient.
+TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
 FULL_FILE_FIELDS = (
     "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,"
     "version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),"
@@ -161,7 +173,7 @@ class Client:
         """Resolve credentials and report whether a failure can clear without reauthorization."""
         try:
             credentials = await self._credentials.resolve(call)
-        except (ReauthorizationRequiredError, ValueError):
+        except TERMINAL_CREDENTIAL_ERRORS:
             return None, failure(
                 operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
             ), False

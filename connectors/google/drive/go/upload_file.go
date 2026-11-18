@@ -218,8 +218,13 @@ func (operation UploadFileOperation) Invoke(call sdkgo.Call, input UploadFileInp
 	isResourceDecoded := json.Unmarshal(response.body, &resource) == nil
 	hasAcceptedFile := json.Unmarshal(response.body, &acceptedFile) == nil && acceptedFile.ID != ""
 	if response.status == http.StatusUnauthorized && !hasAcceptedFile {
-		if client.refreshRejectedUploadCredential(call) == nil {
+		isRefreshed, isRefreshTransient := client.refreshRejectedUploadCredential(call)
+		if isRefreshed {
 			return retryUploadAfterRejection(fence, sdkgo.FailureAuthentication, "provider rejected the upload credential", 0)
+		}
+		if isRefreshTransient {
+			// Google refuses an unauthenticated upload unprocessed, so a transient refresh failure retries.
+			return retryUploadAfterRejection(fence, sdkgo.FailureAuthentication, "provider rejected the upload credential, and its refresh is temporarily unavailable", 0)
 		}
 		return rejectUploadOrSelectUncertain(call, client, fence, hasPossibleEarlierSend, sdkgo.FailureAuthentication, "provider rejected the upload credential", receipt)
 	}

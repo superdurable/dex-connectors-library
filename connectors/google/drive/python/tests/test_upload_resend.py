@@ -11,6 +11,12 @@ from typing import get_origin
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import MAX_ERROR_BODY_BYTES
 
 import dex_connectors.google_drive as drive
@@ -232,3 +238,51 @@ async def test_credential_failures_never_record_not_sent_after_a_possible_send()
     revoked = FailingCredentials(sdk.ReauthorizationRequiredError())
     assert await _run(FakeDrive(), AttemptContext(), revoked) == "defect"
     assert await _run(FakeDrive(), AttemptContext(attempt=2), revoked) == "uncertain"
+
+
+CREDENTIAL_FAILURES: list[tuple[Exception, bool]] = [
+    (sdk.ReauthorizationRequiredError(), True),
+    (ObjectNotFoundError(), True),
+    (ConnectionNotSelectedError(), True),
+    (CredentialBrokerRejectedError(), True),
+    (CredentialBrokerUnavailableError(), False),
+    (ValueError("connection is not configured"), False),
+    (RuntimeError("unlisted"), False),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("error", "is_terminal"), CREDENTIAL_FAILURES)
+async def test_resolve_failures_follow_one_classification(error: Exception, is_terminal: bool) -> None:
+    """Only reconnection-only failures are terminal; every other resolve failure retries."""
+    credentials = FailingCredentials(error)
+    first = await _run(FakeDrive(), AttemptContext(), credentials)
+    later = await _run(FakeDrive(), AttemptContext(attempt=2), credentials)
+    assert (first, later) == (("defect", "uncertain") if is_terminal else ("retry", "retry"))
+
+
+class RefreshFailingCredentials:
+    """Resolve a token Google rejects, then fail the refresh after rejection."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: sdk.Call) -> drive.Credentials:
+        """Return the rejected token."""
+        return drive.Credentials(access_token=sdk.SecretString("rejected-token"))
+
+    async def resolve_after_rejection(self, call: sdk.Call) -> drive.Credentials:
+        """Raise the configured refresh error."""
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("error", "is_terminal"), CREDENTIAL_FAILURES)
+async def test_upload_401_refresh_failure_retries_unless_terminal(
+    error: Exception, is_terminal: bool
+) -> None:
+    """A 401 proves Drive did not process the upload, so a transient refresh failure retries."""
+    fake = FakeDrive(lambda: httpx.Response(401, json={"error": {"code": 401}}))
+    outcome = await _run(fake, AttemptContext(), RefreshFailingCredentials(error))
+    assert outcome == ("providerRejected" if is_terminal else "retry")
+    assert fake.uploads == 1

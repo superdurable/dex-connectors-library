@@ -32,6 +32,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/pollingtrigger"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -314,36 +315,41 @@ func (client *Client) ReadFileText() ReadFileTextOperation {
 // UploadFile returns the UploadFile operation bound to this client.
 func (client *Client) UploadFile() UploadFileOperation { return UploadFileOperation{client: client} }
 
-func (client *Client) resolveCredential(call sdkgo.Call, operationID string) (Credentials, *sdkgo.Failure) {
+// resolveCredential resolves the call's credential. isRetryable reports a credential outage that
+// needs no reauthorization.
+func (client *Client) resolveCredential(call sdkgo.Call, operationID string) (credential Credentials, failure *sdkgo.Failure, isRetryable bool) {
 	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if err != nil || validateResolvedCredentials(credential) != nil {
-		return Credentials{}, driveFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are unavailable")
-	}
-	return credential, nil
-}
-
-// resolveUploadCredential is resolveCredential for uploadFile. isRetryable reports a credential
-// outage that needs no reauthorization.
-func (client *Client) resolveUploadCredential(call sdkgo.Call) (credential Credentials, failure *sdkgo.Failure, isRetryable bool) {
-	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if err != nil && !sdkgo.IsReauthorizationRequired(err) {
-		return Credentials{}, driveFailurePointer(sdkgo.FailureAuthentication, uploadFileOperationID, "connection credentials are temporarily unavailable"), true
+	if err != nil && !isTerminalCredentialError(err) {
+		return Credentials{}, driveFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are temporarily unavailable"), true
 	}
 	if err != nil || validateResolvedCredentials(credential) != nil {
-		return Credentials{}, driveFailurePointer(sdkgo.FailureAuthentication, uploadFileOperationID, "connection credentials are unavailable"), false
+		return Credentials{}, driveFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are unavailable"), false
 	}
 	return credential, nil, false
 }
 
-func (client *Client) refreshRejectedUploadCredential(call sdkgo.Call) error {
+// resolveUploadCredential is resolveCredential for uploadFile.
+func (client *Client) resolveUploadCredential(call sdkgo.Call) (credential Credentials, failure *sdkgo.Failure, isRetryable bool) {
+	return client.resolveCredential(call, uploadFileOperationID)
+}
+
+// refreshRejectedUploadCredential reports whether the refresh succeeded, and whether a failure is transient.
+func (client *Client) refreshRejectedUploadCredential(call sdkgo.Call) (isRefreshed bool, isTransient bool) {
 	if _, ok := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !ok {
-		return errors.New("credential provider does not support refresh after rejection")
+		return false, false
 	}
 	refreshed, err := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
 	if err != nil {
-		return err
+		return false, !isTerminalCredentialError(err)
 	}
-	return validateResolvedCredentials(refreshed)
+	return validateResolvedCredentials(refreshed) == nil, false
+}
+
+// isTerminalCredentialError reports a resolve failure that only reconnection repairs.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (client *Client) readBackUploadByID(call sdkgo.Call, credential *Credentials, fileID, idempotencyKey string) (*File, driveResponse, *readOutcome) {
