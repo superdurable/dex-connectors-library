@@ -66,6 +66,17 @@ func TestVoidEnvelopeReadsBackARefusedVoid(t *testing.T) {
 	}
 }
 
+func TestVoidEnvelopeRetriesAnUnreadableStatusReadBack(t *testing.T) {
+	fake := newFakeDocuSign(t, map[string]http.HandlerFunc{
+		"PUT " + envelopePath: respondJSON(http.StatusBadRequest, docusignError("ENVELOPE_CANNOT_VOID_INVALID_STATE")),
+		"GET " + envelopePath: respondJSON(http.StatusOK, `{"envelopeId":`),
+	})
+	_, err := voidEnvelope(t, fake, "Deal lost")
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "voiding again is safe, so an unreadable read-back never selects invalidResponse")
+	require.Equal(t, sdkgo.FailureProtocol, retry.Failure.Kind)
+}
+
 func TestVoidEnvelopeClassifiesOtherAnswers(t *testing.T) {
 	for name, test := range map[string]struct {
 		status         int

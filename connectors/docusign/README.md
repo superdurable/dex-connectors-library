@@ -92,7 +92,8 @@ authentication and permission codes select `providerRejected`, and
 receives, such as a `3xx` or `409`, is an unknown outcome. `voidEnvelope`
 declares `repeatOnUnknown: safe` and retries every unknown outcome without a
 send cap, because voiding sets an absolute status and an already voided
-envelope selects `voided`. Its Step factory still accepts `MaxSends` for
+envelope selects `voided`. A malformed or oversized status read-back after a
+refused void also retries. Its Step factory still accepts `MaxSends` for
 compatibility and ignores it.
 
 ### createEnvelopeFromTemplate and duplicate dispatch
@@ -103,10 +104,15 @@ contract. The operation therefore:
 1. runs with **sync** durability, so Dex commits the dispatch result promptly;
 2. adds a hidden text custom field, `dexIdempotencyKey`, holding the Step's
    idempotency key, which is stable across retries of one Step execution;
-3. records a heartbeat checkpoint with the dispatch time before the `POST`;
-   a resend keeps the earliest dispatch time;
-4. after a lost connection, a `3xx`, `408`, `409`, another unlisted status, a
-   `5xx`, or an unreadable `201`, lists
+3. records a heartbeat checkpoint with the dispatch time, the attempt, and the
+   number of possibly effective sends before the `POST`; a resend keeps the
+   earliest dispatch time. An attempt that provably sent nothing (a `429`, a
+   `503`, a request that never left the Worker, or a read-back that was
+   retried) records the checkpoint again without counting itself, so it never
+   uses up the send cap. A checkpoint Dex did not keep, or one from an earlier
+   release, counts each earlier attempt as one send;
+4. after a lost connection, a `3xx`, `408`, `409`, another unlisted status, or
+   a `5xx` other than `503`, lists
    `GET /envelopes?from_date=<dispatch - 1h>&custom_field=dexIdempotencyKey=<key>&include=custom_fields`
    and checks the field itself. Exactly one match selects `created` with
    `wasRecovered: true`. A miss is no proof, because DocuSign's listing may not
@@ -119,17 +125,23 @@ contract. The operation therefore:
    inconclusive read-back lets the attempt send while possible sends stay
    below `maxSends` (3 by default, overridable per Step with `MaxSends`);
    at the cap it selects `uncertain` without sending. Each attempt sends at
-   most once, so the attempt number bounds the earlier sends;
-6. several envelopes carrying the field are duplicates already present: the
+   most once, so the checkpoint's count plus the attempts after it bounds the
+   earlier sends;
+6. a `2xx` answer means DocuSign accepted the create, so it is never sent
+   again, even when the summary is unreadable, oversized, or cut off after the
+   headers. The checkpoint records the acceptance; this and later attempts only
+   list the envelope, retrying below `maxSends` attempts and selecting
+   `uncertain` at it;
+7. several envelopes carrying the field are duplicates already present: the
    operation selects `uncertain`, adopts none, and sends no more;
-7. a later attempt that cannot obtain credentials or resolve the account
+8. a later attempt that cannot obtain credentials or resolve the account
    retries below the cap and selects `uncertain` at it, never
-   `providerRejected` or `defect`; a definite refusal of a resend after an
-   earlier attempt's checkpoint selects `uncertain`, because the earlier create
-   may exist.
+   `providerRejected` or `defect`; a definite refusal of a send after an
+   earlier attempt may have sent, with or without its checkpoint, selects
+   `uncertain`, because the earlier create may exist.
 
-The create request is also retried after a refused rate limit or when it
-provably never left the Worker. Dex accepts the checkpoint when the Worker
+The create request is also retried after a refused rate limit, a `503`, or
+when it provably never left the Worker. Dex accepts the checkpoint when the Worker
 writes it to its stream, before the request leaves; a Worker lost in that
 instant, before Dex stored the checkpoint, leaves the next attempt only the
 read-back of step 5, which misses an envelope DocuSign does not list yet, so a
@@ -355,4 +367,4 @@ the fallback status poll, and void at the signing deadline.
 
 The `typescript/` package publishes `@superdurable/connector-docusign` v0.2.1 with the five eSignature operations: create from template, read an envelope, list recipients, void an envelope, and digest a combined PDF. It uses the manifest's production and developer OAuth methods with generated refresh wiring. From 0.2.0 it also implements the `envelopeEventReceived` Trigger at parity with Go: the same HMAC verification, JSON SIM decoding, event ID, binding filter, and durable project inbox, served by `newProjectEnvelopeEventReceivedEndpointRunner`. See the [TypeScript package guide](typescript/README.md), its [runnable envelope status Flow](typescript/examples/envelope-status/README.md), and the [runnable envelope outcome Flow](typescript/examples/envelope-outcome/README.md), which a Connect event resumes.
 
-Python and TypeScript create retries use the checkpoint dispatch time for a one-hour read-back lookback. Like Go, every later attempt reads back before it sends, resends after a miss while possible sends stay below the cap, and selects `uncertain` at the cap or when several envelopes carry the marker.
+Python and TypeScript create retries use the checkpoint dispatch time for a one-hour read-back lookback. Like Go, they record the same checkpoint with its exact send count, every attempt after a possible send reads back before it sends, a miss resends while possible sends stay below the cap, an accepted `2xx` create is only read back, and the operation selects `uncertain` at the cap or when several envelopes carry the marker.

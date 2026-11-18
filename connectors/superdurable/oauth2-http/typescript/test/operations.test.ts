@@ -32,6 +32,18 @@ describe('sendRequest provider semantics', () => {
     expect(URLs).toEqual(['Bearer first-access-token', 'Bearer second-access-token']);
   });
 
+  it.each([302, 303, 307])('rejects a redirect of a read and repeats a redirect of a write for HTTP %i', async status => {
+    const client = new OAuth2HTTPClient(config, new StaticCredentialProvider([[connection, firstCredentials]]), {
+      send: async () => ({ status, headers: { location: 'http://outside.example/items/1' }, body: Buffer.from('redirect') }),
+    });
+    for (const method of ['GET', 'HEAD', 'OPTIONS']) {
+      expect(await client.sendRequest().invoke(call, { method, path: '/items' })).toMatchObject({ kind: 'branch', branch: 'rejected', failure: { kind: 'PROVIDER_REJECTION' } });
+    }
+    for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
+      expect(await client.sendRequest().invoke(call, { method, path: '/items', body: 'item' })).toMatchObject({ kind: 'retry', failure: { kind: 'PROTOCOL' } });
+    }
+  });
+
   it('uses Go query escaping and retries an unsent POST', async () => {
     let target = '';
     const client = new OAuth2HTTPClient(config, new StaticCredentialProvider([[connection, firstCredentials]]), { send: async request => {

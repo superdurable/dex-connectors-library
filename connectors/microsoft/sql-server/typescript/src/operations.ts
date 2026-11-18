@@ -414,7 +414,7 @@ export class ExecuteStatementNonIdempotentOperation implements Mutation<ExecuteS
       outcome = await runWrite(this.client, call, input, bound, password, async transaction => {
         try { await fence.dispatch(() => transaction.commit()); }
         catch (error) {
-          if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || error instanceof AggregateError) throw new CommitNotSentError();
+          if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || isFenceInsufficientTimeAggregateError(error)) throw new CommitNotSentError();
           throw error;
         }
       });
@@ -440,6 +440,11 @@ type WriteOperation = 'execute' | 'executeNonIdempotent';
 interface WriteOutcome { failure?: ClassifiedFailure; pool?: sql.ConnectionPool; value: StatementExecution; isCommitPhase: boolean }
 
 class CommitNotSentError extends Error { constructor() { super('COMMIT was not sent'); this.name = 'CommitNotSentError'; } }
+
+/** Match only the Fence's pre-send AggregateError; a driver AggregateError after dispatch stays unknown. */
+function isFenceInsufficientTimeAggregateError(error: unknown): boolean {
+  return error instanceof AggregateError && error.errors.some(cause => cause instanceof InsufficientTimeError);
+}
 
 function credentialsUnavailable(): ClassifiedFailure { return { disposition: 'defect', kind: 'AUTHENTICATION', message: 'SQL Server connection credentials are unavailable' }; }
 

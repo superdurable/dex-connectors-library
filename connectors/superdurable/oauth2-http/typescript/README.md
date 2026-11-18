@@ -22,8 +22,9 @@ Go duration to milliseconds; blank uses the manifest default.
 `newSendRequestStep` routes `completed` to the required destination. `rejected`,
 `uncertain`, and `defect` are optional and fail the Flow when unwired.
 `sendRequest` is repeat-safe: every method retries a lost answer, a 5xx, and
-any status other than a redirect or a definite refusal (400, 401, 403, 404,
-411, 413, 414, 415, or 422), including a `POST` without
+any status other than a redirect of a GET, HEAD, or OPTIONS request or a
+definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), including a
+redirect of a write method and a `POST` without
 `idempotencyKeyHeader`. Its `uncertain` branch is kept for compatibility and
 never selected.
 

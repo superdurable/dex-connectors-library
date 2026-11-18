@@ -127,6 +127,8 @@ type RetrieveResponseOperation struct{ client *Client }
 
 type requestFailure struct {
 	failure sdkgo.Failure
+	// isTransient marks credentials a later attempt may resolve; every other failure repeats.
+	isTransient bool
 }
 
 // Error returns the safe human-readable failure message.
@@ -260,9 +262,13 @@ func (operation CreateResponseOperation) Invoke(call sdkgo.Call, input CreateReq
 // heartbeat and then sends one create request.
 func (operation CreateResponseOperation) sendCreateRequest(call sdkgo.Call, heartbeat *createResponseHeartbeat, sends createResponseSendBudget, payload map[string]any, streaming bool) sdkgo.MutationAttempt[Response] {
 	request, failure := operation.client.newRequest(call, http.MethodPost, "/responses", string(call.ID), payload)
-	if failure != nil && sends.hasPossibleEarlierSend() {
+	if failure != nil && sends.hasPossibleEarlierSend() && failure.isTransient {
 		// An earlier create may exist, so a defect could prompt a second billed create; nothing was sent now.
 		return sdkgo.NewMutationRetry[Response](failure.failure, 0)
+	}
+	if failure != nil && sends.hasPossibleEarlierSend() {
+		// A lasting local failure cannot resend, and an earlier create may exist.
+		return sdkgo.NewMutationUncertain(Response{}, failure.failure, responseReceipt(call, "", nil, ""))
 	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(CreateResponseBranchDefect, Response{}, &failure.failure, sdkgo.Receipt{})
@@ -299,14 +305,14 @@ func (operation CreateResponseOperation) sendCreateRequest(call sdkgo.Call, hear
 	}
 	wire, readFailure := operation.client.readResponse(response.Body, "createResponse")
 	if readFailure != nil {
-		return resendOrSelectUncertain(sends, *readFailure, responseReceipt(call, requestID, response.Header, ""))
+		return selectAcceptedCreateUncertain(*readFailure, responseReceipt(call, requestID, response.Header, ""))
 	}
 	result := convertResponse(wire)
 	if result.ID == "" {
-		return resendOrSelectUncertain(sends, openAIFailure(sdkgo.FailureProtocol, "createResponse", "provider response has no ID"), responseReceipt(call, requestID, response.Header, ""))
+		return selectAcceptedCreateUncertain(openAIFailure(sdkgo.FailureProtocol, "createResponse", "provider response has no ID"), responseReceipt(call, requestID, response.Header, ""))
 	}
 	if !isSafeResponseID(result.ID) {
-		return resendOrSelectUncertain(sends, openAIFailure(sdkgo.FailureProtocol, "createResponse", "provider response ID is invalid"), responseReceipt(call, requestID, response.Header, ""))
+		return selectAcceptedCreateUncertain(openAIFailure(sdkgo.FailureProtocol, "createResponse", "provider response ID is invalid"), responseReceipt(call, requestID, response.Header, ""))
 	}
 	// A lost checkpoint leaves the claim, so a later attempt counts this send before any resend.
 	_ = heartbeat.recordResponseID(result.ID)
@@ -319,6 +325,13 @@ func retryCreateResponse(heartbeat *createResponseHeartbeat, failure sdkgo.Failu
 	// A lost checkpoint leaves the claim, so the next attempt counts this send.
 	_ = heartbeat.recordCanResend(sendCount)
 	return sdkgo.NewMutationRetry[Response](failure, retryAfter)
+}
+
+// selectAcceptedCreateUncertain ends a create OpenAI answered with 2xx but whose response ID cannot be
+// read: the response exists, and without an ID it can be neither read back nor safely sent again.
+func selectAcceptedCreateUncertain(failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[Response] {
+	failure.Message = "OpenAI accepted the create request, but " + failure.Message
+	return sdkgo.NewMutationUncertain(Response{}, failure, receipt)
 }
 
 // resendOrSelectUncertain returns Retry while a later attempt may create again, and uncertain at the cap.
@@ -522,7 +535,7 @@ func (operation RetrieveResponseOperation) Invoke(call sdkgo.Call, input Retriev
 func (client *Client) newRequest(call sdkgo.Call, method, path string, clientRequestID string, payload any) (*http.Request, *requestFailure) {
 	credential, err := client.credentials.Resolve(call)
 	if err != nil {
-		return nil, &requestFailure{failure: openAIFailure(sdkgo.FailureAuthentication, call.Operation.OperationID, "connection credentials are unavailable")}
+		return nil, &requestFailure{failure: openAIFailure(sdkgo.FailureAuthentication, call.Operation.OperationID, "connection credentials are unavailable"), isTransient: true}
 	}
 	if err := credential.Validate(); err != nil {
 		return nil, &requestFailure{failure: openAIFailure(sdkgo.FailureAuthentication, call.Operation.OperationID, "connection credentials are invalid")}

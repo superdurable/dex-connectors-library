@@ -94,7 +94,7 @@ func (operation RecordPaymentOperation) Invoke(call sdkgo.Call, input RecordPaym
 	}
 	result := client.exchange(call, recordPaymentOperationID, xeroRequest{method: http.MethodPut, path: "/Payments", payload: payload, isMutation: true})
 	receipt := client.receipt(call, result, "")
-	if attempt, isTerminal := mutationAttemptForExchange(result, requested, receipt, mutationBranches{
+	if attempt, isTerminal := mutationAttemptForExchange(call, result, requested, receipt, mutationBranches{
 		providerRejected: RecordPaymentBranchProviderRejected, dailyLimitReached: RecordPaymentBranchDailyLimitReached, defect: RecordPaymentBranchDefect,
 	}); isTerminal {
 		return attempt

@@ -848,6 +848,18 @@ def _uncertain_without_submitting(
     )
 
 
+def _accepted_attempt(
+    decision: _SubmissionDecision, sent: SentMessage
+) -> MutationAttempt[SentMessage] | None:
+    """Select sent with the rebuilt output when the server accepted an earlier submission, or None."""
+    if decision.kind != _SUBMISSION_ACCEPTED:
+        return None
+    # This attempt did not submit, so the accepted submission's Date header is unknown.
+    return MutationAttempt.branch_result(
+        "sent", replace(sent, sent_at=datetime.min.replace(tzinfo=UTC)), _receipt(sent.message_id)
+    )
+
+
 def _attempt_before_submitting(
     decision: _SubmissionDecision, operation: str, sent: SentMessage
 ) -> MutationAttempt[SentMessage] | None:
@@ -1002,6 +1014,9 @@ class SendMessageOperation:
             return _refuse_before_submitting(
                 decision, "defect", _failure(FailureKind.VALIDATION, operation, str(error)), operation, sent
             )
+        accepted = _accepted_attempt(decision, sent)
+        if accepted is not None:
+            return accepted
         blocked = _attempt_before_submitting(decision, operation, sent)
         if blocked is not None:
             return blocked
@@ -1051,8 +1066,9 @@ class ReplyToMessageOperation:
             failure = _failure(FailureKind.VALIDATION, operation, str(error))
             return _refuse_before_submitting(decision, "defect", failure, operation, identity)
         # The source may have moved since an earlier submission, so the checkpoint decides before reading it.
+        # An accepted reply reads the source only to rebuild its output, and never submits again.
         blocked = _attempt_before_submitting(decision, operation, identity)
-        if blocked is not None:
+        if blocked is not None and decision.kind != _SUBMISSION_ACCEPTED:
             return blocked
         try:
             source = await asyncio.to_thread(
@@ -1123,6 +1139,9 @@ class ReplyToMessageOperation:
             recipients = _unique_recipients(to, cc)
             sent = SentMessage(identifier, sender, recipients, subject, source.message_id, references, now)
         except MailFailure as error:
+            if blocked is not None:
+                # The reply was accepted earlier, and its source can no longer be read.
+                return blocked
             if error.outcome == "retry":
                 return await _retry_before_submitting(call, decision, error.failure)
             branches = {"not_found": "notFound", "invalid": "invalidResponse", "rejected": "providerRejected"}
@@ -1131,6 +1150,9 @@ class ReplyToMessageOperation:
         except ValueError as error:
             failure = _failure(FailureKind.VALIDATION, operation, str(error))
             return _refuse_before_submitting(decision, "defect", failure, operation, identity)
+        accepted = _accepted_attempt(decision, sent)
+        if accepted is not None:
+            return accepted
         return await _submit_attempt(
             self.client, call, decision, credentials, sender, recipients, content, sent, operation
         )

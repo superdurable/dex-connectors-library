@@ -72,7 +72,7 @@ export interface SendMessageStepConfig<StepInput, OperationInput = SendMessageIn
   connection: Connection<{ sendMessage(): Mutation<OperationInput, OperationOutput> }>;
   /** Name matching the bound connection. */
   connectionName: string;
-  /** The SMTP server accepted the message for delivery. */
+  /** The SMTP server accepted the message for delivery, in this attempt or, with a blank sentAt, in an earlier one. */
   sent: StepTarget<MutationResult<OperationOutput>>;
   /** The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, and no earlier attempt may have submitted it, so nothing was sent. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
@@ -100,7 +100,7 @@ export interface ReplyToMessageStepConfig<StepInput, OperationInput = ReplyToMes
   connection: Connection<{ replyToMessage(): Mutation<OperationInput, OperationOutput> }>;
   /** Name matching the bound connection. */
   connectionName: string;
-  /** The SMTP server accepted the reply for delivery. */
+  /** The SMTP server accepted the reply for delivery, in this attempt or, with a blank sentAt, in an earlier one. */
   sent: StepTarget<MutationResult<OperationOutput>>;
   /** The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, and no earlier attempt may have submitted the reply, so nothing was sent. */
   notFound?: StepTarget<MutationResult<OperationOutput>>;

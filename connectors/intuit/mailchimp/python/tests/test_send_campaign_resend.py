@@ -223,6 +223,45 @@ async def test_unprocessed_send_is_retried_without_counting_it() -> None:
         assert context.marker.send_count == 1
 
 
+class _BrokenStream(httpx.AsyncByteStream):
+    async def __aiter__(self):  # type: ignore[override]
+        yield b'{"partial":'
+        raise httpx.ReadError("body interrupted")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "accepted",
+    [
+        lambda: httpx.Response(200, json={"echo": "mailchimpfixturekey-us6"}),
+        lambda: httpx.Response(200, stream=_BrokenStream()),
+    ],
+    ids=["reflected key", "body broken after 2xx headers"],
+)
+async def test_accepted_2xx_with_an_unusable_body_is_sent_and_never_resent(
+    accepted: Callable[[], httpx.Response],
+) -> None:
+    """A 2xx accepted the send whatever its body holds."""
+    script = CampaignScript("save", accepted)
+    result = await send(script, AttemptContext())
+    assert branch(result) == "sent"
+    assert script.sends == 1
+
+
+@pytest.mark.asyncio
+async def test_read_failure_after_a_throttled_resend_keeps_the_earlier_send_count() -> None:
+    """With a possible earlier send, a pre-send Retry records no notSent that could hide it."""
+    answers = iter(
+        (campaign("save"), problem(500, "Internal Server Error"), campaign("save"),
+         problem(429, "Too Many Requests"), problem(503, "Service Unavailable"))
+    )
+    context = AttemptContext()
+    for attempt in (1, 2, 3):
+        context.attempt = attempt
+        assert isinstance(await send(lambda _request: next(answers), context), sdk.RetryError)
+    assert context.marker.state == "canResend" and context.marker.send_count == 1
+
+
 @pytest.mark.asyncio
 async def test_unknown_statuses_after_a_send_are_retried() -> None:
     """409, 425, and redirects do not prove a refusal."""

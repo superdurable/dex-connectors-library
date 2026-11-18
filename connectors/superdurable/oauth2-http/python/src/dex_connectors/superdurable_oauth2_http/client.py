@@ -65,6 +65,8 @@ _RESERVED = frozenset(
 _METHODS = frozenset({"GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"})
 # Only these statuses prove the API refused a request without processing it.
 _DEFINITE_REFUSALS = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+# A redirect of any other method may follow a processed write.
+_READ_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 _USER_AGENT = "superdurable-dex-oauth2-http-connector/0.1"
 _SEND_REQUEST = "sendRequest"
 _POST_NON_IDEMPOTENT = "postNonIdempotent"
@@ -446,8 +448,9 @@ class SendRequestOperation:
     async def invoke(self, call: Call, input: SendRequestInput) -> MutationAttempt[SendRequestOutput]:
         """Send the request, refreshing after one HTTP 401 when possible.
 
-        A 2xx selects completed; a redirect or a definite refusal selects rejected. Every other
-        outcome returns Retry; the declared uncertain branch is never selected.
+        A 2xx selects completed; a redirect of a GET, HEAD, or OPTIONS request or a definite
+        refusal selects rejected. Every other outcome, including a redirect of a POST, PUT, PATCH,
+        or DELETE, returns Retry; the declared uncertain branch is never selected.
         """
         try:
             request = _plan_request(
@@ -510,6 +513,17 @@ class SendRequestOperation:
         status = answer.status
         if 200 <= status < 300:
             return MutationAttempt.branch_result("completed", output, receipt)
+        if 300 <= status < 400 and request.method not in _READ_METHODS:
+            # A redirect, such as 303 See Other, may follow a processed write, so the write is sent again.
+            return MutationAttempt.retry(
+                _failure(
+                    _SEND_REQUEST,
+                    FailureKind.PROTOCOL,
+                    f"the API answered HTTP {status} to a {request.method}, "
+                    "which does not prove the request was refused",
+                ),
+                self._client._retry_after(answer),
+            )
         if 300 <= status < 400 or status in _DEFINITE_REFUSALS:
             # The connector never follows a redirect, so a redirect is reported like a refusal.
             return _branch(
@@ -646,12 +660,15 @@ class PostNonIdempotentOperation:
                 )
             return failed
         token = credentials.access_token.reveal()
+        is_send_started = False
+
+        async def send(write_deadline: datetime) -> _Exchange:
+            nonlocal is_send_started
+            is_send_started = True
+            return await client._exchange(call, request, token, _loop_deadline(write_deadline, deadline))
+
         try:
-            answer = await fence.dispatch(
-                lambda write_deadline: client._exchange(
-                    call, request, token, _loop_deadline(write_deadline, deadline)
-                )
-            )
+            answer = await fence.dispatch(send)
         except CheckpointError:
             return MutationAttempt.retry(
                 _failure(
@@ -682,6 +699,22 @@ class PostNonIdempotentOperation:
                 FailureKind.TRANSPORT,
                 "the POST was sent but the API did not answer completely",
                 _Exchange(),
+            )
+        except Exception:
+            if is_send_started:
+                return outcome.uncertain(
+                    SendRequestOutput(),
+                    FailureKind.TRANSPORT,
+                    "the POST may have been sent but the API did not answer completely",
+                    _Exchange(),
+                )
+            # Such as a lost notSent checkpoint when too little time remained.
+            return MutationAttempt.retry(
+                _failure(
+                    _POST_NON_IDEMPOTENT,
+                    FailureKind.AVAILABILITY,
+                    "the single-dispatch fence stopped before the POST was sent; nothing was sent",
+                )
             )
         return await outcome.attempt_for(answer, token, deadline)
 

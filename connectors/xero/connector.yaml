@@ -28,7 +28,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: "Largest complete Xero API response, in bytes, that one call reads. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when invoices carry hundreds of line items. An oversized read selects invalidResponse, and an oversized answer to an accepted createInvoice or recordPayment selects uncertain."
+        description: "Largest complete Xero API response, in bytes, that one call reads. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when invoices carry hundreds of line items. An oversized read selects invalidResponse, and an oversized answer to createInvoice or recordPayment repeats the identical keyed request, so Xero replays the first answer."
         required: false
         default: 4194304
       - name: pollInterval
@@ -323,8 +323,8 @@ spec:
         - {id: created, goName: Created, description: "Xero created the invoice, or returned the invoice this Step already created, with its number and totals."}
         - {id: providerRejected, goName: ProviderRejected, description: "Xero conclusively rejected the invoice, such as an unknown contact or account code, a locked period, a plan's invoice limit, or a missing scope; nothing was created.", optional: true}
         - {id: dailyLimitReached, goName: DailyLimitReached, description: "Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was created; the Receipt carries retryAfterSeconds.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "Kept for compatibility and never selected: an internal error or an unusable invoice repeats the identical keyed request until the retry budget runs out.", optional: true}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "On a later attempt, which may follow a created invoice, Xero refused the credentials or the connection became unusable, so the outcome cannot be confirmed; read back with listInvoices by reference. An internal error or an unusable invoice repeats the identical keyed request instead.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid on the Step's first attempt.", optional: true}
       # Async: every attempt carries the Step's Idempotency-Key, and four minutes keeps every retry inside Xero's six-minute key lifetime.
       execution:
         executeMethodTimeout: 30s
@@ -360,8 +360,8 @@ spec:
         - {id: recorded, goName: Recorded, description: "Xero recorded the payment, or returned the payment this Step already recorded, with the invoice's remaining amount due."}
         - {id: providerRejected, goName: ProviderRejected, description: "Xero conclusively rejected the payment, such as an amount above the amount due, an invoice that is not approved, an account that cannot take payments, or a locked period; nothing was recorded.", optional: true}
         - {id: dailyLimitReached, goName: DailyLimitReached, description: "Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was recorded; the Receipt carries retryAfterSeconds.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "Kept for compatibility and never selected: an internal error or an unusable payment repeats the identical keyed request until the retry budget runs out.", optional: true}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "On a later attempt, which may follow a recorded payment, Xero refused the credentials or the connection became unusable, so the outcome cannot be confirmed; read the invoice back with getInvoice. An internal error or an unusable payment repeats the identical keyed request instead.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid on the Step's first attempt.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async

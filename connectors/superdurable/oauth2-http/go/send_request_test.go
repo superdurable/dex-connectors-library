@@ -186,7 +186,6 @@ func TestSendRequestMapsAnswersToBranches(t *testing.T) {
 		{http.StatusOK, oauth2http.SendRequestBranchCompleted, ""},
 		{http.StatusCreated, oauth2http.SendRequestBranchCompleted, ""},
 		{http.StatusNoContent, oauth2http.SendRequestBranchCompleted, ""},
-		{http.StatusFound, oauth2http.SendRequestBranchRejected, sdkgo.FailureProviderRejection},
 		{http.StatusBadRequest, oauth2http.SendRequestBranchRejected, sdkgo.FailureValidation},
 		{http.StatusForbidden, oauth2http.SendRequestBranchRejected, sdkgo.FailureAuthorization},
 		{http.StatusNotFound, oauth2http.SendRequestBranchRejected, sdkgo.FailureNotFound},
@@ -220,6 +219,32 @@ func TestSendRequestMapsAnswersToBranches(t *testing.T) {
 				require.Contains(t, result.Failure.Message, strconv.Itoa(test.statusCode))
 				require.NotContains(t, result.Failure.Message, "body of", "a failure never repeats the answer's text")
 			}
+		})
+	}
+}
+
+func TestSendRequestRejectsARedirectOfAReadAndRepeatsARedirectOfAWrite(t *testing.T) {
+	for _, statusCode := range []int{http.StatusFound, http.StatusSeeOther, http.StatusTemporaryRedirect} {
+		t.Run(strconv.Itoa(statusCode), func(t *testing.T) {
+			session := newTestSession(t, nil, time.Hour)
+			session.server.api = func(response http.ResponseWriter, _ *http.Request) {
+				response.Header().Set("Location", "http://127.0.0.1:1/redirected")
+				response.WriteHeader(statusCode)
+			}
+
+			for _, method := range []string{"GET", "HEAD", "OPTIONS"} {
+				result, err := session.send(t, "read-redirect", oauth2http.SendRequestInput{Method: method, Path: "/things"})
+				require.NoError(t, err, method)
+				require.Equal(t, oauth2http.SendRequestBranchRejected, result.Branch, method)
+				require.Equal(t, sdkgo.FailureProviderRejection, result.Failure.Kind, method)
+			}
+			for _, method := range []string{"POST", "PUT", "PATCH", "DELETE"} {
+				_, err := session.send(t, "write-redirect", oauth2http.SendRequestInput{Method: method, Path: "/things"})
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry, "a redirect may follow a processed %s", method)
+				require.Equal(t, sdkgo.FailureProtocol, retry.Failure.Kind, method)
+			}
+			require.Len(t, session.server.requests(), 7, "redirects are never followed")
 		})
 	}
 }

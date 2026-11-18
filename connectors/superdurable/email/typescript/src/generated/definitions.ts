@@ -78,7 +78,7 @@ export const SendMessageBranch = {
   Uncertain: "uncertain",
   Defect: "defect",
 } as const;
-/** The SMTP server accepted the message for delivery. */
+/** The SMTP server accepted the message for delivery, in this attempt or, with a blank sentAt, in an earlier one. */
 export const SendMessageBranchSent = SendMessageBranch.Sent;
 /** The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, and no earlier attempt may have submitted it, so nothing was sent. */
 export const SendMessageBranchProviderRejected = SendMessageBranch.ProviderRejected;
@@ -90,7 +90,7 @@ export const SendMessageBranchDefect = SendMessageBranch.Defect;
 export const SendMessageDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "sendMessage" },
   branches: [
-    { id: "sent", description: "The SMTP server accepted the message for delivery." },
+    { id: "sent", description: "The SMTP server accepted the message for delivery, in this attempt or, with a blank sentAt, in an earlier one." },
     { id: "providerRejected", description: "The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, and no earlier attempt may have submitted it, so nothing was sent.", optional: true },
     { id: "uncertain", description: "Submissions may have been sent as often as the send cap allows, but the server's answer to the last one was lost or a later attempt could not settle it; the connector does not submit it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
@@ -111,7 +111,7 @@ export const ReplyToMessageBranch = {
   Uncertain: "uncertain",
   Defect: "defect",
 } as const;
-/** The SMTP server accepted the reply for delivery. */
+/** The SMTP server accepted the reply for delivery, in this attempt or, with a blank sentAt, in an earlier one. */
 export const ReplyToMessageBranchSent = ReplyToMessageBranch.Sent;
 /** The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, and no earlier attempt may have submitted the reply, so nothing was sent. */
 export const ReplyToMessageBranchNotFound = ReplyToMessageBranch.NotFound;
@@ -127,7 +127,7 @@ export const ReplyToMessageBranchDefect = ReplyToMessageBranch.Defect;
 export const ReplyToMessageDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "replyToMessage" },
   branches: [
-    { id: "sent", description: "The SMTP server accepted the reply for delivery." },
+    { id: "sent", description: "The SMTP server accepted the reply for delivery, in this attempt or, with a blank sentAt, in an earlier one." },
     { id: "notFound", description: "The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, and no earlier attempt may have submitted the reply, so nothing was sent.", optional: true },
     { id: "providerRejected", description: "The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, and no earlier attempt may have submitted it, so nothing was sent.", optional: true },
     { id: "invalidResponse", description: "The source message has no usable reply address or could not be parsed, and no earlier attempt may have submitted the reply, so nothing was sent.", optional: true },

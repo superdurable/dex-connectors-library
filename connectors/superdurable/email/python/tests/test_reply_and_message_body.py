@@ -108,6 +108,60 @@ async def test_reply_source_failure_after_an_earlier_possible_submission_is_unce
         assert attempt.branch == expected
 
 
+@pytest.mark.asyncio
+async def test_reply_replay_after_an_accepted_reply_is_sent_without_submitting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The checkpoint proves acceptance, so a replay rebuilds the output from the source and selects sent."""
+    import dex
+    from dex_connectors.sdk import Call, CallID, ConnectionRef, IdempotencyKey, OperationRef
+
+    from dex_connectors.superdurable_email._generated.definitions import REPLY_TO_MESSAGE_DEFINITION
+    from dex_connectors.superdurable_email.client import MailFailure
+    from dex_connectors.superdurable_email.operations import _failure, _SubmissionMarker
+
+    source = Message(
+        reference=MessageReference("INBOX", 42, 97),
+        message_id="original@example.com",
+        from_=EmailAddress("Jane", "jane@example.com"),
+        subject="Refund",
+        received_at=datetime.now(UTC),
+        text_source="none",
+    )
+    client = make_client()
+    monkeypatch.setattr(client, "open_smtp", lambda *_: pytest.fail("connected"))
+    identifier = CallID("00000000-0000-4000-8000-000000000003")
+
+    def accepted_call() -> Call:
+        context = Context(attempt=2, visible_marker=_SubmissionMarker(str(identifier), 1, 1, True))
+        return Call(
+            identifier,
+            ConnectionRef("email", "mail"),
+            OperationRef("email", "replyToMessage"),
+            IdempotencyKey(identifier),
+            context=cast(dex.AsyncContext, context),
+            max_sends=REPLY_TO_MESSAGE_DEFINITION.max_sends,
+        )
+
+    monkeypatch.setattr(operations, "_read_message", lambda *_: source)
+    replayed = await client.reply_to_message().invoke(
+        accepted_call(), ReplyToMessageInput(MessageReference("INBOX", 42, 97), "Thanks")
+    )
+    assert replayed.kind == "branch" and replayed.branch == "sent"
+    assert replayed.value is not None and replayed.value.recipients == ("jane@example.com",)
+    assert replayed.value.in_reply_to == "original@example.com"
+    assert replayed.value.sent_at == datetime.min.replace(tzinfo=UTC)
+
+    def temporarily_unreadable(*_: object) -> Message:
+        raise MailFailure("retry", _failure(operations.FailureKind.AVAILABILITY, "replyToMessage", "busy"))
+
+    monkeypatch.setattr(operations, "_read_message", temporarily_unreadable)
+    unreadable = await client.reply_to_message().invoke(
+        accepted_call(), ReplyToMessageInput(MessageReference("INBOX", 42, 97), "Thanks")
+    )
+    assert unreadable.kind == "uncertain", "an unreadable source cannot rebuild the output"
+
+
 def test_html_fallback_extracts_visible_text_and_attachment_names(monkeypatch: pytest.MonkeyPatch) -> None:
     """GetMessage uses visible HTML when plain text is absent and lists attachments."""
     body = (

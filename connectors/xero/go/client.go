@@ -639,7 +639,10 @@ type mutationBranches struct {
 }
 
 // mutationAttemptForExchange retries every unknown outcome, including a 500 or an unusable answer, under the key.
-func mutationAttemptForExchange[OUT any](result xeroExchange, requested OUT, receipt sdkgo.Receipt, branches mutationBranches) (sdkgo.MutationAttempt[OUT], bool) {
+// On a later attempt, which may follow a created write, a local failure or a credential refusal selects
+// uncertain: Xero checks credentials before it replays the keyed answer, so they cannot prove nothing was written.
+func mutationAttemptForExchange[OUT any](call sdkgo.Call, result xeroExchange, requested OUT, receipt sdkgo.Receipt, branches mutationBranches) (sdkgo.MutationAttempt[OUT], bool) {
+	hasPossibleEarlierSend := call.Context != nil && call.Context.Attempt() > 1
 	switch result.outcome {
 	case exchangeSucceeded:
 		return sdkgo.MutationAttempt[OUT]{}, false
@@ -648,16 +651,27 @@ func mutationAttemptForExchange[OUT any](result xeroExchange, requested OUT, rec
 	case exchangeDailyLimit:
 		return sdkgo.NewMutationBranch(branches.dailyLimitReached, requested, &result.failure, receipt), true
 	case exchangeDefect:
+		if hasPossibleEarlierSend {
+			return sdkgo.NewMutationUncertain(requested, result.failure, receipt), true
+		}
 		return sdkgo.NewMutationBranch(branches.defect, requested, &result.failure, receipt), true
 	case exchangeRejected:
 		if status := result.response.statusCode; status >= 300 && !isDefiniteRefusalStatus(status) {
 			// A 409, 501, 3xx, or other unlisted status does not prove a refusal; the key makes the repeat safe.
 			return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
 		}
+		if hasPossibleEarlierSend && isCredentialFailure(result.failure.Kind) {
+			return sdkgo.NewMutationUncertain(requested, result.failure, receipt), true
+		}
 		return sdkgo.NewMutationBranch(branches.providerRejected, requested, &result.failure, receipt), true
 	default:
 		return sdkgo.NewMutationBranch(branches.providerRejected, requested, &result.failure, receipt), true
 	}
+}
+
+// isCredentialFailure reports a 401, a 403, or a revoked grant, which Xero answers before reading the key.
+func isCredentialFailure(kind sdkgo.FailureKind) bool {
+	return kind == sdkgo.FailureAuthentication || kind == sdkgo.FailureAuthorization
 }
 
 // isDefiniteRefusalStatus lists the statuses that prove a write was refused; 409, 501, 3xx, and others are unknown.

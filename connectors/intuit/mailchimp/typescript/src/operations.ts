@@ -187,7 +187,8 @@ class SendCampaignAttempt {
       return newMutationRetry(mailchimpFailure(operation, 'AVAILABILITY', 'too little of the Step deadline remained to send; nothing was sent in this attempt'));
     }
     const receipt = this.client.receipt(this.call, sent, this.input.campaignId);
-    if (sent.outcome === 'succeeded') return newMutationBranch('sent', output, receipt);
+    // A 2xx accepted the send even when its body is unreadable or oversized; it is never resent.
+    if (sent.outcome === 'succeeded' || (sent.status >= 200 && sent.status < 300)) return newMutationBranch('sent', output, receipt);
     if (sent.outcome === 'rateLimited' || sent.outcome === 'notSent' || (sent.outcome === 'unavailable' && sent.status === 503)) {
       try { await this.fence.recordCanResend(); }
       catch { return newMutationRetry(mailchimpFailure(operation, 'AVAILABILITY', 'the Mailchimp retry checkpoint could not be recorded')); }
@@ -205,8 +206,8 @@ class SendCampaignAttempt {
 
   /** Record notSent before a pre-send Retry so the next attempt does not count a send. */
   private async retryBeforeSend(failure: Failure, retryAfterMs: number): Promise<MutationAttempt<SendCampaignOutput>> {
-    // After readBackThenResendAllowed, notSent would hide the earlier possible send.
-    if (this.decisionKind === 'sendAllowed') {
+    // After a possible earlier send, notSent could hide it, so the earlier marker stays.
+    if (this.decisionKind === 'sendAllowed' && !this.hasPossibleEarlierSend) {
       try { await this.fence.recordNotSent(); }
       catch { return newMutationRetry(mailchimpFailure('sendCampaign', 'AVAILABILITY', 'the no-send checkpoint could not be recorded; nothing was sent in this attempt')); }
     }

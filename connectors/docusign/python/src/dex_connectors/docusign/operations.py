@@ -6,7 +6,7 @@ import asyncio
 import hashlib
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from dataclasses import field as dataclass_field
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal, TypeVar, overload
@@ -61,6 +61,10 @@ Output = TypeVar("Output")
 class _CreateDispatchCheckpoint:
     is_dispatched: bool = dataclass_field(metadata={"dex_json_name": "isDispatched"})
     dispatched_at: str = dataclass_field(metadata={"dex_json_name": "dispatchedAt"})
+    # Zero marks a checkpoint from an earlier release, which has no exact send count.
+    attempt: int = dataclass_field(default=0, metadata={"dex_json_name": "attempt"})
+    send_count: int = dataclass_field(default=0, metadata={"dex_json_name": "sendCount"})
+    is_accepted: bool = dataclass_field(default=False, metadata={"dex_json_name": "isAccepted"})
 
 
 def _go_timestamp(value: datetime) -> str:
@@ -514,14 +518,20 @@ class VoidEnvelopeOperation:
             envelope = _decode_envelope(read.body)
             if envelope.envelope_id != envelope_id:
                 raise ValueError("DocuSign returned a malformed response")
-        except (BodyTooLargeError, ProviderTransportError) as error:
+        except BodyTooLargeError:
+            # The status read-back is inconclusive, and voiding again is safe.
+            return MutationAttempt.retry(
+                failure(
+                    operation,
+                    FailureKind.RESPONSE_TOO_LARGE,
+                    "DocuSign response exceeds the configured maxResponseBytes",
+                )
+            )
+        except ProviderTransportError as error:
             return _read_error(self.client, operation, error, zero, envelope_id, True)
         except ValueError:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                zero,
-                receipt,
-                failure(operation, FailureKind.PROTOCOL, "DocuSign returned a malformed response"),
+            return MutationAttempt.retry(
+                failure(operation, FailureKind.PROTOCOL, "DocuSign returned a malformed response")
             )
         if envelope.status == "voided":
             return MutationAttempt.branch_result(
@@ -727,57 +737,6 @@ class CreateEnvelopeFromTemplateOperation:
                 "defect", zero, Receipt(), failure(operation, FailureKind.VALIDATION, str(error))
             )
         context = call.context
-        prior = False
-        checkpoint = None
-        if context is not None:
-            try:
-                if context.has_last_heartbeat_value():
-                    checkpoint = context.get_last_heartbeat_value(_CreateDispatchCheckpoint)
-                    prior = checkpoint is not None and checkpoint.is_dispatched
-            except Exception:
-                prior = True
-        if prior and checkpoint is None and context is not None:
-            checkpoint = _CreateDispatchCheckpoint(True, _go_timestamp(context.first_attempt_at))
-        # Each attempt sends at most once, so attempt - 1 bounds the earlier sends.
-        attempt = context.attempt if context is not None else 1
-        has_possible_earlier_send = attempt > 1
-        can_send_now = attempt - 1 < call.max_sends
-        can_resend_later = attempt < call.max_sends
-        try:
-            session = await self.client.open_session(call, operation)
-        except SessionFailure as error:
-            if not (prior or has_possible_earlier_send):
-                return _session_attempt(error, zero, True)
-            if prior and context is not None:
-                await _record_checkpoint(context, checkpoint)
-            if error.category == "retry":
-                return MutationAttempt.retry(error.failure, error.retry_after)
-            unknown = failure(
-                operation,
-                error.failure.kind,
-                "an earlier attempt may have sent the DocuSign create request and its outcome is unknown; "
-                + error.failure.message,
-            )
-            return self._resend_later_or_uncertain(can_resend_later, unknown)
-        if prior or has_possible_earlier_send:
-            recovered = await self._read_back(
-                call, session, marker_value, "before", checkpoint if prior else None
-            )
-            if recovered is not None:
-                return recovered
-            if not can_send_now:
-                if prior and context is not None:
-                    await _record_checkpoint(context, checkpoint)
-                return MutationAttempt.uncertain(
-                    zero,
-                    failure(
-                        operation,
-                        FailureKind.TRANSPORT,
-                        "an earlier attempt may have sent the DocuSign create request "
-                        "and its outcome is unknown",
-                    ),
-                    self.client.receipt(),
-                )
         if context is None:
             return MutationAttempt.retry(
                 failure(
@@ -786,10 +745,39 @@ class CreateEnvelopeFromTemplateOperation:
                     "the create checkpoint could not be recorded, so nothing was sent to DocuSign",
                 )
             )
-        if not prior or checkpoint is None:
-            checkpoint = _CreateDispatchCheckpoint(True, _go_timestamp(self.client.now()))
+        checkpoint, prior, sends = _earlier_create_dispatch(context, call.max_sends)
+        is_possibly_sent = prior or sends.has_possible_earlier_send
         try:
-            await context.heartbeat(checkpoint)
+            session = await self.client.open_session(call, operation)
+        except SessionFailure as error:
+            if not is_possibly_sent:
+                if error.category == "retry":
+                    await self._record_unsent_attempt(context, checkpoint, prior, sends)
+                return _session_attempt(error, zero, True)
+            if error.category == "retry":
+                await self._record_unsent_attempt(context, checkpoint, prior, sends)
+                return MutationAttempt.retry(error.failure, error.retry_after)
+            if prior:
+                # The re-recorded checkpoint counts this attempt as a send, bounding a lasting failure.
+                await _record_checkpoint(context, checkpoint)
+            unknown = failure(
+                operation,
+                error.failure.kind,
+                "an earlier attempt may have sent the DocuSign create request and its outcome is unknown; "
+                + error.failure.message,
+            )
+            if sends.is_accepted:
+                return self._read_back_later_or_uncertain(sends.can_read_back_later, unknown)
+            return self._resend_later_or_uncertain(sends.can_resend_later, unknown)
+        if is_possibly_sent:
+            decided = await self._find_before_resend(call, session, marker_value, checkpoint, prior, sends)
+            if decided is not None:
+                return decided
+        dispatched = sends.dispatch_checkpoint(
+            context, checkpoint if prior else None, _go_timestamp(self.client.now())
+        )
+        try:
+            await context.heartbeat(dispatched)
         except Exception:
             return MutationAttempt.retry(
                 failure(
@@ -800,9 +788,35 @@ class CreateEnvelopeFromTemplateOperation:
             )
         try:
             response = await self.client.request(call, session, "POST", "/envelopes", body=body, timeout=40)
+        except BodyTooLargeError:
+            return await self._recover_accepted(
+                call,
+                session,
+                marker_value,
+                dispatched,
+                sends,
+                failure(
+                    operation,
+                    FailureKind.RESPONSE_TOO_LARGE,
+                    "DocuSign accepted the create request but its answer could not be read",
+                ),
+            )
         except ProviderTransportError as error:
+            if error.status_code is not None and 200 <= error.status_code < 300:
+                return await self._recover_accepted(
+                    call,
+                    session,
+                    marker_value,
+                    dispatched,
+                    sends,
+                    failure(
+                        operation,
+                        FailureKind.PROTOCOL,
+                        "DocuSign accepted the create request but its answer could not be read",
+                    ),
+                )
             if error.provably_not_sent:
-                await _release_checkpoint(context, checkpoint if prior else None)
+                await self._record_unsent_attempt(context, checkpoint, prior, sends)
                 return MutationAttempt.retry(
                     failure(
                         operation,
@@ -810,49 +824,120 @@ class CreateEnvelopeFromTemplateOperation:
                         "DocuSign could not be reached, so no envelope was created",
                     )
                 )
-            return await self._recover_or_uncertain(call, session, marker_value, can_resend_later)
-        except BodyTooLargeError:
-            return await self._recover_or_uncertain(call, session, marker_value, can_resend_later)
-        if response.status in (200, 201):
+            return await self._recover_or_uncertain(call, session, marker_value, dispatched, sends)
+        if 200 <= response.status < 300:
             try:
+                if response.status not in (200, 201):
+                    raise ValueError("unexpected success status")
                 created = _decode_created(response.body, input.is_draft)
                 return MutationAttempt.branch_result(
                     "created", created, self.client.receipt(created.envelope_id)
                 )
             except ValueError:
-                return await self._recover_or_uncertain(
+                message = (
+                    "DocuSign accepted the create request but returned an unusable envelope summary"
+                    if response.status in (200, 201)
+                    else f"DocuSign accepted the create request with HTTP {response.status} instead of 201"
+                )
+                return await self._recover_accepted(
                     call,
                     session,
                     marker_value,
-                    can_resend_later,
-                    failure(
-                        operation,
-                        FailureKind.PROTOCOL,
-                        "DocuSign accepted the create request but returned an unusable envelope summary",
-                    ),
+                    dispatched,
+                    sends,
+                    failure(operation, FailureKind.PROTOCOL, message),
                 )
         outcome = self.client.classify(operation, response)
-        if outcome.retry and response.status < 500 and response.status != 408:
-            await _release_checkpoint(context, checkpoint if prior else None)
+        if response.status == 503 or (outcome.retry and response.status < 500 and response.status != 408):
+            # DocuSign answers a rate limit or 503 before it processes the request.
+            await self._record_unsent_attempt(context, checkpoint, prior, sends)
             return MutationAttempt.retry(outcome.failure, outcome.retry_after)
-        if response.status in _DEFINITE_REFUSAL_STATUSES and prior:
+        if response.status in _DEFINITE_REFUSAL_STATUSES and is_possibly_sent:
             # This send was refused, but an earlier attempt's create may still exist.
             return MutationAttempt.uncertain(
                 zero, outcome.failure, self.client.receipt("", outcome.error_code)
             )
         if response.status in _DEFINITE_REFUSAL_STATUSES:
+            await self._record_unsent_attempt(context, checkpoint, prior, sends)
             return MutationAttempt.branch_result(
                 "providerRejected", zero, self.client.receipt("", outcome.error_code), outcome.failure
             )
         return await self._recover_or_uncertain(
-            call, session, marker_value, can_resend_later, outcome.failure
+            call, session, marker_value, dispatched, sends, outcome.failure
         )
+
+    async def _record_unsent_attempt(
+        self,
+        context: Any,
+        earlier: _CreateDispatchCheckpoint | None,
+        prior: bool,
+        sends: "_CreateSendBudget",
+    ) -> None:
+        """Record that this attempt provably sent nothing, so a later attempt does not count it."""
+        dispatched = sends.dispatch_checkpoint(
+            context, earlier if prior else None, _go_timestamp(self.client.now())
+        )
+        await _record_checkpoint(
+            context,
+            _CreateDispatchCheckpoint(
+                prior or sends.has_possible_earlier_send,
+                dispatched.dispatched_at,
+                sends.attempt,
+                sends.prior_sends,
+                sends.is_accepted,
+            ),
+        )
+
+    async def _find_before_resend(
+        self,
+        call: Call,
+        session: Session,
+        marker_value: str,
+        checkpoint: _CreateDispatchCheckpoint | None,
+        prior: bool,
+        sends: "_CreateSendBudget",
+    ) -> MutationAttempt[CreatedEnvelope] | None:
+        """Read back before a later attempt sends; None lets it send below the cap."""
+        context = call.context
+        message = (
+            "DocuSign accepted an earlier attempt's create request, but the envelope could not be found yet"
+            if sends.is_accepted
+            else "an earlier attempt may have sent the DocuSign create request and its outcome is unknown"
+        )
+        unknown = failure("createEnvelopeFromTemplate", FailureKind.TRANSPORT, message)
+        recovered = await self._read_back(
+            call,
+            session,
+            marker_value,
+            "after" if sends.is_accepted and not sends.can_read_back_later else "before",
+            checkpoint if prior else None,
+        )
+        if recovered is not None:
+            if recovered.kind == "retry":
+                await self._record_unsent_attempt(context, checkpoint, prior, sends)
+            return recovered
+        if sends.can_send_now:
+            return None
+        if sends.is_accepted and sends.can_read_back_later:
+            await self._record_unsent_attempt(context, checkpoint, prior, sends)
+            return MutationAttempt.retry(unknown)
+        if prior:
+            await _record_checkpoint(context, checkpoint)
+        return MutationAttempt.uncertain(CreatedEnvelope(status=""), unknown, self.client.receipt())
 
     def _resend_later_or_uncertain(
         self, can_resend_later: bool, unknown: Failure
     ) -> MutationAttempt[CreatedEnvelope]:
         if can_resend_later:
             # The checkpoint stays the last heartbeat, so the next attempt reads back before it sends.
+            return MutationAttempt.retry(unknown)
+        return MutationAttempt.uncertain(CreatedEnvelope(status=""), unknown, self.client.receipt())
+
+    def _read_back_later_or_uncertain(
+        self, can_read_back_later: bool, unknown: Failure
+    ) -> MutationAttempt[CreatedEnvelope]:
+        """Let a later attempt read an accepted create back, never resend it."""
+        if can_read_back_later:
             return MutationAttempt.retry(unknown)
         return MutationAttempt.uncertain(CreatedEnvelope(status=""), unknown, self.client.receipt())
 
@@ -890,8 +975,6 @@ class CreateEnvelopeFromTemplateOperation:
         except BodyTooLargeError:
             return None
         except ProviderTransportError:
-            if mode == "before" and checkpoint is not None and context is not None:
-                await _record_checkpoint(context, checkpoint)
             return (
                 MutationAttempt.retry(
                     failure(
@@ -907,8 +990,6 @@ class CreateEnvelopeFromTemplateOperation:
         if response.status != 200:
             outcome = self.client.classify("createEnvelopeFromTemplate", response)
             if outcome.retry and mode != "after":
-                if checkpoint is not None and context is not None:
-                    await _record_checkpoint(context, checkpoint)
                 return MutationAttempt.retry(outcome.failure, outcome.retry_after)
             return None
         try:
@@ -946,25 +1027,17 @@ class CreateEnvelopeFromTemplateOperation:
         call: Call,
         session: Session,
         marker_value: str,
-        can_resend_later: bool,
+        dispatched: _CreateDispatchCheckpoint,
+        sends: "_CreateSendBudget",
         reason: Failure | None = None,
     ) -> MutationAttempt[CreatedEnvelope]:
         """Read back after this attempt's unknown send; a miss resends later below the cap."""
-        checkpoint = _CreateDispatchCheckpoint(True, _go_timestamp(self.client.now()))
-        context = call.context
-        if context is not None and context.has_last_heartbeat_value():
-            try:
-                stored = context.get_last_heartbeat_value(_CreateDispatchCheckpoint)
-                if stored is not None:
-                    checkpoint = stored
-            except Exception:
-                checkpoint = _CreateDispatchCheckpoint(True, _go_timestamp(context.first_attempt_at))
-        recovered = await self._read_back(call, session, marker_value, "after", checkpoint)
+        recovered = await self._read_back(call, session, marker_value, "after", dispatched)
         if recovered is not None:
             return recovered
         # Listings can lag, so a miss is not proof; the next attempt reads back again before it sends.
         return self._resend_later_or_uncertain(
-            can_resend_later,
+            sends.can_resend_later,
             reason
             or failure(
                 "createEnvelopeFromTemplate",
@@ -972,6 +1045,25 @@ class CreateEnvelopeFromTemplateOperation:
                 "DocuSign's answer to the create request was lost",
             ),
         )
+
+    async def _recover_accepted(
+        self,
+        call: Call,
+        session: Session,
+        marker_value: str,
+        dispatched: _CreateDispatchCheckpoint,
+        sends: "_CreateSendBudget",
+        reason: Failure,
+    ) -> MutationAttempt[CreatedEnvelope]:
+        """Mark a 2xx create accepted, so no attempt sends it again, and read it back."""
+        accepted = replace(dispatched, is_accepted=True)
+        if call.context is not None:
+            # A lost record leaves the dispatch checkpoint, which still forces a read-back.
+            await _record_checkpoint(call.context, accepted)
+        recovered = await self._read_back(call, session, marker_value, "after", accepted)
+        if recovered is not None:
+            return recovered
+        return self._read_back_later_or_uncertain(sends.can_read_back_later, reason)
 
 
 def _tagged_envelopes(body: bytes, marker_value: str) -> list[Envelope]:
@@ -990,19 +1082,77 @@ def _tagged_envelopes(body: bytes, marker_value: str) -> list[Envelope]:
     return matches
 
 
-async def _release_checkpoint(context: Any, earlier_checkpoint: _CreateDispatchCheckpoint | None) -> None:
-    """Clear this attempt's checkpoint, but keep an earlier attempt's, whose create may exist."""
-    if earlier_checkpoint is not None:
-        await _record_checkpoint(context, earlier_checkpoint)
-        return
-    await _clear_checkpoint(context)
+@dataclass(frozen=True, slots=True)
+class _CreateSendBudget:
+    """Possible earlier creates: a checkpoint's send count plus the attempts after it, else attempt - 1."""
+
+    attempt: int
+    prior_sends: int
+    max_sends: int
+    is_accepted: bool
+
+    @property
+    def has_possible_earlier_send(self) -> bool:
+        return self.prior_sends > 0
+
+    @property
+    def can_send_now(self) -> bool:
+        return not self.is_accepted and self.prior_sends < self.max_sends
+
+    @property
+    def can_resend_later(self) -> bool:
+        return not self.is_accepted and self.prior_sends + 1 < self.max_sends
+
+    @property
+    def can_read_back_later(self) -> bool:
+        # Read-back attempts send nothing, so the attempt number bounds them.
+        return self.attempt < self.max_sends
+
+    def dispatch_checkpoint(
+        self, context: Any, earlier: _CreateDispatchCheckpoint | None, now: str
+    ) -> _CreateDispatchCheckpoint:
+        """Return the checkpoint recorded before this attempt sends, keeping the earliest dispatch time."""
+        dispatched_at = now
+        if earlier is not None:
+            dispatched_at = earlier.dispatched_at
+        elif self.has_possible_earlier_send:
+            dispatched_at = _go_timestamp(context.first_attempt_at)
+        return _CreateDispatchCheckpoint(True, dispatched_at, self.attempt, self.prior_sends + 1, False)
 
 
-async def _clear_checkpoint(context: Any) -> None:
+def _earlier_create_dispatch(
+    context: Any, max_sends: int
+) -> tuple[_CreateDispatchCheckpoint | None, bool, _CreateSendBudget]:
+    """Return an earlier checkpoint, whether a create may have been dispatched, and the send budget."""
+    attempt = context.attempt
+    fallback = _CreateSendBudget(attempt, max(attempt - 1, 0), max_sends, False)
     try:
-        await context.heartbeat()
+        if not context.has_last_heartbeat_value():
+            return None, False, fallback
+        checkpoint = context.get_last_heartbeat_value(_CreateDispatchCheckpoint)
     except Exception:
-        pass  # A lost clear still forces read-back before a later send.
+        return _CreateDispatchCheckpoint(True, _go_timestamp(context.first_attempt_at)), True, fallback
+    if checkpoint is None:
+        return None, False, fallback
+    if checkpoint.is_dispatched and not checkpoint.dispatched_at:
+        return _CreateDispatchCheckpoint(True, _go_timestamp(context.first_attempt_at)), True, fallback
+    prior_sends = fallback.prior_sends
+    if _has_exact_send_count(checkpoint, attempt):
+        prior_sends = checkpoint.send_count + attempt - 1 - checkpoint.attempt
+    return (
+        checkpoint,
+        checkpoint.is_dispatched,
+        _CreateSendBudget(attempt, prior_sends, max_sends, checkpoint.is_accepted),
+    )
+
+
+def _has_exact_send_count(checkpoint: _CreateDispatchCheckpoint, attempt: int) -> bool:
+    """Report an earlier attempt's checkpoint whose count one send per attempt could produce."""
+    return (
+        1 <= checkpoint.attempt < attempt
+        and 0 <= checkpoint.send_count <= checkpoint.attempt
+        and (checkpoint.is_dispatched or checkpoint.send_count == 0)
+    )
 
 
 async def _record_checkpoint(context: Any, checkpoint: _CreateDispatchCheckpoint | None) -> None:

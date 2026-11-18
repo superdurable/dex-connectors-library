@@ -9,9 +9,16 @@ from types import SimpleNamespace
 
 import httpx
 import pytest
+from dex_connectors.sdk import FailureKind
 
 from dex_connectors.superdurable_oauth2_http import Config
-from dex_connectors.superdurable_oauth2_http.client import Client, _parse_go_query, _RequestPlan
+from dex_connectors.superdurable_oauth2_http.client import (
+    Client,
+    SendRequestOperation,
+    _Exchange,
+    _parse_go_query,
+    _RequestPlan,
+)
 
 
 def _client(http_client: httpx.AsyncClient) -> Client:
@@ -49,6 +56,23 @@ async def test_gzip_body_is_decoded_before_bounding() -> None:
         )
     assert answer.body == payload
     assert not answer.error
+
+
+@pytest.mark.parametrize("status", [302, 303, 307])
+def test_redirect_rejects_a_read_and_repeats_a_write(status: int) -> None:
+    operation = SendRequestOperation(_client(httpx.AsyncClient()))
+    call = SimpleNamespace(id="call-id", idempotency_key="call-id")
+    location = httpx.Headers({"Location": "http://outside.example/"})
+    answer = _Exchange(status, location, b"", is_dispatched=True)
+    for method in ("GET", "HEAD", "OPTIONS"):
+        plan = _RequestPlan(method, "http://127.0.0.1/v1/items", {}, "", "")
+        attempt = operation._attempt_for(call, plan, answer, ["synthetic-token"])  # type: ignore[arg-type]
+        assert attempt.branch == "rejected", method
+    for method in ("POST", "PUT", "PATCH", "DELETE"):
+        plan = _RequestPlan(method, "http://127.0.0.1/v1/items", {}, "{}", "")
+        attempt = operation._attempt_for(call, plan, answer, ["synthetic-token"])  # type: ignore[arg-type]
+        assert attempt.kind == "retry", method
+        assert attempt.failure is not None and attempt.failure.kind == FailureKind.PROTOCOL
 
 
 class _SlowBody(httpx.AsyncByteStream):

@@ -156,7 +156,8 @@ func (attempt *sendCampaignAttempt) send(output SendCampaignOutput) sdkgo.Mutati
 	}
 	receipt := attempt.client.receipt(attempt.call, sendResult.response, attempt.input.CampaignID)
 	switch {
-	case sendResult.outcome == exchangeSucceeded:
+	case sendResult.outcome == exchangeSucceeded, isSuccessStatus(sendResult.response.statusCode):
+		// A 2xx accepted the send even when its body is unreadable or oversized; it is never resent.
 		return sdkgo.NewMutationBranch(SendCampaignBranchSent, output, nil, receipt)
 	case isSendProvablyUnprocessed(sendResult):
 		if checkpointErr := attempt.fence.RecordCanResend(); checkpointErr != nil {
@@ -189,8 +190,8 @@ func (attempt *sendCampaignAttempt) send(output SendCampaignOutput) sdkgo.Mutati
 
 // retryBeforeSend records notSent before a pre-send Retry so the next attempt does not count a send.
 func (attempt *sendCampaignAttempt) retryBeforeSend(failure sdkgo.Failure, retryAfter time.Duration) sdkgo.MutationAttempt[SendCampaignOutput] {
-	if attempt.decision.Kind == singledispatch.SendAllowed {
-		// After ReadBackThenResendAllowed, notSent would hide the earlier possible send.
+	if attempt.decision.Kind == singledispatch.SendAllowed && !attempt.hasPossibleEarlierSend {
+		// After a possible earlier send, notSent could hide it, so the earlier marker stays.
 		if err := attempt.fence.RecordNotSent(); err != nil {
 			failure = mailchimpFailure(sdkgo.FailureAvailability, sendCampaignOperation,
 				"the no-send checkpoint could not be recorded; nothing was sent in this attempt")

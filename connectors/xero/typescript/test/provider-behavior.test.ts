@@ -85,3 +85,15 @@ it('retries a write status that does not prove a refusal under the same Idempote
     expect(attempt.kind === 'branch' ? attempt.branch : attempt.kind, `HTTP ${status}`).toBe(outcome);
   }
 });
+
+it('selects uncertain for a credential or local failure on a later write attempt', async () => {
+  const laterCall = { ...call, idempotencyKey: '801feb97-5ad4-5063-b93c-9a25f054e79b', context: { ...call.context, attempt: 2 } } as Call;
+  const paymentInput = { invoiceId: invoiceID, accountCode: '090', date: '2026-10-01', amount: '109.89' };
+  for (const [status, outcome] of [[401, 'uncertain'], [403, 'uncertain'], [400, 'providerRejected']] as const) {
+    const client = new XeroClient({}, staticCredentials('custom-connection'), { send: async () => response(status, Buffer.from('{}')) });
+    const attempt = await client.recordPayment().invoke(laterCall, paymentInput);
+    expect(attempt.kind === 'branch' ? attempt.branch : attempt.kind, `HTTP ${status}`).toBe(outcome);
+  }
+  const unconfigured = new XeroClient({}, new StaticCredentialProvider<Credentials>([]), { send: async () => { throw new Error('unexpected send'); } });
+  expect((await unconfigured.recordPayment().invoke(laterCall, paymentInput)).kind).toBe('uncertain');
+});

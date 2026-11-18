@@ -224,8 +224,9 @@ loss or a result lost before commit, so the operations take these positions:
   exceptionally high volume, a 503, and a connection that failed before it
   opened.
 - Any other outcome is unknown: another 5xx, a 408, a 409, a 3xx, another
-  unlisted 4xx, an HTML 502 from Mailchimp's CDN, a lost or unreadable
-  response, and an oversized or credential-reflecting 2xx. It is retried while
+  unlisted 4xx, an HTML 502 from Mailchimp's CDN, and a lost response. A 2xx
+  accepted the send, so an oversized, unreadable, or credential-reflecting 2xx
+  body selects `sent` and is never resent. An unknown outcome is retried while
   the possible sends stay below `maxSends` (an application can lower or raise
   the cap with the factory's `MaxSends`), and the retry reads the campaign
   first. When no send remains, the unknown outcome selects `uncertain`; an
@@ -238,6 +239,9 @@ loss or a result lost before commit, so the operations take these positions:
   `notFound`, `invalidResponse`, or `defect`, because the earlier send may
   have landed. A refused resend reads the campaign first and selects
   `alreadySent` when it is sending or sent.
+- A campaign read that must be retried after a possible earlier send records
+  no `notSent` checkpoint, which could hide that send; the earlier marker
+  stays, so the next attempt can only overcount.
 - An unreadable heartbeat checkpoint is retried without a send. A Step
   execution that recorded the checkpoint of releases before v0.24.1 never
   sends again: it reads the campaign and selects `alreadySent` or `uncertain`.
@@ -265,7 +269,7 @@ A token that contains the API key is dropped.
 | 503 | Retry | Retry | Retry, send not counted |
 | connection refused before sending | Retry | Retry | Retry, send not counted |
 | 408, other 5xx, lost or unreadable response | Retry | Retry | unknown |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | Retry | unknown |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | Retry | `sent`, never resent |
 | invalid input or connection credentials | `defect`, with no request | same | `defect` when no earlier send is possible |
 
 An unknown sendCampaign outcome is retried below the send cap and selects

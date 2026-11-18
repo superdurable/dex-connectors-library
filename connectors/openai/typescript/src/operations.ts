@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Failure, type FailureKind, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import type { CreateRequest, Response, RetrieveRequest } from './generated/models.js';
 import { CreateResponseDefinition, RetrieveResponseDefinition } from './generated/definitions.js';
 import { CredentialFailure, EncodingFailure, isPrintableModelID, isSafeResponseID, openAIFailure, pathEscape, type OpenAIClient } from './client.js';
@@ -107,7 +107,9 @@ export class CreateResponseOperation implements Mutation<CreateRequest, Response
     catch (error) {
       const [kind, message]: [FailureKind, string] = error instanceof CredentialFailure ? ['AUTHENTICATION', error.message] : error instanceof EncodingFailure ? ['VALIDATION', error.message] : ['LOCAL_DEFECT', 'request could not be built'];
       // An earlier create may exist, so a defect could prompt a second billed create.
-      if (sends.hasPossibleEarlierSend) return newMutationRetry(openAIFailure(kind, 'createResponse', message));
+      if (sends.hasPossibleEarlierSend && message === credentialsUnavailableMessage) return newMutationRetry(openAIFailure(kind, 'createResponse', message));
+      // A lasting local failure cannot resend, and an earlier create may exist.
+      if (sends.hasPossibleEarlierSend) return newMutationUncertain(emptyResponse, openAIFailure(kind, 'createResponse', message), this.client.receipt(call, undefined));
       return this.branch(call, 'defect', emptyResponse, kind, message, false);
     }
     try { await heartbeat.begin({ callId: call.id, attempt: call.context.attempt, sendCount: sends.priorSendUpperBound + 1 }); }
@@ -117,7 +119,9 @@ export class CreateResponseOperation implements Mutation<CreateRequest, Response
     catch (error) {
       if (error instanceof ProviderTransportError && error.isProvablyNotSent) return this.retry(heartbeat, sends.priorSendUpperBound, 'TRANSPORT', 'request was not sent');
       if (stream?.responseId) { await stream.waitForCheckpoint(); return this.readBack(call, heartbeat, stream.responseId, stream.responseHeaders ? { status: stream.responseStatus, headers: stream.responseHeaders, body: new Uint8Array() } : undefined); }
-      if (error instanceof BodyTooLargeError) return resendOrSelectUncertain(sends, openAIFailure('RESPONSE_TOO_LARGE', 'createResponse', 'provider response exceeds the configured size limit'), this.client.receipt(call, { status: error.status ?? 200, headers: error.headers ?? {}, body: new Uint8Array() }));
+      if (error instanceof BodyTooLargeError) return selectAcceptedCreateUncertain(openAIFailure('RESPONSE_TOO_LARGE', 'createResponse', 'provider response exceeds the configured size limit'), this.client.receipt(call, { status: error.status ?? 200, headers: error.headers ?? {}, body: new Uint8Array() }));
+      const acceptedStatus = error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.status : undefined;
+      if (acceptedStatus !== undefined && acceptedStatus >= 200 && acceptedStatus < 300) return selectAcceptedCreateUncertain(openAIFailure('TRANSPORT', 'createResponse', 'provider response could not be read'), this.client.receipt(call, { status: acceptedStatus, headers: error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.headers ?? {} : {}, body: new Uint8Array() }));
       return resendOrSelectUncertain(sends, openAIFailure('TRANSPORT', 'createResponse', 'provider outcome is unknown'), this.client.receipt(call, undefined));
     }
     if (response.status < 200 || response.status >= 300) {
@@ -131,11 +135,11 @@ export class CreateResponseOperation implements Mutation<CreateRequest, Response
       if (sends.hasPossibleEarlierSend) return newMutationUncertain(emptyResponse, openAIFailure(classified.kind, 'createResponse', classified.message), this.client.receipt(call, response));
       return this.branch(call, 'providerRejected', emptyResponse, classified.kind, classified.message, true, response);
     }
-    if (stream) return stream.finish(response, sends, this.readBack.bind(this), this.resolveKnown.bind(this));
+    if (stream) return stream.finish(response, this.readBack.bind(this), this.resolveKnown.bind(this));
     let result: Response;
     try { result = this.client.decodeResponse(response.body); }
-    catch (error) { return resendOrSelectUncertain(sends, openAIFailure(error instanceof BodyTooLargeError ? 'RESPONSE_TOO_LARGE' : 'PROTOCOL', 'createResponse', error instanceof BodyTooLargeError ? 'provider response exceeds the configured size limit' : 'provider response is invalid'), this.client.receipt(call, response)); }
-    if (!result.id || !isSafeResponseID(result.id)) return resendOrSelectUncertain(sends, openAIFailure('PROTOCOL', 'createResponse', result.id ? 'provider response ID is invalid' : 'provider response has no ID'), this.client.receipt(call, response));
+    catch (error) { return selectAcceptedCreateUncertain(openAIFailure(error instanceof BodyTooLargeError ? 'RESPONSE_TOO_LARGE' : 'PROTOCOL', 'createResponse', error instanceof BodyTooLargeError ? 'provider response exceeds the configured size limit' : 'provider response is invalid'), this.client.receipt(call, response)); }
+    if (!result.id || !isSafeResponseID(result.id)) return selectAcceptedCreateUncertain(openAIFailure('PROTOCOL', 'createResponse', result.id ? 'provider response ID is invalid' : 'provider response has no ID'), this.client.receipt(call, response));
     try { await heartbeat.responseId(result.id); } catch { /* A lost checkpoint leaves the claim, which a later attempt counts. */ }
     return this.resolveKnown(call, heartbeat, result, response);
   }
@@ -217,6 +221,14 @@ export class RetrieveResponseOperation implements Query<RetrieveRequest, Respons
   }
 }
 
+/** A later attempt may resolve these credentials; every other request-building failure repeats. */
+const credentialsUnavailableMessage = 'connection credentials are unavailable';
+
+/** End a 2xx create whose response ID cannot be read: it can be neither read back nor resent. */
+function selectAcceptedCreateUncertain(failure: Failure, receipt: ReturnType<OpenAIClient['receipt']>): MutationAttempt<Response> {
+  return newMutationUncertain(emptyResponse, { ...failure, message: `OpenAI accepted the create request, but ${failure.message}` }, receipt);
+}
+
 /** Retry while a later attempt may create again, and select uncertain at the cap. */
 function resendOrSelectUncertain(sends: SendBudget, failure: Failure, receipt: ReturnType<OpenAIClient['receipt']>): MutationAttempt<Response> {
   // The claim stays the last checkpoint, so the next attempt counts this send.
@@ -281,7 +293,7 @@ class ResponseStream {
     }
     return this.terminal === undefined;
   };
-  async finish(response: ProviderResponse, sends: SendBudget, readBack: (call: Call, heartbeat: CheckpointHeartbeat, responseId: string, createResponse?: ProviderResponse) => Promise<MutationAttempt<Response>>, resolveKnown: (call: Call, heartbeat: CheckpointHeartbeat, result: Response, response?: ProviderResponse) => Promise<MutationAttempt<Response>>): Promise<MutationAttempt<Response>> {
+  async finish(response: ProviderResponse, readBack: (call: Call, heartbeat: CheckpointHeartbeat, responseId: string, createResponse?: ProviderResponse) => Promise<MutationAttempt<Response>>, resolveKnown: (call: Call, heartbeat: CheckpointHeartbeat, result: Response, response?: ProviderResponse) => Promise<MutationAttempt<Response>>): Promise<MutationAttempt<Response>> {
     await this.pendingCheckpoint;
     if (this.terminal) {
       const result = this.terminal;
@@ -289,6 +301,6 @@ class ResponseStream {
       return result;
     }
     if (this.responseId) return readBack(this.call, this.heartbeat, this.responseId, response);
-    return resendOrSelectUncertain(sends, openAIFailure('PROTOCOL', 'createResponse', this.error || 'stream ended before a terminal event'), this.client.receipt(this.call, response));
+    return selectAcceptedCreateUncertain(openAIFailure('PROTOCOL', 'createResponse', this.error || 'stream ended before a terminal event'), this.client.receipt(this.call, response));
   }
 }

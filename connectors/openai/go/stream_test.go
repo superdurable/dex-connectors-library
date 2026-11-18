@@ -139,6 +139,21 @@ func TestOpenAIStreamEarlyEOFAndBoundsAreUnknown(t *testing.T) {
 	}
 }
 
+// A 2xx stream created a response, so one that ends without its ID is uncertain even below the cap.
+func TestOpenAIStreamWithoutResponseIDIsNeverResentBelowTheCap(t *testing.T) {
+	call := sdkgo.Call{Context: testsupport.NewDexContext("stream-flow", "stream-step")}
+	roomyBudget := createResponseSendBudget{priorSendUpperBound: 0, maxSends: 3}
+	client := &Client{maxResponseBytes: 1024, maxSSEEventBytes: 512}
+	attempt := CreateResponseOperation{client: client}.readStream(call, newTestHeartbeat(call), roomyBudget, strings.NewReader(sse(`{"type":"error"}`)), nil, "req_1")
+	result, err := sdkgo.RunMutation(
+		testsupport.NewDexContext("stream-flow", "stream-step"),
+		streamAttemptOperation{attempt: attempt}, sdkgo.ConnectionRef{Provider: "openai", Name: "default"}, struct{}{},
+	)
+	require.NoError(t, err)
+	require.Equal(t, CreateResponseBranchUncertain, result.Branch)
+	require.Contains(t, result.Failure.Message, "OpenAI accepted the create request")
+}
+
 func TestOpenAIInterruptedStreamReadsKnownResponse(t *testing.T) {
 	for _, test := range []struct {
 		name       string

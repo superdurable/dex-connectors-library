@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { MailchimpClient } from '../src/client.js';
 import { SendCampaignDefinition, UpsertMemberDefinition } from '../src/generated/definitions.js';
 import type { SendCampaignOutput } from '../src/generated/models.js';
@@ -137,6 +137,35 @@ describe('Mailchimp sendCampaign bounded resend', () => {
       expect(await send(script, context)).toMatchObject({ branch: 'sent' });
       expect(context.marker).toMatchObject({ sendCount: 1 });
     }
+  });
+
+  it('selects sent for an accepted 2xx whose body is unusable and never resends', async () => {
+    const reflected = new CampaignScript('save', [() => ({ status: 200, body: '{"echo":"mailchimpfixturekey-us6"}' })]);
+    expect(await send(reflected, new AttemptContext())).toMatchObject({ branch: 'sent' });
+    expect(reflected.sends).toBe(1);
+    let sends = 0;
+    const broken = new MailchimpClient({}, { resolve: async () => ({ apiKey: new SecretString('mailchimpfixturekey-us6') }) }, {
+      send: async (request: ProviderRequest) => {
+        if (request.method === 'GET') { const { status, body } = campaign('save'); return { status, headers: {}, body: Buffer.from(body) }; }
+        sends++;
+        throw new ProviderTransportError(false, 200, {});
+      },
+    });
+    const call = { id: callId, connection: { provider: 'mailchimp', name: 'test' }, operation: SendCampaignDefinition.operation, context: new AttemptContext() } as unknown as Call;
+    expect(await runMutation(broken.sendCampaign(), call, { campaignId, expectedListId: listId })).toMatchObject({ branch: 'sent' });
+    expect(sends).toBe(1);
+  });
+
+  it('keeps the earlier send count when a read fails after a throttled resend', async () => {
+    const answers: Answer[] = [campaign('save'), serverError, campaign('save'), { status: 429, body: '{"title":"Too Many Requests"}' }, { status: 503, body: '{"title":"Service Unavailable"}' }];
+    const context = new AttemptContext();
+    const client = newClient(() => answers.shift()!);
+    const call = { id: callId, connection: { provider: 'mailchimp', name: 'test' }, operation: SendCampaignDefinition.operation, context } as unknown as Call;
+    for (const attempt of [1, 2, 3]) {
+      context.attempt = attempt;
+      await expect(runMutation(client.sendCampaign(), call, { campaignId, expectedListId: listId })).rejects.toBeInstanceOf(RetryError);
+    }
+    expect(context.marker, 'notSent after a possible earlier send could hide it').toMatchObject({ state: 'canResend', sendCount: 1 });
   });
 
   it('retries 409, 425, and redirects after a send', async () => {

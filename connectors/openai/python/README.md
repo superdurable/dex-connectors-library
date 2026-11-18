@@ -25,11 +25,13 @@ manifest sync Execute durability, and record no other heartbeats in that Step.
   503, 429, a connection refused before sending, and a definite refusal add
   none; a `cancelled` response counts, since it may be billed.
 - Every other unconfirmed outcome without a response ID (408, 409, a 3xx,
-  another 4xx, a 5xx other than 503, an ambiguous transport failure, a
-  streamed error before a response ID, or an unreadable body) retries and
-  resends while possible creates stay below the send cap of 3, and selects
-  `uncertain` at the cap. A read-back that cannot confirm a known response
-  selects `uncertain`.
+  another 4xx, a 5xx other than 503, or an ambiguous transport failure)
+  retries and resends while possible creates stay below the send cap of 3,
+  and selects `uncertain` at the cap. A read-back that cannot confirm a known
+  response selects `uncertain`.
+- A 2xx answer created a response: when it yields no readable response ID (an
+  unreadable, oversized, or cut-off body, or a stream that ends before naming
+  the response), the operation selects `uncertain` at once and never resends.
 
 The manifest retry policy allows eight attempts within fifteen minutes; the
 send cap still allows at most three billed creates.

@@ -27,6 +27,12 @@ class AttemptContext {
   async recordHeartbeat(value: unknown): Promise<void> { this.marker = value; }
 }
 
+/** Has no attempt time left, and loses every checkpoint write. */
+class ExpiredAttemptContext extends AttemptContext {
+  override readonly deadline = new Date(Date.now() - 1_000);
+  override async recordHeartbeat(): Promise<void> { throw new Error('heartbeat unavailable'); }
+}
+
 async function post(context: AttemptContext, answer: (request: ProviderRequest) => Promise<ProviderResponse>, requests: ProviderRequest[]) {
   const client = new OAuth2HTTPClient(config, new StaticCredentialProvider([[connection, credentials]]), {
     send: async request => { requests.push(request); return answer(request); },
@@ -88,6 +94,19 @@ describe('postNonIdempotent single dispatch', () => {
     context.isUnreadable = true;
     expect((await post(context, respond(201), requests)).kind).toBe('retry');
     expect(requests).toHaveLength(0);
+  });
+
+  it('returns Retry without sending when no time remains and the notSent checkpoint fails', async () => {
+    const requests: ProviderRequest[] = [];
+    const context = new ExpiredAttemptContext();
+    const attempt = await post(context, respond(201), requests);
+    expect(attempt).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(requests).toHaveLength(0);
+  });
+
+  it('never reports a driver AggregateError after the POST left the process as not sent', async () => {
+    const attempt = await post(new AttemptContext(), async () => { throw new AggregateError([new Error('reset')], 'driver failure'); }, []);
+    expect(attempt.kind).toBe('uncertain');
   });
 
   it('selects uncertain without sending when a later attempt finds no checkpoint', async () => {

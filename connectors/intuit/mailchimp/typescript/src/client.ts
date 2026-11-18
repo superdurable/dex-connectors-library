@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { AddressRefusal, BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import type { Call, CredentialProvider, Failure, ReceiptDraft } from '@superdurable/connectors-sdk';
 import type { Config, Credentials } from './generated/models.js';
 import { GetMemberOperation, ListMembersOperation, UpsertMemberOperation, UpdateMemberTagsOperation, SendCampaignOperation } from './operations.js';
@@ -108,7 +108,9 @@ export class MailchimpClient {
         if (response.status >= 200 && response.status < 300) return { outcome: 'invalid', status: response.status, headers: response.headers, body: response.body, failure: mailchimpFailure(operation, 'RESPONSE_TOO_LARGE', 'Mailchimp response exceeds the configured maxResponseBytes limit'), retryAfterMs: 0 };
       } else {
         const isNotSent = error instanceof AddressRefusal || error instanceof ProviderTransportError && error.isProvablyNotSent;
-        return { outcome: isNotSent ? 'notSent' : 'unavailable', status: 0, headers: {}, body: new Uint8Array(), failure: mailchimpFailure(operation, 'TRANSPORT', isNotSent ? 'Mailchimp could not be reached; no request was sent' : 'Mailchimp request failed before a response arrived'), retryAfterMs: 0 };
+        // A status means headers arrived before the body broke, which a write must not resend after.
+        const headersStatus = error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.status ?? 0 : 0;
+        return { outcome: isNotSent ? 'notSent' : 'unavailable', status: headersStatus, headers: {}, body: new Uint8Array(), failure: mailchimpFailure(operation, 'TRANSPORT', isNotSent ? 'Mailchimp could not be reached; no request was sent' : 'Mailchimp request failed before a response arrived'), retryAfterMs: 0 };
       }
     }
     const status = response.status;

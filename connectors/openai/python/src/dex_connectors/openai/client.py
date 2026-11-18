@@ -97,6 +97,8 @@ UI_UNIT_MODEL_PICKER = "modelPicker"
 UI_MODEL_PICKER_PORT_MODEL = "model"
 INVALID_CREATE_INPUT_MESSAGE = "input and a model of printable ASCII without spaces are required"
 NOT_SERIALIZABLE_MESSAGE = "request is not JSON serializable"
+# A later attempt may resolve these credentials; every other request-building failure repeats.
+CREDENTIALS_UNAVAILABLE_MESSAGE = "connection credentials are unavailable"
 _DEFAULT_MODEL = "gpt-6-sol"
 _DEFAULT_ENDPOINT = "https://api.openai.com/v1"
 _DEFAULT_MAX_RESPONSE_BYTES = 8_388_608
@@ -226,9 +228,7 @@ class Client:
         try:
             credentials = await self.credentials.resolve(call)
         except (ValueError, LookupError, OSError, ReauthorizationRequiredError):
-            return openai_failure(
-                FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable"
-            )
+            return openai_failure(FailureKind.AUTHENTICATION, operation, CREDENTIALS_UNAVAILABLE_MESSAGE)
         api_key = credentials.api_key.reveal()
         if not api_key or not is_header_safe_credential(api_key):
             return openai_failure(FailureKind.AUTHENTICATION, operation, "connection credentials are invalid")
@@ -442,9 +442,16 @@ class CreateResponseOperation:
         is_streaming: bool,
     ) -> MutationAttempt[Response]:
         request = await self.client.build_request(call, "POST", "/responses", str(call.id), payload)
-        if isinstance(request, Failure) and sends.has_possible_earlier_send:
+        if (
+            isinstance(request, Failure)
+            and sends.has_possible_earlier_send
+            and request.message == CREDENTIALS_UNAVAILABLE_MESSAGE
+        ):
             # An earlier create may exist, so a defect could prompt a second billed create.
             return MutationAttempt.retry(request)
+        if isinstance(request, Failure) and sends.has_possible_earlier_send:
+            # A lasting local failure cannot resend, and an earlier create may exist.
+            return MutationAttempt.uncertain(Response(), request, response_receipt(call, "", None, ""))
         if isinstance(request, Failure):
             return MutationAttempt.branch_result(DEFECT, Response(), Receipt(), request)
         claim = CreateResponseCheckpoint(
@@ -490,21 +497,19 @@ class CreateResponseOperation:
                 return await self._read_stream(call, heartbeat, sends, response, request_id)
             document = await self.client.read_response(response, CREATE_RESPONSE_OPERATION_ID)
             if isinstance(document, Failure):
-                return _resend_or_select_uncertain(
-                    sends, document, response_receipt(call, request_id, response.headers, "")
+                return _select_accepted_create_uncertain(
+                    document, response_receipt(call, request_id, response.headers, "")
                 )
             result = decode_wire_response(document)
             if not result.id:
-                return _resend_or_select_uncertain(
-                    sends,
+                return _select_accepted_create_uncertain(
                     openai_failure(
                         FailureKind.PROTOCOL, CREATE_RESPONSE_OPERATION_ID, "provider response has no ID"
                     ),
                     response_receipt(call, request_id, response.headers, ""),
                 )
             if not is_safe_response_id(result.id):
-                return _resend_or_select_uncertain(
-                    sends,
+                return _select_accepted_create_uncertain(
                     openai_failure(
                         FailureKind.PROTOCOL, CREATE_RESPONSE_OPERATION_ID, "provider response ID is invalid"
                     ),
@@ -532,8 +537,7 @@ class CreateResponseOperation:
         )
         outcome = await reader.read()
         if outcome.has_invalid_response_id:
-            return _resend_or_select_uncertain(
-                sends,
+            return _select_accepted_create_uncertain(
                 openai_failure(
                     FailureKind.PROTOCOL, CREATE_RESPONSE_OPERATION_ID, "provider response ID is invalid"
                 ),
@@ -553,8 +557,7 @@ class CreateResponseOperation:
             message = outcome.error_message
             if reader.has_stream_error:
                 message = "provider streamed an error before naming a response, which may exist"
-            return _resend_or_select_uncertain(
-                sends,
+            return _select_accepted_create_uncertain(
                 openai_failure(FailureKind.PROTOCOL, CREATE_RESPONSE_OPERATION_ID, message),
                 response_receipt(call, request_id, response.headers, ""),
             )
@@ -792,6 +795,13 @@ async def _retry_create_response(
     """Let the next attempt send again; call it only when this send created nothing to repeat."""
     await heartbeat.record_can_resend(send_count)
     return MutationAttempt.retry(failure, retry_after_seconds)
+
+
+def _select_accepted_create_uncertain(failure: Failure, receipt: Receipt) -> MutationAttempt[Response]:
+    """End a 2xx create whose response ID cannot be read: it can be neither read back nor resent."""
+    message = "OpenAI accepted the create request, but " + failure.message
+    accepted = openai_failure(failure.kind, CREATE_RESPONSE_OPERATION_ID, message)
+    return MutationAttempt.uncertain(Response(), accepted, receipt)
 
 
 def _resend_or_select_uncertain(

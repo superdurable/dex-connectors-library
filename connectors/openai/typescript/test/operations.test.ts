@@ -197,6 +197,34 @@ describe('createResponse checkpoint recovery', () => {
     } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
   });
 
+  it.each([
+    ['a malformed body', async (): Promise<ProviderResponse> => ({ status: 200, headers: {}, body: Buffer.from('{') })],
+    ['a body cut off after the headers', async (): Promise<ProviderResponse> => { throw new ProviderTransportError(false, 200, {}); }],
+    ['an oversized body', async (): Promise<ProviderResponse> => { throw new BodyTooLargeError(200, {}); }],
+  ] as const)('never resends an accepted create with %s below the cap', async (_name, answer) => {
+    let posts = 0;
+    const provider = client(async () => { posts += 1; return answer(); });
+    const result = await provider.createResponse().invoke(call(1).invocation, input);
+    expect(result.kind).toBe('uncertain');
+    if (result.kind === 'uncertain') expect(result.failure.message).toMatch(/^OpenAI accepted the create request/);
+    expect(posts).toBe(1);
+  });
+
+  it('selects uncertain for an accepted stream that ends without a response ID', async () => {
+    const provider = client(async () => ({ status: 200, headers: { 'content-type': 'text/event-stream' }, body: Buffer.from('data: {"type":"error"}\n\n') }));
+    const result = await provider.createResponse().invoke(call(1, undefined, true).invocation, input);
+    expect(result.kind).toBe('uncertain');
+  });
+
+  it.each([
+    ['unavailable', async () => { throw new Error('vault unavailable'); }, 'retry'],
+    ['invalid', async () => ({ apiKey: new SecretString('bad\nkey') }), 'uncertain'],
+  ] as const)('after a possible create, %s credentials select %s', async (_name, resolve, expected) => {
+    const provider = new OpenAIClient({ endpoint: 'http://localhost:34080/v1', model: 'gpt-test' }, { resolve }, { send: async () => { throw new Error('unexpected send'); } });
+    const result = await provider.createResponse().invoke(call(2).invocation, input);
+    expect(result.kind).toBe(expected);
+  });
+
   it('keeps create headers on an oversized body with no response ID', async () => {
     const provider = client(async () => { throw new BodyTooLargeError(200, { 'x-request-id': 'req_large', 'x-ratelimit-remaining-tokens': '80' }); });
     const result = await provider.createResponse().invoke(call(3).invocation, input);

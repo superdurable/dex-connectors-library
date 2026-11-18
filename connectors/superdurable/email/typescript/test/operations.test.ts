@@ -139,6 +139,26 @@ describe('email operation decisions', () => {
     expect(reply.kind).toBe('uncertain');
   });
 
+  test('reply replay after an accepted reply is sent from the rebuilt output without submitting', async () => {
+    const email = client();
+    const accepted = { emailSubmittedCallId: 'email-test-call', emailAttempt: 1, emailSubmissionCount: 1, emailAccepted: true };
+    const reference = { mailbox: 'INBOX', uidValidity: 42, uid: 100 };
+    vi.spyOn(email, 'openIMAP').mockResolvedValueOnce(fakeIMAP())
+      .mockRejectedValueOnce(Object.assign(new Error('connection reset'), { code: 'ECONNRESET' }));
+    const { call: replayCall, heartbeats } = fakeCall('replyToMessage', accepted);
+    const reply = await email.replyToMessage().invoke(replayCall, { message: reference, text: 'Thanks' });
+    expect(reply.kind).toBe('branch');
+    if (reply.kind === 'branch') {
+      expect(reply.branch).toBe('sent');
+      expect(reply.value.recipients).toEqual(['jane@example.com']);
+      expect(reply.value.inReplyTo).toBe('message-100@example.com');
+      expect(reply.value.sentAt).toBeUndefined();
+    }
+    const unreadable = await email.replyToMessage().invoke(fakeCall('replyToMessage', accepted).call, { message: reference, text: 'Thanks' });
+    expect(unreadable.kind).toBe('uncertain');
+    expect(heartbeats, 'an accepted reply never records another claim').toEqual([]);
+  });
+
   test('reply validation and an unreadable checkpoint preserve defect and Retry', async () => {
     const email = new EmailClient({ imapHost: 'localhost', smtpHost: 'localhost' }, { resolve: async () => ({ username: 'jane', password: new SecretString('test-password') }) });
     const reference = { mailbox: 'INBOX', uidValidity: 42, uid: 100 };

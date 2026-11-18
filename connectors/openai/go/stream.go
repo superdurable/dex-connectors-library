@@ -55,7 +55,7 @@ func (operation CreateResponseOperation) readStream(call sdkgo.Call, heartbeat *
 		if handler.hasStreamError {
 			message = "provider streamed an error before naming a response, which may exist"
 		}
-		return resendOrSelectUncertain(sends, openAIFailure(sdkgo.FailureProtocol, "createResponse", message), handler.receipt())
+		return selectAcceptedCreateUncertain(openAIFailure(sdkgo.FailureProtocol, "createResponse", message), handler.receipt())
 	}
 	if errors.As(err, &streamLimitError{}) {
 		// Closing the connection now would cancel the response, so let it finish before reading it back.
@@ -67,7 +67,7 @@ func (operation CreateResponseOperation) readStream(call sdkgo.Call, heartbeat *
 func (handler *responseStreamHandler) handle(event streamEvent) (bool, sdkgo.MutationAttempt[Response]) {
 	if event.Response.ID != "" && handler.responseID == "" {
 		if !isSafeResponseID(event.Response.ID) {
-			return true, resendOrSelectUncertain(handler.sends, openAIFailure(sdkgo.FailureProtocol, "createResponse", "provider response ID is invalid"), handler.receipt())
+			return true, selectAcceptedCreateUncertain(openAIFailure(sdkgo.FailureProtocol, "createResponse", "provider response ID is invalid"), handler.receipt())
 		}
 		handler.responseID = event.Response.ID
 		// A lost checkpoint leaves the claim, which a later attempt counts; the ticker records it again meanwhile.

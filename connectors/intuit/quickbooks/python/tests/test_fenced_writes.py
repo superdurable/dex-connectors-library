@@ -169,6 +169,31 @@ async def test_accepted_unusable_write_is_read_back_by_its_saved_id() -> None:
     assert [request.method for request in script.requests] == ["POST", "GET", "GET"]
 
 
+class _BrokenStream(httpx.AsyncByteStream):
+    async def __aiter__(self):  # type: ignore[override]
+        yield b'{"Customer":{"Id":"5'
+        raise httpx.ReadError("body interrupted")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "accepted",
+    [
+        lambda: httpx.Response(200, json={"Customer": {}}),
+        lambda: httpx.Response(200, stream=_BrokenStream()),
+    ],
+    ids=["unusable body", "body broken after 2xx headers"],
+)
+async def test_accepted_write_without_an_id_is_never_resent_below_the_cap(
+    accepted: Callable[[], httpx.Response],
+) -> None:
+    """QuickBooks accepted the write, so without an ID to read back it selects uncertain at once."""
+    script = Script(accepted())
+    context = AttemptContext()
+    assert branch(await create(script, context)) == "uncertain"
+    assert [request.method for request in script.requests] == ["POST"]
+
+
 @pytest.mark.asyncio
 async def test_definite_refusal_of_a_first_write_records_can_resend() -> None:
     """A 6240 Fault selects nameConflict after recording canResend."""

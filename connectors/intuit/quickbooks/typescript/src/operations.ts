@@ -281,15 +281,21 @@ class FencedWrite<T> {
     return newMutationBranch(branch, this.requested, result.receipt, result.failure);
   }
 
-  /** Read back an accepted 2xx that failed validation and otherwise treat it as unknown. */
+  /**
+   * Read back an accepted 2xx that failed validation; QuickBooks accepted it, so it is never resent.
+   * Below the send cap a transient read-back failure retries the read-back alone; every other case selects uncertain.
+   */
   async unusableAccepted(entityID: string, result: QuickBooksExchange, cause: string): Promise<MutationAttempt<T>> {
-    const unknown = this.client.failure('PROTOCOL', this.operation, `QuickBooks accepted the write but returned an unusable answer: ${cause}`);
-    if (!entityID) return this.resendOrSelectUncertain(unknown, 0, result.receipt);
-    try { await this.fence.recordProviderId(entityID); } catch { /* The read-back below still runs; a later attempt without the ID counts this send. */ }
+    const accepted = this.client.failure('PROTOCOL', this.operation, `QuickBooks accepted the write but returned an unusable answer: ${cause}`);
+    if (!entityID) return newMutationUncertain(this.requested, accepted, result.receipt);
+    // Without the recorded ID a retry could resend the accepted write.
+    try { await this.fence.recordProviderId(entityID); } catch { return newMutationUncertain(this.requested, accepted, result.receipt); }
     const read = await this.client.exchange(this.call, this.operation, { method: 'GET', path: `/${this.entityPath}/${entityID}` });
     const output = read.disposition === 'succeeded' ? this.confirm(read.body!, entityID) : undefined;
     if (output !== undefined) { result.receipt.providerObjectId = entityID; return newMutationBranch(this.happy, output, result.receipt); }
-    return this.resendOrSelectUncertain(unknown, 0, result.receipt);
+    // The next attempt finds the recorded ID and only reads back.
+    if ((read.disposition === 'retry' || read.disposition === 'interrupted') && this.canResendUnknownOutcome) return newMutationRetry(read.failure!, read.retryAfterMs);
+    return newMutationUncertain(this.requested, accepted, result.receipt);
   }
 
   /** Confirm an accepted earlier write by ID; it never sends. */

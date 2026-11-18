@@ -110,7 +110,7 @@ func CreateCardCheckoutSessionUncertain(value stripe.CheckoutSession, failure sd
 	return connectormock.Uncertain(value, failure)
 }
 
-// CreateCardCheckoutSessionInvalidResponse selects the invalidResponse branch: Stripe accepted the request but returned an invalid or oversized Checkout Session, which a resend under the same key would only replay.
+// CreateCardCheckoutSessionInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized Checkout Session after Stripe accepted the request selects uncertain.
 func CreateCardCheckoutSessionInvalidResponse(value stripe.CheckoutSession, failure *sdkgo.Failure) connectormock.Case[stripe.CheckoutSession] {
 	return connectormock.Branch(stripe.CreateCardCheckoutSessionBranchInvalidResponse, value, failure)
 }
@@ -143,10 +143,10 @@ func CreateCardCheckoutSessionUnconfirmedCardSession() connectormock.Case[stripe
 	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureAvailability, Message: "Stripe Checkout Session outcome cannot be confirmed after a server error"})
 }
 
-// CreateCardCheckoutSessionMalformedCardSession is the manifest mock malformedCardSession: Stripe returned a body that is not a Checkout Session.
+// CreateCardCheckoutSessionMalformedCardSession is the manifest mock malformedCardSession: Stripe accepted the card request but returned a body that is not a Checkout Session.
 func CreateCardCheckoutSessionMalformedCardSession() connectormock.Case[stripe.CheckoutSession] {
 	var value stripe.CheckoutSession
-	return connectormock.Branch(stripe.CreateCardCheckoutSessionBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Stripe response is invalid: Stripe returned an invalid Checkout Session"})
+	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Stripe response is invalid: Stripe returned an invalid Checkout Session"})
 }
 
 // CreateCardCheckoutSessionInvalidCardCurrency is the manifest mock invalidCardCurrency: The currency is not a lowercase three-letter code.
@@ -175,7 +175,7 @@ func CreateACHCheckoutSessionUncertain(value stripe.CheckoutSession, failure sdk
 	return connectormock.Uncertain(value, failure)
 }
 
-// CreateACHCheckoutSessionInvalidResponse selects the invalidResponse branch: Stripe accepted the request but returned an invalid or oversized Checkout Session, which a resend under the same key would only replay.
+// CreateACHCheckoutSessionInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized Checkout Session after Stripe accepted the request selects uncertain.
 func CreateACHCheckoutSessionInvalidResponse(value stripe.CheckoutSession, failure *sdkgo.Failure) connectormock.Case[stripe.CheckoutSession] {
 	return connectormock.Branch(stripe.CreateACHCheckoutSessionBranchInvalidResponse, value, failure)
 }
@@ -208,10 +208,10 @@ func CreateACHCheckoutSessionUnconfirmedSession() connectormock.Case[stripe.Chec
 	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureAvailability, Message: "Stripe Checkout Session outcome cannot be confirmed after a server error"})
 }
 
-// CreateACHCheckoutSessionMalformedSession is the manifest mock malformedSession: Stripe returned a body that is not a Checkout Session.
+// CreateACHCheckoutSessionMalformedSession is the manifest mock malformedSession: Stripe accepted the bank payment request but returned a body that is not a Checkout Session.
 func CreateACHCheckoutSessionMalformedSession() connectormock.Case[stripe.CheckoutSession] {
 	var value stripe.CheckoutSession
-	return connectormock.Branch(stripe.CreateACHCheckoutSessionBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Stripe response is invalid: Stripe returned an invalid Checkout Session"})
+	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Stripe response is invalid: Stripe returned an invalid Checkout Session"})
 }
 
 // CreateACHCheckoutSessionInvalidCurrency is the manifest mock invalidCurrency: The currency is not a lowercase three-letter code.
@@ -370,7 +370,7 @@ func CreateRefundUncertain(value stripe.Refund, failure sdkgo.Failure) connector
 	return connectormock.Uncertain(value, failure)
 }
 
-// CreateRefundInvalidResponse selects the invalidResponse branch: Stripe accepted the refund request but returned an invalid or oversized refund, which a resend under the same key would only replay.
+// CreateRefundInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized refund after Stripe accepted the request selects uncertain.
 func CreateRefundInvalidResponse(value stripe.Refund, failure *sdkgo.Failure) connectormock.Case[stripe.Refund] {
 	return connectormock.Branch(stripe.CreateRefundBranchInvalidResponse, value, failure)
 }
@@ -403,10 +403,10 @@ func CreateRefundUnconfirmedRefund() connectormock.Case[stripe.Refund] {
 	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureAvailability, Message: "Stripe refund outcome cannot be confirmed after a server error"})
 }
 
-// CreateRefundMalformedRefund is the manifest mock malformedRefund: Stripe returned a body that is not a refund.
+// CreateRefundMalformedRefund is the manifest mock malformedRefund: Stripe accepted the refund but returned a body that is not a refund.
 func CreateRefundMalformedRefund() connectormock.Case[stripe.Refund] {
 	var value stripe.Refund
-	return connectormock.Branch(stripe.CreateRefundBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Stripe response is invalid: Stripe returned an invalid refund"})
+	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Stripe response is invalid: Stripe returned an invalid refund"})
 }
 
 // CreateRefundInvalidAmount is the manifest mock invalidAmount: The refund amount is not positive.

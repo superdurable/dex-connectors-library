@@ -133,6 +133,27 @@ async def test_unprocessed_post_returns_retry_and_is_sent_on_the_next_attempt(st
     assert len(requests) == 2
 
 
+class _ExpiredAttemptContext(AttemptContext):
+    """Has no attempt time left, and loses every checkpoint write."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.deadline = datetime.now(UTC) - timedelta(seconds=1)
+
+    async def heartbeat(self, value: object = None) -> None:
+        """Lose the checkpoint write."""
+        raise RuntimeError("heartbeat unavailable")
+
+
+@pytest.mark.asyncio
+async def test_no_time_left_returns_retry_without_sending() -> None:
+    requests: list[httpx.Request] = []
+    result = await post(lambda _: httpx.Response(201), _ExpiredAttemptContext(), requests)
+    assert requests == []
+    assert isinstance(result, sdk.RetryError)
+    assert result.failure.kind == sdk.FailureKind.AVAILABILITY
+
+
 @pytest.mark.asyncio
 async def test_unreadable_checkpoint_returns_retry_without_sending() -> None:
     requests: list[httpx.Request] = []

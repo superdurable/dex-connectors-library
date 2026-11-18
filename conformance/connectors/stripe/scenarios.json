@@ -441,7 +441,7 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "uncertain",
         "failureKind": "PROTOCOL",
         "output": {
           "id": ""
@@ -449,7 +449,7 @@
         "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
       "input": {
@@ -1012,7 +1012,7 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "uncertain",
         "failureKind": "PROTOCOL",
         "output": {
           "id": ""
@@ -1020,7 +1020,7 @@
         "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
       "input": {
@@ -1947,7 +1947,7 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "uncertain",
         "failureKind": "PROTOCOL",
         "output": {
           "amount": 0,
@@ -1958,7 +1958,7 @@
         "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
       "input": {

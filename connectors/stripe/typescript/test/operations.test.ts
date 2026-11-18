@@ -115,9 +115,9 @@ describe('hosted Checkout mutations', () => {
       expect(await invoke(client([oversized(500)]))).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
       expect(await invoke(client([response(408)]))).toMatchObject({ kind: 'retry', failure: { kind: 'PROTOCOL' } });
       expect(await invoke(client([response(402)]))).toMatchObject({ kind: 'retry', failure: { kind: 'PROTOCOL' } });
-      // An unusable 2xx body is replayed unchanged under the key, so it selects invalidResponse.
-      expect(await invoke(client([response(200, { wrong: true })]))).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'PROTOCOL' } });
-      expect(await invoke(client([oversized(200)]))).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'RESPONSE_TOO_LARGE' } });
+      // Stripe accepted the write and replays an unusable 2xx body unchanged under the key, so it is uncertain.
+      expect(await invoke(client([response(200, { wrong: true })]))).toMatchObject({ kind: 'uncertain', failure: { kind: 'PROTOCOL' } });
+      expect(await invoke(client([oversized(200)]))).toMatchObject({ kind: 'uncertain', failure: { kind: 'RESPONSE_TOO_LARGE' } });
       expect(await invoke(client([new Error('socket closed')]))).toMatchObject({ kind: 'retry', failure: { kind: 'TRANSPORT' } });
       const requests: ProviderRequest[] = [];
       const stripe = client([response(500), response(200, checkoutResponse)], requests);
@@ -199,11 +199,11 @@ describe('refund mutation', () => {
     expect(form.get('metadata[dex_call_id]')).toBe(callId);
     expect(requests[0]?.headers?.['Idempotency-Key']).toBe(callId);
   });
-  it('classifies rejection, invalid response, validation, and credentials', async () => {
+  it('classifies rejection, an accepted unusable refund, validation, and credentials', async () => {
     expect(await invoke(client([response(400, { error: { code: 'charge_already_refunded', message: 'Already refunded' } })]))).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'PROVIDER_REJECTION', message: 'Stripe rejected the refund: charge_already_refunded: Already refunded' } });
     expect(await invoke(client([response(401, { error: { message: 'rk_test_sensitive' } })]))).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'AUTHENTICATION', message: 'Stripe rejected the refund' } });
-    expect(await invoke(client([response(200, {})]))).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'PROTOCOL' } });
-    expect(await invoke(client([oversized(200)]))).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'RESPONSE_TOO_LARGE' } });
+    expect(await invoke(client([response(200, {})]))).toMatchObject({ kind: 'uncertain', failure: { kind: 'PROTOCOL' } });
+    expect(await invoke(client([oversized(200)]))).toMatchObject({ kind: 'uncertain', failure: { kind: 'RESPONSE_TOO_LARGE' } });
     expect(await invoke(client([response(409, { error: { type: 'idempotency_error' } }), response(200, { object: 'list', data: [], has_more: false })]))).toMatchObject({ kind: 'retry', failure: { kind: 'CONFLICT' } });
     expect(await invoke(client([]), { ...refundInput, amount: 0 })).toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'VALIDATION' } });
     const noKey = client([], [], { authMethodId: 'api-key-only', secretKey: new SecretString('') });

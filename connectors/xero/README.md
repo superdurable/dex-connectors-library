@@ -18,8 +18,8 @@ operation-specific Dex Step factories:
 | `xero.NewFindContactByEmailStep` | Query | `found` | `notFound`, `ambiguous`, `providerRejected`, `dailyLimitReached`, `invalidResponse`, `defect` |
 | `xero.NewGetInvoiceStep` | Query | `found` | `notFound`, `providerRejected`, `dailyLimitReached`, `invalidResponse`, `defect` |
 | `xero.NewListInvoicesStep` | Query | `listed` | `providerRejected`, `dailyLimitReached`, `invalidResponse`, `defect` |
-| `xero.NewCreateInvoiceStep` | Mutation | `created` | `providerRejected`, `dailyLimitReached`, `uncertain` (never selected), `defect` |
-| `xero.NewRecordPaymentStep` | Mutation | `recorded` | `providerRejected`, `dailyLimitReached`, `uncertain` (never selected), `defect` |
+| `xero.NewCreateInvoiceStep` | Mutation | `created` | `providerRejected`, `dailyLimitReached`, `uncertain` (a credential or local failure on a later attempt), `defect` |
+| `xero.NewRecordPaymentStep` | Mutation | `recorded` | `providerRejected`, `dailyLimitReached`, `uncertain` (a credential or local failure on a later attempt), `defect` |
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
@@ -250,8 +250,14 @@ same key and body:
   are retried with the identical request too. If Xero caches the 500 under the
   key, every retry replays it and the retry budget fails the Flow; read back
   with `listInvoices` by reference, or `getInvoice`, before writing again with
-  a new Step execution. Both writes keep their `uncertain` branch declared for
-  compatibility and never select it;
+  a new Step execution;
+- on a later attempt, which may follow a created write, a 401, a 403, a
+  revoked grant, or unusable connection credentials select `uncertain`
+  instead of `providerRejected` or `defect`: Xero checks credentials before
+  it replays the keyed answer, so they cannot prove that nothing was written.
+  Read back with `listInvoices` by reference before writing again. Other
+  definite refusals, such as a 400 or a 422, are replayed under the key and
+  keep `providerRejected`;
 - the four-minute retry window plus the 30-second Execute timeout stays
   inside the six-minute key lifetime, because a repeat after expiry would be
   processed as new.

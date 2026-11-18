@@ -255,7 +255,7 @@ async def test_refund_success_request_and_reserved_marker() -> None:
     ],
 )
 async def test_malformed_provider_field_is_invalid_response(operation: str, body: dict[str, object]) -> None:
-    """Wrong provider field types select invalidResponse, which a keyed resend would only replay."""
+    """Wrong provider field types select invalidResponse for a read and uncertain for an accepted write."""
     result: Any
     client = client_for(httpx.MockTransport(lambda request: httpx.Response(200, json=body)))
     if operation == "createCardCheckoutSession":
@@ -278,7 +278,8 @@ async def test_malformed_provider_field_is_invalid_response(operation: str, body
         result = await client.create_refund().invoke(
             make_call(operation, True), CreateRefundInput("pi_test_123", 2500)
         )
-    assert result.branch == "invalidResponse"
+    # Stripe accepted the write and a keyed resend would only replay the same body.
+    assert result.branch == ("invalidResponse" if operation.startswith("get") else "uncertain")
     assert result.failure.kind == FailureKind.PROTOCOL
 
 
@@ -408,6 +409,9 @@ async def test_oversized_error_keeps_status_classification(
         result = await client.create_refund().invoke(
             make_call(operation, True), CreateRefundInput("pi_test_123", 2500)
         )
+    if status == 401 and not operation.startswith("get"):
+        # An unread write refusal body may carry the created object, so the keyed write is resent.
+        expected = "retry"
     assert (result.kind if expected == "retry" else result.branch) == expected
 
 
@@ -460,6 +464,9 @@ async def test_terminal_branches(operation: str, status: int, branch: str, kind:
         result = await client.create_refund().invoke(
             make_call(operation, True), CreateRefundInput("pi_test_123", 2500)
         )
+    if status == 200 and not operation.startswith("get"):
+        # Stripe accepted the write, so an unusable body is uncertain.
+        branch = "uncertain"
     assert result.branch == branch
     assert result.failure.kind == kind
 
@@ -539,7 +546,8 @@ async def test_oversized_success_is_invalid_response(operation: str) -> None:
         result = await client.create_refund().invoke(
             make_call(operation, True), CreateRefundInput("pi_test_123", 2500)
         )
-    assert result.branch == "invalidResponse"
+    # Stripe accepted a write, so its oversized body is uncertain.
+    assert result.branch == ("invalidResponse" if operation.startswith("get") else "uncertain")
     assert result.failure.kind == FailureKind.RESPONSE_TOO_LARGE
 
 

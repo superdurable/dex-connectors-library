@@ -32,7 +32,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete Stripe API response in bytes; enter a positive integer only to change the safety limit. Oversized successful responses select invalidResponse; an oversized error response is classified by its status.
+        description: Maximum complete Stripe API response in bytes; enter a positive integer only to change the safety limit. An oversized successful read selects invalidResponse and an oversized successful write selects uncertain; an oversized error response to a read is classified by its status, and to a write is an unknown outcome resent under the same idempotency key.
         required: false
         default: 1048576
       - name: webhookMaxBodyBytes
@@ -107,8 +107,8 @@ spec:
       branches:
         - {id: created, goName: Created, description: Stripe created the Checkout Session.}
         - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the Checkout Session request., optional: true}
-        - {id: uncertain, goName: Uncertain, description: "Stripe replayed a cached server error for this idempotency key, so no resend can confirm the Checkout Session; every other unknown outcome is resent under the same key.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Stripe accepted the request but returned an invalid or oversized Checkout Session, which a resend under the same key would only replay.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Stripe replayed a cached server error for this idempotency key, or accepted the request but returned an invalid or oversized Checkout Session, so no resend can confirm the Session; every other unknown outcome is resent under the same key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: an invalid or oversized Checkout Session after Stripe accepted the request selects uncertain.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -129,9 +129,8 @@ spec:
           description: Stripe cached a 500 for the card request and the created Session cannot be confirmed.
           uncertain: {failure: {kind: AVAILABILITY, message: Stripe Checkout Session outcome cannot be confirmed after a server error}}
         - name: malformedCardSession
-          branch: invalidResponse
-          description: Stripe returned a body that is not a Checkout Session.
-          failure: {kind: PROTOCOL, message: "Stripe response is invalid: Stripe returned an invalid Checkout Session"}
+          description: Stripe accepted the card request but returned a body that is not a Checkout Session.
+          uncertain: {failure: {kind: PROTOCOL, message: "Stripe response is invalid: Stripe returned an invalid Checkout Session"}}
         - name: invalidCardCurrency
           branch: defect
           description: The currency is not a lowercase three-letter code.
@@ -146,8 +145,8 @@ spec:
       branches:
         - {id: created, goName: Created, description: Stripe created the Checkout Session.}
         - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the Checkout Session request., optional: true}
-        - {id: uncertain, goName: Uncertain, description: "Stripe replayed a cached server error for this idempotency key, so no resend can confirm the Checkout Session; every other unknown outcome is resent under the same key.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Stripe accepted the request but returned an invalid or oversized Checkout Session, which a resend under the same key would only replay.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Stripe replayed a cached server error for this idempotency key, or accepted the request but returned an invalid or oversized Checkout Session, so no resend can confirm the Session; every other unknown outcome is resent under the same key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: an invalid or oversized Checkout Session after Stripe accepted the request selects uncertain.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -168,9 +167,8 @@ spec:
           description: Stripe cached a 500 for the bank payment request and the created Session cannot be confirmed.
           uncertain: {failure: {kind: AVAILABILITY, message: Stripe Checkout Session outcome cannot be confirmed after a server error}}
         - name: malformedSession
-          branch: invalidResponse
-          description: Stripe returned a body that is not a Checkout Session.
-          failure: {kind: PROTOCOL, message: "Stripe response is invalid: Stripe returned an invalid Checkout Session"}
+          description: Stripe accepted the bank payment request but returned a body that is not a Checkout Session.
+          uncertain: {failure: {kind: PROTOCOL, message: "Stripe response is invalid: Stripe returned an invalid Checkout Session"}}
         - name: invalidCurrency
           branch: defect
           description: The currency is not a lowercase three-letter code.
@@ -262,14 +260,14 @@ spec:
         exposed: true
         approval: recommended
         retry: safe
-        # defect is raised before the request is sent; invalidResponse follows a 2xx, so the refund exists.
+        # defect is raised before the request is sent; invalidResponse is no longer selected, and a 2xx means the refund exists.
         branches: {providerRejected: rejected, uncertain: unknown, invalidResponse: unknown, defect: rejected}
         description: Refund part or all of one Stripe PaymentIntent. Give the amount in the currency's minor unit, such as cents.
       branches:
         - {id: refunded, goName: Refunded, description: Stripe accepted the refund; read its status to tell succeeded from pending.}
         - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the refund with a 4xx error such as charge_already_refunded or an amount that is too large., optional: true}
-        - {id: uncertain, goName: Uncertain, description: "Stripe replayed a cached server error for this idempotency key and bounded read-back found no refund with this call ID; every other unknown outcome is resent under the same key.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Stripe accepted the refund request but returned an invalid or oversized refund, which a resend under the same key would only replay.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Stripe replayed a cached server error for this idempotency key and bounded read-back found no refund with this call ID, or Stripe accepted the refund but returned an invalid or oversized refund, which a resend would only replay; every other unknown outcome is resent under the same key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: an invalid or oversized refund after Stripe accepted the request selects uncertain.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -288,9 +286,8 @@ spec:
           description: Stripe cached a 500 and bounded refund read-back found no matching call ID.
           uncertain: {failure: {kind: AVAILABILITY, message: Stripe refund outcome cannot be confirmed after a server error}}
         - name: malformedRefund
-          branch: invalidResponse
-          description: Stripe returned a body that is not a refund.
-          failure: {kind: PROTOCOL, message: "Stripe response is invalid: Stripe returned an invalid refund"}
+          description: Stripe accepted the refund but returned a body that is not a refund.
+          uncertain: {failure: {kind: PROTOCOL, message: "Stripe response is invalid: Stripe returned an invalid refund"}}
         - name: invalidAmount
           branch: defect
           description: The refund amount is not positive.

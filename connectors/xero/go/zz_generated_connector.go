@@ -692,8 +692,8 @@ var CreateInvoiceDefinition = sdkgo.MutationDefinition{
 		{ID: CreateInvoiceBranchCreated, Description: "Xero created the invoice, or returned the invoice this Step already created, with its number and totals."},
 		{ID: CreateInvoiceBranchProviderRejected, Description: "Xero conclusively rejected the invoice, such as an unknown contact or account code, a locked period, a plan's invoice limit, or a missing scope; nothing was created.", Optional: true},
 		{ID: CreateInvoiceBranchDailyLimitReached, Description: "Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was created; the Receipt carries retryAfterSeconds.", Optional: true},
-		{ID: CreateInvoiceBranchUncertain, Description: "Kept for compatibility and never selected: an internal error or an unusable invoice repeats the identical keyed request until the retry budget runs out.", Optional: true},
-		{ID: CreateInvoiceBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+		{ID: CreateInvoiceBranchUncertain, Description: "On a later attempt, which may follow a created invoice, Xero refused the credentials or the connection became unusable, so the outcome cannot be confirmed; read back with listInvoices by reference. An internal error or an unusable invoice repeats the identical keyed request instead.", Optional: true},
+		{ID: CreateInvoiceBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid on the Step's first attempt.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -774,8 +774,8 @@ var RecordPaymentDefinition = sdkgo.MutationDefinition{
 		{ID: RecordPaymentBranchRecorded, Description: "Xero recorded the payment, or returned the payment this Step already recorded, with the invoice's remaining amount due."},
 		{ID: RecordPaymentBranchProviderRejected, Description: "Xero conclusively rejected the payment, such as an amount above the amount due, an invoice that is not approved, an account that cannot take payments, or a locked period; nothing was recorded.", Optional: true},
 		{ID: RecordPaymentBranchDailyLimitReached, Description: "Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was recorded; the Receipt carries retryAfterSeconds.", Optional: true},
-		{ID: RecordPaymentBranchUncertain, Description: "Kept for compatibility and never selected: an internal error or an unusable payment repeats the identical keyed request until the retry budget runs out.", Optional: true},
-		{ID: RecordPaymentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+		{ID: RecordPaymentBranchUncertain, Description: "On a later attempt, which may follow a recorded payment, Xero refused the credentials or the connection became unusable, so the outcome cannot be confirmed; read the invoice back with getInvoice. An internal error or an unusable payment repeats the identical keyed request instead.", Optional: true},
+		{ID: RecordPaymentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid on the Step's first attempt.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),

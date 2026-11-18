@@ -69,19 +69,31 @@ func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMe
 			emailFailure(sdkgo.FailureLocalDefect, replyToMessageOperation, err.Error()), SentMessage{From: sender.address})
 	}
 	identity := SentMessage{MessageID: messageID, From: sender.address}
-	if attempt, isTerminal := submissionAttemptBeforeSend(decision, replyToMessageOperation, identity); isTerminal {
-		return attempt
+	// An accepted reply reads the source only to rebuild its output, and never submits again.
+	if !decision.isAlreadyAccepted() {
+		if attempt, isTerminal := submissionAttemptBeforeSend(decision, replyToMessageOperation, identity); isTerminal {
+			return attempt
+		}
 	}
 	ctx, cancel := context.WithTimeout(call.Context, submissionOperationTimeout)
 	defer cancel()
 	source, readFailure := operation.readReplySource(ctx, credentials, input.Message)
 	if readFailure != nil {
+		if decision.isAlreadyAccepted() {
+			return acceptedReplyWithoutOutput(identity)
+		}
 		return replyAttemptForReadFailure(call, decision, readFailure, identity)
 	}
 	message, err := buildReply(sender, messageID, source, input)
 	if err != nil {
+		if decision.isAlreadyAccepted() {
+			return acceptedReplyWithoutOutput(identity)
+		}
 		return refuseBeforeSubmitting(decision, ReplyToMessageBranchInvalidResponse,
 			emailFailure(sdkgo.FailureProtocol, replyToMessageOperation, err.Error()), replyToMessageOperation, identity)
+	}
+	if attempt, isAccepted := acceptedSubmissionAttempt(decision, ReplyToMessageBranchSent, message.sentMessage()); isAccepted {
+		return attempt
 	}
 	content, err := message.render()
 	if err != nil {
@@ -207,6 +219,12 @@ func validateReplyToMessageInput(input ReplyToMessageInput) error {
 }
 
 // replyAttemptForReadFailure maps a failed source read; nothing was submitted, so nothing is uncertain.
+// acceptedReplyWithoutOutput selects uncertain for an accepted reply whose source can no longer be read.
+func acceptedReplyWithoutOutput(identity SentMessage) sdkgo.MutationAttempt[SentMessage] {
+	return selectUncertainWithoutSubmitting(replyToMessageOperation, identity,
+		"an earlier attempt of this Step submitted the reply and the server accepted it, but its result was lost and the source message can no longer be read; it is not submitted again")
+}
+
 func replyAttemptForReadFailure(call sdkgo.Call, decision submissionDecision, failure *serverFailure, identity SentMessage) sdkgo.MutationAttempt[SentMessage] {
 	switch failure.outcome {
 	case outcomeRetryable:

@@ -44,7 +44,7 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 export interface Config {
   /** Stripe API base URL; leave blank for Stripe's public v1 API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway. */
   endpoint?: string;
-  /** Maximum complete Stripe API response in bytes; enter a positive integer only to change the safety limit. Oversized successful responses select invalidResponse; an oversized error response is classified by its status. */
+  /** Maximum complete Stripe API response in bytes; enter a positive integer only to change the safety limit. An oversized successful read selects invalidResponse and an oversized successful write selects uncertain; an oversized error response to a read is classified by its status, and to a write is an unknown outcome resent under the same idempotency key. */
   maxResponseBytes?: number;
   /** Maximum raw signed webhook request body in bytes; enter a positive integer only to change the safety limit. Larger bodies are rejected before signature verification. */
   webhookMaxBodyBytes?: number;

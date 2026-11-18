@@ -125,8 +125,10 @@ for (const write of writes) {
     });
 
     for (const [status, expected] of [
-      [200, { kind: 'branch', branch: 'invalidResponse', failure: { kind: 'RESPONSE_TOO_LARGE' } }],
-      [400, { kind: 'branch', branch: 'providerRejected', failure: { kind: 'PROVIDER_REJECTION' } }],
+      // Stripe accepted the write, so an oversized success is uncertain.
+      [200, { kind: 'uncertain', failure: { kind: 'RESPONSE_TOO_LARGE' } }],
+      // An unread 400 body may carry the created object, so the keyed write is resent.
+      [400, { kind: 'retry', failure: { kind: 'PROTOCOL' } }],
       [429, { kind: 'retry', failure: { kind: 'RATE_LIMIT' } }],
       [409, { kind: 'retry', failure: { kind: 'CONFLICT' } }],
       [500, { kind: 'retry', failure: { kind: 'AVAILABILITY' } }],
@@ -143,8 +145,8 @@ for (const write of writes) {
         .toMatchObject({ kind: 'retry', failure: { kind: 'CONFLICT' } });
     });
 
-    it('selects invalidResponse for malformed success JSON that a resend would only replay', async () => {
-      expect(await write.invoke(client([{ status: 200, headers: {}, body: Buffer.from('{bad') }]))).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'PROTOCOL' } });
+    it('selects uncertain for accepted malformed success JSON that a resend would only replay', async () => {
+      expect(await write.invoke(client([{ status: 200, headers: {}, body: Buffer.from('{bad') }]))).toMatchObject({ kind: 'uncertain', failure: { kind: 'PROTOCOL' } });
     });
   });
 }

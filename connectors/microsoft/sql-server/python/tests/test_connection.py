@@ -5,7 +5,14 @@
 import pytest
 from dex_connectors.sdk import Call, ConnectionRef, SecretString
 
-from dex_connectors.microsoft_sql_server import Client, Config, Credentials, new_connection_with_operations
+from dex_connectors.microsoft_sql_server import (
+    Client,
+    Config,
+    Connection,
+    Credentials,
+    new_connection,
+    new_connection_with_operations,
+)
 from dex_connectors.microsoft_sql_server._generated.definitions import CONNECTOR_ID
 
 
@@ -40,3 +47,32 @@ def test_keyword_execute_non_idempotent_binds_the_new_operation() -> None:
     )
 
     assert connection.execute_non_idempotent() is execute_non_idempotent
+
+
+def test_released_positional_connection_constructor_still_binds_client() -> None:
+    client = _client()
+    connection = Connection(ConnectionRef(CONNECTOR_ID, "primary"), client.query(), client.execute(), client)
+
+    assert connection.execute() is not None
+    with pytest.raises(ValueError, match="without the executeNonIdempotent operation"):
+        connection.execute_non_idempotent()
+
+
+def test_connection_constructor_accepts_keyword_execute_non_idempotent() -> None:
+    client = _client()
+    execute_non_idempotent = client.execute_non_idempotent()
+    connection = Connection(
+        ConnectionRef(CONNECTOR_ID, "primary"),
+        client.query(),
+        client.execute(),
+        client,
+        execute_non_idempotent=execute_non_idempotent,
+    )
+
+    assert connection.execute_non_idempotent() is execute_non_idempotent
+
+
+def test_new_connection_binds_every_client_operation() -> None:
+    connection = new_connection(_client(), ConnectionRef(CONNECTOR_ID, "primary"))
+
+    assert connection.execute_non_idempotent().definition().operation.operation_id == "executeNonIdempotent"

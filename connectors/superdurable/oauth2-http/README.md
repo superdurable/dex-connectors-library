@@ -86,9 +86,10 @@ refresh certain by moving the clock past the stored expiry.
   `path` is joined to `apiBaseUrl`; anything else selects `defect` before a
   request is sent.
 - **No redirects.** The connector never follows a redirect, so a token is never
-  replayed to another host. The 3xx answer selects `rejected` for
-  `sendRequest` and `uncertain` for `postNonIdempotent`, because a redirect
-  after a POST may follow a processed write.
+  replayed to another host. A redirect of a GET, HEAD, or OPTIONS request
+  selects `rejected` for `sendRequest`. A redirect of a POST, PUT, PATCH, or
+  DELETE may follow a processed write, so `sendRequest` sends it again and
+  `postNonIdempotent` selects `uncertain`.
 - **Connection-owned headers.** A request that sets `Authorization`, `Cookie`,
   `Host`, or another header that the transport owns selects `defect`.
 - **Redaction.** The access tokens a request used are replaced by `[REDACTED]`
@@ -191,7 +192,7 @@ Branches, in the order the operation decides them:
 | Branch | When |
 | --- | --- |
 | `completed` | The API answered 2xx. |
-| `rejected` (optional) | A redirect, a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or an authorization the server will no longer renew. `statusCode` is zero in the last case. A 401 is final only after one renewal and one resend. |
+| `rejected` (optional) | A redirect of a GET, HEAD, or OPTIONS request, a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or an authorization the server will no longer renew. `statusCode` is zero in the last case. A 401 is final only after one renewal and one resend. |
 | `uncertain` (optional) | Kept for compatibility and never selected: every unknown outcome is sent again. |
 | `defect` (optional) | The input or the settings are invalid, so no request was sent. |
 
