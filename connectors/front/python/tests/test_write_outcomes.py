@@ -18,6 +18,12 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     SecretString,
 )
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.singledispatch import Fence
 
 from dex_connectors.front import (
@@ -125,8 +131,24 @@ async def test_accepted_reply_without_a_usable_id_is_never_resent(response: http
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("error", "kind"),
-    [(ReauthorizationRequiredError(), "uncertain"), (ConnectionError("broker unavailable"), "retry")],
-    ids=["terminal", "transient"],
+    [
+        (ReauthorizationRequiredError(), "uncertain"),
+        (ObjectNotFoundError("connection"), "uncertain"),
+        (ConnectionNotSelectedError("connection"), "uncertain"),
+        (CredentialBrokerRejectedError("broker"), "uncertain"),
+        (ConnectionError("broker unavailable"), "retry"),
+        (CredentialBrokerUnavailableError("broker"), "retry"),
+        (ValueError("connection is not configured"), "retry"),
+    ],
+    ids=[
+        "terminal",
+        "object not found",
+        "not selected",
+        "broker rejected",
+        "transient",
+        "broker unavailable",
+        "not configured",
+    ],
 )
 async def test_credential_failure_after_a_possible_send_never_selects_defect(
     error: Exception, kind: str
@@ -267,10 +289,24 @@ async def test_update_retries_a_refusal_whose_body_cannot_be_read() -> None:
     ("error", "attempt_number", "kind"),
     [
         (ConnectionError("broker unavailable"), 1, "retry"),
+        (CredentialBrokerUnavailableError("broker"), 1, "retry"),
+        (ValueError("connection is not configured"), 1, "retry"),
         (ReauthorizationRequiredError(), 1, "branch"),
+        (ObjectNotFoundError("connection"), 1, "branch"),
+        (ConnectionNotSelectedError("connection"), 1, "branch"),
+        (CredentialBrokerRejectedError("broker"), 1, "branch"),
         (ReauthorizationRequiredError(), 2, "retry"),
     ],
-    ids=["transient", "terminal first attempt", "terminal after earlier write"],
+    ids=[
+        "transient",
+        "broker unavailable",
+        "not configured",
+        "terminal first attempt",
+        "object not found",
+        "not selected",
+        "broker rejected",
+        "terminal after earlier write",
+    ],
 )
 async def test_update_classifies_credential_failures(
     error: Exception, attempt_number: int, kind: str
@@ -287,3 +323,34 @@ async def test_update_classifies_credential_failures(
     if kind == "branch":
         assert attempt.branch == "defect"
     assert not requests
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("status", "body", "branch"),
+    [
+        (404, b"{}", "notFound"),
+        (403, b"{}", "providerRejected"),
+        (301, b"{}", "notFound"),
+        (200, b'{"id":"bad"}', ""),
+        (409, b"{}", ""),
+        (410, b"{}", ""),
+        (500, b"{}", ""),
+        (400, b'{"_error":"front-inert-token"}', ""),
+    ],
+)
+async def test_update_first_read_selects_a_branch_only_for_a_definite_answer(
+    status: int, body: bytes, branch: str
+) -> None:
+    """An earlier attempt's change may have applied, so an unknown read retries on every attempt."""
+    provider, requests = recording(lambda request: httpx.Response(status, content=body))
+    context = HeartbeatContext()
+    async with provider:
+        attempt = await new_client(provider).update_conversation().invoke(
+            new_call(context, "updateConversation", 1), TAGGING
+        )
+    assert [request.method for request in requests] == ["GET"]
+    if not branch:
+        assert attempt.kind == "retry"
+        return
+    assert attempt.kind == "branch" and attempt.branch == branch

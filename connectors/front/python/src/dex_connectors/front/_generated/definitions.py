@@ -89,7 +89,7 @@ UPDATE_CONVERSATION_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "The conversation holds the requested status, assignee, and tags, written now or by an earlier attempt.", False),
         BranchDefinition(NOT_FOUND, "The conversation does not exist, was merged, or is not visible to the API token.", True),
         BranchDefinition(PROVIDER_REJECTED, "Front conclusively rejected a change, such as an unknown teammate, tag, or ticket status; changes sent before it stay applied.", True),
-        BranchDefinition(INVALID_RESPONSE, "Front returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing.", True),
+        BranchDefinition(INVALID_RESPONSE, "Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so a malformed or oversized conversation on any read is retried.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid, or the connection needs reconnection on the first attempt; a transient credential failure, or one after an earlier attempt, Retries.", True),
     ),
     StepDefaults(

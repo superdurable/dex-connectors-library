@@ -42,7 +42,7 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
-  /** Largest complete Front API response, in bytes, that one request reads; a larger response selects invalidResponse. getConversation reads a conversation's newest messages as HTML and every comment, so raise it only when conversations with very long emails select invalidResponse; enter a positive integer. Blank keeps the displayed safety limit. */
+  /** Largest complete Front API response, in bytes, that one request reads; a larger response selects invalidResponse for a Query and is retried by updateConversation. getConversation reads a conversation's newest messages as HTML and every comment, so raise it only when conversations with very long emails select invalidResponse; enter a positive integer. Blank keeps the displayed safety limit. */
   maxResponseBytes?: number;
 }
 

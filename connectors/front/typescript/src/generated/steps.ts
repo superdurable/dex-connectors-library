@@ -112,7 +112,7 @@ export interface UpdateConversationStepConfig<StepInput, OperationInput = Update
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Front conclusively rejected a change, such as an unknown teammate, tag, or ticket status; changes sent before it stay applied. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Front returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing. */
+  /** Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so a malformed or oversized conversation on any read is retried. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid, or the connection needs reconnection on the first attempt; a transient credential failure, or one after an earlier attempt, Retries. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

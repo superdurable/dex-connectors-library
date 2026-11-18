@@ -5,6 +5,7 @@ package front_test
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"slices"
@@ -214,6 +215,37 @@ func TestUpdateConversationMapsWriteFailures(t *testing.T) {
 	}
 }
 
+func TestUpdateConversationFirstReadSelectsABranchOnlyForADefiniteAnswer(t *testing.T) {
+	for _, test := range []struct {
+		status int
+		body   string
+		branch sdkgo.BranchID
+	}{
+		{status: http.StatusNotFound, body: `{}`, branch: front.UpdateConversationBranchNotFound},
+		{status: http.StatusForbidden, body: `{}`, branch: front.UpdateConversationBranchProviderRejected},
+		{status: http.StatusMovedPermanently, body: `{}`, branch: front.UpdateConversationBranchNotFound},
+		{status: http.StatusOK, body: `{"id":"bad"}`},
+		{status: http.StatusConflict, body: `{}`},
+		{status: http.StatusGone, body: `{}`},
+		{status: http.StatusInternalServerError, body: `{}`},
+		{status: http.StatusBadRequest, body: `{"_error":"` + testAPIToken + `"}`},
+	} {
+		provider := newRecordingFront(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+			require.Equal(t, http.MethodGet, request.Method, "nothing is written after an unusable first read")
+			writeJSON(t, response, test.status, test.body)
+		})
+		result, err := sdkgo.RunMutation(newTestDexContext("update-first-read"), newFrontClient(t, provider.URL).UpdateConversation(), frontConnection,
+			front.UpdateConversationInput{ConversationID: testConversationID, AddTagIDs: []string{testTagID}})
+		if test.branch == "" {
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "HTTP %d %s: an earlier attempt's change may have applied", test.status, test.body)
+			continue
+		}
+		require.NoError(t, err, test.status)
+		require.Equal(t, test.branch, result.Branch, test.status)
+	}
+}
+
 func TestUpdateConversationRetriesARefusalWhoseBodyCannotBeRead(t *testing.T) {
 	provider := newRecordingFront(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		if request.Method == http.MethodGet {
@@ -236,7 +268,12 @@ func TestUpdateConversationClassifiesCredentialFailures(t *testing.T) {
 		failureKind sdkgo.FailureKind
 	}{
 		"transient first attempt":      {failure: projectconfig.ErrCredentialBrokerUnavailable, attempt: 1, isRetry: true, failureKind: sdkgo.FailureAvailability},
+		"not configured":               {failure: errors.New("connection is not configured"), attempt: 1, isRetry: true, failureKind: sdkgo.FailureAvailability},
 		"terminal first attempt":       {failure: sdkgo.ErrReauthorizationRequired, attempt: 1, failureKind: sdkgo.FailureAuthentication},
+		"project reauthorization":      {failure: projectconfig.ErrReauthorizationRequired, attempt: 1, failureKind: sdkgo.FailureAuthentication},
+		"object not found":             {failure: projectconfig.ErrObjectNotFound, attempt: 1, failureKind: sdkgo.FailureAuthentication},
+		"not selected":                 {failure: projectconfig.ErrConnectionNotSelected, attempt: 1, failureKind: sdkgo.FailureAuthentication},
+		"broker rejected":              {failure: projectconfig.ErrCredentialBrokerRejected, attempt: 1, failureKind: sdkgo.FailureAuthentication},
 		"terminal after earlier write": {failure: sdkgo.ErrReauthorizationRequired, attempt: 2, isRetry: true, failureKind: sdkgo.FailureAuthentication},
 	} {
 		t.Run(name, func(t *testing.T) {

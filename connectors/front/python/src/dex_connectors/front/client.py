@@ -75,7 +75,7 @@ class Exchange:
     body: bytes = b""
     error: Failure | None = None
     retry_after: float = 0
-    # A non-2xx body that was oversized or failed to read; a write cannot rule out acceptance from it.
+    # A non-2xx body that was oversized, unreadable, or reflected the token; it cannot rule out acceptance.
     is_error_body_unreadable: bool = False
 
     @property
@@ -280,6 +280,10 @@ class Client:
                     ),
                 )
             return Exchange("succeeded", status, response_headers, body)
+        token = credentials.api_token.reveal().encode()
+        if token and token in body:
+            # A token-reflecting refusal is untrusted, so it cannot rule out acceptance either.
+            is_error_body_unreadable = True
         return replace(
             self._classify_failure_status(operation, status, response_headers),
             is_error_body_unreadable=is_error_body_unreadable,

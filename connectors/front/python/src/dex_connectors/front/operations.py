@@ -29,6 +29,11 @@ from dex_connectors.sdk import (
     RejectedCredentialRefreshingProvider,
     resolve_credential_after_rejection,
 )
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import is_header_safe_credential
 from dex_connectors.sdk.singledispatch import (
     CheckpointError,
@@ -146,6 +151,28 @@ def _search_input(input: SearchConversationsInput) -> str:
 
 def _conversation_id(value: str) -> None:
     resource_id(value, "conversation", "conversationId", "cnv_55c8c149")
+
+
+def _is_terminal_credential_error(error: BaseException | None) -> bool:
+    """Report a credential failure another attempt cannot repair; None means local validation failed."""
+    return error is None or isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
+
+
+def _is_unknown_conversation_read(exchange: Exchange) -> bool:
+    """Report a failed read that proves nothing; a merged 301 and a readable listed refusal are definite."""
+    if exchange.outcome == "invalid":
+        return True
+    if exchange.outcome in ("rejected", "notFound"):
+        return exchange.status not in DEFINITE_REFUSAL_STATUSES or exchange.is_error_body_unreadable
+    return False
 
 
 def _retry_query(exchange: Exchange) -> QueryAttempt[Any]:
@@ -560,9 +587,7 @@ class UpdateConversationOperation:
         credentials, credential_failure, credential_error = await self.client.resolve_credentials(
             call, operation
         )
-        if credential_failure and not (
-            credential_error is None or isinstance(credential_error, ReauthorizationRequiredError)
-        ):
+        if credential_failure and not _is_terminal_credential_error(credential_error):
             return MutationAttempt.retry(
                 failure(
                     FailureKind.AVAILABILITY,
@@ -600,6 +625,9 @@ class UpdateConversationOperation:
                     ),
                     answer.retry_after,
                 )
+            if not is_after_write and _is_unknown_conversation_read(answer):
+                # An earlier attempt's write may have applied; only a definite answer selects a branch.
+                return None, _retry_mutation(answer)
             if answer.outcome != "succeeded":
                 return None, _update_failure(answer, empty, observed)
             try:
@@ -608,24 +636,14 @@ class UpdateConversationOperation:
                     raise ValueError("Front returned another conversation")
                 return current, None
             except (ValueError, TypeError, KeyError, json.JSONDecodeError) as error:
-                if is_after_write:
-                    return None, MutationAttempt.retry(
-                        failure(
-                            FailureKind.PROTOCOL,
-                            operation,
-                            "Front accepted the change but returned an invalid conversation: " + str(error),
-                        )
-                    )
-                return None, MutationAttempt.branch_result(
-                    "invalidResponse",
-                    empty,
-                    observed,
-                    failure(
-                        FailureKind.PROTOCOL,
-                        operation,
-                        "Front returned an invalid conversation: " + str(error),
-                    ),
+                # An invalid conversation is unknown, so the safe change repeats.
+                prefix = (
+                    "Front accepted the change but returned an invalid conversation: "
+                    if is_after_write
+                    else "Front returned an invalid conversation: "
                 )
+                invalid = failure(FailureKind.PROTOCOL, operation, prefix + str(error))
+                return None, MutationAttempt.retry(invalid)
 
         current, terminal = await read(False)
         if terminal:
@@ -814,7 +832,7 @@ class ReplyToConversationOperation:
             call, "replyToConversation"
         )
         if credential_failure:
-            if credential_error is None or isinstance(credential_error, ReauthorizationRequiredError):
+            if _is_terminal_credential_error(credential_error):
                 return self._uncertain(
                     call,
                     output,
@@ -896,7 +914,7 @@ class ReplyToConversationOperation:
         )
         if credential_failure and not permit.is_first_send:
             # notSent would hide the earlier possible send, so nothing is recorded.
-            if credential_error is None or isinstance(credential_error, ReauthorizationRequiredError):
+            if _is_terminal_credential_error(credential_error):
                 return self._uncertain(
                     call,
                     output,
@@ -922,7 +940,7 @@ class ReplyToConversationOperation:
                         "Front credentials were temporarily unavailable and the not-sent checkpoint failed",
                     )
                 )
-            if credential_error is None or isinstance(credential_error, ReauthorizationRequiredError):
+            if _is_terminal_credential_error(credential_error):
                 return MutationAttempt.branch_result(
                     "defect",
                     output,
