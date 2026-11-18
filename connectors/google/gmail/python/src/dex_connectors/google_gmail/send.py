@@ -161,13 +161,24 @@ def _status_kind(status: int) -> FailureKind:
     }.get(status, FailureKind.PROVIDER_REJECTION)
 
 
-def _has_accepted_message_id(body: bytes) -> bool:
-    """Report a refusal body that still names a Gmail message, which contradicts the status."""
+def _accepted_message_identity(body: bytes) -> dict[str, str] | None:
+    """Return the message a body names when its ``id`` is a non-empty string, whatever its other fields are.
+
+    A ``threadId`` that is not a string is dropped, so the thread is read back later.
+    """
     try:
         decoded = json.loads(body)
     except (ValueError, UnicodeDecodeError):
-        return False
-    return isinstance(decoded, dict) and isinstance(decoded.get("id"), str) and bool(decoded["id"])
+        return None
+    if not isinstance(decoded, dict) or not isinstance(decoded.get("id"), str) or not decoded["id"]:
+        return None
+    thread_id = decoded.get("threadId")
+    return {"id": decoded["id"], "threadId": thread_id if isinstance(thread_id, str) else ""}
+
+
+def _has_accepted_message_id(body: bytes) -> bool:
+    """Report a refusal body that still names a Gmail message, which contradicts the status."""
+    return _accepted_message_identity(body) is not None
 
 
 def _raw_message_size(payload: bytes) -> int:
@@ -509,9 +520,11 @@ class SendService:
         )
 
     async def _record_not_sent(self, execution: SendExecution) -> None:
-        if execution.fence is not None and (
-            await execution.fence.decide()
-        ).kind == DecisionKind.SEND_ALLOWED:
+        """Record notSent only before any possible send; otherwise it would hide an earlier send."""
+        if execution.fence is None:
+            return
+        decision = await execution.fence.decide()
+        if decision.kind == DecisionKind.SEND_ALLOWED and decision.prior_send_upper_bound == 0:
             await execution.fence.record_not_sent()
 
     async def _read_back_only(
@@ -536,13 +549,15 @@ class SendService:
         )
 
     async def _post_message(
-        self, call: Call, credential: Credentials, payload: bytes, write_deadline: datetime
+        self, call: Call, credential: Credentials, payload: bytes, observed_statuses: list[int],
+        write_deadline: datetime,
     ) -> tuple[GmailHTTPResult, Credentials]:
         async with asyncio.timeout_at(asyncio.get_running_loop().time() + max(
             0.0, (write_deadline - datetime.now(UTC)).total_seconds()
         )):
             return await self._provider.request(
-                call, credential, "POST", "/users/me/messages/send", payload=payload
+                call, credential, "POST", "/users/me/messages/send", payload=payload,
+                observed_statuses=observed_statuses,
             )
 
     async def _send_and_confirm(
@@ -585,16 +600,18 @@ class SendService:
         response: GmailHTTPResult | None = None
         status = 0
         headers = httpx.Headers()
+        observed_statuses: list[int] = []
         try:
             if execution.fence is None:
                 async with asyncio.timeout_at(budget.send_end):
                     response, credential = await self._provider.request(
-                        execution.call, credential, "POST", "/users/me/messages/send", payload=message.payload
+                        execution.call, credential, "POST", "/users/me/messages/send",
+                        payload=message.payload, observed_statuses=observed_statuses,
                     )
             else:
-                response, credential = await execution.fence.dispatch(
-                    partial(self._post_message, execution.call, credential, message.payload)
-                )
+                response, credential = await execution.fence.dispatch(partial(
+                    self._post_message, execution.call, credential, message.payload, observed_statuses
+                ))
             assert response is not None
             status, headers = response.status_code, response.headers
         except (CheckpointError, InsufficientAttemptTimeError):
@@ -619,16 +636,19 @@ class SendService:
                 _receipt(execution),
             )
         except TimeoutError:
-            return await self._confirm_possible(
-                execution,
-                budget,
-                credential,
-                outcome,
-                message,
-                FailureKind.TRANSPORT,
-                f"Gmail {outcome.request_name} outcome is unknown",
-                _receipt(execution),
-            )
+            if not observed_statuses or not 200 <= observed_statuses[-1] < 300:
+                return await self._confirm_possible(
+                    execution,
+                    budget,
+                    credential,
+                    outcome,
+                    message,
+                    FailureKind.TRANSPORT,
+                    f"Gmail {outcome.request_name} outcome is unknown",
+                    _receipt(execution),
+                )
+            # Gmail accepted the send before the deadline cut its body, so it is never resent.
+            status = observed_statuses[-1]
         receipt = _receipt(execution, headers)
         if status == 429:
             if execution.fence is not None:
@@ -688,16 +708,10 @@ class SendService:
                 outcome.rejection_message,
                 receipt,
             )
-        try:
-            sent = json.loads(response.body) if response is not None else {}
-            if (
-                not isinstance(sent, dict)
-                or not isinstance(sent.get("id"), str)
-                or not sent["id"]
-                or not isinstance(sent.get("threadId", ""), str)
-            ):
-                raise ValueError("Gmail accepted response has no message ID")
-        except (ValueError, UnicodeDecodeError):
+        accepted = _accepted_message_identity(response.body) if response is not None else None
+        if accepted is not None:
+            sent = accepted
+        else:
             found, _ = await self._poll_sent(execution, budget, credential, message)
             sent = found or {"threadId": message.requested_thread_id}
         if execution.fence is not None and sent.get("id"):

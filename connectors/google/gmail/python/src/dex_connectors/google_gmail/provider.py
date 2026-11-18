@@ -423,8 +423,13 @@ class GmailProvider:
         *,
         query: dict[str, str | list[str]] | None = None,
         payload: bytes | None = None,
+        observed_statuses: list[int] | None = None,
     ) -> tuple[GmailHTTPResult, Credentials]:
-        """Send once, bounded by providerhttp, then retry one rejected token if supported."""
+        """Send once, bounded by providerhttp, then retry one rejected token if supported.
+
+        ``observed_statuses`` receives each response status before its body is read, so a caller
+        whose deadline interrupts the body still knows Gmail answered.
+        """
         target = self.endpoint + path
         if query:
             target += "?" + urlencode(query, doseq=True)
@@ -450,6 +455,8 @@ class GmailProvider:
                     await response.aclose()
                     credential = next_credential
                     continue
+            if observed_statuses is not None:
+                observed_statuses.append(response.status_code)
             try:
                 body = await read_bounded_body(response, self.max_response_bytes)
             except BodyTooLargeError as error:

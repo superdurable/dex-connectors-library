@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Gmail's provider boundary honors persisted single-dispatch decisions."""
 
+import asyncio
 import base64
 import json
 from collections.abc import Callable
@@ -531,6 +532,107 @@ async def test_allowlisted_refusal_with_message_id_retries(operation_id: str) ->
     assert attempt.kind == "retry" and attempt.failure is not None
     assert "Gmail may still have processed the request" in attempt.failure.message
     assert context.heartbeats[-1].state == State.CLAIMED
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+@pytest.mark.parametrize(
+    ("status", "body", "expected_kind", "expected_branch"),
+    [
+        (200, {"id": "sent-1", "threadId": 7}, "branch", "sent"),
+        (400, {"id": "sent-1", "threadId": 7}, "retry", ""),
+        (400, {"id": 7}, "branch", "providerRejected"),
+    ],
+)
+async def test_message_id_check_ignores_other_field_types(
+    operation_id: str, status: int, body: dict[str, object], expected_kind: str, expected_branch: str
+) -> None:
+    """A body names a Gmail message exactly when its id is a non-empty string."""
+    context = HeartbeatContext()
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(status, json=body)
+        if request.url.path.endswith("/messages/source-1"):
+            return _source_message()
+        if request.url.params.get("format") == "minimal":
+            return httpx.Response(200, json={"id": "sent-1", "threadId": "thread-1"})
+        return httpx.Response(200, json={"messages": []})
+
+    attempt, requests = await _invoke(_call(context, operation_id=operation_id), httpx.MockTransport(answer))
+    assert attempt.kind == expected_kind
+    if expected_branch:
+        assert attempt.branch == expected_branch
+    if expected_branch == "sent":
+        assert attempt.value.message_id == "sent-1"
+        assert not [request for request in requests if request.url.params.get("q")]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+async def test_counted_can_resend_searches_before_resending(operation_id: str) -> None:
+    """A canResend marker that still counts an earlier send reads back before any POST."""
+    context = HeartbeatContext(3)
+    call = _call(context, operation_id=operation_id)
+    context.previous = Marker(call.id, 2, State.CAN_RESEND, send_count=1)
+    attempt, requests = await _invoke(call, httpx.MockTransport(_gmail(
+        httpx.Response(200, json={"messages": [{"id": "sent-1", "threadId": "thread-1"}]}),
+        httpx.Response(200, json={"id": "sent-2", "threadId": "thread-1"}),
+    )))
+    assert attempt.branch == "sent" and attempt.value.message_id == "sent-1"
+    assert "POST" not in _methods(requests)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("operation_id", "failure"),
+    [("sendMessage", "search"), ("replyToMessage", "search"), ("replyToMessage", "source_read")],
+)
+async def test_pre_send_retry_after_counted_can_resend_records_nothing(
+    operation_id: str, failure: str
+) -> None:
+    """notSent would hide the counted earlier send from the next attempt."""
+    context = HeartbeatContext(3)
+    call = _call(context, operation_id=operation_id)
+    context.previous = Marker(call.id, 2, State.CAN_RESEND, send_count=1)
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(200, json={"id": "sent-2", "threadId": "thread-1"})
+        if request.url.path.endswith("/messages/source-1"):
+            return httpx.Response(500) if failure == "source_read" else _source_message()
+        if failure == "search":
+            return httpx.Response(500)
+        return httpx.Response(200, json={"messages": []})
+
+    attempt, requests = await _invoke(call, httpx.MockTransport(answer))
+    assert attempt.kind == "retry"
+    assert "POST" not in [request.method for request in requests]
+    assert context.heartbeats == []
+
+
+class _SlowAcceptedBody(httpx.AsyncByteStream):
+    """Send 2xx headers, then hold the body past the write window."""
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        await asyncio.sleep(30)
+        yield b"{}"
+
+
+@pytest.mark.asyncio
+async def test_deadline_after_accepted_headers_is_never_resent() -> None:
+    """A write window that ends after Gmail answered 2xx still means the send was accepted."""
+    context = HeartbeatContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=3)
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(200, stream=_SlowAcceptedBody())
+        return httpx.Response(200, json={"messages": []})
+
+    attempt, requests = await _invoke(_call(context), httpx.MockTransport(answer))
+    assert attempt.branch == "sent"
+    assert [request.method for request in requests].count("POST") == 1
 
 
 @pytest.mark.asyncio

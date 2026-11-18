@@ -169,7 +169,7 @@ func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMe
 	cancelSourceRead()
 	if err != nil {
 		if result.statusCode == 0 || result.statusCode == http.StatusTooManyRequests || result.statusCode >= 500 {
-			_ = fence.RecordNotSent() // A failed checkpoint cannot permit a later send.
+			recordNotSentBeforeAnySend(fence, decision)
 			delay, retryAfterErr := retryAfter(result.header)
 			if retryAfterErr != nil {
 				return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure("replyToMessage", sdkgo.FailureProtocol, "Gmail returned an invalid Retry-After header"), 0)
