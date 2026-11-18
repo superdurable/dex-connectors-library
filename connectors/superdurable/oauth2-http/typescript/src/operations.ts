@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, ReauthorizationRequiredError, type Call, type Failure, type FailureKind, type Mutation, type MutationAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { RefreshFailedError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConflictError, CredentialBrokerUnavailableError, ExchangePendingError, OutcomeUnknownError, RefreshFailedError } from '@superdurable/connectors-sdk/projectconfig';
 import { AddressRefusal, ProviderTransportError, parseRetryAfter } from '@superdurable/connectors-sdk/providerhttp';
 import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { PostNonIdempotentDefinition, SendRequestDefinition } from './generated/definitions.js';
@@ -32,7 +32,8 @@ export class SendRequestOperation implements Mutation<SendRequestInput, SendRequ
   /**
    * Send one OAuth bearer request and classify its observed result. A 2xx selects completed; a redirect of a
    * GET, HEAD, or OPTIONS request or a definite refusal selects rejected. Every other outcome, including a
-   * redirect of a POST, PUT, PATCH, or DELETE, returns Retry; the declared uncertain branch is never selected.
+   * redirect of a POST, PUT, PATCH, or DELETE, returns Retry. On a later attempt of a write method, a definite
+   * refusal or a terminal credential or address failure selects uncertain instead of rejected or defect.
    */
   async invoke(call: Call, input: SendRequestInput): Promise<MutationAttempt<SendRequestOutput>> {
     let plan: RequestPlan;
@@ -41,12 +42,18 @@ export class SendRequestOperation implements Mutation<SendRequestInput, SendRequ
     const deadline = Date.now() + operationBudgetMs;
     const signal = AbortSignal.any([call.context.cancellationSignal, AbortSignal.timeout(operationBudgetMs)]);
     const resolved = await resolveToken(this.client, call, signal, sendRequestOperation);
-    if ('attempt' in resolved) return resolved.attempt;
+    if ('attempt' in resolved) {
+      if (resolved.attempt.kind !== 'retry' && hasPossibleEarlierWrite(call, plan)) return uncertainWithoutSending(call, this.client.now(), 'AUTHENTICATION', "an earlier attempt may have sent the request, and the connection's credentials cannot send it now");
+      return resolved.attempt;
+    }
     const token = resolved.token;
     let answer: APIResponse;
     let tokens = [token];
     try { answer = await this.client.exchange(call, plan, token, signal, deadline); }
-    catch (error) { return dispatchFailure(error); }
+    catch (error) {
+      if (error instanceof AddressRefusal && hasPossibleEarlierWrite(call, plan)) return uncertainWithoutSending(call, this.client.now(), 'VALIDATION', `an earlier attempt may have sent the request, and the connection's apiBaseUrl resolves to an address the connector will not connect to: ${error.reason}`);
+      return dispatchFailure(error);
+    }
     if (answer.status === 401 && !answer.readError) {
       try {
         const replacement = await this.client.resolveAfterRejection(call, signal);
@@ -65,6 +72,8 @@ export class SendRequestOperation implements Mutation<SendRequestInput, SendRequ
     if (status >= 200 && status < 300) return newMutationBranch('completed', output, receipt);
     // A redirect, such as 303 See Other, may follow a processed write, so the write is sent again.
     if (status >= 300 && status < 400 && !readMethods.has(plan.method)) return newMutationRetry(failure(sendRequestOperation, 'PROTOCOL', `the API answered HTTP ${status} to a ${plan.method}, which does not prove the request was refused`), retryAfter(answer, this.client.now()));
+    // The refusal may answer the repeat of a write that an earlier attempt already applied.
+    if (definiteRefusals.has(status) && hasPossibleEarlierWrite(call, plan)) return newMutationUncertain(output, failure(sendRequestOperation, rejectionKind(status), `the API answered HTTP ${status} to a repeated ${plan.method}, which an earlier attempt may have applied`), receipt);
     // The connector never follows a redirect, so a redirect is reported like a refusal.
     if ((status >= 300 && status < 400) || definiteRefusals.has(status)) return newMutationBranch('rejected', output, receipt, failure(sendRequestOperation, rejectionKind(status), `the API answered HTTP ${status}`));
     const delay = retryAfter(answer, this.client.now());
@@ -111,7 +120,8 @@ export class PostNonIdempotentOperation implements Mutation<PostNonIdempotentInp
     }
     const decision = fence.decide();
     if (decision.kind === 'failClosed') return newMutationRetry(failure(postNonIdempotentOperation, 'AVAILABILITY', 'the single-dispatch checkpoint could not be read; nothing was sent in this attempt'));
-    if (decision.kind === 'readBackRequired') return newMutationUncertain(zeroOutput, failure(postNonIdempotentOperation, 'TRANSPORT', 'an earlier attempt may have sent the POST, so it is not sent again'), receiptFor(call, client.now()));
+    // A canResend or notSent marker may still count an earlier possible POST; the cap forbids another one.
+    if (decision.kind === 'readBackRequired' || (decision.priorSendUpperBound ?? 0) >= definitionMaxSends(PostNonIdempotentDefinition)) return newMutationUncertain(zeroOutput, failure(postNonIdempotentOperation, 'TRANSPORT', 'an earlier attempt may have sent the POST, so it is not sent again'), receiptFor(call, client.now()));
     // An earlier send may have been processed, so a refusal of this one cannot prove nothing changed.
     const outcome = new PostOutcome(client, call, fence, (decision.priorSendUpperBound ?? 0) > 0);
     const deadline = Date.now() + operationBudgetMs;
@@ -218,7 +228,17 @@ async function resolveToken(client: OAuth2HTTPClient, call: Call, signal: AbortS
 }
 
 function isTemporaryRefreshFailure(error: unknown): boolean {
-  return error instanceof RefreshFailedError || error instanceof ProviderTransportError || error instanceof Error && /token endpoint is unavailable|token response could not be read/i.test(error.message);
+  return error instanceof RefreshFailedError || error instanceof ProviderTransportError || error instanceof CredentialBrokerUnavailableError
+    || error instanceof ExchangePendingError || error instanceof OutcomeUnknownError || error instanceof ConflictError
+    || error instanceof Error && /token endpoint is unavailable|token response could not be read/i.test(error.message);
+}
+
+/** Report a write method on a later attempt, which may follow a processed write. */
+function hasPossibleEarlierWrite(call: Call, plan: RequestPlan): boolean { return !readMethods.has(plan.method) && call.context.attempt > 1; }
+
+/** Select uncertain for a later sendRequest write attempt that a terminal local failure stops. */
+function uncertainWithoutSending(call: Call, now: Date, kind: FailureKind, message: string): MutationAttempt<SendRequestOutput> {
+  return newMutationUncertain(zeroOutput, failure(sendRequestOperation, kind, message), receiptFor(call, now));
 }
 
 /** Match only the Fence's pre-send AggregateError: too little time, and the notSent checkpoint failed. */

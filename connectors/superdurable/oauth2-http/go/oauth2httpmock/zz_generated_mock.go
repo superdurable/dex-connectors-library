@@ -67,7 +67,7 @@ func SendRequestCompleted(value oauth2http.SendRequestOutput, failure *sdkgo.Fai
 	return connectormock.Branch(oauth2http.SendRequestBranchCompleted, value, failure)
 }
 
-// SendRequestRejected selects the rejected branch: The API answered a redirect of a GET, HEAD, or OPTIONS request or a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or the connection's authorization could not be renewed. The Result carries the status code, which is zero when no request was sent.
+// SendRequestRejected selects the rejected branch: The API answered a redirect of a GET, HEAD, or OPTIONS request or a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422) of a read or of the first attempt of a write, or the connection's authorization could not be renewed. The Result carries the status code, which is zero when no request was sent.
 func SendRequestRejected(value oauth2http.SendRequestOutput, failure *sdkgo.Failure) connectormock.Case[oauth2http.SendRequestOutput] {
 	return connectormock.Branch(oauth2http.SendRequestBranchRejected, value, failure)
 }

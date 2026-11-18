@@ -192,9 +192,12 @@ Branches, in the order the operation decides them:
 | Branch | When |
 | --- | --- |
 | `completed` | The API answered 2xx. |
-| `rejected` (optional) | A redirect of a GET, HEAD, or OPTIONS request, a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or an authorization the server will no longer renew. `statusCode` is zero in the last case. A 401 is final only after one renewal and one resend. |
-| `uncertain` (optional) | Kept for compatibility and never selected: every unknown outcome is sent again. |
+| `rejected` (optional) | A redirect of a GET, HEAD, or OPTIONS request, a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422) of a read or of the first attempt of a write, or an authorization the server will no longer renew. `statusCode` is zero in the last case. A 401 is final only after one renewal and one resend. |
+| `uncertain` (optional) | A later attempt of a POST, PUT, PATCH, or DELETE, which may follow a processed write, receives a definite refusal, or cannot send it again because the credentials can no longer be used or the API address is refused. Every unknown outcome is sent again instead. |
 | `defect` (optional) | The input or the settings are invalid, so no request was sent. |
+
+A credential broker, store, refresh, or exchange that is temporarily
+unavailable returns Retry before anything is sent, in both operations.
 
 `sendRequest` is `repeatOnUnknown: safe`: every unknown outcome is sent again,
 for every method, including a `POST` without `idempotencyKeyHeader`; use
@@ -240,7 +243,7 @@ before the POST and sends at most once per Step execution.
 | --- | --- |
 | `completed` | The API answered 2xx. |
 | `rejected` (optional) | The API refused the only POST of this Step execution with a definite refusal (400, 401 after a failed renewal, 403, 404, 411, 413, 414, 415, or 422), or the authorization could not be renewed before the POST was sent. |
-| `uncertain` (optional) | The POST may have reached the API without a usable answer: a lost or cut-off answer, a timeout, a redirect, a 5xx other than 503, or another status that does not prove a refusal, such as 408 or 409. An attempt after an earlier possible send also selects it without sending. |
+| `uncertain` (optional) | The POST may have reached the API without a usable answer: a lost or cut-off answer, a timeout, a redirect, a 5xx other than 503, or another status that does not prove a refusal, such as 408 or 409. An attempt after an earlier possible send, including one whose checkpoint still counts that send, also selects it without sending. |
 | `defect` (optional) | The input or the settings are invalid, so no request was sent. |
 
 Dex retries a 429 or 503, after `Retry-After` when the API sends it, a POST that
