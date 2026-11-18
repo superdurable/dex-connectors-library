@@ -41,6 +41,7 @@ from ._generated.definitions import (
 from .client import (
     Client,
     Exchange,
+    ResponseObservation,
     decode_conversation,
     decode_draft,
     decode_inbox,
@@ -395,16 +396,16 @@ class UpdateConversationOperation:
             _validate_update(input)
         except ValueError as error:
             return _validation_mutation("updateConversation", empty, str(error))
-        token = await self.client.token(call)
+        token, is_terminal_credential_failure = await self.client.resolve_token(call)
         if token is None:
-            return MutationAttempt.branch_result(
-                "defect",
-                empty,
-                Receipt(),
-                hiver_failure(
-                    FailureKind.AUTHENTICATION, "updateConversation", "connection credentials are unavailable"
-                ),
+            credential_problem = hiver_failure(
+                FailureKind.AUTHENTICATION, "updateConversation", "connection credentials are unavailable"
             )
+            is_later_attempt = call.context is not None and call.context.attempt > 1
+            # defect would hide an earlier possible PATCH; repeating the absolute change is harmless.
+            if not is_terminal_credential_failure or is_later_attempt:
+                return MutationAttempt.retry(credential_problem)
+            return MutationAttempt.branch_result("defect", empty, Receipt(), credential_problem)
         path = _conversation_path(input.inbox_id, input.conversation_id)
         assignee_id = ""
         applied: tuple[Tag, ...] = ()
@@ -637,6 +638,18 @@ async def _fenced_attempt(
                 "the single-dispatch checkpoint could not be read; nothing was sent in this attempt",
             )
         )
+    saved_provider_id = decision.marker.provider_id if decision.marker else ""
+    if saved_provider_id:
+        # A saved provider ID proves Hiver accepted the write; Hiver has no note or draft read by ID.
+        return MutationAttempt.uncertain(
+            empty,
+            hiver_failure(
+                FailureKind.TRANSPORT,
+                operation,
+                "Hiver accepted an earlier attempt's write, and its answer was lost",
+            ),
+            client.receipt(call, object_id=saved_provider_id),
+        )
     if decision.kind == DecisionKind.READ_BACK_REQUIRED:
         return MutationAttempt.uncertain(
             empty,
@@ -646,30 +659,20 @@ async def _fenced_attempt(
                 "earlier attempts may have sent the request and the send cap is reached, "
                 "so it is not sent again",
             ),
-            client.receipt(call, object_id=decision.marker.provider_id if decision.marker else ""),
+            client.receipt(call),
         )
-    if (
-        decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
-        and decision.marker
-        and decision.marker.provider_id
-    ):
-        # A saved provider ID proves Hiver accepted the write, so it is never resent.
-        return MutationAttempt.uncertain(
-            empty,
-            hiver_failure(
-                FailureKind.TRANSPORT,
-                operation,
-                "Hiver accepted an earlier attempt's write, and its answer was lost",
-            ),
-            client.receipt(call, object_id=decision.marker.provider_id),
-        )
-    is_first_send = decision.prior_send_upper_bound == 0
+    # SEND_ALLOWED after a canResend marker can still count earlier possible sends.
+    is_first_send = decision.kind == DecisionKind.SEND_ALLOWED and decision.prior_send_upper_bound == 0
     can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
-    token = await client.token(call)
+    token, is_terminal_credential_failure = await client.resolve_token(call)
     if token is None:
-        return await _retry_before_dispatch(
+        return await _credential_failure_before_dispatch(
+            client,
+            call,
             fence,
             is_first_send,
+            is_terminal_credential_failure,
+            empty,
             hiver_failure(FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable"),
         )
     remaining = (fence.write_deadline - datetime.now(UTC)).total_seconds() * 0.6
@@ -685,16 +688,39 @@ async def _fenced_attempt(
                 "the wait for the connection's next Hiver request slot ended; no request was sent",
             ),
         )
+    observation = ResponseObservation()
     try:
         exchange = await fence.dispatch(
-            lambda _deadline: client._send(call, token, operation, method, path, None, None, fields, True)
+            lambda _deadline: client._send(
+                call, token, operation, method, path, None, None, fields, True, observation
+            )
         )
     except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
         # Dispatch refused before sending, so nothing reached Hiver in this attempt.
         return MutationAttempt.retry(
             hiver_failure(FailureKind.AVAILABILITY, operation, "Hiver write was not dispatched")
         )
+    except TimeoutError:
+        # The write window ended after dispatch; the claim stays, so the next attempt counts this send.
+        if _is_success_status(observation.status):
+            # Hiver accepted the write before its body was cut off, so it is never resent.
+            return MutationAttempt.uncertain(
+                empty,
+                hiver_failure(FailureKind.TRANSPORT, operation, "Hiver response could not be read"),
+                client.receipt(call),
+            )
+        return _resend_or_uncertain(
+            can_resend_unknown_outcome,
+            empty,
+            hiver_failure(FailureKind.TRANSPORT, operation, "Hiver request failed before a response arrived"),
+            0,
+            client.receipt(call),
+        )
     receipt = client.receipt(call, exchange)
+    if exchange.outcome != "success" and _is_success_status(exchange.status):
+        # Hiver accepted the write, but its answer is oversized, unreadable, or untrusted.
+        assert exchange.failure is not None
+        return MutationAttempt.uncertain(empty, exchange.failure, receipt)
     if exchange.outcome == "success":
         try:
             output, object_id = decode(exchange.body)
@@ -709,11 +735,10 @@ async def _fenced_attempt(
             provider_id = _accepted_provider_id(
                 exchange.body, "id" if operation == "addNote" else "shared_draft_id"
             )
+            # The 2xx proves acceptance, so this write is never resent.
             if provider_id:
-                # A decoded provider ID proves acceptance, so this write is never resent.
                 await _record_provider_id(fence, provider_id)
-                return MutationAttempt.uncertain(empty, problem, client.receipt(call, exchange, provider_id))
-            return _resend_or_uncertain(can_resend_unknown_outcome, empty, problem, 0, receipt)
+            return MutationAttempt.uncertain(empty, problem, client.receipt(call, exchange, provider_id))
         await _record_provider_id(fence, object_id)
         return MutationAttempt.branch_result(
             success_branch, output, client.receipt(call, exchange, object_id)
@@ -728,9 +753,7 @@ async def _fenced_attempt(
             # A lost checkpoint leaves the claim, so the next attempt counts this send toward the cap.
             pass
         return MutationAttempt.retry(exchange.failure, exchange.retry_after)
-    if exchange.outcome == "defect" and not is_first_send:
-        # defect would hide an earlier possible send.
-        return _resend_or_uncertain(can_resend_unknown_outcome, empty, exchange.failure, 0, receipt)
+    # A request that could not be built would fail the same way if resent.
     if exchange.outcome in ("notFound", "defect") or (
         exchange.outcome == "rejected" and exchange.status in _DEFINITE_REFUSAL_STATUSES
     ):
@@ -765,6 +788,44 @@ async def _retry_before_dispatch(fence: Fence, is_first_send: bool, problem: Fai
                 FailureKind.AVAILABILITY, problem.operation, "Dex did not record the not-sent checkpoint"
             )
     return MutationAttempt.retry(problem)
+
+
+async def _credential_failure_before_dispatch(
+    client: Client,
+    call: Call,
+    fence: Fence,
+    is_first_send: bool,
+    is_terminal: bool,
+    empty: Any,
+    problem: Failure,
+) -> MutationAttempt[Any]:
+    """Retry a transient failure; a terminal one selects defect only on a first send."""
+    if not is_terminal:
+        return await _retry_before_dispatch(fence, is_first_send, problem)
+    if not is_first_send:
+        # defect would hide the earlier possible send, so nothing is recorded.
+        return MutationAttempt.uncertain(
+            empty,
+            hiver_failure(
+                problem.kind,
+                problem.operation,
+                "an earlier attempt may have sent the request and the connection credentials are unusable",
+            ),
+            client.receipt(call),
+        )
+    try:
+        await fence.record_not_sent()
+    except Exception:
+        return MutationAttempt.retry(
+            hiver_failure(
+                FailureKind.AVAILABILITY, problem.operation, "Dex did not record the not-sent checkpoint"
+            )
+        )
+    return MutationAttempt.branch_result("defect", empty, Receipt(), problem)
+
+
+def _is_success_status(status: int) -> bool:
+    return 200 <= status < 300
 
 
 async def _record_provider_id(fence: Fence, provider_id: str) -> None:

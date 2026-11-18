@@ -102,15 +102,27 @@ func TestSingleDispatchOutcomes(t *testing.T) {
 			},
 			isUnknownResend: true,
 		},
-		"interrupted accepted body is resent below the cap": {
-			reply:           func(t *testing.T, response http.ResponseWriter) { cutOffBody(t, response, http.StatusCreated) },
-			isUnknownResend: true,
+		"interrupted accepted body is uncertain": {
+			reply:      func(t *testing.T, response http.ResponseWriter) { cutOffBody(t, response, http.StatusCreated) },
+			wantBranch: hiver.AddNoteBranchUncertain,
 		},
-		"unreadable success without an ID is resent below the cap": {
+		"undecodable success without an ID is uncertain": {
 			reply: func(t *testing.T, response http.ResponseWriter) {
 				writeJSON(t, response, http.StatusCreated, `{"data":{"note":"SENTINEL"}}`)
 			},
-			isUnknownResend: true,
+			wantBranch: hiver.AddNoteBranchUncertain,
+		},
+		"success that is not JSON is uncertain": {
+			reply: func(t *testing.T, response http.ResponseWriter) {
+				writeJSON(t, response, http.StatusOK, `SENTINEL`)
+			},
+			wantBranch: hiver.AddNoteBranchUncertain,
+		},
+		"success that reflects the credential is uncertain": {
+			reply: func(t *testing.T, response http.ResponseWriter) {
+				writeJSON(t, response, http.StatusCreated, `{"data":{"id":"35042650","content":"`+testAPIKey+`"}}`)
+			},
+			wantBranch: hiver.AddNoteBranchUncertain,
 		},
 		"accepted note with an ID and an invalid field is uncertain": {
 			reply: func(t *testing.T, response http.ResponseWriter) {
@@ -267,23 +279,18 @@ func TestDraftServiceUnavailableRetriesWithSameCallID(t *testing.T) {
 	require.Equal(t, provider.request(0).header.Get("X-Dex-Call-ID"), provider.request(1).header.Get("X-Dex-Call-ID"))
 }
 
-func TestAcceptedDraftWithoutIDIsResentBelowTheCap(t *testing.T) {
-	provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, index int) {
-		if index == 0 {
-			writeJSON(t, response, http.StatusOK, `{"data":{"id":573741352}}`)
-			return
-		}
-		writeJSON(t, response, http.StatusOK, `{"data":{"id":573741352,"shared_draft_id":901}}`)
+func TestAcceptedDraftWithoutIDIsNeverResent(t *testing.T) {
+	provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusOK, `{"data":{"id":573741352}}`)
 	})
 	client := newHiverClient(t, provider.URL)
 	input := hiver.CreateSharedDraftInput{InboxID: "105902", HiverMessageID: "834466048", Body: "Thanks."}
 	first := newHiverDexContext("draft")
-	_, err := sdkgo.RunMutation(first, client.CreateSharedDraft(), hiverConnection, input)
-	require.Error(t, err, "an answer without a draft ID cannot prove acceptance")
-	result, err := sdkgo.RunMutation(first.nextAttempt(), client.CreateSharedDraft(), hiverConnection, input)
+	result, err := sdkgo.RunMutation(first, client.CreateSharedDraft(), hiverConnection, input)
 	require.NoError(t, err)
-	require.Equal(t, hiver.CreateSharedDraftBranchCreated, result.Branch)
-	require.Equal(t, 2, provider.requestCount())
+	require.Equal(t, hiver.CreateSharedDraftBranchUncertain, result.Branch, "a 2xx proves Hiver accepted the draft")
+	require.Contains(t, string(first.recordedHeartbeat), `"state":"claimed"`)
+	require.Equal(t, 1, provider.requestCount())
 }
 
 func TestAcceptedDraftWithIDAndInvalidFieldIsNeverResent(t *testing.T) {
@@ -303,7 +310,7 @@ func TestAcceptedDraftWithIDAndInvalidFieldIsNeverResent(t *testing.T) {
 	require.Equal(t, 1, provider.requestCount())
 }
 
-func TestAcceptedNoteBodyCutAtAttemptDeadlineCountsTowardTheCap(t *testing.T) {
+func TestAcceptedNoteBodyCutAtAttemptDeadlineIsUncertain(t *testing.T) {
 	provider := newRecordingHiver(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		response.Header().Set("Content-Length", "100")
 		response.WriteHeader(http.StatusCreated)
@@ -316,9 +323,10 @@ func TestAcceptedNoteBodyCutAtAttemptDeadlineCountsTowardTheCap(t *testing.T) {
 	stepContext.Context = deadlineContext
 	client := newHiverClient(t, provider.URL)
 	input := hiver.AddNoteInput{InboxID: "105902", ConversationID: "573741352", Content: "Triaged."}
-	_, err := sdkgo.RunMutation(stepContext, client.AddNote(), hiverConnection, input)
-	require.Error(t, err)
-	require.Contains(t, string(stepContext.recordedHeartbeat), `"state":"claimed"`, "the cut-off send counts toward the cap")
+	result, err := sdkgo.RunMutation(stepContext, client.AddNote(), hiverConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, hiver.AddNoteBranchUncertain, result.Branch, "the 2xx status proves Hiver accepted the note")
+	require.Contains(t, string(stepContext.recordedHeartbeat), `"state":"claimed"`)
 	require.Equal(t, 1, provider.requestCount())
 }
 

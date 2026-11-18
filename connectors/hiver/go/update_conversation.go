@@ -103,8 +103,12 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 	if err := validateUpdateConversationInput(input); err != nil {
 		return sdkgo.NewMutationBranch(UpdateConversationBranchDefect, UpdateConversationOutput{}, hiverFailurePointer(sdkgo.FailureValidation, updateConversationOperation, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, updateConversationOperation)
+	credentials, failure, isTerminal := operation.client.resolveWriteCredentials(call, updateConversationOperation)
 	if failure != nil {
+		// defect would hide an earlier attempt's possible PATCH, and repeating the absolute change is harmless.
+		if !isTerminal || call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[UpdateConversationOutput](*failure, 0)
+		}
 		return sdkgo.NewMutationBranch(UpdateConversationBranchDefect, UpdateConversationOutput{}, failure, sdkgo.Receipt{})
 	}
 	output := UpdateConversationOutput{}

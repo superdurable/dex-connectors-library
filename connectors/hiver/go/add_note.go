@@ -77,6 +77,7 @@ func (AddNoteOperation) IdempotencyKey(callID sdkgo.CallID, _ AddNoteInput) sdkg
 // Invoke sends POST /v1/inboxes/{inbox_id}/conversations/{conversation_id}/notes as
 // multipart/form-data through the shared fence. Hiver has no note list for read-back, so an
 // unknown outcome resends while the send cap allows and selects uncertain at the cap.
+// A 2xx answer without a usable note is never resent and selects uncertain.
 // Definite 429, 503, and proven unsent outcomes retry after a stored checkpoint.
 func (operation AddNoteOperation) Invoke(call sdkgo.Call, input AddNoteInput) sdkgo.MutationAttempt[AddNoteOutput] {
 	if err := validateAddNoteInput(input); err != nil {
@@ -86,9 +87,9 @@ func (operation AddNoteOperation) Invoke(call sdkgo.Call, input AddNoteInput) sd
 	if priorAttempt != nil {
 		return *priorAttempt
 	}
-	credentials, failure := operation.client.resolveCredentials(call, addNoteOperation)
+	credentials, failure, isTerminal := operation.client.resolveWriteCredentials(call, addNoteOperation)
 	if failure != nil {
-		return retryBeforeSingleDispatch[AddNoteOutput](permit, *failure)
+		return credentialFailureBeforeSingleDispatch[AddNoteOutput](call, operation.client, permit, *failure, isTerminal, AddNoteBranchDefect)
 	}
 	result, attempt := sendOnce[AddNoteOutput](call, operation.client, credentials, addNoteOperation, hiverRequest{
 		method: http.MethodPost, path: conversationPath(input.InboxID, input.ConversationID) + "/notes",

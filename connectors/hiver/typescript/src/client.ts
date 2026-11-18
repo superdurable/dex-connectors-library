@@ -1,8 +1,9 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 import { AddNoteOperation, CreateSharedDraftOperation, GetConversationOperation, ListConversationsOperation, ListInboxesOperation, UpdateConversationOperation } from './operations.js';
 
@@ -16,6 +17,8 @@ export interface HiverClientOptions {
 }
 /** One classified Hiver request. */
 export type HiverExchange = { kind: 'success'; response: ProviderResponse } | { kind: 'notFound' | 'rateLimited' | 'notSent' | 'unavailable' | 'rejected' | 'invalid' | 'defect'; failure: Failure; retryAfterMs: number; status?: number; response?: ProviderResponse };
+/** A resolved API key, or a credential failure that is terminal or may clear on retry. */
+export type HiverCredentialResult = { kind: 'resolved'; key: string } | { kind: 'terminal' | 'transient' };
 /** One HTTP request's payload. */
 export interface HiverRequest { method: string; path: string; query?: URLSearchParams; json?: unknown; form?: ReadonlyArray<readonly [string, string]>; correlationCallId?: string }
 
@@ -90,12 +93,23 @@ export class HiverClient {
 
   /** Resolve and validate one API key before a request. */
   async resolveKey(call: Call): Promise<string | undefined> {
-    try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      if (!(credentials.apiKey instanceof SecretString)) return undefined;
-      const key = credentials.apiKey.reveal();
-      return key && isHeaderSafeCredential(key) ? key : undefined;
-    } catch { return undefined; }
+    const result = await this.resolveKeyOrFailure(call);
+    return result.kind === 'resolved' ? result.key : undefined;
+  }
+
+  /**
+   * Resolve one API key, or report whether its failure is terminal: a revoked, absent, or malformed
+   * credential. Any other resolution error is transient and may clear on a later attempt.
+   */
+  async resolveKeyOrFailure(call: Call): Promise<HiverCredentialResult> {
+    let credentials: Credentials;
+    try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
+    catch (error) {
+      return { kind: error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError ? 'terminal' : 'transient' };
+    }
+    if (!(credentials?.apiKey instanceof SecretString)) return { kind: 'terminal' };
+    const key = credentials.apiKey.reveal();
+    return key && isHeaderSafeCredential(key) ? { kind: 'resolved', key } : { kind: 'terminal' };
   }
 
   /** Reserve a spaced request slot, honoring cancellation and rate-limit holds. */
@@ -137,7 +151,10 @@ export class HiverClient {
         if (error.status !== undefined && error.headers) response = { status: error.status, headers: error.headers, body: Buffer.alloc(0) };
         else return this.failure('unavailable', operation, 'TRANSPORT', 'Hiver response could not be read');
       } else if (error instanceof ProviderTransportError && error.isProvablyNotSent) return this.failure('notSent', operation, 'TRANSPORT', 'Hiver could not be reached; no request was sent');
-      else return this.failure('unavailable', operation, 'TRANSPORT', 'Hiver request failed before a response arrived');
+      else if ((error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status !== undefined && error.status > 0 && error.headers) {
+        // Keep the status so a write Hiver accepted is never resent.
+        return this.failure('unavailable', operation, 'TRANSPORT', 'Hiver response could not be read', 0, error.status, { status: error.status, headers: error.headers, body: Buffer.alloc(0) });
+      } else return this.failure('unavailable', operation, 'TRANSPORT', 'Hiver request failed before a response arrived');
     }
     const status = response.status;
     const retryAfterMs = parseRetryAfter(String(response.headers['retry-after'] ?? ''), this.now());

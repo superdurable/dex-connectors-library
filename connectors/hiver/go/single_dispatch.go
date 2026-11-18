@@ -62,15 +62,14 @@ func beginSingleDispatch[OUT any](call sdkgo.Call, client *Client, operation str
 		return singleDispatchPermit{}, &attempt
 	}
 	decision := fence.Decide()
+	if decision.Kind != singledispatch.FailClosed && decision.Marker.ProviderID != "" {
+		// A saved provider ID proves Hiver accepted the write; Hiver has no note or draft read by ID.
+		attempt := sdkgo.NewMutationUncertain(zero, hiverFailure(sdkgo.FailureTransport, operation,
+			"Hiver accepted an earlier attempt's write, and its answer was lost"), client.receipt(call, hiverResponse{}, decision.Marker.ProviderID))
+		return singleDispatchPermit{}, &attempt
+	}
 	switch decision.Kind {
-	case singledispatch.SendAllowed:
-	case singledispatch.ReadBackThenResendAllowed:
-		// A saved provider ID proves Hiver accepted the write, so it is never resent.
-		if decision.Marker.ProviderID != "" {
-			attempt := sdkgo.NewMutationUncertain(zero, hiverFailure(sdkgo.FailureTransport, operation,
-				"Hiver accepted an earlier attempt's write, and its answer was lost"), client.receipt(call, hiverResponse{}, decision.Marker.ProviderID))
-			return singleDispatchPermit{}, &attempt
-		}
+	case singledispatch.SendAllowed, singledispatch.ReadBackThenResendAllowed:
 	case singledispatch.ReadBackRequired:
 		attempt := sdkgo.NewMutationUncertain(zero, hiverFailure(sdkgo.FailureTransport, operation,
 			"earlier attempts may have sent the request and the send cap is reached, so it is not sent again"), client.receipt(call, hiverResponse{}, decision.Marker.ProviderID))
@@ -85,9 +84,14 @@ func beginSingleDispatch[OUT any](call sdkgo.Call, client *Client, operation str
 		fence: fence,
 		// Half the initial budget ends before the fence's write window minus minimum send time.
 		pacerDeadline:           startedAt.Add(budget / 2),
-		isFirstSend:             decision.MaximumPriorSends == 0,
+		isFirstSend:             !hasPossiblePriorSend(decision),
 		canResendUnknownOutcome: decision.MaximumPriorSends+1 < call.MaxSends(),
 	}, nil
+}
+
+// hasPossiblePriorSend also covers SendAllowed after a canResend marker that still counts earlier sends.
+func hasPossiblePriorSend(decision singledispatch.Decision) bool {
+	return decision.Kind != singledispatch.SendAllowed || decision.MaximumPriorSends > 0 || decision.Marker.ProviderID != ""
 }
 
 // retryBeforeSingleDispatch returns Retry for a failure before Dispatch.
@@ -99,6 +103,23 @@ func retryBeforeSingleDispatch[OUT any](permit singleDispatchPermit, failure sdk
 		}
 	}
 	return sdkgo.NewMutationRetry[OUT](failure, 0)
+}
+
+// credentialFailureBeforeSingleDispatch retries a transient failure; a terminal one selects defect only on a first send.
+func credentialFailureBeforeSingleDispatch[OUT any](call sdkgo.Call, client *Client, permit singleDispatchPermit, failure sdkgo.Failure,
+	isTerminal bool, defectBranch sdkgo.BranchID) sdkgo.MutationAttempt[OUT] {
+	if !isTerminal {
+		return retryBeforeSingleDispatch[OUT](permit, failure)
+	}
+	var zero OUT
+	if !permit.isFirstSend {
+		return sdkgo.NewMutationUncertain(zero, hiverFailure(failure.Kind, failure.Operation,
+			"an earlier attempt may have sent the request and the connection credentials are unusable"), client.receipt(call, hiverResponse{}, ""))
+	}
+	if err := permit.fence.RecordNotSent(); err != nil {
+		return sdkgo.NewMutationRetry[OUT](hiverFailure(sdkgo.FailureAvailability, failure.Operation, "Dex did not record the not-sent checkpoint"), 0)
+	}
+	return sdkgo.NewMutationBranch(defectBranch, zero, &failure, sdkgo.Receipt{})
 }
 
 func sendOnce[OUT any](call sdkgo.Call, client *Client, credentials Credentials, operation string, request hiverRequest,
@@ -128,6 +149,10 @@ func sendOnce[OUT any](call sdkgo.Call, client *Client, credentials Credentials,
 // Only a definite refusal selects a rejection branch; any other outcome may have been applied.
 func singleDispatchAttemptForExchange[OUT any](result hiverExchange, receipt sdkgo.Receipt,
 	branches singleDispatchBranches, permit singleDispatchPermit) (sdkgo.MutationAttempt[OUT], bool) {
+	if result.outcome != exchangeSucceeded && isSuccessStatus(result.response.statusCode) {
+		// Hiver accepted the write, but its answer is oversized, unreadable, or untrusted.
+		return acceptedWriteAttempt[OUT](permit, "", result.failure, receipt), true
+	}
 	switch result.outcome {
 	case exchangeSucceeded:
 		return sdkgo.MutationAttempt[OUT]{}, false
@@ -136,10 +161,7 @@ func singleDispatchAttemptForExchange[OUT any](result hiverExchange, receipt sdk
 	case exchangeNotFound:
 		return rejectAfterSingleDispatch[OUT](result, receipt, branches.notFound, permit), true
 	case exchangeDefect:
-		if !permit.isFirstSend {
-			// defect would hide an earlier possible send.
-			return resendOrSelectUncertain[OUT](permit, result.failure, 0, receipt), true
-		}
+		// The request could not be built, so a resend would fail the same way.
 		return rejectAfterSingleDispatch[OUT](result, receipt, branches.defect, permit), true
 	case exchangeRejected:
 		if isDefiniteRefusalStatus(result.response.statusCode) {
@@ -213,14 +235,17 @@ func acceptedProviderID(body []byte, field string) string {
 	return string(providerID)
 }
 
-// acceptedWriteAttempt handles a 2xx body that failed to decode.
-// A decoded provider ID proves acceptance, so only an ID-less answer is resent.
+// acceptedWriteAttempt handles a 2xx answer that cannot be used. Hiver accepted the write and
+// offers no note or draft read-back, so it is never resent and selects uncertain.
 func acceptedWriteAttempt[OUT any](permit singleDispatchPermit, providerID string, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[OUT] {
 	if providerID != "" {
-		// The accepted write is known even if the identity checkpoint is lost.
+		// The claim marker already forbids a resend if this identity checkpoint is lost.
 		_ = permit.fence.RecordProviderID(providerID)
-		var zero OUT
-		return sdkgo.NewMutationUncertain(zero, failure, receipt)
 	}
-	return resendOrSelectUncertain[OUT](permit, failure, 0, receipt)
+	var zero OUT
+	return sdkgo.NewMutationUncertain(zero, failure, receipt)
+}
+
+func isSuccessStatus(statusCode int) bool {
+	return statusCode >= 200 && statusCode < 300
 }
