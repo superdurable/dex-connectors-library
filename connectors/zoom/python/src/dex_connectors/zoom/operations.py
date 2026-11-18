@@ -17,7 +17,6 @@ from dex_connectors.sdk import (
     MutationDefinition,
     QueryAttempt,
     QueryDefinition,
-    ReauthorizationRequiredError,
     Receipt,
 )
 from dex_connectors.sdk.singledispatch import (
@@ -35,7 +34,7 @@ from ._generated.definitions import (
     LIST_PAST_MEETING_PARTICIPANTS_DEFINITION,
     UPDATE_MEETING_DEFINITION,
 )
-from .client import Client, classify, failure
+from .client import TERMINAL_CREDENTIAL_ERRORS, Client, classify, failure
 from .meeting import (
     decode_meeting_body,
     decode_meeting_page,
@@ -688,7 +687,7 @@ class CreateMeetingOperation:
             try:
                 replacement = await resolver(call)
                 replaced = replacement.access_token.reveal() != credentials.access_token.reveal()
-            except ReauthorizationRequiredError:
+            except TERMINAL_CREDENTIAL_ERRORS:
                 replaced = False
             except Exception:
                 return await _reject_or_select_uncertain(

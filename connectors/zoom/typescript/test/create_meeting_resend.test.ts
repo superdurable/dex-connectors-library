@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { ZoomClient } from '../src/client.js';
 import { CreateMeetingDefinition } from '../src/generated/definitions.js';
@@ -265,5 +266,23 @@ describe('Zoom bounded resend of unconfirmed meeting creates', () => {
     const { client: failingClient } = newClient([serverFailure], false);
     expect(await create(failingClient, context)).toBeInstanceOf(RetryError);
     expect(requests).toHaveLength(1);
+  });
+
+  it.each([
+    { error: new ReauthorizationRequiredError(), terminal: true },
+    { error: new ObjectNotFoundError(), terminal: true },
+    { error: new ConnectionNotSelectedError(), terminal: true },
+    { error: new CredentialBrokerRejectedError(), terminal: true },
+    { error: new CredentialBrokerUnavailableError(), terminal: false },
+    { error: new Error('connection is not configured'), terminal: false },
+    { error: new TypeError('fetch failed'), terminal: false },
+  ])('classifies a credential failure before any send: $error.name', async ({ error, terminal }) => {
+    const resolve = async () => { throw error; };
+    const client = new ZoomClient({ endpoint: 'http://127.0.0.1:12345/v2' } as never, { resolve, resolveWithRefresh: resolve } as never, {
+      send: async () => { throw new Error('a call without credentials must not reach Zoom'); },
+    });
+    const result = await create(client, new AttemptContext());
+    if (terminal) expect(result).toMatchObject({ branch: 'defect' });
+    else expect(result).toBeInstanceOf(RetryError);
   });
 });

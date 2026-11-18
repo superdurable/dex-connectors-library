@@ -113,6 +113,9 @@ selects `defect` without a request. Zoom documents no refresh error codes of
 its own, so these are the RFC 6749 section 5.2 codes. Before a `createMeeting`
 send, reauthorization records `notSent` and selects `defect`; if a prior create
 has an accepted ID, reauthorization prevents read-back and selects `uncertain`.
+A missing or unselected connection and a credential broker rejection are
+terminal like reauthorization. Every other credential failure, such as an
+unavailable broker or a static provider without the connection, is transient.
 A transient refresh failure before a provider request returns Retry, and so
 does any credential failure after an earlier possible create. After a create
 request receives 401, a failed refresh selects `providerRejected` with

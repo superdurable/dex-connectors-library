@@ -18,6 +18,11 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -42,6 +47,14 @@ if TYPE_CHECKING:
         ListPastMeetingParticipantsOperation,
         UpdateMeetingOperation,
     )
+
+# Credential failures that no later attempt resolves without a person; every other one is transient.
+TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,7 +153,7 @@ class Client:
         """Resolve current material, distinguishing transient refresh outages."""
         try:
             credentials = await self.credentials.resolve(call)
-        except ReauthorizationRequiredError:
+        except TERMINAL_CREDENTIAL_ERRORS:
             return (
                 None,
                 failure(

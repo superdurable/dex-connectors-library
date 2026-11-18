@@ -197,7 +197,7 @@ func (operation CreateMeetingOperation) Invoke(call sdkgo.Call, input CreateMeet
 			return sdkgo.NewMutationRetry[Meeting](classification.failure, 0)
 		}
 		failure := newFailure(createMeetingOperationID, sdkgo.FailureAvailability, "Zoom credential refresh is temporarily unavailable")
-		if sdkgo.IsReauthorizationRequired(refreshErr) || refreshErr == nil {
+		if isTerminalCredentialError(refreshErr) || refreshErr == nil {
 			failure = newFailure(createMeetingOperationID, sdkgo.FailureAuthentication, "Zoom connection requires reauthorization; reconnect the connection")
 		}
 		return client.rejectOrSelectUncertain(call, fence, hasPossibleEarlierSend, requested, failure, classification.errorCode)

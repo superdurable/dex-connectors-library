@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/zoom/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
@@ -676,6 +677,38 @@ func TestCreateMeetingFenceRecordsCredentialFailureAsNotSent(t *testing.T) {
 	require.Equal(t, 1, provider.requestCount())
 }
 
+func TestCreateMeetingClassifiesCredentialFailuresBeforeSending(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		err        error
+		isTerminal bool
+	}{
+		{name: "project reauthorization", err: projectconfig.ErrReauthorizationRequired, isTerminal: true},
+		{name: "object not found", err: projectconfig.ErrObjectNotFound, isTerminal: true},
+		{name: "connection not selected", err: projectconfig.ErrConnectionNotSelected, isTerminal: true},
+		{name: "broker rejected", err: projectconfig.ErrCredentialBrokerRejected, isTerminal: true},
+		{name: "broker unavailable", err: projectconfig.ErrCredentialBrokerUnavailable},
+		{name: "static not configured", err: errors.New("connection is not configured")},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingProvider(t, func(http.ResponseWriter, *http.Request, int) {
+				t.Fatal("a call without credentials must not reach Zoom")
+			})
+			client, err := zoom.New(zoom.Config{Endpoint: provider.URL}, failingCredentialProvider{err: test.err})
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(singledispatchtest.NewContext("zoom-flow", "credential-"+test.name), client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+			if test.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, zoom.CreateMeetingBranchDefect, result.Branch)
+				return
+			}
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+		})
+	}
+}
+
 func TestCreateMeetingFenceRecordsReauthorizationFailureAsNotSent(t *testing.T) {
 	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusCreated, meetingJSON(92674392836, "Consultation with Priya", "2036-02-24T17:00:00Z"))
@@ -799,6 +832,7 @@ func TestCreateMeetingFenceClassifiesCredentialFailuresAfterAcceptedID(t *testin
 		isRetry bool
 	}{
 		{name: "reauthorization", err: sdkgo.NewReauthorizationRequiredError(errors.New("grant revoked")), kind: sdkgo.FailureAuthentication},
+		{name: "broker rejected", err: projectconfig.ErrCredentialBrokerRejected, kind: sdkgo.FailureAuthentication},
 		{name: "refresh outage", err: errors.New("credential broker unavailable"), kind: sdkgo.FailureAvailability, isRetry: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {

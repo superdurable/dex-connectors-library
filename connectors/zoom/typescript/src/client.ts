@@ -4,6 +4,7 @@
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, Credentials, CredentialSource } from './generated/models.js';
 import { ListMeetingsOperation, GetMeetingOperation, CreateMeetingOperation, UpdateMeetingOperation, ListPastMeetingParticipantsOperation } from './operations.js';
@@ -68,7 +69,7 @@ export class ZoomClient {
         return { failure: zoomFailure(operation, 'AUTHENTICATION', 'Zoom connection credentials are unavailable; reconnect the connection'), retry: false };
       return { credentials };
     } catch (error) {
-      if (error instanceof ReauthorizationRequiredError) return { failure: zoomFailure(operation, 'AUTHENTICATION', 'Zoom connection requires reauthorization; reconnect the connection'), retry: false };
+      if (isTerminalCredentialError(error)) return { failure: zoomFailure(operation, 'AUTHENTICATION', 'Zoom connection requires reauthorization; reconnect the connection'), retry: false };
       return { failure: zoomFailure(operation, 'AVAILABILITY', 'Zoom connection credentials could not be refreshed'), retry: true };
     }
   }
@@ -79,7 +80,7 @@ export class ZoomClient {
     try {
       const replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
       return replacement.accessToken?.reveal() && replacement.accessToken.reveal() !== previousAccessToken ? 'replaced' : 'reauthorize';
-    } catch (error) { return error instanceof ReauthorizationRequiredError ? 'reauthorize' : 'retryable'; }
+    } catch (error) { return isTerminalCredentialError(error) ? 'reauthorize' : 'retryable'; }
   }
 
   /** Send one bounded request and refresh once after a rejected credential when allowed. */
@@ -136,6 +137,12 @@ export class ZoomClient {
 }
 
 /** Construct one secret-free Zoom failure. */
+/** Report a credential failure that no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+}
+
 export function zoomFailure(operation: string, kind: Failure['kind'], message: string): Failure {
   return { kind, provider: 'zoom', operation, message };
 }
