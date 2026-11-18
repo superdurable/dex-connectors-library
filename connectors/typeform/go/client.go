@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )
@@ -58,6 +59,7 @@ var (
 	errTypeformResponseMalformed = errors.New("Typeform returned a malformed response")
 
 	errTypeformCredentialsUnavailable = errors.New("the Typeform connection could not be loaded yet")
+	errTypeformCredentialsRevoked     = errors.New("the Typeform connection needs reauthorization or is no longer available; reconnect it")
 	errTypeformAccessTokenUnusable    = errors.New("the Typeform access token is blank or contains characters a header cannot carry")
 )
 
@@ -166,12 +168,21 @@ func (client *Client) UpsertWebhook() UpsertWebhookOperation {
 func (client *Client) resolveCredentials(call sdkgo.Call) (Credentials, error) {
 	credentials, err := client.credentials.Resolve(call)
 	switch {
+	case isTerminalCredentialError(err):
+		return Credentials{}, errTypeformCredentialsRevoked
 	case err != nil:
 		return Credentials{}, errTypeformCredentialsUnavailable
 	case !providerhttp.IsHeaderSafeCredential(credentials.AccessToken.Reveal()):
 		return Credentials{}, errTypeformAccessTokenUnusable
 	}
 	return credentials, nil
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // sendTypeformRequest sends one request to the data center's API host with the bearer token.

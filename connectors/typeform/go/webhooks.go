@@ -4,6 +4,7 @@
 package typeform
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -100,6 +101,10 @@ func (operation UpsertWebhookOperation) Invoke(call sdkgo.Call, input UpsertWebh
 		return mutationAttempt[Webhook](client, validationOutcome(operationID, err), "")
 	}
 	credentials, err := client.resolveCredentials(call)
+	if errors.Is(err, errTypeformCredentialsRevoked) && call.Context.Attempt() > 1 {
+		// defect would hide a PUT an earlier attempt may have sent; repeating it is harmless.
+		return sdkgo.NewMutationRetry[Webhook](typeformFailure(operationID, sdkgo.FailureAuthentication, err.Error()), 0)
+	}
 	if err != nil {
 		return mutationAttempt[Webhook](client, credentialOutcome(operationID, err), "")
 	}
