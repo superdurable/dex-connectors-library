@@ -306,13 +306,23 @@ class CreateContactOperation:
                     return self._retry(FailureKind.TRANSPORT, "credential refresh checkpoint is unavailable")
             return self._retry(FailureKind.TRANSPORT, "connection credentials could not be refreshed")
         path = "/v1/people:createContact?" + urlencode({"personFields": "names,emailAddresses"})
+        observed_statuses: list[int] = []
         try:
             exchange = await fence.dispatch(
-                lambda _: self.client.request(call, path, token=token, method="POST", body=payload)
+                lambda _: self.client.request(
+                    call, path, token=token, method="POST", body=payload, observed_statuses=observed_statuses
+                )
             )
         except (CheckpointError, InsufficientAttemptTimeError):
             return self._retry(FailureKind.TRANSPORT, "contact dispatch was not started")
         except Exception:
+            if any(200 <= status < 300 for status in observed_statuses):
+                # The write window ended after Google accepted the create, so it is never resent.
+                return self._uncertain(
+                    FailureKind.TRANSPORT,
+                    "Google accepted the contact but its response was interrupted; "
+                    "inspect Contacts before creating another",
+                )
             return self._resend_or_select_uncertain(
                 can_resend_unknown_outcome, FailureKind.TRANSPORT, "contact creation outcome is unknown"
             )

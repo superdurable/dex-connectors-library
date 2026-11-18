@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """createContact never resends an accepted create and keeps its send count."""
 
+import asyncio
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
 
@@ -170,6 +171,39 @@ async def test_read_back_whose_body_breaks_is_retried() -> None:
     assert outcome.branch == "created"
     assert posts(requests) == 1
     assert reads == 2
+
+
+class StalledStream(httpx.AsyncByteStream):
+    """A response body that stalls after the 2xx headers arrived."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        await asyncio.sleep(5)
+        yield b"{}"
+
+
+async def test_write_deadline_that_cuts_an_accepted_body_is_never_resent() -> None:
+    """2xx headers arrived, so the Fence write-window timeout proves acceptance, not an unknown outcome."""
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, stream=StalledStream())
+
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
+        client = Client(Config(base_url="http://127.0.0.1:12345"), FailingResolutionCredentials(), transport)
+        call = Call(
+            CALL_ID,
+            REFERENCE,
+            OperationRef("google-contacts", "createContact"),
+            context=context,
+            max_sends=CREATE_CONTACT_DEFINITION.max_sends,
+        )
+        outcome = await run_mutation(client.create_contact(), call, INPUT)
+    assert isinstance(outcome, MutationResult)
+    assert outcome.branch == "uncertain"
+    assert posts(requests) == 1
 
 
 async def test_unreadable_refusal_is_an_unknown_outcome() -> None:
