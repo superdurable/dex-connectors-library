@@ -23,6 +23,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/github/go"
 	"github.com/superdurable/dex-connectors-library/connectors/github/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 	"github.com/superdurable/dex/sdk-go/dex"
@@ -434,6 +435,61 @@ func TestCreateIssueRetriesUnprocessedWritesWithoutReadBack(t *testing.T) {
 			require.Equal(t, int32(1), lastMarker(t, ctx).SendCount, "an unprocessed send does not count")
 		})
 	}
+}
+
+func TestCreateIssueReadsBackAfterA429ThatFollowedAnUnknownSend(t *testing.T) {
+	provider := newIssueProvider(t, answer502WithoutStoring, answer429)
+	client := newIssueClient(t, provider.URL, github.RepositoryAuthMethodID)
+	ctx := singledispatchtest.NewContext("issues-flow", "unknown-then-429")
+	for attempt := 1; attempt < 3; attempt++ {
+		_, err := sdkgo.RunMutation(ctx, client.CreateIssue(), githubConnection, bugReportInput())
+		require.Error(t, err)
+		ctx.AdvanceAttempt()
+	}
+	require.Equal(t, singledispatch.StateCanResend, lastMarker(t, ctx).State)
+	result, err := sdkgo.RunMutation(ctx, client.CreateIssue(), githubConnection, bugReportInput())
+	require.NoError(t, err)
+	require.Equal(t, github.CreateIssueBranchCreated, result.Branch, result.Failure)
+	require.Equal(t, 3, provider.count("GET /user"), "the first send may have created the issue, so attempt 3 reads back first")
+	require.Equal(t, 3, provider.count("POST"))
+}
+
+func TestCreateIssueRetriesATransientCredentialFailureAfterAPossibleSend(t *testing.T) {
+	provider := newIssueProvider(t, answer502WithoutStoring)
+	client := newIssueClient(t, provider.URL, github.RepositoryAuthMethodID)
+	ctx := singledispatchtest.NewContext("issues-flow", "transient-credentials")
+	_, err := sdkgo.RunMutation(ctx, client.CreateIssue(), githubConnection, bugReportInput())
+	require.Error(t, err)
+	ctx.AdvanceAttempt()
+	for _, test := range []struct {
+		err         error
+		isUncertain bool
+	}{
+		{err: projectconfig.ErrCredentialBrokerUnavailable},
+		{err: sdkgo.ErrReauthorizationRequired, isUncertain: true},
+	} {
+		failing, err := github.New(github.Config{BaseURL: provider.URL}, credentialErrorSource{test.err})
+		require.NoError(t, err)
+		result, err := sdkgo.RunMutation(ctx, failing.CreateIssue(), githubConnection, bugReportInput())
+		if test.isUncertain {
+			require.NoError(t, err)
+			require.Equal(t, github.CreateIssueBranchUncertain, result.Branch)
+		} else {
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+		}
+	}
+	require.Equal(t, 1, provider.count("POST"))
+}
+
+type credentialErrorSource struct{ err error }
+
+func (source credentialErrorSource) Resolve(sdkgo.Call) (github.Credentials, error) {
+	return github.Credentials{}, source.err
+}
+
+func (source credentialErrorSource) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[github.Credentials]) (github.Credentials, error) {
+	return source.Resolve(call)
 }
 
 func TestCreateIssueRetriesAProvablyUndispatchedRequest(t *testing.T) {

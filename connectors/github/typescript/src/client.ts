@@ -3,7 +3,8 @@
 
 import { isIP } from 'node:net';
 import { BodyTooLargeError, ProviderTransportError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, Credentials, CredentialSource } from './generated/models.js';
@@ -30,7 +31,7 @@ export interface GitHubClientOptions {
 /** A successful exchange or classified provider failure; isTransportFailure marks a request without a response. */
 export type GitHubExchange =
   | { response: ProviderResponse; receipt: ReceiptDraft }
-  | { branch?: string; failure: Failure; retryAfterMs?: number; receipt: ReceiptDraft; isTransportFailure?: boolean };
+  | { branch?: string; failure: Failure; retryAfterMs?: number; receipt: ReceiptDraft; isTransportFailure?: boolean; isTransientCredentialFailure?: boolean };
 
 /** Access token and authorization method resolved once per call. */
 export interface GitHubAccess { token: string; authMethodId: string }
@@ -120,7 +121,11 @@ export class GitHubClient {
       const access = { token, authMethodId: credential.authMethodId || PublicAuthMethodID };
       this.accesses.set(call, access);
       return access;
-    } catch { return { branch: 'defect', failure: failure(operation, 'AUTHENTICATION', 'GitHub authorization is unavailable or revoked'), receipt: {} }; }
+    } catch (error) {
+      // Only a revoked, missing, unselected, broker-refused, or malformed credential needs reconnection.
+      const isTerminal = error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof TypeError;
+      return { branch: 'defect', failure: failure(operation, 'AUTHENTICATION', 'GitHub authorization is unavailable or revoked'), receipt: {}, ...(isTerminal ? {} : { isTransientCredentialFailure: true }) };
+    }
   }
 
   /** Resolve credentials, send a single GitHub GET, and classify the result. */
@@ -151,6 +156,8 @@ export class GitHubClient {
           signal: call.context.cancellationSignal,
         });
       } catch (error) {
+        // A repeat-safe write retries an oversized answer, which may follow an applied write.
+        if (error instanceof BodyTooLargeError && method !== 'GET') return { failure: failure(operation, 'RESPONSE_TOO_LARGE', 'GitHub response exceeds the configured size limit'), retryAfterMs: 0, receipt: requestReceipt(error.headers ?? {}) };
         if (error instanceof BodyTooLargeError) return { branch: 'invalidResponse', failure: failure(operation, 'RESPONSE_TOO_LARGE', `${operation === 'getAuthenticatedProfile' ? path === '/user/emails' ? 'GitHub email' : 'GitHub profile' : operation === 'listPublicRepositories' ? 'GitHub repository' : 'GitHub'} response exceeds the configured size limit`), receipt: requestReceipt(error.headers ?? {}) };
         if (method !== 'GET') return { failure: failure(operation, 'TRANSPORT', 'GitHub request did not complete'), retryAfterMs: 0, receipt: {}, isTransportFailure: true };
         return { failure: failure(operation, 'AVAILABILITY', 'GitHub is unavailable'), retryAfterMs: 0, receipt: {}, isTransportFailure: true };

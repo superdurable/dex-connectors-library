@@ -138,16 +138,26 @@ export class CreateIssueOperation implements Mutation<CreateIssueInput, CreatedI
     if (!accessFailure && 'token' in access && access.authMethodId !== RepositoryAuthMethodID) {
       accessFailure = failure(createIssueOperationId, 'AUTHORIZATION', 'createIssue requires a connection authorized with the github-oauth-repository method');
     }
+    const hasPossibleEarlierSend = decision.kind !== 'sendAllowed' || (decision.priorSendUpperBound ?? 0) > 0;
+    if ('failure' in access && access.isTransientCredentialFailure) {
+      // A transient failure sent nothing; notSent would hide an earlier possible send.
+      if (!hasPossibleEarlierSend) {
+        try { await fence.recordNotSent(); }
+        catch { return newMutationRetry(failure(createIssueOperationId, 'AVAILABILITY', 'GitHub credentials and the not-sent checkpoint are unavailable')); }
+      }
+      return newMutationRetry(access.failure);
+    }
     if (accessFailure || !('token' in access)) {
       const selected = accessFailure ?? failure(createIssueOperationId, 'AUTHENTICATION', 'GitHub authorization is unavailable or revoked');
       // An earlier attempt may have created the issue, and this connection cannot read it back.
-      if (decision.kind !== 'sendAllowed' || (decision.priorSendUpperBound ?? 0) > 0) return newMutationUncertain(writer.requested, selected, {});
+      if (hasPossibleEarlierSend) return newMutationUncertain(writer.requested, selected, {});
       // The branch ends the Step; the marker only lets a repeated Execute send without read-back.
       try { await fence.recordNotSent(); } catch { /* The branch is final without the marker. */ }
       return newMutationBranch(selected.kind === 'AUTHORIZATION' ? 'insufficientScope' : 'defect', writer.requested, {}, selected);
     }
     writer.access = access;
-    if (decision.kind === 'readBackRequired' || decision.kind === 'readBackThenResendAllowed') {
+    // After a 429 or 503 recorded canResend, sendAllowed still carries the earlier possible send.
+    if (hasPossibleEarlierSend) {
       const providerId = decision.marker?.callId === call.id ? decision.marker.providerId ?? '' : '';
       const readBack = await writer.findCreatedIssue(providerId);
       if (readBack.status === 'found') return writer.created(readBack.issue!, readBack.receipt, true);
@@ -330,6 +340,7 @@ export class SetIssueStateOperation implements Mutation<SetIssueStateInput, Upda
     const request = buildSetIssueStateRequest(input);
     if (!('body' in request)) return newMutationBranch('defect', requested, {}, request);
     const access = await this.client.resolveAccess(call, operation);
+    if ('failure' in access && access.isTransientCredentialFailure) return newMutationRetry(access.failure);
     if ('failure' in access) return newMutationBranch('defect', requested, access.receipt, access.failure);
     if (access.authMethodId !== RepositoryAuthMethodID) {
       return newMutationBranch('insufficientScope', requested, {}, failure(operation, 'AUTHORIZATION', 'setIssueState requires a connection authorized with the github-oauth-repository method'));
@@ -340,12 +351,11 @@ export class SetIssueStateOperation implements Mutation<SetIssueStateInput, Upda
       if (exchange.branch === undefined) return newMutationRetry(exchange.failure, exchange.retryAfterMs ?? 0);
       return newMutationBranch(exchange.branch, requested, exchange.receipt, exchange.failure);
     }
+    // The absolute state is repeat-safe, so an unusable answer retries.
     let updated: GitHubIssue;
     try { updated = decodeGitHubIssue(decode(exchange.response.body)); }
-    catch { return newMutationBranch('invalidResponse', requested, exchange.receipt, failure(operation, 'PROTOCOL', 'GitHub returned an invalid issue')); }
-    if (!isValidUpdatedIssue(updated, input.issueNumber, request.body.state)) {
-      return newMutationBranch('invalidResponse', requested, exchange.receipt, failure(operation, 'PROTOCOL', 'GitHub returned an invalid issue'));
-    }
+    catch { return newMutationRetry(failure(operation, 'PROTOCOL', 'GitHub returned an invalid issue')); }
+    if (!isValidUpdatedIssue(updated, input.issueNumber, request.body.state)) return newMutationRetry(failure(operation, 'PROTOCOL', 'GitHub returned an invalid issue'));
     const output: UpdatedIssueState = { number: updated.number };
     const url = safeURL(updated.htmlUrl); if (url) output.url = url;
     output.state = updated.state;
@@ -395,6 +405,7 @@ export class ReplaceIssueLabelsOperation implements Mutation<ReplaceIssueLabelsI
     const request = buildReplaceIssueLabelsRequest(input);
     if (!('body' in request)) return newMutationBranch('defect', requested, {}, request);
     const access = await this.client.resolveAccess(call, operation);
+    if ('failure' in access && access.isTransientCredentialFailure) return newMutationRetry(access.failure);
     if ('failure' in access) return newMutationBranch('defect', requested, access.receipt, access.failure);
     if (access.authMethodId !== RepositoryAuthMethodID) {
       return newMutationBranch('insufficientScope', requested, {}, failure(operation, 'AUTHORIZATION', 'replaceIssueLabels requires a connection authorized with the github-oauth-repository method'));
@@ -410,7 +421,7 @@ export class ReplaceIssueLabelsOperation implements Mutation<ReplaceIssueLabelsI
       const source = decode(exchange.response.body);
       if (!Array.isArray(source) || source.length > maximumIssueLabels) throw new TypeError('invalid label list');
       names = source.map(label => stringField(record(label), 'name'));
-    } catch { return newMutationBranch('invalidResponse', requested, exchange.receipt, failure(operation, 'PROTOCOL', 'GitHub returned an invalid label list')); }
+    } catch { return newMutationRetry(failure(operation, 'PROTOCOL', 'GitHub returned an invalid label list')); } // The full set is repeat-safe.
     const output: ReplacedIssueLabels = { number: input.issueNumber, labels: boundedValues(names, maximumLabels, maximumLabelBytes) };
     const url = issueWebUrl(this.client.baseUrl, request.owner, request.repository, input.issueNumber); if (url) output.url = url;
     return newMutationBranch('replaced', output, exchange.receipt);
@@ -478,16 +489,26 @@ export class CreateIssueCommentOperation implements Mutation<CreateIssueCommentI
     if (!accessFailure && 'token' in access && access.authMethodId !== RepositoryAuthMethodID) {
       accessFailure = failure(createIssueCommentOperationId, 'AUTHORIZATION', 'createIssueComment requires a connection authorized with the github-oauth-repository method');
     }
+    const hasPossibleEarlierSend = decision.kind !== 'sendAllowed' || (decision.priorSendUpperBound ?? 0) > 0;
+    if ('failure' in access && access.isTransientCredentialFailure) {
+      // A transient failure sent nothing; notSent would hide an earlier possible send.
+      if (!hasPossibleEarlierSend) {
+        try { await fence.recordNotSent(); }
+        catch { return newMutationRetry(failure(createIssueCommentOperationId, 'AVAILABILITY', 'GitHub credentials and the not-sent checkpoint are unavailable')); }
+      }
+      return newMutationRetry(access.failure);
+    }
     if (accessFailure || !('token' in access)) {
       const selected = accessFailure ?? failure(createIssueCommentOperationId, 'AUTHENTICATION', 'GitHub authorization is unavailable or revoked');
       // An earlier attempt may have created the comment, and this connection cannot read it back.
-      if (decision.kind !== 'sendAllowed' || (decision.priorSendUpperBound ?? 0) > 0) return newMutationUncertain(writer.requested, selected, {});
+      if (hasPossibleEarlierSend) return newMutationUncertain(writer.requested, selected, {});
       // The branch ends the Step; the marker only lets a repeated Execute send without read-back.
       try { await fence.recordNotSent(); } catch { /* The branch is final without the marker. */ }
       return newMutationBranch(selected.kind === 'AUTHORIZATION' ? 'insufficientScope' : 'defect', writer.requested, {}, selected);
     }
     writer.access = access;
-    if (decision.kind === 'readBackRequired' || decision.kind === 'readBackThenResendAllowed') {
+    // After a 429 or 503 recorded canResend, sendAllowed still carries the earlier possible send.
+    if (hasPossibleEarlierSend) {
       const providerId = decision.marker?.callId === call.id ? decision.marker.providerId ?? '' : '';
       const readBack = await writer.findCreatedComment(providerId);
       if (readBack.status === 'found') return writer.created(readBack.comment!, readBack.receipt, true);

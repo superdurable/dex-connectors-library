@@ -128,13 +128,23 @@ func (operation CreateIssueCommentOperation) Invoke(call sdkgo.Call, input Creat
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[CreatedIssueComment](providerFailure(createIssueCommentOperationID, sdkgo.FailureAvailability, "GitHub dispatch checkpoint could not be read; nothing was sent"), 0)
 	}
-	credential, failure := operation.client.resolveCredential(call, createIssueCommentOperationID)
+	credential, failure, isTerminalCredential := operation.client.resolveCredentialWithTerminality(call, createIssueCommentOperationID)
 	if failure == nil && credential.AuthMethodID != RepositoryAuthMethodID {
 		scopeFailure := providerFailure(createIssueCommentOperationID, sdkgo.FailureAuthorization, "createIssueComment requires a connection authorized with the github-oauth-repository method")
-		failure = &scopeFailure
+		failure, isTerminalCredential = &scopeFailure, true
+	}
+	hasPossibleEarlierSend := decision.Kind != singledispatch.SendAllowed || decision.MaximumPriorSends > 0
+	if failure != nil && !isTerminalCredential {
+		// A transient failure sent nothing; notSent would hide an earlier possible send.
+		if !hasPossibleEarlierSend {
+			if err := fence.RecordNotSent(); err != nil {
+				return sdkgo.NewMutationRetry[CreatedIssueComment](providerFailure(createIssueCommentOperationID, sdkgo.FailureAvailability, "GitHub credentials and the not-sent checkpoint are unavailable"), 0)
+			}
+		}
+		return sdkgo.NewMutationRetry[CreatedIssueComment](*failure, 0)
 	}
 	if failure != nil {
-		if decision.Kind != singledispatch.SendAllowed || decision.MaximumPriorSends > 0 {
+		if hasPossibleEarlierSend {
 			// An earlier attempt may have created the comment, and this connection cannot read it back.
 			return sdkgo.NewMutationUncertain(writer.requested, *failure, sdkgo.Receipt{})
 		}
@@ -147,7 +157,8 @@ func (operation CreateIssueCommentOperation) Invoke(call sdkgo.Call, input Creat
 		return sdkgo.NewMutationBranch(branch, writer.requested, failure, sdkgo.Receipt{})
 	}
 	writer.credential = credential
-	if decision.Kind == singledispatch.ReadBackRequired || decision.Kind == singledispatch.ReadBackThenResendAllowed {
+	// After a 429 or 503 recorded canResend, SendAllowed still carries the earlier possible send.
+	if hasPossibleEarlierSend {
 		providerID := ""
 		if decision.Marker.CallID == call.ID {
 			providerID = decision.Marker.ProviderID

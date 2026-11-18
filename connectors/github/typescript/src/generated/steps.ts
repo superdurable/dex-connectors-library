@@ -322,7 +322,7 @@ export interface SetIssueStateStepConfig<StepInput, OperationInput = SetIssueSta
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** GitHub conclusively rejected the update, such as an issue that was deleted, a repository with issues disabled, or a state reason GitHub refuses; the issue is unchanged. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** GitHub accepted the update but returned an invalid or oversized issue; the issue may have changed. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized issue after an accepted update now retries, because sending the same state again is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -362,7 +362,7 @@ export interface ReplaceIssueLabelsStepConfig<StepInput, OperationInput = Replac
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** GitHub conclusively rejected the labels, such as an issue that was deleted or an invalid label name; the labels are unchanged. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** GitHub accepted the labels but returned an invalid or oversized label list; the labels may have changed. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized label list after an accepted replacement now retries, because sending the same set again is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

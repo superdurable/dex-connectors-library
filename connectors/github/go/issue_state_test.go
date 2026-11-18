@@ -157,7 +157,7 @@ func TestSetIssueStateClassifiesConclusiveAnswers(t *testing.T) {
 	}
 }
 
-func TestSetIssueStateRejectsAnAnswerForAnotherStateOrIssue(t *testing.T) {
+func TestSetIssueStateRetriesAnAnswerForAnotherStateOrIssue(t *testing.T) {
 	for name, issue := range map[string]map[string]any{
 		"unchanged state": issueJSON(7, "Crash", "", "open", map[string]any{"updated_at": "2026-03-08T09:30:00Z"}),
 		"another issue":   issueJSON(8, "Crash", "", "closed", map[string]any{"updated_at": "2026-03-08T09:30:00Z"}),
@@ -169,10 +169,10 @@ func TestSetIssueStateRejectsAnAnswerForAnotherStateOrIssue(t *testing.T) {
 			}))
 			defer server.Close()
 			client := newIssueClient(t, server.URL, github.RepositoryAuthMethodID)
-			result, err := sdkgo.RunMutation(testsupport.NewDexContext("issues-flow", "invalid"), client.SetIssueState(), githubConnection, closeIssueInput())
-			require.NoError(t, err)
-			require.Equal(t, github.SetIssueStateBranchInvalidResponse, result.Branch)
-			require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
+			_, err := sdkgo.RunMutation(testsupport.NewDexContext("issues-flow", "invalid"), client.SetIssueState(), githubConnection, closeIssueInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "repeating the absolute state is safe")
+			require.Equal(t, sdkgo.FailureProtocol, retry.Failure.Kind)
 		})
 	}
 }
