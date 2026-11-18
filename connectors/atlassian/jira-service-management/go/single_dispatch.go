@@ -14,7 +14,7 @@ import (
 
 // fencedWrite is one attempt of a non-idempotent write behind the shared single-dispatch fence.
 // Jira Service Management offers no lookup by Call ID, so an unknown outcome resends while the
-// send cap allows and selects uncertain at the cap.
+// send cap allows and selects uncertain at the cap. A saved provider ID is read back instead.
 type fencedWrite struct {
 	fence *singledispatch.Fence
 	// decision is the fence's checkpoint decision for this attempt.
@@ -43,12 +43,9 @@ func startFencedWrite[OUT any](call sdkgo.Call, timeout time.Duration, operation
 	case singledispatch.FailClosed:
 		return nil, sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Jira Service Management dispatch checkpoint is unreadable, so nothing was sent in this attempt"), 0), true
 	case singledispatch.ReadBackRequired:
-		return nil, sdkgo.NewMutationUncertain(echo, newFailure(operationID, sdkgo.FailureTransport,
-			"earlier attempts of this Step may have sent the request and the send cap is reached, so it is not sent again"), singleDispatchReceipt(call)), true
-	case singledispatch.ReadBackThenResendAllowed:
-		if decision.Marker.ProviderID != "" {
+		if decision.Marker.ProviderID == "" {
 			return nil, sdkgo.NewMutationUncertain(echo, newFailure(operationID, sdkgo.FailureTransport,
-				"an earlier attempt of this Step was accepted, so the request is not sent again"), singleDispatchReceipt(call)), true
+				"earlier attempts of this Step may have sent the request and the send cap is reached, so it is not sent again"), singleDispatchReceipt(call)), true
 		}
 	}
 	return &fencedWrite{
@@ -58,10 +55,13 @@ func startFencedWrite[OUT any](call sdkgo.Call, timeout time.Duration, operation
 	}, sdkgo.MutationAttempt[OUT]{}, false
 }
 
+// acceptedProviderID returns the provider ID an earlier attempt saved; that write is read back, never resent.
+func (write *fencedWrite) acceptedProviderID() string { return write.decision.Marker.ProviderID }
+
 // sessionFailureAttempt maps a credential or site failure before the send.
 func sessionFailureAttempt[OUT any](write *fencedWrite, operationID string, failure *sessionFailure, echo OUT, defect sdkgo.BranchID) sdkgo.MutationAttempt[OUT] {
-	// notSent after a possible earlier send would hide it, so only a first-send decision records it.
-	if write.decision.Kind == singledispatch.SendAllowed {
+	// notSent after a possible earlier send would hide it, so only a first send records it.
+	if write.decision.Kind == singledispatch.SendAllowed && !write.hasPossibleEarlierSend {
 		if err := write.fence.RecordNotSent(); err != nil {
 			return sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Jira Service Management setup failed and the not-sent checkpoint could not be recorded"), failure.retryAfter)
 		}
@@ -91,6 +91,34 @@ func dispatchFencedWrite[OUT any](write *fencedWrite, client *Client, session *o
 	}
 }
 
+// readBackStatus is the outcome of reading back one write by its provider ID.
+type readBackStatus uint8
+
+const (
+	// readBackConfirmed found the write with the requested content.
+	readBackConfirmed readBackStatus = iota + 1
+	// readBackUnconfirmed found nothing matching, or a definite read failure.
+	readBackUnconfirmed
+	// readBackUnavailable is a transient read failure; the next attempt reads again.
+	readBackUnavailable
+)
+
+func readBackStatusFor(outcome readOutcome) readBackStatus {
+	if outcome == readRetry {
+		return readBackUnavailable
+	}
+	return readBackUnconfirmed
+}
+
+// unconfirmedReadBackAttempt retries a transient read-back of a saved provider ID and otherwise selects uncertain.
+func unconfirmedReadBackAttempt[OUT any](status readBackStatus, operationID string, echo OUT, receipt sdkgo.Receipt) sdkgo.MutationAttempt[OUT] {
+	if status == readBackUnavailable {
+		return sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Jira Service Management read-back of the accepted write is temporarily unavailable"), 0)
+	}
+	return sdkgo.NewMutationUncertain(echo, newFailure(operationID, sdkgo.FailureTransport,
+		"an earlier attempt of this Step was accepted but read-back could not confirm it, so the request is not sent again"), receipt)
+}
+
 func singleDispatchReceipt(call sdkgo.Call) sdkgo.Receipt {
 	return sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: providerName, ObservedAt: time.Now().UTC()}
 }
@@ -108,6 +136,9 @@ func attemptForWrite[OUT any](write *fencedWrite, operationID string, classifica
 		return sdkgo.NewMutationRetry[OUT](classification.failure, classification.retryAfter), true
 	case writeUncertain:
 		return resendOrSelectUncertain(write, echo, classification.failure, receipt), true
+	case writeAcceptedUnreadable:
+		// Nothing identifies the accepted write for read-back, and a resend would duplicate it.
+		return sdkgo.NewMutationUncertain(echo, classification.failure, receipt), true
 	case writeNotFound:
 		branch := branches.notFound
 		if branch == "" {

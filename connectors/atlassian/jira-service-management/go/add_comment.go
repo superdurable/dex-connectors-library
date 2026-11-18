@@ -80,6 +80,13 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 		return sessionFailureAttempt(write, addCommentOperationID, sessionErr, requested, AddCommentBranchDefect)
 	}
 	defer cancel()
+	if providerID := write.acceptedProviderID(); providerID != "" {
+		recovered, status := client.readBackComment(session, issueIDOrKey, input, providerID)
+		if status == readBackConfirmed {
+			return addedCommentAttempt(requested, recovered, singleDispatchReceipt(call))
+		}
+		return unconfirmedReadBackAttempt(status, addCommentOperationID, requested, singleDispatchReceipt(call))
+	}
 	result, attempt, isTerminal := dispatchFencedWrite(write, client, session, providerRequest{
 		method: http.MethodPost, api: serviceDeskAPI, path: requestPath(issueIDOrKey) + "/comment",
 		payload: addCommentRequestBody{Body: input.Body, Public: input.IsPublic},
@@ -92,7 +99,9 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	if result.response.statusCode == http.StatusConflict {
 		var conflict serviceDeskComment
 		if json.Unmarshal(result.response.body, &conflict) == nil {
-			if recovered, isConfirmed := client.readBackConflictedComment(session, issueIDOrKey, input, conflict.ID); isConfirmed {
+			if recovered, status := client.readBackComment(session, issueIDOrKey, input, conflict.ID); status == readBackConfirmed {
+				// A saved comment ID keeps a replayed attempt from resending the confirmed comment.
+				_ = write.fence.RecordProviderID(recovered.ID)
 				return addedCommentAttempt(requested, recovered, receipt)
 			}
 		}
@@ -104,7 +113,8 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	}
 	var created serviceDeskComment
 	if err := json.Unmarshal(result.response.body, &created); err != nil || !numericIDPattern.MatchString(created.ID) {
-		return resendOrSelectUncertain(write, requested, newFailure(addCommentOperationID, sdkgo.FailureProtocol,
+		// Jira Service Management accepted the comment, so a resend would duplicate it.
+		return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureProtocol,
 			"Jira Service Management accepted the comment but returned an unusable comment reference"), receipt)
 	}
 	// A saved comment ID keeps a replayed attempt from resending an accepted comment.
@@ -121,20 +131,21 @@ func addedCommentAttempt(requested AddCommentOutput, created serviceDeskComment,
 	return sdkgo.NewMutationBranch(AddCommentBranchAdded, output, nil, receipt)
 }
 
-func (client *Client) readBackConflictedComment(session *operationSession, issueIDOrKey string, input AddCommentInput, commentID string) (serviceDeskComment, bool) {
+// readBackComment reads a comment by ID and confirms it carries the requested body and visibility.
+func (client *Client) readBackComment(session *operationSession, issueIDOrKey string, input AddCommentInput, commentID string) (serviceDeskComment, readBackStatus) {
 	if !numericIDPattern.MatchString(commentID) {
-		return serviceDeskComment{}, false
+		return serviceDeskComment{}, readBackUnconfirmed
 	}
 	result := client.exchange(session, providerRequest{
 		method: http.MethodGet, api: serviceDeskAPI, path: requestPath(issueIDOrKey) + "/comment/" + commentID,
 	})
-	if client.classifyRead(addCommentOperationID, addCommentFailureSubject, result).outcome != readSucceeded {
-		return serviceDeskComment{}, false
+	if outcome := client.classifyRead(addCommentOperationID, addCommentFailureSubject, result).outcome; outcome != readSucceeded {
+		return serviceDeskComment{}, readBackStatusFor(outcome)
 	}
 	var recovered serviceDeskComment
 	if json.Unmarshal(result.response.body, &recovered) != nil || recovered.ID != commentID || recovered.Public == nil ||
 		recovered.Body != input.Body || *recovered.Public != input.IsPublic {
-		return serviceDeskComment{}, false
+		return serviceDeskComment{}, readBackUnconfirmed
 	}
-	return recovered, true
+	return recovered, readBackConfirmed
 }

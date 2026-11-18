@@ -85,13 +85,17 @@ func TestAddCommentRejectsABlankBodyWithoutARequest(t *testing.T) {
 	}
 }
 
-func TestAddCommentRetries503AndFailsClosedAfterAnAcceptedReply(t *testing.T) {
-	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, index int) {
-		if index == 0 {
+func TestAddCommentRetries503AndReadsBackAnAcceptedReply(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		switch {
+		case index == 0:
 			writeJSON(t, response, http.StatusServiceUnavailable, `{"errorMessage":"SENTINEL unavailable"}`)
-			return
+		case request.Method == http.MethodGet:
+			require.Equal(t, testServiceDeskPath+"/request/ITH-42/comment/1001", request.URL.Path)
+			writeJSON(t, response, http.StatusOK, `{"id":"1001","body":"We are on it.","public":true}`)
+		default:
+			writeJSON(t, response, http.StatusCreated, `{"id":"1001","public":true}`)
 		}
-		writeJSON(t, response, http.StatusCreated, `{"id":"1001","public":true}`)
 	})
 	input := jiraservicemanagement.AddCommentInput{IssueIDOrKey: "ITH-42", Body: "We are on it.", IsPublic: true}
 	ctx := newTestDexContext("comment-503")
@@ -105,13 +109,34 @@ func TestAddCommentRetries503AndFailsClosedAfterAnAcceptedReply(t *testing.T) {
 	replay := next.nextAttempt()
 	result, err = sdkgo.RunMutation(replay, newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
 	require.NoError(t, err)
-	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, result.Branch, "the saved comment ID forbids a resend")
+	require.Equal(t, jiraservicemanagement.AddCommentBranchAdded, result.Branch, "the saved comment ID is read back instead of resent")
+	require.Equal(t, "1001", result.Value.CommentID)
 	third := replay.nextAttempt()
 	third.previousHeartbeat = ctx.recordedHeartbeat
 	result, err = sdkgo.RunMutation(third, newTestClient(t, provider.URL).AddComment(), jsmConnection, input, sdkgo.WithMaxSends(1))
 	require.NoError(t, err)
 	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, result.Branch)
-	require.Equal(t, 2, provider.requestCount(), "an accepted reply is never resent")
+	require.Equal(t, 3, provider.requestCount(), "an accepted reply is never resent")
+	require.Equal(t, http.MethodGet, provider.request(2).method)
+}
+
+func TestAddCommentNeverResendsAnAcceptedReplyWithAnUnusableBody(t *testing.T) {
+	for name, reply := range map[string]func(*testing.T, http.ResponseWriter){
+		"interrupted accepted response": func(t *testing.T, response http.ResponseWriter) { writeInterruptedAcceptedJSON(t, response) },
+		"unusable 2xx": func(t *testing.T, response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusCreated, `{"id":"SENTINEL"}`)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) { reply(t, response) })
+			input := jiraservicemanagement.AddCommentInput{IssueIDOrKey: "ITH-42", Body: "We are on it.", IsPublic: true}
+			result, err := sdkgo.RunMutation(newTestDexContext("comment-accepted-"+name), newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
+			require.NoError(t, err)
+			require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, result.Branch, "an accepted reply is never resent")
+			require.Equal(t, 1, provider.requestCount())
+			requireNoSentinel(t, result)
+		})
+	}
 }
 
 func TestAddCommentResendsAnUnknownOutcomeOnlyBelowTheSendCap(t *testing.T) {
@@ -119,7 +144,6 @@ func TestAddCommentResendsAnUnknownOutcomeOnlyBelowTheSendCap(t *testing.T) {
 		"conflict": func(t *testing.T, response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusConflict, `{"errorMessage":"SENTINEL conflict"}`)
 		},
-		"interrupted accepted response": func(t *testing.T, response http.ResponseWriter) { writeInterruptedAcceptedJSON(t, response) },
 	} {
 		t.Run(name, func(t *testing.T) {
 			provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) { reply(t, response) })
@@ -200,9 +224,11 @@ func TestAddCommentReadsBackAConflictWithACommentID(t *testing.T) {
 		writeJSON(t, response, http.StatusOK, `{"id":"1001","body":"We are on it.","public":true}`)
 	})
 	input := jiraservicemanagement.AddCommentInput{IssueIDOrKey: "ITH-42", Body: "We are on it.", IsPublic: true}
-	result, err := sdkgo.RunMutation(newTestDexContext("comment-conflict-readback"), newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
+	ctx := newTestDexContext("comment-conflict-readback")
+	result, err := sdkgo.RunMutation(ctx, newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, jiraservicemanagement.AddCommentBranchAdded, result.Branch)
 	require.Equal(t, "1001", result.Value.CommentID)
 	require.Equal(t, 2, provider.requestCount())
+	require.Contains(t, string(ctx.recordedHeartbeat), `"providerId":"1001"`, "a lost Step result reads the confirmed comment back")
 }

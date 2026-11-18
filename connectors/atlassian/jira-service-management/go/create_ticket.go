@@ -129,6 +129,17 @@ func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicke
 		return sessionFailureAttempt(write, createTicketOperationID, sessionErr, requested, CreateTicketBranchDefect)
 	}
 	defer cancel()
+	if providerID := write.acceptedProviderID(); providerID != "" {
+		accepted := createdRequestResource{IssueKey: providerID}
+		if numericIDPattern.MatchString(providerID) {
+			accepted = createdRequestResource{IssueID: providerID}
+		}
+		recovered, status := client.readBackCreatedTicket(session, accepted, requested)
+		if status == readBackConfirmed {
+			return createdTicketAttempt(requested, recovered, singleDispatchReceipt(call))
+		}
+		return unconfirmedReadBackAttempt(status, createTicketOperationID, requested, singleDispatchReceipt(call))
+	}
 	result, attempt, isTerminal := dispatchFencedWrite(write, client, session, providerRequest{method: http.MethodPost, api: serviceDeskAPI, path: "/request", payload: body}, createTicketOperationID, requested, CreateTicketBranchDefect)
 	if isTerminal {
 		return attempt
@@ -138,7 +149,9 @@ func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicke
 	if result.response.statusCode == http.StatusConflict {
 		var conflict createdRequestResource
 		if json.Unmarshal(result.response.body, &conflict) == nil {
-			if recovered, isConfirmed := client.readBackCreatedTicket(session, conflict, requested); isConfirmed {
+			if recovered, status := client.readBackCreatedTicket(session, conflict, requested); status == readBackConfirmed {
+				// A saved reference keeps a replayed attempt from resending the confirmed request.
+				_ = write.fence.RecordProviderID(recovered.IssueID)
 				return createdTicketAttempt(requested, recovered, receipt)
 			}
 		}
@@ -160,19 +173,23 @@ func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicke
 		}
 	}
 	if !numericIDPattern.MatchString(reference) && !issueKeyPattern.MatchString(reference) {
-		return resendOrSelectUncertain(write, requested, newFailure(createTicketOperationID, sdkgo.FailureProtocol,
+		// Jira Service Management accepted the request, so a resend would duplicate it.
+		return sdkgo.NewMutationUncertain(requested, newFailure(createTicketOperationID, sdkgo.FailureProtocol,
 			"Jira Service Management accepted the customer request but returned an unusable request reference"), receipt)
 	}
 	// A saved reference keeps a replayed attempt from resending an accepted request.
-	_ = write.fence.RecordProviderID(reference)
+	hasRecordedProviderID := write.fence.RecordProviderID(reference) == nil
 	if !numericIDPattern.MatchString(created.IssueID) || !issueKeyPattern.MatchString(created.IssueKey) {
-		if recovered, isConfirmed := client.readBackCreatedTicket(session, created, requested); isConfirmed {
-			created = recovered
-		} else {
+		recovered, status := client.readBackCreatedTicket(session, created, requested)
+		if status != readBackConfirmed {
+			if status == readBackUnavailable && hasRecordedProviderID {
+				return unconfirmedReadBackAttempt(status, createTicketOperationID, requested, receipt)
+			}
 			// The provider returned a reference to an accepted request, so a resend would surely duplicate it.
 			return sdkgo.NewMutationUncertain(requested, newFailure(createTicketOperationID, sdkgo.FailureProtocol,
 				"Jira Service Management accepted the customer request but its reference could not be confirmed"), receipt)
 		}
+		created = recovered
 	}
 	return createdTicketAttempt(requested, created, receipt)
 }
@@ -187,31 +204,32 @@ func createdTicketAttempt(requested CreateTicketOutput, created createdRequestRe
 	return sdkgo.NewMutationBranch(CreateTicketBranchCreated, output, nil, receipt)
 }
 
-func (client *Client) readBackCreatedTicket(session *operationSession, accepted createdRequestResource, requested CreateTicketOutput) (createdRequestResource, bool) {
+// readBackCreatedTicket reads a request by its accepted reference and confirms it matches the requested content.
+func (client *Client) readBackCreatedTicket(session *operationSession, accepted createdRequestResource, requested CreateTicketOutput) (createdRequestResource, readBackStatus) {
 	reference := accepted.IssueID
 	if !numericIDPattern.MatchString(reference) {
 		reference = accepted.IssueKey
 	}
 	if !numericIDPattern.MatchString(reference) && !issueKeyPattern.MatchString(reference) {
-		return createdRequestResource{}, false
+		return createdRequestResource{}, readBackUnconfirmed
 	}
 	result := client.exchange(session, providerRequest{method: http.MethodGet, api: serviceDeskAPI, path: requestPath(reference)})
-	if client.classifyRead(createTicketOperationID, createTicketFailureSubject, result).outcome != readSucceeded {
-		return createdRequestResource{}, false
+	if outcome := client.classifyRead(createTicketOperationID, createTicketFailureSubject, result).outcome; outcome != readSucceeded {
+		return createdRequestResource{}, readBackStatusFor(outcome)
 	}
 	var recovered createdRequestResource
 	if json.Unmarshal(result.response.body, &recovered) != nil || !numericIDPattern.MatchString(recovered.IssueID) || !issueKeyPattern.MatchString(recovered.IssueKey) {
-		return createdRequestResource{}, false
+		return createdRequestResource{}, readBackUnconfirmed
 	}
 	if recovered.ServiceDeskID != requested.ServiceDeskID || recovered.RequestTypeID != requested.RequestTypeID || recovered.Summary != requested.Summary ||
 		requested.RaiseOnBehalfOfAccountID != "" && (recovered.Reporter == nil || recovered.Reporter.AccountID != requested.RaiseOnBehalfOfAccountID) {
-		return createdRequestResource{}, false
+		return createdRequestResource{}, readBackUnconfirmed
 	}
 	if numericIDPattern.MatchString(accepted.IssueID) && recovered.IssueID != accepted.IssueID ||
 		issueKeyPattern.MatchString(accepted.IssueKey) && recovered.IssueKey != accepted.IssueKey {
-		return createdRequestResource{}, false
+		return createdRequestResource{}, readBackUnconfirmed
 	}
-	return recovered, true
+	return recovered, readBackConfirmed
 }
 
 // buildCreateTicketRequest validates input and returns the request plus the echo used by every branch.
