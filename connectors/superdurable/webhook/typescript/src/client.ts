@@ -52,13 +52,13 @@ export class SendEventOperation implements Mutation<SendEventInput, SendEventOut
   async invoke(call: Call, input: SendEventInput): Promise<MutationAttempt<SendEventOutput>> {
     const webhookId = call.idempotencyKey ?? this.idempotencyKey(call.id);
     const emptyOutput: SendEventOutput = { webhookId };
-    if (!this.client.deliveryUrl) return defect(emptyOutput, 'VALIDATION', 'the connection has no deliveryUrl; set it in Dex Web Connectors to the receiver\'s HTTPS webhook URL');
+    if (!this.client.deliveryUrl) return this.defect(call, emptyOutput, 'VALIDATION', 'the connection has no deliveryUrl; set it in Dex Web Connectors to the receiver\'s HTTPS webhook URL');
     let payload: Uint8Array;
     try {
       if (input.payload === undefined) throw new TypeError('missing payload');
       payload = Buffer.from(JSON.stringify(input.payload));
-    } catch { return defect(emptyOutput, 'VALIDATION', 'sendEvent payload must be one valid JSON value'); }
-    if (payload.length > this.client.maxBodyBytes) return defect(emptyOutput, 'VALIDATION', 'sendEvent payload exceeds the connection\'s maxBodyBytes');
+    } catch { return this.defect(call, emptyOutput, 'VALIDATION', 'sendEvent payload must be one valid JSON value'); }
+    if (payload.length > this.client.maxBodyBytes) return this.defect(call, emptyOutput, 'VALIDATION', 'sendEvent payload exceeds the connection\'s maxBodyBytes');
     let signingSecret: string;
     try {
       const credentials = await this.client.credentials.resolve(call, call.context.cancellationSignal);
@@ -66,16 +66,16 @@ export class SendEventOperation implements Mutation<SendEventInput, SendEventOut
       signingSecret = credentials.signingSecret.reveal();
     } catch (error) {
       if (error instanceof CredentialBrokerUnavailableError) return newMutationRetry(failure('AVAILABILITY', 'the credential broker is temporarily unavailable, so nothing was sent'));
-      return defect(emptyOutput, 'AUTHENTICATION', 'the webhook signing secret is unavailable');
+      return this.defect(call, emptyOutput, 'AUTHENTICATION', 'the webhook signing secret is unavailable');
     }
     let key: Uint8Array;
     if (signingSecret.startsWith('whsec_')) {
       const encoded = signingSecret.slice(6);
       if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded) || !encoded) {
-        return defect(emptyOutput, 'VALIDATION', 'webhook signing_secret starts with whsec_ but is not valid base64');
+        return this.defect(call, emptyOutput, 'VALIDATION', 'webhook signing_secret starts with whsec_ but is not valid base64');
       }
       key = Buffer.from(encoded, 'base64');
-      if (!key.length) return defect(emptyOutput, 'VALIDATION', 'webhook signing_secret starts with whsec_ but is not valid base64');
+      if (!key.length) return this.defect(call, emptyOutput, 'VALIDATION', 'webhook signing_secret starts with whsec_ but is not valid base64');
     } else key = Buffer.from(signingSecret);
     const timestamp = String(Math.floor(this.client.now().getTime() / 1000));
     const signed = Buffer.concat([Buffer.from(`${webhookId}.${timestamp}.`), payload]);
@@ -101,15 +101,25 @@ export class SendEventOperation implements Mutation<SendEventInput, SendEventOut
     if (response.status === 408 || response.status === 429) return newMutationRetry(failure('RATE_LIMIT', `the receiver answered HTTP ${response.status}`), retryAfterMs);
     if (response.status === 409) return newMutationRetry(failure('CONFLICT', 'the receiver answered HTTP 409; retrying with the same webhook-id'), retryAfterMs);
     if (response.status === 425 || response.status >= 500) return newMutationRetry(failure('AVAILABILITY', `the receiver answered HTTP ${response.status}`), retryAfterMs);
-    const kind = response.status === 401 ? 'AUTHENTICATION' : response.status === 403 ? 'AUTHORIZATION' : response.status === 404 || response.status === 410 ? 'NOT_FOUND' : 'PROVIDER_REJECTION';
+    if (!DEFINITE_REFUSAL_STATUSES.has(response.status) || hasPossibleEarlierSend(call)) {
+      return newMutationRetry(failure('PROTOCOL', `the receiver answered HTTP ${response.status}, which does not prove it refused the event; retrying with the same webhook-id`), retryAfterMs);
+    }
+    const kind = response.status === 401 ? 'AUTHENTICATION' : response.status === 403 ? 'AUTHORIZATION' : response.status === 404 ? 'NOT_FOUND' : 'PROVIDER_REJECTION';
     return newMutationBranch('rejected', output, receipt(call, webhookId, this.client.now()), failure(kind, `the receiver answered HTTP ${response.status}`));
+  }
+
+  /** Select defect on the first attempt only; a later attempt may follow a delivered event. */
+  private defect(call: Call, output: SendEventOutput, kind: Failure['kind'], message: string): MutationAttempt<SendEventOutput> {
+    if (hasPossibleEarlierSend(call)) return newMutationRetry(failure(kind, message));
+    return newMutationBranch('defect', output, {}, failure(kind, message));
   }
 }
 
+const DEFINITE_REFUSAL_STATUSES = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+function hasPossibleEarlierSend(call: Call): boolean { return call.context.attempt > 1; }
+
 function failure(kind: Failure['kind'], message: string): Failure { return { kind, provider: ConnectorID, operation: 'sendEvent', message }; }
-function defect(output: SendEventOutput, kind: Failure['kind'], message: string): MutationAttempt<SendEventOutput> {
-  return newMutationBranch('defect', output, {}, failure(kind, message));
-}
 function receipt(call: Call, webhookId: string, now: Date): ReceiptDraft {
   return { callId: call.id, provider: ConnectorID, providerObjectId: webhookId, observedAt: now.toISOString() };
 }

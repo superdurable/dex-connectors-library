@@ -15,9 +15,9 @@ export interface SendEventStepConfig<StepInput, OperationInput = SendEventInput,
   connectionName: string;
   /** The receiver answered 2xx and accepted the event. */
   delivered: StepTarget<MutationResult<OperationOutput>>;
-  /** The receiver answered a redirect or a 4xx other than 408, 409, 425, and 429, so it refused the event; the Result carries the status code. A 409 is retried with the same webhook-id instead, and fails the Flow when the retry budget runs out. */
+  /** On the Step's first attempt the receiver answered 400, 401, 403, 404, 411, 413, 414, 415, or 422, so it refused the event; the Result carries the status code. Any other status, and a refusal on a later attempt that may follow a delivered event, is retried with the same webhook-id and fails the Flow when the retry budget runs out. */
   rejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The connection has no valid deliveryUrl or signing secret, or the payload is not one JSON value within maxBodyBytes. */
+  /** On the Step's first attempt the connection has no valid deliveryUrl or signing secret, or the payload is not one JSON value within maxBodyBytes. A later attempt retries instead. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
 }
 

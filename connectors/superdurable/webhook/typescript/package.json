@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-superdurable-webhook",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Signed Standard Webhooks delivery for Dex Flows",
   "repository": {
     "type": "git",
