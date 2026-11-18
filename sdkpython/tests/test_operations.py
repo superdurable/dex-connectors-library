@@ -2,9 +2,12 @@
 # SPDX-License-Identifier: MIT
 """Provider operation and credential resolution contracts without Dex."""
 
+import asyncio
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
+import dex
 import pytest
 
 from dex_connectors.sdk import (
@@ -26,6 +29,7 @@ from dex_connectors.sdk import (
     RetryError,
     StaticCredentialProvider,
     StepDefaults,
+    derive_step_call_id,
     resolve_credential,
     resolve_credential_after_rejection,
     run_mutation,
@@ -207,6 +211,73 @@ async def test_credential_resolution_modes() -> None:
         await static.resolve(Call(CALL_ID, ConnectionRef("sample", "missing"), OPERATION))
     with pytest.raises(ValueError, match="required"):
         await resolve_credential(None, CALL, driver)  # type: ignore[arg-type]
+
+
+class StepContext:
+    """Weakly referenceable Step identity, as a real Dex context is."""
+
+    def __init__(self) -> None:
+        self.flow_id = "flow-1"
+        self.step_execution_id = "step-1"
+        self.attempt = 1
+
+
+class BlockingMutation(ExampleMutation):
+    """Hold invoke open until released, so another call overlaps it."""
+
+    def __init__(self, operation: OperationRef = OPERATION) -> None:
+        super().__init__(MutationAttempt.branch_result("success", "ok", RECEIPT))
+        self.operation = operation
+        self.started = asyncio.Event()
+        self.release = asyncio.Event()
+        self.invocations = 0
+
+    def definition(self) -> MutationDefinition:
+        """Return the Mutation definition of the configured operation."""
+        return replace(super().definition(), operation=self.operation)
+
+    async def invoke(self, call: Call, input: str) -> MutationAttempt[str]:
+        """Block until the test releases the call."""
+        self.invocations += 1
+        self.started.set()
+        await self.release.wait()
+        return await super().invoke(call, input)
+
+
+@pytest.mark.asyncio
+async def test_concurrent_call_of_the_same_mutation_is_refused_before_sending() -> None:
+    """A second call of a running operation selects defect; others and later calls run."""
+    context = StepContext()
+    step_call = Call(CALL_ID, CONNECTION, OPERATION, context=cast(dex.AsyncContext, context))
+    running = BlockingMutation()
+    first = asyncio.create_task(run_mutation(running, step_call, "first"))
+    await running.started.wait()
+
+    concurrent = ExampleMutation(MutationAttempt.branch_result("success", "ok", RECEIPT))
+    refused = await run_mutation(concurrent, step_call, "second")
+    assert refused.branch == "defect" and refused.failure is not None
+    assert "concurrent calls" in refused.failure.message
+    assert concurrent.observed_call is None, "the refused call never reaches invoke"
+
+    other_operation = OperationRef("sample", "deleteItem")
+    other = BlockingMutation(other_operation)
+    other.release.set()
+    other_call = replace(step_call, operation=other_operation)
+    assert (await run_mutation(other, other_call, "other")).branch == "success"
+
+    running.release.set()
+    assert (await first).branch == "success"
+    assert (await run_mutation(concurrent, step_call, "third")).branch == "success"
+    assert running.invocations == 1
+
+
+def test_step_attempt_state_requires_a_weakly_referenceable_context() -> None:
+    """A context without weak references raises instead of silently not sharing state."""
+    from types import SimpleNamespace
+
+    context = SimpleNamespace(flow_id="flow-1", step_execution_id="step-1", attempt=1)
+    with pytest.raises(TypeError, match="weak references"):
+        derive_step_call_id(cast(dex.AsyncContext, context), OPERATION)
 
 
 def test_operation_protocols_are_typed() -> None:

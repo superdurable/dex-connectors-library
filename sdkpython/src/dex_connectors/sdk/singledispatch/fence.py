@@ -53,9 +53,9 @@ class Fence:
     `READ_BACK_THEN_RESEND_ALLOWED` permits Dispatch after the connector's
     read-back is not found or inconclusive, or directly when the connector
     cannot read back. Pass the same cap on every attempt of a Step execution.
-    With a cap of 2 or more, every marker records `send_count`; with the
-    default 1, markers omit it. A marker without the count still yields a
-    safe upper bound under any later cap.
+    Every marker records the exact `send_count` in the checkpoint, zero
+    included, whatever the cap, so sends refused with 429 are never counted.
+    A checkpoint entry without the count still yields a safe upper bound.
 
     One Step may run Fences for several Call IDs, also as concurrent tasks.
     Every heartbeat holds one marker per Call ID the Step attempt knows, so
@@ -203,7 +203,10 @@ class Fence:
     async def record_provider_id(self, provider_id: str) -> None:
         """Checkpoint an accepted resource identity for later read-back.
 
-        The marker carries the same send count as this attempt's claim.
+        The marker carries the same send count as this attempt's claim. When
+        the heartbeat fails, the error propagates, but the provider ID stays
+        in this attempt's checkpoint, so a later heartbeat of any Fence in the
+        Step carries it, and `record_can_resend` is refused.
         """
         async with self._lock:
             if (
@@ -211,11 +214,13 @@ class Fence:
                 or self._marker.state != State.CLAIMED or not provider_id
             ):
                 raise DispatchNotAllowedError("single dispatch is not allowed for this attempt")
-            await self._record(
-                self._attempt_marker(
-                    State.CLAIMED, provider_id, send_count=self._prior_send_count() + 1
-                )
+            accepted = self._attempt_marker(
+                State.CLAIMED, provider_id, send_count=self._prior_send_count() + 1
             )
+            try:
+                await self._checkpoint.record(self._context, accepted, retain_on_failure=True)
+            finally:
+                self._marker = accepted
 
     def _not_sent_marker(self) -> Marker:
         return self._attempt_marker(State.NOT_SENT, send_count=self._prior_send_count())
@@ -224,11 +229,7 @@ class Fence:
         return self._decision.prior_send_upper_bound if self._decision is not None else 0
 
     def _attempt_marker(self, state: State, provider_id: str = "", *, send_count: int) -> Marker:
-        # A cap of 1 omits the count, as Go does.
-        recorded_send_count = send_count if self._max_sends > MINIMUM_MAX_SENDS else 0
-        return Marker(
-            self._call.id, self._context.attempt, state, provider_id, recorded_send_count
-        )
+        return Marker(self._call.id, self._context.attempt, state, provider_id, send_count)
 
     async def _record(self, marker: Marker) -> None:
         await self._checkpoint.record(self._context, marker)

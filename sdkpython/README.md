@@ -572,16 +572,27 @@ idempotency keys of single calls never change, and the n-th returns
 `derive_call_id(..., occurrence=n)`. Step factories use it; a Step that builds
 a `Call` for `run_query` or `run_mutation` itself calls it once per call. The
 count restarts each attempt, so the Step must make its calls in a
-deterministic order.
+deterministic order. Concurrent calls of the same operation could swap Call
+IDs between attempts, so `run_mutation` refuses them: a Mutation call that
+starts while an earlier call of the same operation in the Step attempt is
+still running selects `defect` without invoking the operation. Mutations of
+different operations may run concurrently, and Queries are not restricted.
+The Step attempt state needs a hashable context that supports weak
+references, as Dex's context does; any other context raises `TypeError`.
+
+When `record_provider_id`'s heartbeat fails, the error propagates, but the
+provider ID stays in the Step attempt's checkpoint, so a later heartbeat of
+any Fence in the Step carries it, and `record_can_resend` is refused.
 
 `Fence(..., max_sends=n)` caps sends per call; the default 1 keeps the
-decisions above and omits `sendCount`. With a cap of 2
-or more, each marker also records `send_count`, JSON `sendCount`: the possibly
-effective sends of the Call ID up to and including its attempt. A claim counts
-its own send, `notSent` and `canResend` carry the count from before the
-attempt's claim, and a provider-ID marker keeps its claim's count. Decisions
-accept markers with or without the field; without it, the bound is derived
-from the marker's attempt.
+decisions above. Every Fence, whatever its cap, records the exact
+`send_count`, JSON `sendCount`, in each checkpoint entry, zero included: the
+possibly effective sends of the Call ID up to and including its attempt. A
+claim counts its own send, `notSent` and `canResend` carry the count from
+before the attempt's claim, and a provider-ID marker keeps its claim's count.
+Decisions read a present count exactly, so two sends refused with 429 leave
+`prior_send_upper_bound` at zero; an entry without the field is bounded by
+its attempt, and a claim with a count of 0 fails closed.
 With a cap from 2 to 10, a checkpoint that would require read-back yields
 `READ_BACK_THEN_RESEND_ALLOWED` while fewer than `n` sends may have happened.
 The connector reads back when it can: confirmed success selects the happy

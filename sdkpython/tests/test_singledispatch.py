@@ -4,6 +4,7 @@
 
 import asyncio
 import json
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
@@ -22,7 +23,6 @@ from dex_connectors.sdk.singledispatch import (
     State,
     decide_dispatch,
 )
-from dex_connectors.sdk.singledispatch.markers import _checkpoint_heartbeat as checkpoint_heartbeat
 from dex_connectors.sdk.singledispatch.markers import _markers_from_heartbeat as markers_from_heartbeat
 
 CALL_ID =CallID("5af8fafa-06ff-5b2d-bb13-04693809fabf")
@@ -30,8 +30,8 @@ MARKER_CODEC = dex.CodecRegistry().resolve(Marker)
 
 
 def _checkpoint(*markers: Marker) -> dict[str, object]:
-    """Encode markers in the map format a Fence records."""
-    return checkpoint_heartbeat({str(marker.call_id): marker for marker in markers})
+    """Seed markers in the map format; a zero send count is omitted and read conservatively."""
+    return {"singleDispatchMarkers": {str(marker.call_id): marker.to_wire() for marker in markers}}
 
 
 def _own(heartbeat: object, call_id: CallID = CALL_ID) -> Marker:
@@ -204,7 +204,78 @@ def test_bounded_resend_decisions(
     decision = decide_dispatch(CALL_ID, attempt, heartbeat, max_sends=max_sends)
     assert decision.kind == expected_kind
     assert decision.prior_send_upper_bound == expected_bound
-    assert decision.marker == previous
+    if previous is None or previous.send_count:
+        assert decision.marker == previous
+    else:
+        # An entry without a count carries its conservative count in the decision.
+        assert decision.marker is not None
+        assert replace(decision.marker, send_count=0) == previous
+
+
+async def _accepted_send(deadline: datetime) -> None:
+    """Stand in for a provider write that returned."""
+
+
+def test_cap_one_counts_refused_sends_exactly() -> None:
+    """Two sends refused with 429 leave no possible earlier send for a third attempt."""
+    exact_zero = {"singleDispatchMarkers": {str(CALL_ID): {
+        "callId": str(CALL_ID), "attempt": 2, "state": "canResend", "sendCount": 0,
+    }}}
+    decision = decide_dispatch(CALL_ID, 3, exact_zero)
+    assert decision.kind == DecisionKind.SEND_ALLOWED
+    assert decision.prior_send_upper_bound == 0
+    absent = {"singleDispatchMarkers": {str(CALL_ID): {
+        "callId": str(CALL_ID), "attempt": 2, "state": "canResend",
+    }}}
+    assert decide_dispatch(CALL_ID, 3, absent).prior_send_upper_bound == 1
+    claimed_zero = {"singleDispatchMarkers": {str(CALL_ID): {
+        "callId": str(CALL_ID), "attempt": 1, "state": "claimed", "sendCount": 0,
+    }}}
+    assert decide_dispatch(CALL_ID, 2, claimed_zero, max_sends=3).kind == DecisionKind.FAIL_CLOSED
+
+
+@pytest.mark.asyncio
+async def test_cap_one_fence_records_exact_counts_across_refused_sends() -> None:
+    """Every attempt's claim and canResend carry exact counts, so the third attempt may send."""
+    context = FakeContext(1)
+    for attempt in (1, 2):
+        context.attempt = attempt
+        fence = _fence(context, timedelta(seconds=10))
+        decision = await fence.decide()
+        assert decision.kind == DecisionKind.SEND_ALLOWED
+        assert decision.prior_send_upper_bound == 0
+        await fence.dispatch(_accepted_send)
+        assert _persisted(context) == Marker(CALL_ID, attempt, State.CLAIMED, send_count=1)
+        await fence.record_can_resend()
+        assert context.heartbeats[-1] == {"singleDispatchMarkers": {str(CALL_ID): {
+            "callId": str(CALL_ID), "attempt": attempt, "state": "canResend", "sendCount": 0,
+        }}}
+        context.previous = context.heartbeats[-1]
+    context.attempt = 3
+    third = await _fence(context, timedelta(seconds=10)).decide()
+    assert third.kind == DecisionKind.SEND_ALLOWED
+    assert third.prior_send_upper_bound == 0
+
+
+@pytest.mark.asyncio
+async def test_provider_id_survives_its_failed_heartbeat() -> None:
+    """A provider ID whose heartbeat failed is carried by the next Fence's heartbeat."""
+    context = FakeContext(1)
+    accepted = _fence(context, timedelta(seconds=10), max_sends=3)
+    await accepted.decide()
+    await accepted.dispatch(_accepted_send)
+    context.fail_heartbeat = True
+    with pytest.raises(OSError):
+        await accepted.record_provider_id("object-1")
+    context.fail_heartbeat = False
+    with pytest.raises(DispatchNotAllowedError):
+        await accepted.record_can_resend()
+    other = _call_fence(context, "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10", 3)
+    await other.decide()
+    await other.dispatch(_accepted_send)
+    assert _own(context.heartbeats[-1]) == Marker(
+        CALL_ID, 1, State.CLAIMED, "object-1", send_count=1
+    )
 
 
 def test_foreign_and_unreadable_entries_are_ignored_with_bounded_resend() -> None:
@@ -644,15 +715,16 @@ async def test_bounded_fence_keeps_unresolved_send_for_read_back(previous: Marke
 
 @pytest.mark.asyncio
 async def test_default_fence_records_counts_without_resending() -> None:
-    """max_sends=1 keeps 0.9.0 decisions and records markers without sendCount."""
+    """max_sends=1 keeps 0.9.0 decisions and records the exact sendCount."""
     first_context = FakeContext()
     first = _fence(first_context)
     await first.decide()
     await _lose_response(first)
-    assert _own(first_context.heartbeats[-1]) == Marker(CALL_ID, 1, State.CLAIMED)
+    assert _own(first_context.heartbeats[-1]) == Marker(CALL_ID, 1, State.CLAIMED, send_count=1)
     assert json.dumps(first_context.heartbeats[-1], separators=(",", ":")) == (
         '{"singleDispatchMarkers":{"5af8fafa-06ff-5b2d-bb13-04693809fabf":'
-        '{"callId":"5af8fafa-06ff-5b2d-bb13-04693809fabf","attempt":1,"state":"claimed"}}}'
+        '{"callId":"5af8fafa-06ff-5b2d-bb13-04693809fabf","attempt":1,"state":"claimed",'
+        '"sendCount":1}}}'
     )
     await first.record_can_resend()
     assert _own(first_context.heartbeats[-1]) == Marker(CALL_ID, 1, State.CAN_RESEND)
@@ -662,7 +734,9 @@ async def test_default_fence_records_counts_without_resending() -> None:
     assert (await resend.decide()).kind == DecisionKind.SEND_ALLOWED
     assert await resend.dispatch(lambda deadline: asyncio.sleep(0, "object-42")) == "object-42"
     await resend.record_provider_id("object-42")
-    assert _own(resend_context.heartbeats[-1]) == Marker(CALL_ID, 2, State.CLAIMED, "object-42")
+    assert _own(resend_context.heartbeats[-1]) == Marker(
+        CALL_ID, 2, State.CLAIMED, "object-42", send_count=1
+    )
 
     not_sent_context = FakeContext()
     not_sent = _fence(not_sent_context)
@@ -681,7 +755,7 @@ async def test_default_fence_records_counts_without_resending() -> None:
         await second.dispatch(lambda deadline: asyncio.sleep(0))
     assert not second_context.heartbeats
 
-    # A count-free marker still bounds sends when a later Step raises the cap.
+    # The exact count still bounds sends when a later Step raises the cap.
     raised = await _fence(FakeContext(2, _persisted(lost_context)), max_sends=2).decide()
     assert raised.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
     assert raised.prior_send_upper_bound == 1
@@ -739,8 +813,8 @@ async def test_two_fenced_calls_in_one_step_both_send_and_survive_retry() -> Non
         assert (await fence.decide()).kind == DecisionKind.SEND_ALLOWED
         await fence.dispatch(lambda deadline: asyncio.sleep(0))
     assert markers_from_heartbeat(context.heartbeats[-1]) == {
-        GMAIL_CALL_ID: Marker(CallID(GMAIL_CALL_ID), 1, State.CLAIMED),
-        str(CALL_ID): Marker(CALL_ID, 1, State.CLAIMED),
+        GMAIL_CALL_ID: Marker(CallID(GMAIL_CALL_ID), 1, State.CLAIMED, send_count=1),
+        str(CALL_ID): Marker(CALL_ID, 1, State.CLAIMED, send_count=1),
     }
 
     previous = _checkpoint(
@@ -753,7 +827,7 @@ async def test_two_fenced_calls_in_one_step_both_send_and_survive_retry() -> Non
     gmail = await _call_fence(retry, GMAIL_CALL_ID, 1).decide()
     assert gmail.kind == DecisionKind.READ_BACK_REQUIRED
     assert _own(retry.heartbeats[-1], CallID(GMAIL_CALL_ID)) == Marker(
-        CallID(GMAIL_CALL_ID), 1, State.CLAIMED
+        CallID(GMAIL_CALL_ID), 1, State.CLAIMED, send_count=1
     )
 
 
@@ -840,6 +914,8 @@ def test_step_checkpoint_is_shared_per_attempt_and_released_with_context() -> No
     assert first._checkpoint is second._checkpoint
     context.attempt = 2
     assert _call_fence(context, str(CALL_ID), 1)._checkpoint is not first._checkpoint
+    # Collect earlier tests' garbage first, so only this context's entry can disappear.
+    gc.collect()
     count = len(checkpoint_module._step_checkpoints)
     del first, second, context
     gc.collect()

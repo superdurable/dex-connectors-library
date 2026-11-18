@@ -170,11 +170,20 @@ def _own_checkpoint_entry(value: object, call_id: str) -> dict[str, Any] | None:
 
 
 def _same_heartbeat(actual: object, recorded: object, call_id: str) -> bool:
-    """Compare heartbeats exactly, reading a one-entry checkpoint map of call_id as its marker."""
+    """Compare heartbeats exactly, reading a one-entry checkpoint map of call_id as its marker.
+
+    Newer SDKs write every entry's exact sendCount; a recorded marker of call_id without one,
+    as SDKs before the checkpoint map wrote, is compared without the actual entry's count.
+    """
     actual_entry = _own_checkpoint_entry(actual, call_id)
     recorded_entry = _own_checkpoint_entry(recorded, call_id)
-    return _same_json_value(actual if actual_entry is None else actual_entry,
-                            recorded if recorded_entry is None else recorded_entry)
+    actual_value = actual if actual_entry is None else actual_entry
+    recorded_value = recorded if recorded_entry is None else recorded_entry
+    if (isinstance(actual_value, dict) and isinstance(recorded_value, dict)
+            and _is_own_flat_marker(actual_value, call_id) and _is_own_flat_marker(recorded_value, call_id)
+            and "sendCount" not in recorded_value):
+        actual_value = {name: value for name, value in actual_value.items() if name != "sendCount"}
+    return _same_json_value(actual_value, recorded_value)
 
 
 def _keys(value: object, required: set[str], optional: set[str], where: str) -> dict[str, Any]:

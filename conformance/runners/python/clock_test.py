@@ -100,6 +100,13 @@ class HeartbeatFormatTranslationTest(unittest.TestCase):
         self.assertFalse(_same_heartbeat(self.checkpoint, {**self.marker, "sendCount": 2}, self.call_id))
         self.assertFalse(_same_heartbeat({"__wrong_heartbeat_shape__": True}, self.marker, self.call_id))
 
+    def test_compares_a_count_free_recording_without_the_exact_count(self) -> None:
+        legacy = {"callId": self.call_id, "attempt": 1, "state": "canResend"}
+        exact = {"singleDispatchMarkers": {self.call_id: {**legacy, "sendCount": 0}}}
+        self.assertTrue(_same_heartbeat(exact, legacy, self.call_id))
+        self.assertFalse(_same_heartbeat(exact, {**legacy, "state": "notSent"}, self.call_id))
+        self.assertFalse(_same_heartbeat(exact, {**legacy, "sendCount": 1}, self.call_id))
+
 
 if __name__ == "__main__":
     unittest.main()

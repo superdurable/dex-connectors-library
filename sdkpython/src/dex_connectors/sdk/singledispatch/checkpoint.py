@@ -18,11 +18,19 @@ class _StepCheckpoint:
         self._markers = markers
         self._lock = asyncio.Lock()
 
-    async def record(self, context: dex.AsyncContext, marker: Marker) -> None:
+    async def record(
+        self, context: dex.AsyncContext, marker: Marker, *, retain_on_failure: bool = False
+    ) -> None:
         # The lock spans the heartbeat so the last persisted value has every committed entry.
+        # A retained provider ID only forces read-back, so keeping it after a failure is safe.
         async with self._lock:
             markers = {**self._markers, str(marker.call_id): marker}
-            await context.heartbeat(_checkpoint_heartbeat(markers))
+            try:
+                await context.heartbeat(_checkpoint_heartbeat(markers))
+            except BaseException:
+                if retain_on_failure:
+                    self._markers = markers
+                raise
             self._markers = markers
 
 

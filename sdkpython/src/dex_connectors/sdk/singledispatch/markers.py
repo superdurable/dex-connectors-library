@@ -3,7 +3,7 @@
 """Wire-compatible single-dispatch markers and conservative resend decisions."""
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import IntEnum, StrEnum
 
 from ..types import CallID
@@ -30,9 +30,11 @@ class Marker:
     """Non-secret Dex heartbeat checkpoint for a logical call and attempt.
 
     `send_count` is the number of possibly effective sends this Call ID made
-    up to and including `attempt`. Zero means the field is absent, as in
-    markers written before bounded resend; decisions then derive a legacy
-    upper bound from `attempt` and `state`.
+    up to and including `attempt`. Every Fence, whatever its cap, writes the
+    exact count into its checkpoint entry, zero included, and decisions read
+    a present count exactly. `to_wire` omits zero; a checkpoint entry without
+    the count is read as `attempt` for a claim and `attempt - 1` otherwise,
+    which can only overcount.
     """
 
     call_id: CallID = field(metadata={"dex_json_name": "callId"})
@@ -159,7 +161,7 @@ def decide_dispatch(
     if marker.attempt >= attempt:
         # A current or future attempt's marker cannot bound earlier sends.
         return Decision(DecisionKind.READ_BACK_REQUIRED, marker)
-    prior_send_upper_bound = _marker_send_count(marker) + (attempt - 1 - marker.attempt)
+    prior_send_upper_bound = marker.send_count + (attempt - 1 - marker.attempt)
     if (
         marker.attempt == attempt - 1
         and marker.state in (State.NOT_SENT, State.CAN_RESEND)
@@ -188,6 +190,8 @@ def _markers_from_heartbeat(heartbeat: object) -> dict[str, Marker]:
             marker = Marker.from_wire(entry)
         except (ValueError, TypeError):
             continue
+        if "sendCount" not in entry:
+            marker = replace(marker, send_count=_conservative_send_count(marker))
         if isinstance(call_id, str) and str(marker.call_id) == call_id:
             markers[call_id] = marker
     return markers
@@ -197,9 +201,21 @@ def _checkpoint_heartbeat(markers: Mapping[str, Marker]) -> dict[str, object]:
     # Call IDs are sorted, as Go encodes map keys.
     return {
         _CHECKPOINT_MARKERS_FIELD: {
-            call_id: markers[call_id].to_wire() for call_id in sorted(markers)
+            call_id: _checkpoint_entry(markers[call_id]) for call_id in sorted(markers)
         }
     }
+
+
+def _checkpoint_entry(marker: Marker) -> dict[str, str | int]:
+    """Encode a checkpoint entry with its exact send count, zero included, in Go's field order."""
+    marker.validate()
+    entry: dict[str, str | int] = {
+        "callId": str(marker.call_id), "attempt": marker.attempt, "state": marker.state.value,
+    }
+    if marker.provider_id:
+        entry["providerId"] = marker.provider_id
+    entry["sendCount"] = marker.send_count
+    return entry
 
 
 def _bounded_read_back(
@@ -216,14 +232,13 @@ def _bounded_read_back(
 def _has_possible_send_count(marker: Marker) -> bool:
     """Reject a send count that one send per attempt could not produce, as Go does."""
     if marker.state == State.CLAIMED:
-        return marker.send_count <= marker.attempt
+        # A claim counts its own send.
+        return 1 <= marker.send_count <= marker.attempt
     return marker.send_count <= marker.attempt - 1
 
 
-def _marker_send_count(marker: Marker) -> int:
-    if marker.send_count:
-        return marker.send_count
-    # Legacy markers: each earlier attempt sent at most once.
+def _conservative_send_count(marker: Marker) -> int:
+    # One send per attempt, excluding a notSent or canResend marker's own.
     return marker.attempt if marker.state == State.CLAIMED else marker.attempt - 1
 
 
