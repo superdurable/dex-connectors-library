@@ -42,6 +42,7 @@ from dex_connectors.sdk.singledispatch import Marker, State
 from OpenSSL import SSL, crypto
 from pytds import tds_base  # type: ignore[import-untyped]
 
+import dex_connectors.microsoft_sql_server.connection as sql_server_connection
 from dex_connectors.microsoft_sql_server import (
     Client,
     Config,
@@ -1054,7 +1055,23 @@ def test_an_unavailable_credential_broker_returns_retry() -> None:
     assert opened == []
 
 
+def _malformed_stored_material_error() -> Exception:
+    """Return the error the project credential source raises for malformed stored material."""
+
+    class MalformedProject:
+        async def resolve_credential(self, key: object, call_id: str) -> dict[str, object]:
+            return {"password": 7}
+
+    source = sql_server_connection._ProjectCredentialSource(MalformedProject(), object())  # type: ignore[arg-type]
+    try:
+        asyncio.run(source.resolve(call("execute")))
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed stored material decoded")
+
+
 _CREDENTIAL_FAILURES: list[tuple[Exception, bool]] = [
+    (_malformed_stored_material_error(), True),
     (ReauthorizationRequiredError(), True),
     (ObjectNotFoundError(), True),
     (ConnectionNotSelectedError(), True),

@@ -1010,11 +1010,16 @@ async def _resolve_password(client: Any, call: Call) -> str | _WriteOutcome:
     return str(password)
 
 
+class _CredentialMaterialError(ValueError):
+    """Stored credential material fails the connector credential checks, so no retry can succeed."""
+
+
 def _is_terminal_credential_error(error: Exception) -> bool:
     """Report a credential failure that no later attempt resolves without a person."""
     return isinstance(
         error,
         (
+            _CredentialMaterialError,
             ReauthorizationRequiredError,
             ObjectNotFoundError,
             ConnectionNotSelectedError,
