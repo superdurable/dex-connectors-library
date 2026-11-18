@@ -17,6 +17,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
@@ -363,6 +364,87 @@ func TestSendGroupRobotMessageSelectsUncertainForAnInvalidWebhookKeyAfterAPossib
 	uncertain, err := sdkgo.RunMutation(ctx, invalidKey.SendGroupRobotMessage(), testRobotConnection, testRobotText)
 	require.NoError(t, err)
 	require.Equal(t, SendGroupRobotMessageBranchUncertain, uncertain.Branch)
+	require.Equal(t, 1, fake.sendCount())
+}
+
+func TestSendGroupRobotMessageSelectsUncertainWhenTheSuccessBodyBreaks(t *testing.T) {
+	for _, status := range []int{http.StatusOK, http.StatusAccepted} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			fake := newFakeWeCom(t)
+			fake.sendReplies = []fakeReply{{status: status, body: `{"errcode":0`, breakBody: true}}
+			client := newTestClient(t, fake.server.URL)
+			uncertain, err := sdkgo.RunMutation(singledispatchtest.NewContext("broken-body-flow", "post-step"), client.SendGroupRobotMessage(), testRobotConnection, testRobotText)
+			require.NoError(t, err)
+			require.Equal(t, SendGroupRobotMessageBranchUncertain, uncertain.Branch, "WeCom answered 2xx, so the post may exist")
+			requireSecretFree(t, uncertain.Failure.Message)
+			require.Equal(t, 1, fake.sendCount())
+		})
+	}
+}
+
+func TestSendGroupRobotMessageResendsARefusalStatusThatCannotProveARefusal(t *testing.T) {
+	for _, testCase := range []struct {
+		name  string
+		reply fakeReply
+	}{
+		{name: "broken body", reply: fakeReply{status: http.StatusBadRequest, body: `{"errcode":93000`, breakBody: true}},
+		{name: "oversized body", reply: fakeReply{status: http.StatusForbidden, body: strings.Repeat("x", 300000)}},
+		{name: "body reports errcode 0", reply: fakeReply{status: http.StatusBadRequest, body: `{"errcode":0,"errmsg":"ok"}`}},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			fake := newFakeWeCom(t)
+			fake.sendReplies = []fakeReply{testCase.reply, {body: `{"errcode":0,"errmsg":"ok"}`}}
+			client := newTestClient(t, fake.server.URL)
+			ctx := singledispatchtest.NewContext("unproven-refusal-flow", "post-step")
+			_, err := sdkgo.RunMutation(ctx, client.SendGroupRobotMessage(), testRobotConnection, testRobotText)
+			requireRetry(t, err)
+			requireLastCheckpointState(t, ctx.Heartbeats(), "claimed")
+			ctx.AdvanceAttempt()
+			sent, err := sdkgo.RunMutation(ctx, client.SendGroupRobotMessage(), testRobotConnection, testRobotText)
+			require.NoError(t, err)
+			require.Equal(t, SendGroupRobotMessageBranchSent, sent.Branch)
+			require.Equal(t, 2, fake.sendCount())
+		})
+	}
+}
+
+func TestSendGroupRobotMessageRetriesATransientCredentialFailureBeforePosting(t *testing.T) {
+	fake := newFakeWeCom(t)
+	fake.sendReplies = []fakeReply{{body: `{"errcode":93000,"errmsg":"invalid webhook url"}`}}
+	unavailable, err := New(Config{BaseURL: fake.server.URL}, failingCredentials{err: projectconfig.ErrCredentialBrokerUnavailable})
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("transient-credential-flow", "post-step")
+	_, err = sdkgo.RunMutation(ctx, unavailable.SendGroupRobotMessage(), testRobotConnection, testRobotText)
+	failure, _ := requireRetry(t, err)
+	require.Equal(t, sdkgo.FailureAuthentication, failure.Kind)
+	requireLastCheckpointState(t, ctx.Heartbeats(), "notSent")
+	require.Zero(t, fake.sendCount())
+
+	// notSent proves nothing was posted, so a refusal of the next attempt's first post is definite.
+	ctx.AdvanceAttempt()
+	rejected, err := sdkgo.RunMutation(ctx, newTestClient(t, fake.server.URL).SendGroupRobotMessage(), testRobotConnection, testRobotText)
+	require.NoError(t, err)
+	require.Equal(t, SendGroupRobotMessageBranchProviderRejected, rejected.Branch)
+	require.Equal(t, 1, fake.sendCount())
+}
+
+func TestSendGroupRobotMessageClassifiesATerminalCredentialFailure(t *testing.T) {
+	fake := newFakeWeCom(t)
+	fake.sendReplies = []fakeReply{{status: http.StatusInternalServerError}}
+	reauthorize, err := New(Config{BaseURL: fake.server.URL}, failingCredentials{err: sdkgo.ErrReauthorizationRequired})
+	require.NoError(t, err)
+	defect, err := sdkgo.RunMutation(singledispatchtest.NewContext("terminal-credential-flow", "post-step"), reauthorize.SendGroupRobotMessage(), testRobotConnection, testRobotText)
+	require.NoError(t, err)
+	require.Equal(t, SendGroupRobotMessageBranchDefect, defect.Branch)
+	require.Zero(t, fake.sendCount())
+
+	ctx := singledispatchtest.NewContext("terminal-credential-after-send-flow", "post-step")
+	_, err = sdkgo.RunMutation(ctx, newTestClient(t, fake.server.URL).SendGroupRobotMessage(), testRobotConnection, testRobotText)
+	requireRetry(t, err)
+	ctx.AdvanceAttempt()
+	uncertain, err := sdkgo.RunMutation(ctx, reauthorize.SendGroupRobotMessage(), testRobotConnection, testRobotText)
+	require.NoError(t, err)
+	require.Equal(t, SendGroupRobotMessageBranchUncertain, uncertain.Branch, "an earlier attempt may have posted")
 	require.Equal(t, 1, fake.sendCount())
 }
 
