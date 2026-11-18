@@ -89,7 +89,7 @@ CREATE_TICKET_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Jira Service Management created the request and returned its key.", False),
         BranchDefinition(PROVIDER_REJECTED, "Jira Service Management conclusively rejected the request, such as a missing required field, an unknown request type or customer, or missing permission; nothing was created.", True),
-        BranchDefinition(UNCERTAIN, "The send cap is reached and the outcome cannot be confirmed, so the customer request may exist; the connector does not send it again.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached, or Jira Service Management accepted the request without a usable reference, and the outcome cannot be confirmed, so the customer request may exist; the connector does not send it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -142,7 +142,7 @@ ADD_COMMENT_DEFINITION = MutationDefinition(
         BranchDefinition(ADDED, "Jira Service Management added the comment and returned its ID.", False),
         BranchDefinition(NOT_FOUND, "The request does not exist or the connection cannot view it; nothing was added.", True),
         BranchDefinition(PROVIDER_REJECTED, "Jira Service Management conclusively rejected the comment, such as missing Add Comments permission; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "The send cap is reached and the outcome cannot be confirmed, so the comment may exist; the connector does not send it again.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached, or Jira Service Management accepted the comment without a usable ID, and the outcome cannot be confirmed, so the comment may exist; the connector does not send it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

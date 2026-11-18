@@ -115,7 +115,7 @@ export const CreateTicketBranch = {
 export const CreateTicketBranchCreated = CreateTicketBranch.Created;
 /** Jira Service Management conclusively rejected the request, such as a missing required field, an unknown request type or customer, or missing permission; nothing was created. */
 export const CreateTicketBranchProviderRejected = CreateTicketBranch.ProviderRejected;
-/** The send cap is reached and the outcome cannot be confirmed, so the customer request may exist; the connector does not send it again. */
+/** The send cap is reached, or Jira Service Management accepted the request without a usable reference, and the outcome cannot be confirmed, so the customer request may exist; the connector does not send it again. */
 export const CreateTicketBranchUncertain = CreateTicketBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateTicketBranchDefect = CreateTicketBranch.Defect;
@@ -125,7 +125,7 @@ export const CreateTicketDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "Jira Service Management created the request and returned its key." },
     { id: "providerRejected", description: "Jira Service Management conclusively rejected the request, such as a missing required field, an unknown request type or customer, or missing permission; nothing was created.", optional: true },
-    { id: "uncertain", description: "The send cap is reached and the outcome cannot be confirmed, so the customer request may exist; the connector does not send it again.", optional: true },
+    { id: "uncertain", description: "The send cap is reached, or Jira Service Management accepted the request without a usable reference, and the outcome cannot be confirmed, so the customer request may exist; the connector does not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
@@ -221,7 +221,7 @@ export const AddCommentBranchAdded = AddCommentBranch.Added;
 export const AddCommentBranchNotFound = AddCommentBranch.NotFound;
 /** Jira Service Management conclusively rejected the comment, such as missing Add Comments permission; nothing was added. */
 export const AddCommentBranchProviderRejected = AddCommentBranch.ProviderRejected;
-/** The send cap is reached and the outcome cannot be confirmed, so the comment may exist; the connector does not send it again. */
+/** The send cap is reached, or Jira Service Management accepted the comment without a usable ID, and the outcome cannot be confirmed, so the comment may exist; the connector does not send it again. */
 export const AddCommentBranchUncertain = AddCommentBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const AddCommentBranchDefect = AddCommentBranch.Defect;
@@ -232,7 +232,7 @@ export const AddCommentDefinition: MutationDefinition = {
     { id: "added", description: "Jira Service Management added the comment and returned its ID." },
     { id: "notFound", description: "The request does not exist or the connection cannot view it; nothing was added.", optional: true },
     { id: "providerRejected", description: "Jira Service Management conclusively rejected the comment, such as missing Add Comments permission; nothing was added.", optional: true },
-    { id: "uncertain", description: "The send cap is reached and the outcome cannot be confirmed, so the comment may exist; the connector does not send it again.", optional: true },
+    { id: "uncertain", description: "The send cap is reached, or Jira Service Management accepted the comment without a usable ID, and the outcome cannot be confirmed, so the comment may exist; the connector does not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },

@@ -22,7 +22,26 @@ TICKET_INPUT = jsm.CreateTicketInput(service_desk_id="10", request_type_id="25",
 COMMENT_INPUT = jsm.AddCommentInput(issue_id_or_key="ITH-42", body="Check the warranty.", is_public=True)
 CREATED = '{"issueId":"10042","issueKey":"ITH-42","serviceDeskId":"10","requestTypeId":"25"}'
 
+CREATED_READ_BACK = CREATED[:-1] + ',"summary":"Laptop broken"}'
+TRUNCATED_BODY = "<truncated>"
+"""A scripted body that sends the status and headers, then breaks the connection."""
+
 Answer = Callable[[httpx.Request], tuple[int, str]]
+
+
+class BrokenStream(httpx.AsyncByteStream):
+    """A response body that fails after the status and headers arrived."""
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        yield b'{"issueId":"100'
+        raise httpx.ReadError("connection reset")
+
+
+def created_or_read_back(
+    read_status: int, read_body: str, write_body: str = CREATED, write_status: int = 201
+) -> Answer:
+    """Answer the create POST and each read-back GET separately."""
+    return lambda request: (read_status, read_body) if request.method == "GET" else (write_status, write_body)
 
 
 class AttemptContext:
@@ -71,16 +90,19 @@ async def run(
     requests: list[httpx.Request],
     *,
     max_sends: int = CREATE_TICKET_DEFINITION.max_sends,
+    credentials_token: str = "jsm-access-token",
 ) -> sdk.MutationResult[object] | sdk.RetryError:
     """Run one Execute attempt of a write against a scripted provider."""
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
         status, body = answer(request)
+        if body == TRUNCATED_BODY:
+            return httpx.Response(status, stream=BrokenStream(), headers={"Content-Type": "application/json"})
         return httpx.Response(status, content=body.encode(), headers={"Content-Type": "application/json"})
 
     credentials = jsm.Credentials(
-        "client-id", sdk.SecretString("secret"), sdk.SecretString("jsm-access-token"), sdk.SecretString("")
+        "client-id", sdk.SecretString("secret"), sdk.SecretString(credentials_token), sdk.SecretString("")
     )
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
         client = jsm.Client(
@@ -138,13 +160,75 @@ async def test_send_cap_of_one_never_resends() -> None:
 async def test_later_attempt_resends_and_saved_identity_is_never_resent() -> None:
     requests: list[httpx.Request] = []
     context = AttemptContext(attempt=2)
-    assert branch_of(await run("createTicket", always(201, CREATED), context, requests)) == "created"
+    answer = created_or_read_back(200, CREATED_READ_BACK)
+    assert branch_of(await run("createTicket", answer, context, requests)) == "created"
     assert context.marker is not None and context.marker.provider_id == "10042"
     context.attempt = 3
-    assert branch_of(await run("createTicket", always(201, CREATED), context, requests)) == "uncertain"
+    assert branch_of(await run("createTicket", answer, context, requests)) == "created"
+    assert [request.method for request in requests] == ["POST", "GET"], (
+        "the saved ID is read back, never resent"
+    )
+    requests.clear()
     at_cap = AttemptContext(attempt=ADD_COMMENT_DEFINITION.max_sends + 1)
     assert branch_of(await run("addComment", always(201, '{"id":"1001"}'), at_cap, requests)) == "uncertain"
+    assert requests == []
+
+
+@pytest.mark.asyncio
+async def test_transient_read_back_of_a_saved_identity_retries_without_resending() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    partial = '{"issueId":"10042","issueKey":"bad key"}'
+    assert (
+        branch_of(await run("createTicket", created_or_read_back(503, "{}", partial), context, requests))
+        == "retry"
+    )
+    context.attempt = 2
+    assert (
+        branch_of(await run("createTicket", created_or_read_back(404, "{}"), context, requests))
+        == "uncertain"
+    )
+    assert [request.method for request in requests] == ["POST", "GET", "GET"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_name", ["createTicket", "addComment"])
+@pytest.mark.parametrize("body", [TRUNCATED_BODY, '{"issueKey":"SENTINEL","id":"SENTINEL"}'])
+async def test_accepted_write_with_unusable_body_is_never_resent(operation_name: str, body: str) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    assert branch_of(await run(operation_name, always(201, body), context, requests)) == "uncertain"
     assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_confirmed_conflict_saves_the_provider_identity() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    answer = created_or_read_back(200, CREATED_READ_BACK, '{"issueId":"10042"}', 409)
+    assert branch_of(await run("createTicket", answer, context, requests)) == "created"
+    assert context.marker is not None and context.marker.provider_id == "10042"
+
+
+@pytest.mark.asyncio
+async def test_credential_failure_after_a_possible_send_records_no_not_sent_marker() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    statuses = iter([500, 429])
+    assert (
+        branch_of(await run("createTicket", lambda _: (next(statuses), "{}"), context, requests)) == "retry"
+    )
+    context.attempt = 2
+    assert (
+        branch_of(await run("createTicket", lambda _: (next(statuses), "{}"), context, requests)) == "retry"
+    )
+    marker = context.marker
+    assert marker is not None and marker.state == "canResend"
+    context.attempt = 3
+    result = await run("createTicket", always(201, CREATED), context, requests, credentials_token="")
+    assert branch_of(result) == "uncertain", "the first send may have created the request"
+    assert context.marker == marker, "notSent would hide the earlier possible send"
+    assert len(requests) == 2
 
 
 @pytest.mark.asyncio

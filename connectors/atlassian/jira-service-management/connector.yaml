@@ -281,7 +281,7 @@ spec:
       branches:
         - {id: created, goName: Created, description: Jira Service Management created the request and returned its key.}
         - {id: providerRejected, goName: ProviderRejected, description: "Jira Service Management conclusively rejected the request, such as a missing required field, an unknown request type or customer, or missing permission; nothing was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The send cap is reached and the outcome cannot be confirmed, so the customer request may exist; the connector does not send it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap is reached, or Jira Service Management accepted the request without a usable reference, and the outcome cannot be confirmed, so the customer request may exist; the connector does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       # Sync: an async fallback attempt re-sends a slow create, and the provider has no idempotency key.
       execution:
@@ -391,7 +391,7 @@ spec:
         - {id: added, goName: Added, description: Jira Service Management added the comment and returned its ID.}
         - {id: notFound, goName: NotFound, description: "The request does not exist or the connection cannot view it; nothing was added.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Jira Service Management conclusively rejected the comment, such as missing Add Comments permission; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The send cap is reached and the outcome cannot be confirmed, so the comment may exist; the connector does not send it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap is reached, or Jira Service Management accepted the comment without a usable ID, and the outcome cannot be confirmed, so the comment may exist; the connector does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
