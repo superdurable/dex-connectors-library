@@ -94,7 +94,15 @@ class SequencedCredentials(CredentialProvider[Credentials]):
         )
 
 
-Answer = Callable[[httpx.Request], tuple[int, dict[str, object]]]
+Answer = Callable[[httpx.Request], tuple[int, dict[str, object]] | httpx.Response]
+
+
+class BrokenBodyStream(httpx.AsyncByteStream):
+    """Yield part of a body, then fail as a connection lost mid-body does."""
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        yield b'{"ok":'
+        raise httpx.ReadError("connection reset mid-body")
 
 
 async def post(
@@ -105,7 +113,10 @@ async def post(
     """Run one Execute attempt of postChannelMessage, as MutationStep passes the definition cap."""
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
-        status, body = answer(request)
+        answered = answer(request)
+        if isinstance(answered, httpx.Response):
+            return answered
+        status, body = answered
         return httpx.Response(status, json=body)
 
     provider = credentials or SequencedCredentials(bot_tokens or ["bot-token"])
@@ -276,18 +287,152 @@ async def test_terminal_credentials_after_a_counted_send_select_uncertain() -> N
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(("attempt", "is_retry"), [(1, True), (2, True), (3, False)])
-async def test_unreadable_checkpoint_retries_below_the_send_cap(attempt: int, is_retry: bool) -> None:
+@pytest.mark.parametrize("attempt", [1, 2, 3, 9])
+async def test_unreadable_checkpoint_always_retries(attempt: int) -> None:
     requests: list[httpx.Request] = []
     context = AttemptContext()
     context.attempt = attempt
     context.read_error = RuntimeError("heartbeat store unavailable")
     result = await post(lambda _: SERVER_FAILURE, context, requests)
-    if is_retry:
-        assert isinstance(result, RetryError)
-    else:
-        assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    # The retry budget, not the send cap, bounds a fail-closed checkpoint.
+    assert isinstance(result, RetryError)
     assert not requests
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "body",
+    [{"error": "channel_not_found"}, {"error": "invalid_auth"}, {"error": "ratelimited"}],
+)
+async def test_missing_ok_is_an_unknown_outcome(body: dict[str, object]) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    states: list[str] = []
+    for attempt in range(1, POST_CHANNEL_MESSAGE_DEFINITION.max_sends):
+        context.attempt = attempt
+        assert isinstance(await post(lambda _: (200, body), context, requests), RetryError)
+        assert context.marker is not None
+        states.append(context.marker.state)
+    context.attempt = POST_CHANNEL_MESSAGE_DEFINITION.max_sends
+    result = await post(lambda _: (200, body), context, requests)
+    # Without an explicit ok:false the post may exist, so every send counts toward the cap.
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == POST_CHANNEL_MESSAGE_DEFINITION.max_sends
+    assert "canResend" not in states
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"ok": False, "error": "channel_not_found", "ts": "2.0"},
+        {"ok": False, "error": "invalid_auth", "ts": "2.0"},
+        {"ok": False, "error": "ratelimited", "message": {"ts": "2.0"}},
+        {"ts": "2.0"},
+    ],
+)
+async def test_refusal_naming_a_timestamp_is_read_back(body: dict[str, object]) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+
+    def answer(request: httpx.Request) -> tuple[int, dict[str, object]]:
+        if request.method == "GET":
+            return 200, {"ok": True, "messages": [{"ts": "2.0", "user": "UBOT", "text": "hello"}]}
+        return 200, body
+
+    result = await post(answer, context, requests)
+    # A timestamp contradicts the refusal, so the post is read back and never resent.
+    assert isinstance(result, MutationResult) and result.branch == "sent"
+    assert [request.method for request in requests] == ["POST", "GET"]
+    assert context.marker is not None and context.marker.provider_id == "2.0"
+
+
+@pytest.mark.asyncio
+async def test_accepted_status_with_unreadable_body_is_never_resent() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    result = await post(lambda _: httpx.Response(200, stream=BrokenBodyStream()), context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_unreadable_unauthorized_body_is_an_unknown_outcome() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    result = await post(lambda _: httpx.Response(401, content=b'{"ok":'), context, requests)
+    # An unreadable body cannot prove the refusal, so the post repeats below the cap.
+    assert isinstance(result, RetryError)
+    assert context.marker is not None and context.marker.state == "claimed"
+
+
+class FailingProviderIDContext(AttemptContext):
+    """Fail every heartbeat write that would save a provider ID."""
+
+    async def heartbeat(self, value: object = None) -> None:
+        """Reject provider ID markers and record every other marker."""
+        marker = call_marker(value)
+        if marker is not None and marker.provider_id:
+            raise ConnectionError("provider ID heartbeat unavailable")
+        await super().heartbeat(value)
+
+
+@pytest.mark.asyncio
+async def test_lost_timestamp_checkpoint_never_retries_read_back() -> None:
+    requests: list[httpx.Request] = []
+    context = FailingProviderIDContext()
+
+    def answer(request: httpx.Request) -> tuple[int, dict[str, object]]:
+        if request.method == "GET":
+            return 500, {"ok": False, "error": "internal_error"}
+        return 200, {"ok": True, "ts": "2.0"}
+
+    result = await post(answer, context, requests)
+    # A Retry would leave a bare claim, which permits a resend of the accepted post.
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert [request.method for request in requests] == ["POST", "GET"]
+
+
+@pytest.mark.asyncio
+async def test_can_resend_after_unknown_still_counts_the_earlier_send() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+
+    def answer(_: httpx.Request) -> tuple[int, dict[str, object]]:
+        if len(requests) == 2:
+            return 429, {"ok": False, "error": "ratelimited"}
+        return SERVER_FAILURE
+
+    for attempt in range(1, 4):
+        context.attempt = attempt
+        assert isinstance(await post(answer, context, requests), RetryError)
+    context.attempt = 4
+    result = await post(answer, context, requests)
+    # Slack cannot read back without a timestamp; the 429 is uncounted, the two unknown sends are not.
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 4
+    assert context.marker is not None and context.marker.send_count == 3
+
+
+@pytest.mark.asyncio
+async def test_transient_credentials_after_a_counted_send_record_nothing() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    context.attempt = 3
+    seeded = Marker.from_wire({"callId": str(CALL_ID), "attempt": 2, "state": "canResend", "sendCount": 1})
+    context.heartbeat_value = seeded
+
+    class UnavailableCredentials(SequencedCredentials):
+        async def resolve(self, call: Call) -> Credentials:
+            raise ConnectionError("credential store unavailable")
+
+    result = await post(
+        lambda _: SERVER_FAILURE, context, requests, credentials=UnavailableCredentials(["bot-token"])
+    )
+    # notSent would hide the counted first post from the next attempt.
+    assert isinstance(result, RetryError)
+    assert not requests
+    assert context.heartbeat_value is seeded
 
 
 @pytest.mark.asyncio

@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { SlackClient } from '../src/client.js';
 import { PostChannelMessageDefinition } from '../src/generated/definitions.js';
 import type { PostMessageOutput } from '../src/generated/models.js';
@@ -25,7 +25,7 @@ class AttemptContext {
 
 interface SlackAnswer { status: number; body: string }
 
-function newClient(answer: (request: ProviderRequest) => SlackAnswer, botTokens: string[] = ['bot-token']) {
+function newClient(answer: (request: ProviderRequest) => SlackAnswer | Error, botTokens: string[] = ['bot-token']) {
   const requests: ProviderRequest[] = [];
   let resolutions = 0;
   const resolve = async () => {
@@ -35,11 +35,18 @@ function newClient(answer: (request: ProviderRequest) => SlackAnswer, botTokens:
   const client = new SlackClient({}, { resolve, resolveWithRefresh: resolve }, {
     send: async (request: ProviderRequest) => {
       requests.push(request);
-      const { status, body } = answer(request);
-      return { status, headers: {}, body: Buffer.from(body) };
+      const answered = answer(request);
+      if (answered instanceof Error) throw answered;
+      return { status: answered.status, headers: {}, body: Buffer.from(answered.body) };
     },
   });
   return { client, requests };
+}
+
+/** Read this call's marker from a flat or per-call map heartbeat. */
+function callMarker(heartbeat: unknown): Record<string, unknown> | undefined {
+  const value = heartbeat as { singleDispatchMarkers?: Record<string, Record<string, unknown>> } & Record<string, unknown> | undefined;
+  return value?.singleDispatchMarkers ? value.singleDispatchMarkers[callId] : value;
 }
 
 async function post(client: SlackClient, context: AttemptContext, maxSendsOverride?: number): Promise<MutationResult<PostMessageOutput> | RetryError> {
@@ -165,15 +172,107 @@ describe('Slack bounded resend of unconfirmed posts', () => {
     expect(requests).toHaveLength(0);
   });
 
-  it.each([{ attempt: 1, isRetry: true }, { attempt: 2, isRetry: true }, { attempt: 3, isRetry: false }])('retries an unreadable checkpoint below the send cap at attempt $attempt', async ({ attempt, isRetry }) => {
+  it.each([1, 2, 3, 9])('retries an unreadable checkpoint at attempt %d', async attempt => {
     const { client, requests } = newClient(() => serverFailure);
     const context = new AttemptContext();
     context.attempt = attempt;
     context.marker = { callId: '5f0c4d1e-8b9a-4c3d-9e2f-1a2b3c4d5e6f', attempt: 1, state: 'canResend' };
-    const result = await post(client, context);
-    if (isRetry) expect(result).toBeInstanceOf(RetryError);
-    else expect(result).toMatchObject({ branch: 'uncertain' });
+    // The retry budget, not the send cap, bounds a fail-closed checkpoint.
+    expect(await post(client, context)).toBeInstanceOf(RetryError);
     expect(requests).toHaveLength(0);
+  });
+
+  it.each(['{"error":"channel_not_found"}', '{"error":"invalid_auth"}', '{"error":"ratelimited"}'])('treats a 2xx %s without ok as an unknown outcome', async body => {
+    const { client, requests } = newClient(() => ({ status: 200, body }));
+    const context = new AttemptContext();
+    const states: unknown[] = [];
+    for (let attempt = 1; attempt < PostChannelMessageDefinition.maxSends!; attempt++) {
+      context.attempt = attempt;
+      expect(await post(client, context)).toBeInstanceOf(RetryError);
+      states.push(callMarker(context.marker)?.state);
+    }
+    context.attempt = PostChannelMessageDefinition.maxSends!;
+    // Without an explicit ok:false the post may exist, so every send counts toward the cap.
+    expect(await post(client, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(PostChannelMessageDefinition.maxSends!);
+    expect(states).not.toContain('canResend');
+  });
+
+  it.each([
+    '{"ok":false,"error":"channel_not_found","ts":"2.0"}',
+    '{"ok":false,"error":"invalid_auth","ts":"2.0"}',
+    '{"ok":false,"error":"ratelimited","message":{"ts":"2.0"}}',
+    '{"ts":"2.0"}',
+  ])('reads back a 2xx refusal %s that names a timestamp', async body => {
+    const { client, requests } = newClient(request => request.method === 'GET'
+      ? { status: 200, body: '{"ok":true,"messages":[{"ts":"2.0","user":"UBOT","text":"hello"}]}' }
+      : { status: 200, body });
+    const context = new AttemptContext();
+    // A timestamp contradicts the refusal, so the post is read back and never resent.
+    expect(await post(client, context)).toMatchObject({ branch: 'sent' });
+    expect(requests.map(request => request.method)).toEqual(['POST', 'GET']);
+    expect(callMarker(context.marker)).toMatchObject({ state: 'claimed', providerId: '2.0' });
+  });
+
+  it.each([
+    { name: 'transport', error: new ProviderTransportError(false, 200, {}) },
+    { name: 'stalled', error: new ProviderStalledError(200, {}) },
+  ])('never resends a 2xx whose body fails with a $name error', async ({ error }) => {
+    const { client, requests } = newClient(() => error);
+    expect(await post(client, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('treats an unreadable 401 body as an unknown outcome', async () => {
+    const { client } = newClient(() => ({ status: 401, body: '{"ok":' }));
+    const context = new AttemptContext();
+    // An unreadable body cannot prove the refusal, so the post repeats below the cap.
+    expect(await post(client, context)).toBeInstanceOf(RetryError);
+    expect(callMarker(context.marker)).toMatchObject({ state: 'claimed' });
+  });
+
+  it('selects uncertain instead of retrying read-back when the timestamp checkpoint is lost', async () => {
+    const { client, requests } = newClient(request => request.method === 'GET'
+      ? { status: 500, body: '{"ok":false,"error":"internal_error"}' }
+      : { status: 200, body: '{"ok":true,"ts":"2.0"}' });
+    const context = new AttemptContext();
+    context.recordHeartbeat = async (value: unknown) => {
+      if (callMarker(value)?.providerId) throw new Error('provider ID heartbeat unavailable');
+      context.marker = value;
+    };
+    // A Retry would leave a bare claim, which permits a resend of the accepted post.
+    expect(await post(client, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests.map(request => request.method)).toEqual(['POST', 'GET']);
+  });
+
+  it('keeps counting an unknown send after a later 429 records canResend', async () => {
+    const { client, requests } = newClient(() => (requests.length === 2 ? { status: 429, body: '{"ok":false,"error":"ratelimited"}' } : serverFailure));
+    const context = new AttemptContext();
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      context.attempt = attempt;
+      expect(await post(client, context)).toBeInstanceOf(RetryError);
+    }
+    context.attempt = 4;
+    // Slack cannot read back without a timestamp; the 429 is uncounted, the two unknown sends are not.
+    expect(await post(client, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(4);
+    expect(callMarker(context.marker)).toMatchObject({ sendCount: 3 });
+  });
+
+  it('records nothing when transient credentials block a send after a counted canResend', async () => {
+    const resolve = async (): Promise<never> => { throw new Error('credential store unavailable'); };
+    const requests: ProviderRequest[] = [];
+    const client = new SlackClient({}, { resolve, resolveWithRefresh: resolve }, {
+      send: async (request: ProviderRequest) => { requests.push(request); return { status: 500, headers: {}, body: Buffer.from('{}') }; },
+    });
+    const context = new AttemptContext();
+    context.attempt = 3;
+    const seeded = { callId, attempt: 2, state: 'canResend', sendCount: 1 };
+    context.marker = seeded;
+    // notSent would hide the counted first post from the next attempt.
+    expect(await post(client, context)).toBeInstanceOf(RetryError);
+    expect(requests).toHaveLength(0);
+    expect(context.marker).toBe(seeded);
   });
 
   it('selects uncertain when terminal credentials block a resend after a possible send', async () => {
