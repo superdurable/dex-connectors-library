@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import type { Config, Credentials, Task, ListTasksInput, TaskPage } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials, type Task, type ListTasksInput, type TaskPage } from './generated/models.js';
 import { CreateTaskOperation, DeleteTaskOperation, GetTaskOperation, ListTasksOperation, UpdateTaskOperation } from './operations.js';
 
 const publicBaseURL = 'https://api.todoist.com/api/v1';
@@ -82,7 +82,7 @@ export class TodoistClient {
       }
       return { ...budget, token: credentials.apiToken.reveal() };
     } catch (error) {
-      if (error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError) {
+      if (error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError || isCredentialMaterialError(error)) {
         return { ...budget, failure: localFailure(operation, 'AUTHENTICATION', 'connection credentials are missing or need reauthorization') };
       }
       return { ...budget, failure: { ...baseExchange(), failure: todoistFailure(operation, 'AVAILABILITY', 'connection credentials could not be read, so the request was not sent'), isTransient: true, isUndispatched: true } };

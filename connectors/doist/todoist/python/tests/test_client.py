@@ -26,7 +26,19 @@ from dex_connectors.doist_todoist import (
     GetTaskInput,
     UpdateTaskInput,
 )
+from dex_connectors.doist_todoist._generated.connection import CredentialMaterialError
 from tests.attempt_context import AttemptContext
+
+
+def _sdk_decoding_failure() -> ValueError:
+    """Return the error the SDK project provider raises when the generated decoder rejects material."""
+    try:
+        try:
+            raise CredentialMaterialError("Todoist credential api_token is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
 
 CONNECTION = sdk.ConnectionRef("todoist", "todoist")
 
@@ -75,8 +87,10 @@ async def test_credential_store_outage_retries_before_dispatch() -> None:
         ConnectionNotSelectedError(),
         CredentialBrokerRejectedError(),
         ObjectNotFoundError("absent"),
+        CredentialMaterialError("Todoist stored credential does not match"),
+        _sdk_decoding_failure(),
     ],
-    ids=["reauthorization", "not selected", "broker rejected", "object not found"],
+    ids=["reauthorization", "not selected", "broker rejected", "object not found", "malformed", "decoding"],
 )
 async def test_terminal_credential_failure_selects_defect(error: Exception) -> None:
     """Only the listed credential failures cannot be repaired by retrying the same call."""
