@@ -257,7 +257,13 @@ async def test_accepted_body_arriving_after_write_window_is_published_once() -> 
 
 @pytest.mark.parametrize(
     "error",
-    [CredentialBrokerUnavailableError("broker down"), OSError("store read failed"), RuntimeError("bug")],
+    [
+        CredentialBrokerUnavailableError("broker down"),
+        OSError("store read failed"),
+        RuntimeError("bug"),
+        ValueError("connection is not configured"),
+        LookupError("unlisted lookup failure"),
+    ],
 )
 async def test_transient_credential_failure_before_send_retries_without_a_send(error: Exception) -> None:
     requests: list[httpx.Request] = []
@@ -279,7 +285,6 @@ async def test_transient_credential_failure_before_send_retries_without_a_send(e
         ObjectNotFoundError(),
         ConnectionNotSelectedError(),
         CredentialBrokerRejectedError(),
-        ValueError("connection is not configured"),
     ],
 )
 async def test_terminal_credential_failure_before_send_selects_defect(error: Exception) -> None:

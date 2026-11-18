@@ -237,7 +237,7 @@ func (source failingCredentialSource) Resolve(sdkgo.Call) (Credentials, error) {
 }
 
 func TestPublishTextPostTransientCredentialFailureBeforeSendRetries(t *testing.T) {
-	for _, credentialErr := range []error{projectconfig.ErrCredentialBrokerUnavailable, errors.New("project store read failed")} {
+	for _, credentialErr := range []error{projectconfig.ErrCredentialBrokerUnavailable, errors.New("project store read failed"), errors.New("connection is not configured")} {
 		t.Run(credentialErr.Error(), func(t *testing.T) {
 			server, requests := newScriptedPublishServer(t, []int{http.StatusOK}, []string{publishedPostBody})
 			unavailable, err := New(Config{BaseURL: server.URL}, failingCredentialSource{err: credentialErr})
