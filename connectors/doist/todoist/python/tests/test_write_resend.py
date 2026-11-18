@@ -2,13 +2,16 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of Todoist creates whose outcome is unknown, and retries of safe writes."""
 
+import asyncio
 from collections.abc import AsyncIterator, Callable
+from datetime import UTC, datetime, timedelta
 
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
 
 import dex_connectors.doist_todoist as todoist
+import dex_connectors.doist_todoist.client as todoist_client
 from dex_connectors.doist_todoist._generated.definitions import CREATE_TASK_DEFINITION
 from tests.attempt_context import AttemptContext
 
@@ -110,6 +113,29 @@ async def test_two_xx_whose_body_breaks_is_uncertain_and_never_resent() -> None:
     broken = await run("createTask", lambda _: httpx.Response(200, stream=_BrokenBody()), context, requests)
     assert broken == "uncertain"
     assert context.marker is not None and context.marker.state == "claimed"
+    assert len(requests) == 1
+
+
+class _StalledBody(httpx.AsyncByteStream):
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        yield b'{"id":'
+        await asyncio.sleep(30)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("deadline_owner", ["client", "fence"])
+async def test_two_xx_headers_then_the_write_deadline_cuts_the_body_is_uncertain(
+    deadline_owner: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    requests: list[httpx.Request] = []
+    if deadline_owner == "fence":
+        # A Fence write window shorter than the client's own deadline raises TimeoutError from the Fence.
+        monkeypatch.setattr(todoist_client, "_EXECUTE_TIMEOUT", timedelta(seconds=1.2))
+        context = AttemptContext()
+    else:
+        context = AttemptContext(deadline=datetime.now(UTC) + timedelta(seconds=1.2))
+    stalled = await run("createTask", lambda _: httpx.Response(200, stream=_StalledBody()), context, requests)
+    assert stalled == "uncertain"
     assert len(requests) == 1
 
 

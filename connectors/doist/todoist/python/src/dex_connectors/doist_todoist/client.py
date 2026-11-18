@@ -272,9 +272,11 @@ class Client:
         request_id: str = "",
         budget: _AttemptBudget | None = None,
         is_write: bool = False,
+        trace: _RequestDispatchTrace | None = None,
     ) -> _Exchange:
+        """Send one bounded request; ``trace`` keeps the response status for a caller's deadline."""
         if budget is None:
-            return await self._send_raw(operation, token, method, path, payload, request_id)
+            return await self._send_raw(operation, token, method, path, payload, request_id, trace)
         deadline = budget.write_deadline if is_write else budget.attempt_deadline
         remaining = deadline - time.monotonic()
         if budget.minimum_request_seconds <= 0 or remaining < budget.minimum_request_seconds:
@@ -287,8 +289,9 @@ class Client:
                 transient=True,
                 undispatched=True,
             )
-        try:
+        if trace is None:
             trace = _RequestDispatchTrace()
+        try:
             return await asyncio.wait_for(
                 self._send_raw(operation, token, method, path, payload, request_id, trace), remaining
             )
@@ -751,9 +754,12 @@ class _FencedCreate:
         return MutationAttempt.retry(rejected.failure, rejected.retry_after)
 
     async def dispatch(
-        self, send: Callable[[datetime], Awaitable[_Exchange]]
+        self, send: Callable[[datetime], Awaitable[_Exchange]], trace: _RequestDispatchTrace
     ) -> "_Exchange | MutationAttempt[Task]":
-        """Send once behind the Fence, or return the attempt when the Fence forbids sending."""
+        """Send once behind the Fence, or return the attempt when the Fence forbids sending.
+
+        ``trace`` is the send's request trace; its status decides a write window that ends mid-body.
+        """
         try:
             return await self.fence.dispatch(send)
         except (CheckpointError, InsufficientAttemptTimeError):
@@ -774,6 +780,18 @@ class _FencedCreate:
                 )
             )
         except TimeoutError:
+            if 200 <= trace.response_status < 300:
+                # Todoist accepted the creation before the body arrived, so a resend could duplicate it.
+                return MutationAttempt.uncertain(
+                    Task(),
+                    _failure(
+                        "createTask",
+                        FailureKind.TRANSPORT,
+                        "Todoist accepted the creation but its response was cut off, "
+                        "so the task is unconfirmed",
+                    ),
+                    Receipt(),
+                )
             return self.resend_or_select_uncertain(
                 _failure(
                     "createTask", FailureKind.TRANSPORT, "Todoist request did not return a complete response"
@@ -917,6 +935,7 @@ class CreateTaskOperation:
         if rejected is not None:
             return await write.credential_failure(rejected)
         assert token is not None
+        trace = _RequestDispatchTrace()
         dispatched = await write.dispatch(
             lambda _deadline: self.client._send(
                 operation,
@@ -927,7 +946,9 @@ class CreateTaskOperation:
                 str(call.idempotency_key),
                 budget=budget,
                 is_write=True,
-            )
+                trace=trace,
+            ),
+            trace,
         )
         if isinstance(dispatched, MutationAttempt):
             return dispatched

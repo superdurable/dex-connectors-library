@@ -101,8 +101,9 @@ that time, and every request, including a read-back, within five sixths; the
 rest covers recording the result. These limits also cut a longer `Timeout` or
 caller-supplied `http.Client.Timeout`. A request with less than a tenth of the
 attempt time left is not sent: the attempt retries, and a skipped create
-read-back retries only that read-back, as described below. A create POST cut off by its limit has
-an unknown outcome, so it resends up to the send cap described below, and an
+read-back retries only that read-back, as described below. A create POST cut off by its limit
+before any response headers has an unknown outcome, so it resends up to the send cap described
+below; one cut off after 2xx headers was accepted and selects `uncertain`. An
 update cut off by its limit retries.
 Credentials are resolved once per attempt, before its first request, and a
 read-back reuses them. A residual risk remains: a heavily loaded engine may not
