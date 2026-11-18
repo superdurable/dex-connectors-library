@@ -264,8 +264,10 @@ keeps the message text, which can repeat record values.
 clears in seconds, and the org's 24-hour API allocation, which does not; the
 second may exhaust the remaining one-hour default retry budget and fail the Step. Applications
 that expect to reach the daily allocation can widen the window with
-`StepOptionsOverride` or add `ProceedToOnExecuteFailure`. Invalid input and
-credentials that cannot be used select `defect` before any request. Only each
+`StepOptionsOverride` or add `ProceedToOnExecuteFailure`. Invalid input,
+unusable credentials, and an absent, unselected, or broker-refused connection
+select `defect` before any request; any other credential read failure
+Retries. Only each
 operation's happy-path branch is required; every other branch is optional and
 fails the Flow when unwired.
 

@@ -292,10 +292,10 @@ records a claim before POST and counts every send that may have taken effect.
 A 429 or positive transport evidence that no connection was obtained records
 `canResend` and retries. A checkpoint that cannot be read returns Retry without
 sending. Credential or data source lookup failures before the first POST record
-`notSent`, so a later attempt may send. Temporary credential failures Retry;
-reauthorization, connection selection, and invalid API token failures select
+`notSent`, so a later attempt may send. Reauthorization, an absent or
+unselected connection, a broker refusal, and an invalid API token select
 `defect` after recording `notSent`, or `uncertain` once an earlier send may
-have created the page.
+have created the page. Every other credential failure Retries.
 
 - A definite refusal of the first send (400, 401, 403, 404, 411, 413, 414,
   415, or 422) records `canResend` and selects `providerRejected` or
