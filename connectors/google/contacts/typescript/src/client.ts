@@ -3,7 +3,7 @@
 
 import { SecretString, ReauthorizationRequiredError, resolveCredential, type Call, type CredentialProvider, type CredentialRefreshDriver } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, Credentials } from './generated/models.js';
 import { CreateContactOperation, GetContactOperation, ListContactsOperation } from './operations.js';
@@ -85,8 +85,10 @@ export class ContactsClient {
     catch (error) {
       if (error instanceof BodyTooLargeError && error.status !== undefined)
         return { ...failedExchange('tooLarge'), status: error.status, retryAfterMs: parseRetryAfter(header(error.headers ?? {}, 'retry-after'), this.now()) };
+      // A failure after the response headers keeps their status, so a 2xx create is known accepted.
       if (error instanceof ProviderTransportError)
-        return { ...failedExchange('request'), isProvablyNotSent: error.isProvablyNotSent };
+        return { ...failedExchange('request'), status: error.status ?? 0, isProvablyNotSent: error.isProvablyNotSent };
+      if (error instanceof ProviderStalledError) return { ...failedExchange('request'), status: error.status ?? 0 };
       return failedExchange('request');
     }
     const retryAfterMs = parseRetryAfter(header(response.headers, 'retry-after'), this.now());

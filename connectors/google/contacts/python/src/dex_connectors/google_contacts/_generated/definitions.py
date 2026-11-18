@@ -65,7 +65,7 @@ CREATE_CONTACT_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Google created the contact and returned its resource name.", False),
         BranchDefinition(PROVIDER_REJECTED, "Google conclusively rejected the contact.", True),
-        BranchDefinition(UNCERTAIN, "Google may have created the contact, and its resource name was still not confirmed when the send cap was reached.", True),
+        BranchDefinition(UNCERTAIN, "Google may have created the contact, and its resource name was not confirmed: at the send cap, after a refusal that follows a possible send, or after a 2xx without a usable resource name.", True),
         BranchDefinition(DEFECT, "Local contact input, connection credentials, or dispatch checkpoint is invalid.", True),
     ),
     StepDefaults(
