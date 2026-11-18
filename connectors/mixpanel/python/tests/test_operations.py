@@ -42,6 +42,7 @@ from dex_connectors.mixpanel import (
     ExportEventsInput,
     TrackEventInput,
 )
+from dex_connectors.mixpanel._generated.connection import CredentialMaterialError
 
 CONNECTION = ConnectionRef("mixpanel", "mixpanel")
 IMPORT_OK = {"code": 200, "num_records_imported": 1, "status": "OK"}
@@ -77,6 +78,17 @@ def export_call() -> Call:
     return Call(CallID(str(uuid4())), CONNECTION, EXPORT_EVENTS_DEFINITION.operation)
 
 
+def _sdk_decoding_failure() -> ValueError:
+    """Build the SDK project provider's wrapper around a malformed stored credential."""
+    try:
+        try:
+            raise CredentialMaterialError("Mixpanel credential service_account_secret is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+
+
 class _FailingCredentials:
     def __init__(self, error: Exception) -> None:
         self.error = error
@@ -96,6 +108,8 @@ class _FailingCredentials:
         (ObjectNotFoundError(), True),
         (ConnectionNotSelectedError(), True),
         (CredentialBrokerRejectedError(), True),
+        (CredentialMaterialError("Mixpanel credential service_account_secret is required"), True),
+        (_sdk_decoding_failure(), True),
     ],
 )
 async def test_track_event_classifies_credential_failures(error: Exception, is_terminal: bool) -> None:
@@ -176,18 +190,31 @@ async def test_track_event_rejects_invalid_input_before_dispatch(value: TrackEve
         (httpx.Response(400), PROVIDER_REJECTED, FailureKind.PROVIDER_REJECTION),
         (httpx.Response(401), PROVIDER_REJECTED, FailureKind.AUTHENTICATION),
         (httpx.Response(403), PROVIDER_REJECTED, FailureKind.AUTHORIZATION),
-        (
-            httpx.Response(200, json={**IMPORT_OK, "num_records_imported": 0}),
-            INVALID_RESPONSE,
-            FailureKind.PROTOCOL,
-        ),
-        (httpx.Response(200, content=b"x" * 500), INVALID_RESPONSE, FailureKind.RESPONSE_TOO_LARGE),
+        (httpx.Response(422), PROVIDER_REJECTED, FailureKind.PROVIDER_REJECTION),
     ],
 )
 async def test_track_event_branches(response: httpx.Response, branch: str, kind: FailureKind) -> None:
     result = await run_mutation(make_client(response).track_event(), track_call(), EVENT)
     assert result.branch == branch
     assert result.failure is not None and result.failure.kind == kind
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("response", "kind"),
+    [
+        (httpx.Response(200, json={**IMPORT_OK, "num_records_imported": 0}), FailureKind.PROTOCOL),
+        (httpx.Response(200, content=b"not json"), FailureKind.PROTOCOL),
+        (httpx.Response(200, content=b"x" * 500), FailureKind.RESPONSE_TOO_LARGE),
+        (httpx.Response(302), FailureKind.AVAILABILITY),
+        (httpx.Response(425), FailureKind.AVAILABILITY),
+        (httpx.Response(451), FailureKind.AVAILABILITY),
+    ],
+)
+async def test_track_event_retries_unknown_outcomes(response: httpx.Response, kind: FailureKind) -> None:
+    with pytest.raises(RetryError) as raised:
+        await run_mutation(make_client(response).track_event(), track_call(), EVENT)
+    assert raised.value.failure.kind == kind
 
 
 @pytest.mark.asyncio

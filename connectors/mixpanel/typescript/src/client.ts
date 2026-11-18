@@ -4,7 +4,7 @@
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { TrackEventOperation, ExportEventsOperation } from './operations.js';
 
 const defaultBaseUrl = 'https://api.mixpanel.com';
@@ -64,7 +64,7 @@ export class MixpanelClient {
       credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
     } catch (error) {
       const isTerminal = error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
-        || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+        || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
       if (!isTerminal) return this.failed(operation, 'AVAILABILITY', 'Mixpanel credentials are temporarily unavailable', 'retry');
       return this.failed(operation, 'AUTHENTICATION', 'Mixpanel credentials are unavailable or invalid', 'defect');
     }

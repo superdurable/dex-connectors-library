@@ -37,17 +37,23 @@ export class TrackEventOperation implements Mutation<TrackEventInput, EventImpor
     if (payload.length >= 1 << 20) return mutationFailure('defect', 'VALIDATION', 'event payload is invalid or too large');
     const query = new URLSearchParams({ project_id: String(this.client.projectId), strict: '1' });
     const reply = await this.client.exchange(call, operation, 'POST', `${this.client.baseUrl}/import?${query}`, payload);
-    if ('failure' in reply) return mutationExchangeFailure(reply);
-    if (reply.status !== 200) return mutationFailure('providerRejected', rejectionKind(reply.status), `Mixpanel rejected event import with HTTP ${reply.status}`);
+    // The $insert_id deduplicates a resend, so an oversized confirmation retries.
+    if ('failure' in reply) return reply.disposition === 'defect' ? mutationExchangeFailure(reply) : newMutationRetry(reply.failure, reply.retryAfterMs);
+    if (reply.status !== 200) {
+      if (!definiteRefusalStatuses.has(reply.status)) return newMutationRetry(failure(operation, 'AVAILABILITY', `Mixpanel answered event import with HTTP ${reply.status}, so its outcome is unknown`));
+      return mutationFailure('providerRejected', rejectionKind(reply.status), `Mixpanel rejected event import with HTTP ${reply.status}`);
+    }
     try {
       const response: unknown = JSON.parse(Buffer.from(reply.body).toString('utf8'));
       if (typeof response === 'object' && response !== null && 'code' in response && response.code === 200 && 'num_records_imported' in response && response.num_records_imported === 1 && 'status' in response && response.status === 'OK') {
         return newMutationBranch('imported', { imported: true }, zeroReceipt());
       }
-    } catch { /* malformed confirmation selects invalidResponse */ }
-    return mutationFailure('invalidResponse', 'PROTOCOL', 'Mixpanel returned an invalid import confirmation');
+    } catch { /* A malformed confirmation retries below. */ }
+    return newMutationRetry(failure(operation, 'PROTOCOL', 'Mixpanel returned an unusable import confirmation'));
   }
 }
+
+const definiteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 
 /** Bounded Mixpanel raw event export query. */
 export class ExportEventsOperation implements Query<ExportEventsInput, ExportedEvents> {
