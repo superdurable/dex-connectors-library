@@ -109,9 +109,6 @@ func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInp
 	}
 	session, cancel, startFailure := client.startSession(call, createTaskOperationID)
 	if startFailure != nil {
-		if savedTaskID != "" {
-			return sdkgo.NewMutationRetry[CreateTaskOutput](*startFailure, 0)
-		}
 		return sessionFailureAttempt(write, createTaskOperationID, startFailure, requested, CreateTaskBranchDefect)
 	}
 	defer cancel()

@@ -112,9 +112,26 @@ def _defect_or_select_uncertain(
 async def _credential_failure(
     fence: Fence, decision: Decision, cap: _SendCap, operation: str, value: T, cause: Failure
 ) -> MutationAttempt[T]:
-    """Map unavailable credentials before the send."""
-    if cap.has_possible_earlier_send:
-        # notSent would hide the earlier send; Asana credential failures cannot be told apart as transient.
+    """Map unavailable credentials before this attempt's send.
+
+    After a possible earlier send, including one Asana accepted, it never records notSent: a
+    transient failure retries and a terminal one selects uncertain. Before any send, a transient
+    failure records notSent and retries, and a terminal one selects defect.
+    """
+    is_terminal = cause.kind == FailureKind.AUTHENTICATION
+    has_saved_id = decision.marker is not None and bool(decision.marker.provider_id)
+    if cap.has_possible_earlier_send or decision.kind != DecisionKind.SEND_ALLOWED or has_saved_id:
+        if is_terminal:
+            return MutationAttempt.uncertain(
+                value,
+                failure(
+                    operation,
+                    cause.kind,
+                    "an earlier attempt of this Step may have sent the request and the connection "
+                    f"credentials cannot read it back: {cause.message}",
+                ),
+                Receipt(),
+            )
         return MutationAttempt.retry(
             failure(
                 operation,
@@ -133,6 +150,8 @@ async def _credential_failure(
                 "Asana setup failed and the not-sent checkpoint could not be recorded",
             )
         )
+    if not is_terminal:
+        return MutationAttempt.retry(cause)
     return MutationAttempt.branch_result("defect", value, Receipt(), cause)
 
 
@@ -181,6 +200,44 @@ def _accepted_without_identity(
     """Select uncertain for a 2xx without a usable ID; the accepted write is never sent again."""
     return MutationAttempt.uncertain(
         value, failure(operation, FailureKind.PROTOCOL, f"{message}, so it is not sent again"), receipt
+    )
+
+
+_CREATED_TASK_STRING_FIELDS = ("permalink_url", "created_at")
+_STORY_STRING_FIELDS = ("created_at",)
+_USER_STRING_FIELDS = ("gid", "name")
+
+
+def _is_success_observed(observed_statuses: list[int]) -> bool:
+    """Whether the last response headers carried a 2xx, so the write was accepted."""
+    return bool(observed_statuses) and 200 <= observed_statuses[-1] < 300
+
+
+def _has_typed_fields(resource: dict[str, Any], string_fields: tuple[str, ...]) -> bool:
+    """Whether each field is absent, null, or a string, as the Go connector's typed decode requires."""
+    return all(resource.get(name) is None or isinstance(resource[name], str) for name in string_fields)
+
+
+def _has_typed_story_fields(resource: dict[str, Any]) -> bool:
+    """Whether a story decodes as the Go connector's story: string fields and an object author."""
+    author = resource.get("created_by")
+    is_author_typed = author is None or (
+        isinstance(author, dict) and _has_typed_fields(author, _USER_STRING_FIELDS)
+    )
+    return is_author_typed and _has_typed_fields(resource, _STORY_STRING_FIELDS)
+
+
+async def _retry_accepted_read_back_or_select_uncertain(
+    fence: Fence, operation: str, object_id: str, value: T, message: str, receipt: Receipt
+) -> MutationAttempt[T]:
+    """Retry an unusable 2xx only when its ID is saved, so the next attempt reads it back."""
+    try:
+        await fence.record_provider_id(object_id)
+    except Exception:
+        # Without a saved ID the write is not read back, so it is never sent again.
+        return _accepted_without_identity(operation, value, message, receipt)
+    return MutationAttempt.retry(
+        failure(operation, FailureKind.PROTOCOL, f"{message}, so the next attempt reads it back")
     )
 
 
@@ -532,16 +589,12 @@ class ListTasksOperation:
             return QueryAttempt.branch_result(
                 "defect", empty, Receipt(), failure("listTasks", FailureKind.VALIDATION, str(error))
             )
-        token = await self.client.token(call)
+        token, credential_problem = await self.client.token_or_failure(call, "listTasks")
         if token is None:
-            return QueryAttempt.branch_result(
-                "defect",
-                empty,
-                Receipt(),
-                failure(
-                    "listTasks", FailureKind.AUTHENTICATION, "Asana connection credentials are unavailable"
-                ),
-            )
+            assert credential_problem is not None
+            if credential_problem.kind != FailureKind.AUTHENTICATION:
+                return QueryAttempt.retry(credential_problem)
+            return QueryAttempt.branch_result("defect", empty, Receipt(), credential_problem)
         exchange = await self.client.exchange(call, token, "GET", "/tasks", query)
         route, problem, delay = _read_outcome(self.client, "listTasks", "task list", exchange)
         if route == "retry":
@@ -592,16 +645,12 @@ class GetTaskOperation:
             return QueryAttempt.branch_result(
                 "defect", empty, Receipt(), failure("getTask", FailureKind.VALIDATION, str(error))
             )
-        token = await self.client.token(call)
+        token, credential_problem = await self.client.token_or_failure(call, "getTask")
         if token is None:
-            return QueryAttempt.branch_result(
-                "defect",
-                empty,
-                Receipt(),
-                failure(
-                    "getTask", FailureKind.AUTHENTICATION, "Asana connection credentials are unavailable"
-                ),
-            )
+            assert credential_problem is not None
+            if credential_problem.kind != FailureKind.AUTHENTICATION:
+                return QueryAttempt.retry(credential_problem)
+            return QueryAttempt.branch_result("defect", empty, Receipt(), credential_problem)
         exchange = await self.client.exchange(
             call, token, "GET", f"/tasks/{task_id}", {"opt_fields": TASK_DETAIL_FIELDS}
         )
@@ -686,18 +735,15 @@ class CreateTaskOperation:
                 ),
                 self.client.receipt(call),
             )
-        token = await self.client.token(call)
+        token, credential_problem = await self.client.token_or_failure(call, "createTask")
         if token is None:
-            authentication_problem = failure(
-                "createTask", FailureKind.AUTHENTICATION, "Asana connection credentials are unavailable"
-            )
-            if task_id:
-                return MutationAttempt.retry(authentication_problem)
+            assert credential_problem is not None
             return await _credential_failure(
-                fence, decision, cap, "createTask", requested, authentication_problem
+                fence, decision, cap, "createTask", requested, credential_problem
             )
         if task_id:
             return await self._read_back(call, token, requested, task_id, fence)
+        observed_statuses: list[int] = []
         try:
             exchange = await fence.dispatch(
                 lambda _deadline: self.client.exchange(
@@ -707,6 +753,7 @@ class CreateTaskOperation:
                     "/tasks",
                     {"opt_fields": CREATED_TASK_FIELDS},
                     {"data": fields},
+                    observed_statuses,
                 )
             )
         except (CheckpointError, InsufficientAttemptTimeError):
@@ -718,6 +765,13 @@ class CreateTaskOperation:
                 )
             )
         except TimeoutError:
+            if _is_success_observed(observed_statuses):
+                return _accepted_without_identity(
+                    "createTask",
+                    requested,
+                    "Asana accepted the task, but the write window ended before its body was read",
+                    self.client.receipt(call),
+                )
             return _resend_or_select_uncertain(
                 cap,
                 requested,
@@ -744,6 +798,15 @@ class CreateTaskOperation:
         except (ValueError, TypeError):
             return _accepted_without_identity(
                 "createTask",
+                requested,
+                "Asana accepted the task but returned an unusable task reference",
+                receipt,
+            )
+        if not _has_typed_fields(resource, _CREATED_TASK_STRING_FIELDS):
+            return await _retry_accepted_read_back_or_select_uncertain(
+                fence,
+                "createTask",
+                task_id,
                 requested,
                 "Asana accepted the task but returned an unusable task reference",
                 receipt,
@@ -785,7 +848,7 @@ class CreateTaskOperation:
             )
         try:
             resource = data_object(exchange)
-            if resource.get("gid") != task_id:
+            if resource.get("gid") != task_id or not _has_typed_fields(resource, _CREATED_TASK_STRING_FIELDS):
                 raise ValueError("task ID differs")
         except ValueError:
             return MutationAttempt.uncertain(
@@ -841,16 +904,12 @@ class UpdateTaskOperation:
             return MutationAttempt.branch_result(
                 "defect", output, Receipt(), failure("updateTask", FailureKind.VALIDATION, str(error))
             )
-        token = await self.client.token(call)
+        token, credential_problem = await self.client.token_or_failure(call, "updateTask")
         if token is None:
-            return MutationAttempt.branch_result(
-                "defect",
-                output,
-                Receipt(),
-                failure(
-                    "updateTask", FailureKind.AUTHENTICATION, "Asana connection credentials are unavailable"
-                ),
-            )
+            assert credential_problem is not None
+            if credential_problem.kind != FailureKind.AUTHENTICATION:
+                return MutationAttempt.retry(credential_problem)
+            return MutationAttempt.branch_result("defect", output, Receipt(), credential_problem)
         receipt = self.client.receipt(call, task_id)
         if section_id:
             exchange = await self.client.exchange(
@@ -968,18 +1027,15 @@ class AddCommentOperation:
                 ),
                 self.client.receipt(call),
             )
-        token = await self.client.token(call)
+        token, credential_problem = await self.client.token_or_failure(call, "addComment")
         if token is None:
-            authentication_problem = failure(
-                "addComment", FailureKind.AUTHENTICATION, "Asana connection credentials are unavailable"
-            )
-            if story_id:
-                return MutationAttempt.retry(authentication_problem)
+            assert credential_problem is not None
             return await _credential_failure(
-                fence, decision, cap, "addComment", requested, authentication_problem
+                fence, decision, cap, "addComment", requested, credential_problem
             )
         if story_id:
             return await self._read_back(call, token, requested, story_id, fence)
+        observed_statuses: list[int] = []
         try:
             exchange = await fence.dispatch(
                 lambda _deadline: self.client.exchange(
@@ -989,6 +1045,7 @@ class AddCommentOperation:
                     f"/tasks/{task_id}/stories",
                     {"opt_fields": CREATED_STORY_FIELDS},
                     {"data": {"text": input.text}},
+                    observed_statuses,
                 )
             )
         except (CheckpointError, InsufficientAttemptTimeError):
@@ -1000,6 +1057,13 @@ class AddCommentOperation:
                 )
             )
         except TimeoutError:
+            if _is_success_observed(observed_statuses):
+                return _accepted_without_identity(
+                    "addComment",
+                    requested,
+                    "Asana accepted the comment, but the write window ended before its body was read",
+                    self.client.receipt(call),
+                )
             return _resend_or_select_uncertain(
                 cap,
                 requested,
@@ -1026,6 +1090,15 @@ class AddCommentOperation:
         except (ValueError, TypeError):
             return _accepted_without_identity(
                 "addComment",
+                requested,
+                "Asana accepted the comment but returned an unusable story reference",
+                receipt,
+            )
+        if not _has_typed_story_fields(resource):
+            return await _retry_accepted_read_back_or_select_uncertain(
+                fence,
+                "addComment",
+                story_id,
                 requested,
                 "Asana accepted the comment but returned an unusable story reference",
                 receipt,
@@ -1057,7 +1130,7 @@ class AddCommentOperation:
             )
         try:
             resource = data_object(exchange)
-            if resource.get("gid") != story_id:
+            if resource.get("gid") != story_id or not _has_typed_story_fields(resource):
                 raise ValueError("story ID differs")
         except ValueError:
             return MutationAttempt.uncertain(

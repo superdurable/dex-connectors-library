@@ -2,11 +2,19 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of Asana creates and comments whose outcome is unknown."""
 
+import asyncio
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.singledispatch import Marker, State
 
 import dex_connectors.asana as asana
@@ -65,6 +73,17 @@ class BrokenBodyStream(httpx.AsyncByteStream):
         yield b""
 
 
+class FailingCredentialProvider:
+    """Raise one credential resolution error for every call."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, _call: sdk.Call) -> asana.Credentials:
+        """Raise the configured error."""
+        raise self.error
+
+
 async def run(
     operation_name: str,
     status: int,
@@ -74,7 +93,9 @@ async def run(
     *,
     max_sends: int = CREATE_TASK_DEFINITION.max_sends,
     is_body_broken: bool = False,
+    is_body_stalled: bool = False,
     has_credentials: bool = True,
+    credential_error: Exception | None = None,
 ) -> str:
     """Run one Execute attempt of an Asana write and return its branch or `retry`."""
 
@@ -82,13 +103,20 @@ async def run(
         requests.append(request)
         if is_body_broken:
             return httpx.Response(status, stream=BrokenBodyStream())
+        if is_body_stalled:
+            return httpx.Response(status, stream=StallingBodyStream())
         return httpx.Response(status, content=body.encode(), headers={"Content-Type": "application/json"})
 
     credentials = {CONNECTION: asana.Credentials(sdk.SecretString("token"))} if has_credentials else {}
+    provider: sdk.CredentialProvider[asana.Credentials] = (
+        sdk.StaticCredentialProvider(credentials)
+        if credential_error is None
+        else FailingCredentialProvider(credential_error)
+    )
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as http_client:
         client = asana.Client(
             asana.Config(endpoint="http://127.0.0.1:22201/api/1.0"),
-            sdk.StaticCredentialProvider(credentials),
+            provider,
             http_client,
         )
         operation = sdk.OperationRef("asana", operation_name)
@@ -193,10 +221,100 @@ async def test_unreadable_error_body_is_an_unknown_outcome() -> None:
 
 
 @pytest.mark.asyncio
-async def test_credential_failure_after_a_possible_send_retries_without_not_sent() -> None:
+@pytest.mark.parametrize("operation", ["createTask", "addComment"])
+async def test_transient_credential_failure_after_a_possible_send_retries_without_not_sent(
+    operation: str,
+) -> None:
     requests: list[httpx.Request] = []
     marker = Marker(CALL_ID, 1, State.CLAIMED, send_count=1)
     context = AttemptContext(2, marker)
-    assert await run("createTask", 201, CREATED, context, requests, has_credentials=False) == "retry"
+    unavailable = CredentialBrokerUnavailableError()
+    assert await run(operation, 201, CREATED, context, requests, credential_error=unavailable) == "retry"
     assert context.marker is not None and context.marker.state == "claimed" and context.marker.attempt == 1
     assert requests == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["createTask", "addComment"])
+@pytest.mark.parametrize(
+    "error",
+    [
+        sdk.ReauthorizationRequiredError("reauthorize"),
+        ConnectionNotSelectedError(),
+        CredentialBrokerRejectedError(),
+        ObjectNotFoundError("absent"),
+        None,
+    ],
+    ids=["reauthorization", "not selected", "broker rejected", "object not found", "missing connection"],
+)
+async def test_terminal_credential_failure_after_a_possible_send_is_uncertain(
+    operation: str, error: Exception | None
+) -> None:
+    for marker in (
+        Marker(CALL_ID, 1, State.CLAIMED, send_count=1),
+        Marker(CALL_ID, 1, State.CLAIMED, send_count=1, provider_id=TASK_ID),
+    ):
+        requests: list[httpx.Request] = []
+        context = AttemptContext(2, marker)
+        result = await run(
+            operation, 201, CREATED, context, requests, has_credentials=False, credential_error=error
+        )
+        assert result == "uncertain"
+        assert context.marker is not None and context.marker.state == "claimed"
+        assert requests == []
+
+
+@pytest.mark.asyncio
+async def test_credential_failure_before_any_send() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    unavailable = CredentialBrokerUnavailableError()
+    assert await run("createTask", 201, CREATED, context, requests, credential_error=unavailable) == "retry"
+    assert context.marker is not None and context.marker.state == State.NOT_SENT
+    reauthorize = sdk.ReauthorizationRequiredError("reauthorize")
+    result = await run("addComment", 201, CREATED, AttemptContext(), requests, credential_error=reauthorize)
+    assert result == "defect"
+    assert requests == []
+
+
+class StallingBodyStream(httpx.AsyncByteStream):
+    """Yield nothing until cancelled, so the write window cuts the 2xx body."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        await asyncio.sleep(3600)
+        yield b""
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["createTask", "addComment"])
+async def test_write_deadline_after_2xx_headers_is_uncertain_and_never_resent(operation: str) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    # The Fence write window is 7/12 of the remaining attempt time.
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
+    assert await run(operation, 201, "", context, requests, is_body_stalled=True) == "uncertain"
+    assert len(requests) == 1
+    assert context.marker is not None and context.marker.state == State.CLAIMED
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "body",
+    [
+        f'{{"data":{{"gid":"{TASK_ID}","permalink_url":7}}}}',
+        f'{{"data":{{"gid":"{TASK_ID}","created_at":7}}}}',
+        f'{{"data":{{"gid":"{TASK_ID}","created_by":"someone"}}}}',
+        f'{{"data":{{"gid":"{TASK_ID}","created_by":{{"gid":7}}}}}}',
+    ],
+    ids=["permalink", "created_at", "author", "author gid"],
+)
+async def test_valid_gid_with_mistyped_fields_retries_and_reads_back_by_id(body: str) -> None:
+    operation = "addComment" if "created_by" in body else "createTask"
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    assert await run(operation, 201, body, context, requests) == "retry"
+    assert context.marker is not None and context.marker.provider_id == TASK_ID
+    context.attempt = 2
+    expected = "added" if operation == "addComment" else "created"
+    assert await run(operation, 200, CREATED, context, requests) == expected
+    assert [request.method for request in requests] == ["POST", "GET"]

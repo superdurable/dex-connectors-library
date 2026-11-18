@@ -81,9 +81,6 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	}
 	session, cancel, startFailure := client.startSession(call, addCommentOperationID)
 	if startFailure != nil {
-		if savedStoryID != "" {
-			return sdkgo.NewMutationRetry[AddCommentOutput](*startFailure, 0)
-		}
 		return sessionFailureAttempt(write, addCommentOperationID, startFailure, requested, AddCommentBranchDefect)
 	}
 	defer cancel()

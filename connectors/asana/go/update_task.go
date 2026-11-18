@@ -79,6 +79,9 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 		return sdkgo.NewMutationBranch(UpdateTaskBranchDefect, output, failurePointer(updateTaskOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
 	session, cancel, startFailure := client.startSession(call, updateTaskOperationID)
+	if startFailure != nil && startFailure.Kind != sdkgo.FailureAuthentication {
+		return sdkgo.NewMutationRetry[UpdateTaskOutput](*startFailure, 0)
+	}
 	if startFailure != nil {
 		return sdkgo.NewMutationBranch(UpdateTaskBranchDefect, output, startFailure, sdkgo.Receipt{})
 	}
