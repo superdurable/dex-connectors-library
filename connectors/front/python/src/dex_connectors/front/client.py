@@ -6,6 +6,7 @@ import asyncio
 import json
 import math
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -175,11 +176,13 @@ class Client:
         parameters: dict[str, str] | None = None,
         payload: Any = None,
         deadline: datetime | None = None,
+        on_response_status: Callable[[int], None] | None = None,
     ) -> Exchange:
         """Send one request with redirects disabled and classify status before reading errors.
 
         A `deadline`, such as a Fence write window, ends the exchange shortly before it, keeping
-        any 2xx status already received.
+        any 2xx status already received. `on_response_status` receives the HTTP status as soon
+        as the headers arrive, so a caller whose Fence cancels the body read still knows it.
         """
         stop_at = (
             None
@@ -233,6 +236,8 @@ class Client:
                 ),
             )
         status = response.status_code
+        if on_response_status is not None:
+            on_response_status(status)
         response_headers = response.headers.copy()
         is_success = 200 <= status < 300
         is_error_body_unreadable = False

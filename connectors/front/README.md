@@ -264,8 +264,9 @@ five-attempt/five-minute retry budget expires and the Flow fails without
 another POST. A lost answer without an ID cannot be read back, because content
 and author are not unique identifiers, so it is resent within the send cap.
 A 2xx answer means Front accepted the write, so it is never resent: when its
-body is malformed, oversized, reflects the token, breaks while being read, or
-carries no usable provider ID, the reply selects `uncertain` at once.
+body is malformed, oversized, reflects the token, breaks while being read, is
+cut off by the fence's write window after the 2xx status arrived, or carries
+no usable provider ID, the reply selects `uncertain` at once.
 
 Every in-flight reply retry from v0.21.x has an untrusted checkpoint, so it
 returns Retry without sending until its retry budget expires. Reconcile those
