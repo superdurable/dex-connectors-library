@@ -5,7 +5,7 @@
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlencode
@@ -58,6 +58,8 @@ class Exchange:
     status: int = 0
     request_id: str = ""
     body: bytes = b""
+    # A non-2xx body exceeded maxResponseBytes, so it proves no refusal.
+    is_error_body_too_large: bool = False
 
 
 def failure(kind: FailureKind, operation: str, message: str) -> Failure:
@@ -180,8 +182,13 @@ class Client:
         *,
         query: dict[str, str] | None = None,
         payload: dict[str, Any] | None = None,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Issue one request and classify transport, status, and bounded body."""
+        """Issue one request and classify transport, status, and bounded body.
+
+        The response status is appended to `observed_statuses` when its headers arrive, so a
+        caller whose deadline cuts the body read still knows Mailchimp answered.
+        """
         key, base_url = connection
         target = base_url + path
         if query:
@@ -198,7 +205,10 @@ class Client:
             request = self._http_client.build_request(method, target, headers=headers, content=content)
             response, _ = await send_traced(self._http_client, request)
             status = response.status_code
+            if observed_statuses is not None:
+                observed_statuses.append(status)
             response_headers = response.headers.copy()
+            is_error_body_too_large = False
             try:
                 body = await read_bounded_body(response, self.config.max_response_bytes)
             except BodyTooLargeError:
@@ -213,6 +223,7 @@ class Client:
                         status=status,
                     )
                 body = b""
+                is_error_body_too_large = True
             request_id = response_headers.get("X-Request-Id", "")
             request_id = request_id if _REQUEST_ID.fullmatch(request_id) else ""
             if 200 <= status < 300:
@@ -228,7 +239,10 @@ class Client:
                         request_id=request_id,
                     )
                 return Exchange("succeeded", status=status, request_id=request_id, body=body)
-            return self._classify_status(operation, status, body, response_headers, request_id, key)
+            classified = self._classify_status(operation, status, body, response_headers, request_id, key)
+            if is_error_body_too_large:
+                return replace(classified, is_error_body_too_large=True)
+            return classified
         except ProviderTransportError as error:
             outcome = "notSent" if error.provably_not_sent else "unavailable"
             message = (

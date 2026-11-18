@@ -25,6 +25,8 @@ export interface MailchimpExchange {
   headers: ProviderResponse['headers'];
   failure?: Failure;
   retryAfterMs: number;
+  /** True when a non-2xx body exceeded maxResponseBytes, so it proves no refusal. */
+  isErrorBodyTooLarge?: boolean;
 }
 /** Build a secret-safe connector failure. */
 export function mailchimpFailure(operation: string, kind: Failure['kind'], message: string): Failure {
@@ -110,10 +112,12 @@ export class MailchimpClient {
       ...(payload !== undefined ? { body: Buffer.from(JSON.stringify(payload), 'utf8') } : {}),
     };
     let response: ProviderResponse;
+    let isErrorBodyTooLarge = false;
     try { response = await this.send(request); }
     catch (error) {
       if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers !== undefined) {
         response = { status: error.status, headers: error.headers, body: new Uint8Array() };
+        isErrorBodyTooLarge = true;
         if (response.status >= 200 && response.status < 300) return { outcome: 'invalid', status: response.status, headers: response.headers, body: response.body, failure: mailchimpFailure(operation, 'RESPONSE_TOO_LARGE', 'Mailchimp response exceeds the configured maxResponseBytes limit'), retryAfterMs: 0 };
       } else {
         const isNotSent = error instanceof AddressRefusal || error instanceof ProviderTransportError && error.isProvablyNotSent;
@@ -135,7 +139,7 @@ export class MailchimpClient {
     else if (status === 408 || status >= 500) { outcome = 'unavailable'; kind = 'AVAILABILITY'; }
     else if (status === 404) { outcome = 'notFound'; kind = 'NOT_FOUND'; }
     else { outcome = 'rejected'; kind = status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : status === 409 ? 'CONFLICT' : status === 400 ? 'VALIDATION' : status >= 300 && status < 400 ? 'PROTOCOL' : 'PROVIDER_REJECTION'; }
-    return { outcome, status, headers: response.headers, body: new Uint8Array(), failure: mailchimpFailure(operation, kind, `Mailchimp request failed (HTTP ${status})`), retryAfterMs };
+    return { outcome, status, headers: response.headers, body: new Uint8Array(), failure: mailchimpFailure(operation, kind, `Mailchimp request failed (HTTP ${status})`), retryAfterMs, ...(isErrorBodyTooLarge ? { isErrorBodyTooLarge } : {}) };
   }
 
   /** Create a secret-free provider receipt. */

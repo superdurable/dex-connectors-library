@@ -224,9 +224,11 @@ loss or a result lost before commit, so the operations take these positions:
   exceptionally high volume, a 503, and a connection that failed before it
   opened.
 - Any other outcome is unknown: another 5xx, a 408, a 409, a 3xx, another
-  unlisted 4xx, an HTML 502 from Mailchimp's CDN, and a lost response. A 2xx
-  accepted the send, so an oversized, unreadable, or credential-reflecting 2xx
-  body selects `sent` and is never resent. An unknown outcome is retried while
+  unlisted 4xx, a refusal status whose body exceeds `maxResponseBytes`, an
+  HTML 502 from Mailchimp's CDN, and a lost response. A 2xx accepted the send,
+  so an oversized, unreadable, or credential-reflecting 2xx body, or 2xx
+  headers whose body the fence's write window cut off, selects `sent` and is
+  never resent. An unknown outcome is retried while
   the possible sends stay below `maxSends` (an application can lower or raise
   the cap with the factory's `MaxSends`), and the retry reads the campaign
   first. When no send remains, the unknown outcome selects `uncertain`; an
@@ -271,8 +273,10 @@ A token that contains the API key is dropped.
 | 503 | Retry | Retry | Retry, send not counted |
 | connection refused before sending | Retry | Retry | Retry, send not counted |
 | 408, other 5xx, lost or unreadable response | Retry | Retry | unknown |
+| non-2xx whose body exceeds `maxResponseBytes` | branch by status | Retry | unknown |
 | oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | Retry | `sent`, never resent |
-| invalid input or connection credentials | `defect`, with no request | same | `defect` when no earlier send is possible |
+| credential lookup that may succeed later | `defect`, with no request | Retry, with no request | Retry; before any send it records that nothing was sent |
+| invalid input or connection credentials, reauthorization required | `defect`, with no request | same | `defect` when no earlier send is possible |
 
 An unknown sendCampaign outcome is retried below the send cap and selects
 `uncertain` at it, as [Duplicate safety](#duplicate-safety) describes. The
