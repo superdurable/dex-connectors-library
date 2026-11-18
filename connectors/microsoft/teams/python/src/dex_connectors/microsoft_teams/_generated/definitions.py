@@ -50,7 +50,7 @@ POST_CHANNEL_MESSAGE_DEFINITION = MutationDefinition(
     (
         BranchDefinition(SENT, "Teams stored the message, including one an earlier attempt of this Step execution sent and the read-back found.", False),
         BranchDefinition(PROVIDER_REJECTED, "Microsoft Graph conclusively rejected the message, such as an unknown or archived channel, a non-member account, or invalid HTML; nothing was posted.", True),
-        BranchDefinition(UNCERTAIN, "The message may have been sent, and neither a response nor a read-back confirmed it before the send cap was reached or several matching messages were found.", True),
+        BranchDefinition(UNCERTAIN, "The message may have been sent, and neither a response nor a read-back confirmed it before the send cap was reached or several matching messages were found; a 2xx whose unusable response gave no savable message ID also selects it.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -67,7 +67,7 @@ POST_THREAD_REPLY_DEFINITION = MutationDefinition(
     (
         BranchDefinition(SENT, "Teams stored the message, including one an earlier attempt of this Step execution sent and the read-back found.", False),
         BranchDefinition(PROVIDER_REJECTED, "Microsoft Graph conclusively rejected the message, such as an unknown or archived channel, a non-member account, or invalid HTML; nothing was posted.", True),
-        BranchDefinition(UNCERTAIN, "The message may have been sent, and neither a response nor a read-back confirmed it before the send cap was reached or several matching messages were found.", True),
+        BranchDefinition(UNCERTAIN, "The message may have been sent, and neither a response nor a read-back confirmed it before the send cap was reached or several matching messages were found; a 2xx whose unusable response gave no savable message ID also selects it.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -84,7 +84,7 @@ POST_CHAT_MESSAGE_DEFINITION = MutationDefinition(
     (
         BranchDefinition(SENT, "Teams stored the message in the chat.", False),
         BranchDefinition(PROVIDER_REJECTED, "Microsoft Graph conclusively rejected the message, such as an unknown chat, an account that left it, or invalid HTML; nothing was sent.", True),
-        BranchDefinition(UNCERTAIN, "The message may have been sent, and no response confirmed it before the send cap was reached; the connection cannot read chats to check.", True),
+        BranchDefinition(UNCERTAIN, "The message may have been sent, and no response confirmed it before the send cap was reached, or Graph accepted it with an unusable response; the connection cannot read chats to check.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
