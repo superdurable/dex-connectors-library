@@ -5,7 +5,10 @@ package desk_test
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -142,6 +145,14 @@ func TestUpdateTicketRetriesAnUnknownAnswerToTheChange(t *testing.T) {
 		"reflected token": func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusOK, `{"id":"`+testTicketID+`","subject":"`+testAccessToken+`"}`)
 		},
+		"refusal with an oversized body": func(response http.ResponseWriter) {
+			response.WriteHeader(http.StatusUnprocessableEntity)
+			// The client stops reading at its error body limit, so a broken pipe here is expected.
+			_, _ = io.WriteString(response, `{"errorCode":"INVALID_DATA","message":"`+strings.Repeat("x", 128<<10)+`"}`)
+		},
+		"refusal that reflects the token": func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusBadRequest, `{"errorCode":"INVALID_DATA","message":"`+testAccessToken+`"}`)
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			provider := newRecordingDesk(t, func(response http.ResponseWriter, request *http.Request, _ int) {
@@ -159,6 +170,20 @@ func TestUpdateTicketRetriesAnUnknownAnswerToTheChange(t *testing.T) {
 			require.Equal(t, 2, provider.requestCount())
 		})
 	}
+}
+
+func TestUpdateTicketRetriesARevokedCredentialAfterTheFirstAttempt(t *testing.T) {
+	provider := newRecordingDesk(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	client, err := desk.New(desk.Config{OrgID: testOrganizationID},
+		failingCredentialProvider{err: sdkgo.NewReauthorizationRequiredError(errors.New("invalid_code"))}, desk.WithAPIBaseURL(provider.URL+"/api/v1"))
+	require.NoError(t, err)
+	input := desk.UpdateTicketInput{TicketID: testTicketID, Status: desk.TicketStatusClosed}
+	first := newDeskDexContext("update-revoked")
+	result, err := sdkgo.RunMutation(first, client.UpdateTicket(), deskConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, desk.UpdateTicketBranchProviderRejected, result.Branch, "nothing was sent before this first attempt")
+	_, err = sdkgo.RunMutation(first.nextAttempt(), client.UpdateTicket(), deskConnection, input)
+	requireRetry(t, err, sdkgo.FailureAuthentication)
 }
 
 func TestUpdateTicketRejectsInvalidInputBeforeAnyRequest(t *testing.T) {

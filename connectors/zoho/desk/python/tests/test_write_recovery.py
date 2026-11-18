@@ -271,6 +271,122 @@ async def test_a_timeout_after_2xx_headers_keeps_the_status() -> None:
     assert (result.outcome, result.status, observation.status) == ("unavailable", 200, 200)
 
 
+class StalledAfterFirstChunk(httpx.AsyncByteStream):
+    """A body that sends its first chunk, then never finishes."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        yield b"{"
+        await asyncio.sleep(60)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_name", ["createTicket", "addComment"])
+async def test_the_write_deadline_cutting_a_2xx_body_is_never_resent(operation_name: str) -> None:
+    """The Fence write window cancels the body read after 2xx headers; the status proves acceptance."""
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(milliseconds=1200)
+    handler: Handler = lambda _r, _i: httpx.Response(201, stream=StalledAfterFirstChunk())  # noqa: E731
+    assert await run(operation_name, handler, context, requests) == "uncertain"
+    assert context.marker is not None and context.marker.state == "claimed"
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_the_write_deadline_cutting_a_refusal_body_resends_below_the_cap() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(milliseconds=1200)
+    handler: Handler = lambda _r, _i: httpx.Response(422, stream=StalledAfterFirstChunk())  # noqa: E731
+    assert await run("createTicket", handler, context, requests) == "retry"
+    assert context.marker is not None and context.marker.state == "claimed"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "reply",
+    [
+        lambda: response(400, json.dumps({"errorCode": "INVALID_DATA", "message": "x" * 70_000})),
+        lambda: response(404, json.dumps({"errorCode": "URL_NOT_FOUND", "message": "1000.synthetic-access"})),
+        lambda: httpx.Response(422, stream=BrokenAfterFirstChunk()),
+    ],
+    ids=["oversized", "reflects the token", "broken"],
+)
+async def test_a_refusal_with_an_unusable_body_resends_below_the_cap_and_is_uncertain_at_it(
+    reply: Callable[[], httpx.Response],
+) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    for attempt in (1, 2):
+        context.attempt = attempt
+        assert await run("addComment", lambda _r, _i: reply(), context, requests) == "retry"
+        assert context.marker is not None and context.marker.state == "claimed"
+    context.attempt = 3
+    assert await run("addComment", lambda _r, _i: reply(), context, requests) == "uncertain"
+    assert len(requests) == 3
+
+
+@pytest.mark.asyncio
+async def test_a_rate_limit_whose_body_breaks_records_can_resend_and_retries() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    handler: Handler = lambda _r, _i: httpx.Response(429, stream=BrokenAfterFirstChunk())  # noqa: E731
+    assert await run("createTicket", handler, context, requests) == "retry"
+    assert context.marker is not None and context.marker.state == "canResend"
+
+
+@pytest.mark.asyncio
+async def test_a_refusal_that_carries_a_created_id_is_read_back_by_that_id() -> None:
+    for operation_name, created, body, path, success in (
+        ("createTicket", TICKET_ID, TICKET_BODY, f"/api/v1/tickets/{TICKET_ID}", "created"),
+        (
+            "addComment",
+            COMMENT_ID,
+            COMMENT_BODY,
+            f"/api/v1/tickets/{TICKET_ID}/comments/{COMMENT_ID}",
+            "added",
+        ),
+    ):
+        requests: list[httpx.Request] = []
+        context = AttemptContext()
+
+        def handler(
+            request: httpx.Request, _index: int, created: str = created, body: str = body
+        ) -> httpx.Response:
+            if request.method == "POST":
+                return response(422, json.dumps({"id": created, "errorCode": "INVALID_DATA"}))
+            return response(200, body)
+
+        assert await run(operation_name, handler, context, requests) == success
+        assert context.marker is not None and context.marker.provider_id == created
+        assert [(request.method, request.url.path) for request in requests][1] == ("GET", path)
+        assert len(requests) == 2
+
+
+@pytest.mark.asyncio
+async def test_update_ticket_retries_a_revoked_credential_after_the_first_attempt() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    handler: Handler = lambda _r, _i: response(200, TICKET_BODY)  # noqa: E731
+    assert await run("updateTicket", handler, context, requests, RevokedCredentials()) == "providerRejected"
+    context.attempt = 2
+    assert await run("updateTicket", handler, context, requests, RevokedCredentials()) == "retry"
+    assert requests == []
+
+
+@pytest.mark.asyncio
+async def test_update_ticket_repeats_a_change_whose_refusal_body_is_unusable() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request, _index: int) -> httpx.Response:
+        if request.method == "GET":
+            return response(200, TICKET_BODY)
+        return response(400, json.dumps({"errorCode": "INVALID_DATA", "message": "x" * 70_000}))
+
+    assert await run("updateTicket", handler, AttemptContext(), requests) == "retry"
+    assert len(requests) == 2
+
+
 @pytest.mark.asyncio
 async def test_an_accepted_ticket_id_is_read_back_in_the_same_attempt() -> None:
     requests: list[httpx.Request] = []

@@ -581,7 +581,7 @@ spec:
       branches:
         - {id: created, goName: Created, description: Zoho Desk created the ticket and returned it.}
         - {id: providerRejected, goName: ProviderRejected, description: "Zoho Desk conclusively rejected the ticket, such as an unknown department, status, or assignee; no ticket was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The ticket may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; a later attempt was refused, or its credentials were revoked, after an earlier possible send; Zoho Desk accepted the ticket with a 2xx that had no readable ticket ID; or reading back the accepted ticket ID did not confirm it. The Step does not send it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The ticket may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal whose body was oversized or untrusted, or another server error besides 503; a later attempt was refused, or its credentials were revoked, after an earlier possible send; Zoho Desk accepted the ticket with a 2xx that had no readable ticket ID; or reading back the accepted ticket ID did not confirm it. The Step does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -651,7 +651,7 @@ spec:
         - {id: added, goName: Added, description: Zoho Desk added the comment and returned it.}
         - {id: notFound, goName: NotFound, description: "The ticket does not exist or is not visible to the connection's agent; nothing was added.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Zoho Desk conclusively rejected the comment; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The comment may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; a later attempt was refused, or its credentials were revoked, after an earlier possible send; Zoho Desk accepted the comment with a 2xx that had no readable comment ID or another visibility; or reading back the accepted comment ID did not confirm it. The Step does not send it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The comment may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal whose body was oversized or untrusted, or another server error besides 503; a later attempt was refused, or its credentials were revoked, after an earlier possible send; Zoho Desk accepted the comment with a 2xx that had no readable comment ID or another visibility; or reading back the accepted comment ID did not confirm it. The Step does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s

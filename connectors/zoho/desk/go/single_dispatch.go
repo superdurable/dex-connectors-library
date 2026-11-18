@@ -6,6 +6,7 @@ package desk
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -145,11 +146,15 @@ func (attempt *deskWriteAttempt) send(requestContext context.Context) error {
 
 // deskWriteAttemptForExchange maps a sent write. Only a definite refusal selects a refusal
 // branch; any other outcome may have been applied, so it resends while the send cap allows.
-func deskWriteAttemptForExchange[OUT any](permit deskWritePermit, call sdkgo.Call, client *Client, session *operationSession, result deskExchange, receipt sdkgo.Receipt, branches singleDispatchBranches) (sdkgo.MutationAttempt[OUT], bool) {
+func deskWriteAttemptForExchange[OUT any](permit deskWritePermit, call sdkgo.Call, client *Client, session *operationSession, result deskExchange, receipt sdkgo.Receipt,
+	branches singleDispatchBranches, readBack deskWriteReadBack[OUT]) (sdkgo.MutationAttempt[OUT], bool) {
 	if result.outcome != exchangeSucceeded && isSuccessStatus(result.response.statusCode) {
 		// A 2xx accepted the write; with no readable ID it is never resent.
 		var zero OUT
 		return sdkgo.NewMutationUncertain(zero, result.failure, receipt), true
+	}
+	if attempt, isUnconfirmedRefusal := unconfirmedRefusalAttempt(permit, result, receipt, readBack); isUnconfirmedRefusal {
+		return attempt, true
 	}
 	switch result.outcome {
 	case exchangeSucceeded:
@@ -178,6 +183,25 @@ func deskWriteAttemptForExchange[OUT any](permit deskWritePermit, call sdkgo.Cal
 		}
 	}
 	return resendOrSelectUncertain[OUT](permit, result.failure, result.retryAfter, receipt), true
+}
+
+// unconfirmedRefusalAttempt handles a refusal status that does not prove nothing was applied.
+// A body carrying a created id is read back by that id; an oversized or untrusted body is unknown.
+func unconfirmedRefusalAttempt[OUT any](permit deskWritePermit, result deskExchange, receipt sdkgo.Receipt, readBack deskWriteReadBack[OUT]) (sdkgo.MutationAttempt[OUT], bool) {
+	isRefusal := result.outcome == exchangeNotFound || (result.outcome == exchangeRejected && isDefiniteRefusalStatus(result.response.statusCode))
+	if !isRefusal {
+		return sdkgo.MutationAttempt[OUT]{}, false
+	}
+	status := result.response.statusCode
+	if result.acceptedProviderID != "" {
+		return acceptedWriteAttempt(permit, result.acceptedProviderID, deskFailure(sdkgo.FailureProtocol, result.failure.Operation,
+			fmt.Sprintf("Zoho Desk answered HTTP %d with the id of a created object, so the write may have been applied", status)), receipt, readBack), true
+	}
+	if result.isErrorBodyUnreadable {
+		return resendOrSelectUncertain[OUT](permit, deskFailure(sdkgo.FailureTransport, result.failure.Operation,
+			fmt.Sprintf("Zoho Desk answered HTTP %d, but its oversized or untrusted body may hide an accepted write", status)), result.retryAfter, receipt), true
+	}
+	return sdkgo.MutationAttempt[OUT]{}, false
 }
 
 // retryUnprocessedDeskWrite retries a send Zoho Desk did not process.
@@ -255,7 +279,7 @@ func resendOrSelectUncertain[OUT any](permit deskWritePermit, failure sdkgo.Fail
 	return sdkgo.NewMutationUncertain(zero, failure, receipt)
 }
 
-// acceptedWriteAttempt handles a 2xx body that failed to decode; the write was accepted and is
+// acceptedWriteAttempt handles a body that shows acceptance but failed to decode; the write is
 // never resent. With a provider ID it is read back in this attempt; without one it is uncertain.
 func acceptedWriteAttempt[OUT any](permit deskWritePermit, providerID string, failure sdkgo.Failure, receipt sdkgo.Receipt, readBack deskWriteReadBack[OUT]) sdkgo.MutationAttempt[OUT] {
 	if providerID == "" {
@@ -270,7 +294,7 @@ func recordAcceptedWrite(permit deskWritePermit, providerID string) {
 	_ = permit.fence.RecordProviderID(providerID)
 }
 
-// acceptedProviderID returns the valid id of a 2xx object body, or "" when it has none.
+// acceptedProviderID returns the valid id of an object body, or "" when it has none.
 func acceptedProviderID(body []byte) string {
 	var answer struct {
 		ID zohoID `json:"id"`

@@ -71,7 +71,7 @@ CREATE_TICKET_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Zoho Desk created the ticket and returned it.", False),
         BranchDefinition(PROVIDER_REJECTED, "Zoho Desk conclusively rejected the ticket, such as an unknown department, status, or assignee; no ticket was created.", True),
-        BranchDefinition(UNCERTAIN, "The ticket may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; a later attempt was refused, or its credentials were revoked, after an earlier possible send; Zoho Desk accepted the ticket with a 2xx that had no readable ticket ID; or reading back the accepted ticket ID did not confirm it. The Step does not send it again.", True),
+        BranchDefinition(UNCERTAIN, "The ticket may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal whose body was oversized or untrusted, or another server error besides 503; a later attempt was refused, or its credentials were revoked, after an earlier possible send; Zoho Desk accepted the ticket with a 2xx that had no readable ticket ID; or reading back the accepted ticket ID did not confirm it. The Step does not send it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -106,7 +106,7 @@ ADD_COMMENT_DEFINITION = MutationDefinition(
         BranchDefinition(ADDED, "Zoho Desk added the comment and returned it.", False),
         BranchDefinition(NOT_FOUND, "The ticket does not exist or is not visible to the connection's agent; nothing was added.", True),
         BranchDefinition(PROVIDER_REJECTED, "Zoho Desk conclusively rejected the comment; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "The comment may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; a later attempt was refused, or its credentials were revoked, after an earlier possible send; Zoho Desk accepted the comment with a 2xx that had no readable comment ID or another visibility; or reading back the accepted comment ID did not confirm it. The Step does not send it again.", True),
+        BranchDefinition(UNCERTAIN, "The comment may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal whose body was oversized or untrusted, or another server error besides 503; a later attempt was refused, or its credentials were revoked, after an earlier possible send; Zoho Desk accepted the comment with a 2xx that had no readable comment ID or another visibility; or reading back the accepted comment ID did not confirm it. The Step does not send it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

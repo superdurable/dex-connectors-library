@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { ReauthorizationRequiredError, SecretString, type Call, type MutationAttempt } from '@superdurable/connectors-sdk';
-import { ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { describe, expect, it } from 'vitest';
 import { ZohoDeskClient } from '../src/client.js';
 import type { CredentialSource, Credentials } from '../src/generated/models.js';
@@ -174,6 +174,64 @@ describe('Zoho Desk write recovery', () => {
     const step = new StepExecution();
     step.rejectsHeartbeatAfter = 1;
     expect(outcomeOf(await client.addComment().invoke(step.call('addComment'), commentInput))).toBe('uncertain');
+    expect(requests).toHaveLength(2);
+  });
+
+  it.each([
+    ['a body truncated at the error body limit', () => ({ status: 400, headers: {}, body: Buffer.alloc(MaxErrorBodyBytes, 0x78) })],
+    ['an oversized body', () => { throw new BodyTooLargeError(422, {}); }],
+    ['a body that reflects the token', () => json(404, { errorCode: 'URL_NOT_FOUND', message: '1000.synthetic-access' })],
+  ] as const)('treats a refusal with %s as unknown: resend below the cap, uncertain at it', async (_name, reply) => {
+    const requests: ProviderRequest[] = [];
+    const client = deskClient(requests, () => reply());
+    const step = new StepExecution();
+    for (const attempt of [1, 2]) {
+      step.attempt = attempt;
+      expect(outcomeOf(await client.addComment().invoke(step.call('addComment'), commentInput))).toBe('retry');
+      expect(step.marker).toMatchObject({ state: 'claimed' });
+    }
+    step.attempt = 3;
+    expect(outcomeOf(await client.addComment().invoke(step.call('addComment'), commentInput))).toBe('uncertain');
+    expect(requests).toHaveLength(3);
+  });
+
+  it.each([
+    ['createTicket', ticketId, ticketBody, `/api/v1/tickets/${ticketId}`, 'created'],
+    ['addComment', commentId, commentBody, `/api/v1/tickets/${ticketId}/comments/${commentId}`, 'added'],
+  ] as const)('reads %s back by the created id a refusal body carries', async (operationId, createdId, body, path, success) => {
+    const requests: ProviderRequest[] = [];
+    const client = deskClient(requests, request => request.method === 'POST' ? json(422, { id: createdId, errorCode: 'INVALID_DATA' }) : json(200, body));
+    const step = new StepExecution();
+    const attempt = operationId === 'createTicket'
+      ? await client.createTicket().invoke(step.call(operationId), createInput)
+      : await client.addComment().invoke(step.call(operationId), commentInput);
+    expect(outcomeOf(attempt)).toBe(success);
+    expect(step.marker).toMatchObject({ providerId: createdId });
+    expect(requests.map(request => [request.method, new URL(request.url).pathname])).toEqual([['POST', operationId === 'createTicket' ? '/api/v1/tickets' : `/api/v1/tickets/${ticketId}/comments`], ['GET', path]]);
+  });
+
+  it('records canResend and retries a rate limit whose body breaks', async () => {
+    const client = deskClient([], () => { throw new ProviderTransportError(false, 429, {}); });
+    const step = new StepExecution();
+    expect(outcomeOf(await client.createTicket().invoke(step.call('createTicket'), createInput))).toBe('retry');
+    expect(step.marker).toMatchObject({ state: 'canResend' });
+  });
+
+  it('retries a revoked updateTicket credential after the first attempt', async () => {
+    const requests: ProviderRequest[] = [];
+    const client = deskClient(requests, () => json(200, ticketBody), revokedSource);
+    const step = new StepExecution();
+    expect(outcomeOf(await client.updateTicket().invoke(step.call('updateTicket'), { ticketId, status: 'Closed' }))).toBe('providerRejected');
+    step.attempt = 2;
+    expect(outcomeOf(await client.updateTicket().invoke(step.call('updateTicket'), { ticketId, status: 'Closed' }))).toBe('retry');
+    expect(requests).toHaveLength(0);
+  });
+
+  it('repeats the updateTicket change when its refusal body cannot prove a refusal', async () => {
+    const requests: ProviderRequest[] = [];
+    const client = deskClient(requests, request => request.method === 'GET' ? json(200, ticketBody) : { status: 400, headers: {}, body: Buffer.alloc(MaxErrorBodyBytes, 0x78) });
+    const attempt = await client.updateTicket().invoke(new StepExecution().call('updateTicket'), { ticketId, status: 'Closed' });
+    expect(attempt.kind).toBe('retry');
     expect(requests).toHaveLength(2);
   });
 

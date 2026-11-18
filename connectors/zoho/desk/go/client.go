@@ -162,6 +162,10 @@ type deskExchange struct {
 	retryAfter time.Duration
 	// errorSummary is Zoho Desk's machine-readable error code and field errors of a non-2xx response.
 	errorSummary deskErrorSummary
+	// isErrorBodyUnreadable means a non-2xx body was oversized or reflected the credential.
+	isErrorBodyUnreadable bool
+	// acceptedProviderID is a created object's id carried by a non-2xx body.
+	acceptedProviderID string
 }
 
 // operationSession is one Invoke's resolved credential, Zoho Desk host, and deadline.
@@ -426,20 +430,28 @@ func (client *Client) exchangeOnce(session *operationSession, operation string, 
 	case errors.Is(readErr, providerhttp.ErrBodyTooLarge):
 		// An oversized error body carries no usable errorCode, so the status alone classifies it.
 		content = nil
+	case (readErr != nil || closeErr != nil) && httpResponse.StatusCode == http.StatusTooManyRequests:
+		// A 429 status proves Zoho Desk did not process the request, even when its body broke.
+		content = nil
 	case readErr != nil || closeErr != nil:
 		return deskExchange{outcome: exchangeUnavailable, response: response, failure: deskFailure(sdkgo.FailureTransport, operation, "Zoho Desk response could not be read")}
 	}
+	isErrorBodyUnreadable := !isSuccess && errors.Is(readErr, providerhttp.ErrBodyTooLarge)
 	if accessToken != "" && bytes.Contains(content, []byte(accessToken)) {
 		if isSuccess {
 			return deskExchange{outcome: exchangeInvalid, response: response, failure: deskFailure(sdkgo.FailureProtocol, operation, "Zoho Desk response reflected the connection credential")}
 		}
-		content = nil
+		content, isErrorBodyUnreadable = nil, true
 	}
 	response.body = content
 	if isSuccess {
 		return deskExchange{outcome: exchangeSucceeded, response: response}
 	}
-	return client.classifyFailureStatus(response, operation)
+	result := client.classifyFailureStatus(response, operation)
+	// A write refusal is definite only with a trusted body and no created id; write callers check both.
+	result.isErrorBodyUnreadable = isErrorBodyUnreadable
+	result.acceptedProviderID = acceptedProviderID(content)
+	return result
 }
 
 // classifyFailureStatus maps a non-2xx response without reading Zoho Desk's message text.
