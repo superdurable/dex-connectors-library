@@ -358,7 +358,7 @@ var PublishTextPostDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: PublishTextPostBranchPublished, Description: "Meta returned the published post ID."},
 		{ID: PublishTextPostBranchProviderRejected, Description: "Meta definitively rejected the post.", Optional: true},
-		{ID: PublishTextPostBranchUncertain, Description: "Meta may have published the post, but the send cap was reached or Meta contradicted itself; inspect the Page before retrying manually.", Optional: true},
+		{ID: PublishTextPostBranchUncertain, Description: "Meta may have published the post, but the send cap was reached, Meta accepted it with an unreadable response, or Meta contradicted itself; inspect the Page before retrying manually.", Optional: true},
 		{ID: PublishTextPostBranchDefect, Description: "Local input or connection credentials are invalid before any send.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

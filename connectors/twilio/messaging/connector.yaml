@@ -130,7 +130,7 @@ spec:
       branches:
         - {id: accepted, goName: Accepted, description: "Twilio created the message and returned its SID; delivery status arrives later through getMessage."}
         - {id: providerRejected, goName: ProviderRejected, description: "Twilio conclusively rejected the message, such as an invalid To number, an unverified trial recipient, an unsubscribed recipient, or an unusable sender; nothing was sent.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "Twilio may have created the message, but the send cap was reached, a saved SID could not be confirmed, or Twilio returned a SID without a usable message; check Twilio before sending again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Twilio may have created the message, but the send cap was reached, a saved SID could not be confirmed, a resend was refused or found invalid credentials, or Twilio accepted it without a usable message; check Twilio before sending again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid before any send.", optional: true}
       # Sync makes the single-dispatch heartbeat visible to later attempts; Twilio has no idempotency key.
       execution:

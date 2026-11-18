@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { SecretString, definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type CallID, type CredentialProvider, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderStalledError, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
 import { GetPostDefinition, ListPostsDefinition, PublishTextPostDefinition } from './generated/definitions.js';
 import type { Config, Credentials, GetPostInput, ListPostsInput, PagePostMetadata, PagePostsPage, PublishedPost, PublishTextPostInput } from './generated/models.js';
@@ -80,8 +80,8 @@ export class FacebookPagesClient {
     try {
       const resolved = await this.credentials.resolve(call, call.context.cancellationSignal);
       accessToken = resolved.pageAccessToken instanceof SecretString ? resolved.pageAccessToken.reveal() : '';
-    } catch { accessToken = ''; }
-    if (!accessToken || !isHeaderSafeCredential(accessToken)) return localPublishFailure(fence, hasPossibleEarlierSend, 'AUTHENTICATION', 'connection credentials are unavailable or invalid');
+    } catch { return localPublishFailure(fence, hasPossibleEarlierSend, false, 'AUTHENTICATION', 'connection credentials are unavailable'); }
+    if (!accessToken || !isHeaderSafeCredential(accessToken)) return localPublishFailure(fence, hasPossibleEarlierSend, true, 'AUTHENTICATION', 'connection credentials are invalid');
     const form = new URLSearchParams({ message: input.message }).toString();
     const request: ProviderRequest = {
       url: `${this.baseUrl}/${input.pageId}/feed`, method: 'POST',
@@ -100,8 +100,10 @@ export class FacebookPagesClient {
         catch { /* A lost canResend checkpoint leaves the claim, which the next attempt counts. */ }
         return newMutationRetry(failure(operation, 'TRANSPORT', 'Meta could not be reached before sending'));
       }
-      if (!(error instanceof BodyTooLargeError && error.status !== undefined)) return resendOrSelectUncertain('TRANSPORT', 'Meta publish outcome is unknown');
-      response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
+      // Keep a status that arrived before the body failed, so an accepted post is never resent.
+      const statusBeforeBodyFailure = error instanceof BodyTooLargeError || error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.status : undefined;
+      if (statusBeforeBodyFailure === undefined) return resendOrSelectUncertain('TRANSPORT', 'Meta publish outcome is unknown');
+      response = { status: statusBeforeBodyFailure, headers: (error as { headers?: ProviderResponse['headers'] }).headers ?? {}, body: new Uint8Array() };
       isBodyReadable = false;
     }
     if (response.body.length > this.maxResponseBytes) isBodyReadable = false;
@@ -110,30 +112,34 @@ export class FacebookPagesClient {
     // A Graph throttling code means Meta refused the post before processing it.
     const graphError = isBodyReadable && status >= 400 && status < 500 ? decodeGraphError(response.body) : undefined;
     const isRateLimited = status === 429 || graphError?.isThrottled === true;
-    // A Graph 4xx marked is_transient is a transient refusal, not a definite one.
-    const isTransientRefusal = graphError?.isTransient === true;
-    if (isRateLimited || isTransientRefusal || status === 503) {
+    if (isRateLimited || status === 503) {
       try { await fence.recordCanResend(); }
       catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'Meta retry checkpoint is unavailable')); }
       const kind = isRateLimited ? 'RATE_LIMIT' : 'AVAILABILITY';
       return newMutationRetry(failure(operation, kind, 'Meta did not process the post'), retryAfterMs);
     }
     const acceptedPostId = isBodyReadable ? readPostID(response.body) : '';
-    if (definiteRefusalStatuses.has(status)) {
-      // A body that reports a created post means a resend could duplicate it.
-      if (acceptedPostId) return newMutationUncertain(zero, failure(operation, 'PROTOCOL', 'Meta returned a contradictory publish response'));
+    if (status >= 200 && status < 300) {
+      // Meta accepted the post, so a resend could duplicate it.
+      if (!isBodyReadable) return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'Meta accepted the post, but its response could not be read'));
+      if (!acceptedPostId) return newMutationUncertain(zero, failure(operation, 'PROTOCOL', 'Meta accepted the post, but its response is malformed'));
+      try { await fence.recordProviderId(acceptedPostId); }
+      catch { /* A lost provider-ID checkpoint leaves the claim, which still counts this send. */ }
+      return newMutationBranch('published', { postId: acceptedPostId });
+    }
+    // A body that reports a created post means a resend could duplicate it.
+    if (acceptedPostId) return newMutationUncertain(zero, failure(operation, 'PROTOCOL', 'Meta returned a contradictory publish response'));
+    // is_transient does not prove Meta skipped the post, so the outcome is unknown.
+    if (graphError?.isTransient === true) return resendOrSelectUncertain('AVAILABILITY', 'Meta reported a transient error; the post may have been published', retryAfterMs);
+    // An unreadable or oversized body cannot prove a refusal.
+    if (isBodyReadable && definiteRefusalStatuses.has(status)) {
       const kind = status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION';
       if (hasPossibleEarlierSend) return newMutationUncertain(zero, failure(operation, kind, `Meta rejected HTTP ${status}`));
       try { await fence.recordCanResend(); }
       catch { /* The branch is terminal, so a lost canResend checkpoint cannot cause a resend. */ }
       return newMutationBranch('providerRejected', zero, {}, failure(operation, kind, `Meta rejected HTTP ${status}`));
     }
-    if (status < 200 || status >= 300) return resendOrSelectUncertain('AVAILABILITY', `Meta publish outcome is unknown after HTTP ${status}`, retryAfterMs);
-    if (!isBodyReadable) return resendOrSelectUncertain('TRANSPORT', 'Meta publish response could not be read');
-    if (!acceptedPostId) return resendOrSelectUncertain('PROTOCOL', 'Meta publish response is malformed');
-    try { await fence.recordProviderId(acceptedPostId); }
-    catch { /* A lost provider-ID checkpoint leaves the claim, which still counts this send. */ }
-    return newMutationBranch('published', { postId: acceptedPostId });
+    return resendOrSelectUncertain('AVAILABILITY', `Meta publish outcome is unknown after HTTP ${status}`, retryAfterMs);
   }
 
   /** Fetch one provider response and classify transport and HTTP failures. */
@@ -267,8 +273,9 @@ function readPostID(body: Uint8Array): string {
   const document = parseJSON(body);
   return isObject(document) && typeof document.id === 'string' && postID.test(document.id) ? document.id : '';
 }
-/** Select defect only when no earlier send may have published. */
-async function localPublishFailure(fence: ReturnType<typeof newFence>, hasPossibleEarlierSend: boolean, kind: Failure['kind'], message: string): Promise<MutationAttempt<PublishedPost>> {
+/** Select defect only when no earlier send may have published; afterwards a terminal failure selects uncertain. */
+async function localPublishFailure(fence: ReturnType<typeof newFence>, hasPossibleEarlierSend: boolean, isTerminal: boolean, kind: Failure['kind'], message: string): Promise<MutationAttempt<PublishedPost>> {
+  if (hasPossibleEarlierSend && isTerminal) return newMutationUncertain(emptyPublishedPost(), failure('publishTextPost', kind, `${message}; an earlier attempt may have published the post`));
   // notSent would hide the earlier possible send, so nothing is recorded.
   if (hasPossibleEarlierSend) return newMutationRetry(failure('publishTextPost', kind, `${message}; no post was sent in this attempt`));
   try { await fence.recordNotSent(); }

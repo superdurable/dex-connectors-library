@@ -82,21 +82,24 @@ func (operation PublishTextPostOperation) Invoke(call sdkgo.Call, input PublishT
 	// An earlier send may have published, so a refusal of this resend cannot prove nothing changed.
 	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
 	credentials, err := operation.client.credentials.Resolve(call)
-	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.PageAccessToken.Reveal()) {
-		return localPublishFailure(fence, hasPossibleEarlierSend, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
+	if err != nil {
+		return localPublishFailure(fence, hasPossibleEarlierSend, false, sdkgo.FailureAuthentication, "connection credentials are unavailable")
+	}
+	if credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.PageAccessToken.Reveal()) {
+		return localPublishFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureAuthentication, "connection credentials are invalid")
 	}
 	accessToken := credentials.PageAccessToken.Reveal()
 	form := url.Values{"message": {input.Message}}
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, operation.client.baseURL+"/"+input.PageID+"/feed", strings.NewReader(form.Encode()))
 	if err != nil {
-		return localPublishFailure(fence, hasPossibleEarlierSend, sdkgo.FailureLocalDefect, "post request could not be built")
+		return localPublishFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureLocalDefect, "post request could not be built")
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "Bearer "+accessToken)
 	request.Header.Set("User-Agent", "Dex Connector (https://superdurable.io)")
 	if err := singledispatch.PrepareHTTPWrite(request); err != nil {
-		return localPublishFailure(fence, hasPossibleEarlierSend, sdkgo.FailureLocalDefect, "post request is invalid")
+		return localPublishFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureLocalDefect, "post request is invalid")
 	}
 	dispatch := &postDispatch{client: operation.client.httpClient, request: request, observation: &dispatchObservation{}}
 	if err := fence.Dispatch(dispatch.send); err != nil {
@@ -114,12 +117,11 @@ func (operation PublishTextPostOperation) Invoke(call sdkgo.Call, input PublishT
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
 	responseBody, readErr := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+	isBodyReadable := readErr == nil
 	isClientError := response.StatusCode >= 400 && response.StatusCode < 500
 	// A Graph throttling code means Meta refused the post before processing it.
-	isRateLimited := response.StatusCode == http.StatusTooManyRequests || (isClientError && readErr == nil && isGraphThrottleBody(responseBody))
-	// A Graph 4xx marked is_transient is a transient refusal, not a definite one.
-	isTransientRefusal := isClientError && readErr == nil && isGraphTransientBody(responseBody)
-	if isRateLimited || isTransientRefusal || response.StatusCode == http.StatusServiceUnavailable {
+	isRateLimited := response.StatusCode == http.StatusTooManyRequests || (isClientError && isBodyReadable && isGraphThrottleBody(responseBody))
+	if isRateLimited || response.StatusCode == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
 			return retryPublish(sdkgo.FailureAvailability, "Meta retry checkpoint is unavailable", 0)
 		}
@@ -130,28 +132,34 @@ func (operation PublishTextPostOperation) Invoke(call sdkgo.Call, input PublishT
 		return retryPublish(kind, "Meta did not process the post", retryAfter)
 	}
 	acceptedPostID := ""
-	if readErr == nil {
+	if isBodyReadable {
 		acceptedPostID = readPostID(responseBody)
 	}
-	if isDefiniteRefusalStatus(response.StatusCode) {
-		if acceptedPostID != "" {
-			// The body reports a created post, so a resend could duplicate it.
-			return uncertainPublish(sdkgo.FailureProtocol, "Meta returned a contradictory publish response")
+	if response.StatusCode >= 200 && response.StatusCode < 300 {
+		// Meta accepted the post, so a resend could duplicate it.
+		if !isBodyReadable {
+			return uncertainPublish(sdkgo.FailureTransport, "Meta accepted the post, but its response could not be read")
 		}
+		if acceptedPostID == "" {
+			return uncertainPublish(sdkgo.FailureProtocol, "Meta accepted the post, but its response is malformed")
+		}
+		// A lost provider-ID checkpoint leaves the claim, which still counts this send.
+		_ = fence.RecordProviderID(acceptedPostID)
+		return sdkgo.NewMutationBranch(PublishTextPostBranchPublished, PublishedPost{PostID: acceptedPostID}, nil, sdkgo.Receipt{})
+	}
+	if acceptedPostID != "" {
+		// The body reports a created post, so a resend could duplicate it.
+		return uncertainPublish(sdkgo.FailureProtocol, "Meta returned a contradictory publish response")
+	}
+	// is_transient does not prove Meta skipped the post, so the outcome is unknown.
+	if isClientError && isBodyReadable && isGraphTransientBody(responseBody) {
+		return resendOrSelectUncertainPublish(canResendUnknownOutcome, sdkgo.FailureAvailability, "Meta reported a transient error; the post may have been published", retryAfter)
+	}
+	// An unreadable or oversized body cannot prove a refusal.
+	if isBodyReadable && isDefiniteRefusalStatus(response.StatusCode) {
 		return rejectOrSelectUncertainPublish(fence, hasPossibleEarlierSend, rejectionFailureKind(response.StatusCode), "Meta rejected HTTP "+strconv.Itoa(response.StatusCode))
 	}
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return resendOrSelectUncertainPublish(canResendUnknownOutcome, sdkgo.FailureAvailability, "Meta publish outcome is unknown after HTTP "+strconv.Itoa(response.StatusCode), retryAfter)
-	}
-	if readErr != nil {
-		return resendOrSelectUncertainPublish(canResendUnknownOutcome, sdkgo.FailureTransport, "Meta publish response could not be read", 0)
-	}
-	if acceptedPostID == "" {
-		return resendOrSelectUncertainPublish(canResendUnknownOutcome, sdkgo.FailureProtocol, "Meta publish response is malformed", 0)
-	}
-	// A lost provider-ID checkpoint leaves the claim, which still counts this send.
-	_ = fence.RecordProviderID(acceptedPostID)
-	return sdkgo.NewMutationBranch(PublishTextPostBranchPublished, PublishedPost{PostID: acceptedPostID}, nil, sdkgo.Receipt{})
+	return resendOrSelectUncertainPublish(canResendUnknownOutcome, sdkgo.FailureAvailability, "Meta publish outcome is unknown after HTTP "+strconv.Itoa(response.StatusCode), retryAfter)
 }
 
 type postDispatch struct {
@@ -219,8 +227,12 @@ func rejectOrSelectUncertainPublish(fence *singledispatch.Fence, hasPossibleEarl
 	return publishBranch("providerRejected", kind, message)
 }
 
-// localPublishFailure selects defect only when no earlier send may have published.
-func localPublishFailure(fence *singledispatch.Fence, hasPossibleEarlierSend bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[PublishedPost] {
+// localPublishFailure selects defect only when no earlier send may have published. After a
+// possible send, a terminal failure selects uncertain and a transient one returns Retry.
+func localPublishFailure(fence *singledispatch.Fence, hasPossibleEarlierSend bool, isTerminal bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[PublishedPost] {
+	if hasPossibleEarlierSend && isTerminal {
+		return uncertainPublish(kind, message+"; an earlier attempt may have published the post")
+	}
 	if hasPossibleEarlierSend {
 		// notSent would hide the earlier possible send, so nothing is recorded.
 		return retryPublish(kind, message+"; no post was sent in this attempt", 0)

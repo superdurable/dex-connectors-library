@@ -4,6 +4,7 @@
 package facebookpages
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -21,6 +22,12 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: {PageAccessToken: sdkgo.NewSecretString("test-page-token")}}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	publishContext := singledispatchtest.NewContext("facebook-pages-conformance", "publish-post")
+	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(raw []byte) {
+		require.NoError(t, publishContext.SetPersistedCheckpoint(json.RawMessage(raw)))
+	})
+	for range priorAttempt {
+		publishContext.AdvanceAttempt()
+	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
 		if attempt > 1 {
 			publishContext.AdvanceAttempt()

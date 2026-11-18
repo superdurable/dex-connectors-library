@@ -339,6 +339,16 @@ class UpdateMeetingOperation:
             return MutationAttempt.branch_result("updated", output, self.client.receipt(call, meeting_id))
         route, problem, delay, code = classify(self.client, operation, exchange)
         assert problem is not None
+        if exchange.is_body_too_large or exchange.has_body_read_failed:
+            # An unreadable error body cannot prove a refusal, and repeating the absolute patch is safe.
+            return MutationAttempt.retry(
+                failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    f"Zoom patch outcome is unknown with HTTP {exchange.status}",
+                ),
+                delay,
+            )
         if route == "notFound":
             return MutationAttempt.branch_result(
                 "notFound", output, self.client.receipt(call, meeting_id, code), problem
@@ -479,6 +489,17 @@ class CreateMeetingOperation:
                 ),
             )
         credentials, problem, retryable = await self.client.resolve(call, operation)
+        if problem and has_possible_earlier_send and not retryable:
+            # Terminal credentials forbid the resend, so only the earlier possible create remains.
+            return MutationAttempt.uncertain(
+                requested,
+                failure(
+                    operation,
+                    problem.kind,
+                    problem.message + "; an earlier attempt may have created the Zoom meeting",
+                ),
+                self.client.receipt(call),
+            )
         if problem and has_possible_earlier_send:
             # notSent would hide the earlier possible send, so nothing is recorded.
             return MutationAttempt.retry(problem)
@@ -526,12 +547,15 @@ class CreateMeetingOperation:
             except Exception:
                 pass  # The request was never sent; a lost canResend checkpoint leaves a counted claim.
             if has_possible_earlier_send:
-                return MutationAttempt.retry(
+                # The same input cannot build a request later, so only the earlier possible create remains.
+                return MutationAttempt.uncertain(
+                    requested,
                     failure(
                         operation,
                         FailureKind.LOCAL_DEFECT,
-                        "Zoom request could not be built; no meeting was created in this attempt",
-                    )
+                        "Zoom request could not be built; an earlier attempt may have created the meeting",
+                    ),
+                    self.client.receipt(call),
                 )
             return MutationAttempt.branch_result(
                 "defect",
@@ -565,19 +589,24 @@ class CreateMeetingOperation:
                 failure(operation, FailureKind.TRANSPORT, "Zoom meeting outcome is unknown"),
             )
         if 200 <= exchange.status < 300:
+            # Zoom created the meeting, so an unusable body selects uncertain and is never resent.
             if exchange.is_body_too_large:
                 problem = failure(
                     operation,
                     FailureKind.RESPONSE_TOO_LARGE,
-                    "Zoom meeting response exceeds the configured size limit",
+                    "Zoom accepted the create, but its response exceeds the configured size limit",
                 )
             elif exchange.has_body_read_failed:
-                problem = failure(operation, FailureKind.TRANSPORT, "Zoom meeting response was interrupted")
+                problem = failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    "Zoom accepted the create, but its response was interrupted",
+                )
             elif exchange.reflects_secret:
                 problem = failure(
                     operation,
                     FailureKind.PROTOCOL,
-                    "Zoom meeting response contained the connection credential",
+                    "Zoom accepted the create, but its response contained the connection credential",
                 )
             else:
                 try:
@@ -594,7 +623,11 @@ class CreateMeetingOperation:
                             ),
                             self.client.receipt(call),
                         )
-                    problem = failure(operation, FailureKind.PROTOCOL, "Zoom meeting response is malformed")
+                    problem = failure(
+                        operation,
+                        FailureKind.PROTOCOL,
+                        "Zoom accepted the create, but its response is malformed",
+                    )
                 else:
                     try:
                         await fence.record_provider_id(str(meeting.id))
@@ -603,10 +636,19 @@ class CreateMeetingOperation:
                     return MutationAttempt.branch_result(
                         "created", meeting, self.client.receipt(call, str(meeting.id))
                     )
-            return self._resend_or_select_uncertain(call, can_resend, requested, problem)
+            return MutationAttempt.uncertain(requested, problem, self.client.receipt(call))
+        created_meeting_id = _created_meeting_id(exchange.body)
+        if created_meeting_id > 0:
+            # An error status naming a created meeting is contradictory, so it is read back, never resent.
+            try:
+                await fence.record_provider_id(str(created_meeting_id))
+            except Exception:
+                pass  # Read-back still runs; a lost checkpoint leaves the claim, which counts this send.
+            return await self._read_back(call, requested, str(created_meeting_id))
         route, problem, delay, code = classify(self.client, operation, exchange)
         assert problem is not None
         receipt = self.client.receipt(call, error_code=code)
+        is_body_unreadable = exchange.is_body_too_large or exchange.has_body_read_failed
         if exchange.status == 401:
             resolver = getattr(self.client.credentials, "resolve_after_rejection", None)
             if resolver is None:
@@ -633,7 +675,8 @@ class CreateMeetingOperation:
                     requested,
                     receipt,
                     failure(
-                        operation, FailureKind.AVAILABILITY,
+                        operation,
+                        FailureKind.AVAILABILITY,
                         "Zoom credential refresh is temporarily unavailable",
                     ),
                 )
@@ -677,11 +720,15 @@ class CreateMeetingOperation:
                     )
                 )
             return MutationAttempt.retry(problem, delay)
-        if exchange.status in _DEFINITE_REFUSAL_STATUSES and _created_meeting_id(exchange.body) == 0:
+        if exchange.status in _DEFINITE_REFUSAL_STATUSES and not is_body_unreadable:
             return await _reject_or_select_uncertain(
                 fence, has_possible_earlier_send, requested, receipt, problem
             )
-        # 408, 409, 5xx, redirects, and other 4xx responses do not prove whether Zoom applied the create.
+        # 408, 409, 5xx, redirects, other 4xx responses, and unreadable error bodies do not prove
+        # whether Zoom applied the create.
+        if route == "rejected" or is_body_unreadable:
+            suffix = f" with HTTP {exchange.status}" + (f" (code {code})" if code else "")
+            problem = failure(operation, FailureKind.AVAILABILITY, "Zoom meeting outcome is unknown" + suffix)
         return self._resend_or_select_uncertain(call, can_resend, requested, problem, delay, code)
 
     def _resend_or_select_uncertain(
@@ -727,9 +774,11 @@ class CreateMeetingOperation:
         assert credentials is not None
         if call.context is not None and call.context.deadline is not None:
             if call.context.deadline - datetime.now(UTC) <= timedelta(seconds=1):
-                return MutationAttempt.retry(failure(
-                    operation, FailureKind.AVAILABILITY, "Zoom meeting read-back has insufficient time"
-                ))
+                return MutationAttempt.retry(
+                    failure(
+                        operation, FailureKind.AVAILABILITY, "Zoom meeting read-back has insufficient time"
+                    )
+                )
         exchange = await self.client.exchange(call, credentials, "GET", "/meetings/" + provider_id)
         if exchange.error:
             return MutationAttempt.retry(

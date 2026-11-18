@@ -78,12 +78,16 @@ async def schedule(
     *,
     max_sends: int = SCHEDULE_POST_DEFINITION.max_sends,
     access_token: str = "test-hootsuite-token",
+    max_response_bytes: int = 1048576,
+    has_credentials: bool = True,
 ) -> MutationResult[ScheduledPostReceipt] | RetryError:
     """Run one Execute attempt of schedulePost, as the Mutation Step passes the definition cap."""
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
         status, body = answer(request)
+        if isinstance(body, httpx.AsyncByteStream):
+            return httpx.Response(status, stream=body)
         return httpx.Response(status, json=body)
 
     credentials = Credentials(
@@ -91,8 +95,8 @@ async def schedule(
     )
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
         client = Client(
-            Config(base_url="http://127.0.0.1:12345"),
-            StaticCredentialProvider({CONNECTION: credentials}),
+            Config(base_url="http://127.0.0.1:12345", max_response_bytes=max_response_bytes),
+            StaticCredentialProvider({CONNECTION: credentials} if has_credentials else {}),
             transport,
         )
         operation = OperationRef("hootsuite", "schedulePost")
@@ -150,14 +154,49 @@ async def test_application_send_cap_of_one_never_resends() -> None:
     assert len(requests) == 1
 
 
-async def test_malformed_success_resends_below_cap() -> None:
+class BrokenBodyStream(httpx.AsyncByteStream):
+    """Send part of a response body, then drop the connection."""
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        yield b'{"data":'
+        raise httpx.ReadError("connection dropped")
+
+
+@pytest.mark.parametrize(
+    ("body", "max_response_bytes"),
+    [
+        ("not a message", 1048576),
+        ({"data": []}, 1048576),
+        ({"data": [{"id": "4138476039", "text": "x" * 200}]}, 128),
+        (None, 1048576),
+    ],
+)
+async def test_accepted_unreadable_response_is_never_resent(body: object, max_response_bytes: int) -> None:
+    requests: list[httpx.Request] = []
+    payload: object = BrokenBodyStream() if body is None else body
+    result = await schedule(
+        lambda _: (200, payload), AttemptContext(), requests, max_response_bytes=max_response_bytes
+    )
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 1
+
+
+async def test_unlisted_error_with_a_message_id_is_never_resent() -> None:
+    requests: list[httpx.Request] = []
+    result = await schedule(lambda _: (409, SCHEDULED_BODY), AttemptContext(), requests)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 1
+
+
+async def test_refresh_failure_after_possible_send_keeps_the_claim() -> None:
     requests: list[httpx.Request] = []
     context = AttemptContext()
-    answer = sequence((200, "not a message"), (200, SCHEDULED_BODY))
-    assert isinstance(await schedule(answer, context, requests), RetryError)
+    assert isinstance(await schedule(lambda _: SERVER_FAILURE, context, requests), RetryError)
     context.attempt = 2
-    result = await schedule(answer, context, requests)
-    assert isinstance(result, MutationResult) and result.branch == "scheduled"
+    retry = await schedule(lambda _: SERVER_FAILURE, context, requests, has_credentials=False)
+    assert isinstance(retry, RetryError)
+    assert context.marker is not None and context.marker.state == "claimed"
+    assert len(requests) == 1
 
 
 @pytest.mark.parametrize("status", [400, 401, 403, 404, 413, 422])
@@ -208,13 +247,13 @@ async def test_fail_closed_returns_retry() -> None:
     assert requests == []
 
 
-async def test_invalid_credential_after_possible_send_retries() -> None:
+async def test_invalid_credential_after_possible_send_selects_uncertain() -> None:
     requests: list[httpx.Request] = []
     context = AttemptContext()
     assert isinstance(await schedule(lambda _: SERVER_FAILURE, context, requests), RetryError)
     context.attempt = 2
-    retry = await schedule(lambda _: SERVER_FAILURE, context, requests, access_token="bad\ntoken")
-    assert isinstance(retry, RetryError)
+    uncertain = await schedule(lambda _: SERVER_FAILURE, context, requests, access_token="bad\ntoken")
+    assert isinstance(uncertain, MutationResult) and uncertain.branch == "uncertain"
     assert len(requests) == 1
     result = await schedule(lambda _: SERVER_FAILURE, AttemptContext(), requests, access_token="bad\ntoken")
     assert isinstance(result, MutationResult) and result.branch == "defect"

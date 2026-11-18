@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { SecretString, definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type CallID, type CredentialProvider, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderStalledError, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
 import { ListPhoneNumbersDefinition, SendTemplateMessageDefinition, SendTextMessageDefinition } from './generated/definitions.js';
 import type { BusinessPhoneNumber, Config, Credentials, ListPhoneNumbersInput, PhoneNumbersPage, SendTemplateMessageInput, SendTextMessageInput, SentMessage } from './generated/models.js';
@@ -108,14 +108,18 @@ export class WhatsAppBusinessClient {
     const resendOrSelectUncertain = (kind: Failure['kind'], message: string, retryAfterMs = 0): MutationAttempt<SentMessage> =>
       // The claim stays the last marker, so the next attempt counts this send.
       canResendUnknownOutcome ? newMutationRetry(failure(operation, kind, message), retryAfterMs) : newMutationUncertain(zero, failure(operation, kind, message));
-    const token = await this.resolveToken(call);
-    if (!token) {
+    const resolution = await this.resolveTokenWithReason(call);
+    if (!('token' in resolution)) {
+      const message = resolution.isInvalid ? 'connection credentials are invalid' : 'connection credentials are unavailable';
+      // Invalid credentials will not recover, so an earlier possible send stays uncertain.
+      if (hasPossibleEarlierSend && resolution.isInvalid) return newMutationUncertain(zero, failure(operation, 'AUTHENTICATION', `${message}; an earlier attempt may have sent the WhatsApp message`));
       // notSent would hide the earlier possible send, so nothing is recorded.
-      if (hasPossibleEarlierSend) return newMutationRetry(failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable or invalid; no message was sent in this attempt'));
+      if (hasPossibleEarlierSend) return newMutationRetry(failure(operation, 'AUTHENTICATION', `${message}; no message was sent in this attempt`));
       try { await fence.recordNotSent(); }
       catch { /* The branch is terminal, so a lost notSent checkpoint cannot cause a resend. */ }
-      return newMutationBranch('defect', zero, {}, failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable or invalid'));
+      return newMutationBranch('defect', zero, {}, failure(operation, 'AUTHENTICATION', message));
     }
+    const token = resolution.token;
     const request: ProviderRequest = {
       url: `${this.baseUrl}/${phoneNumberID}/messages`, method: 'POST',
       headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -133,8 +137,10 @@ export class WhatsAppBusinessClient {
         catch { /* A lost canResend checkpoint leaves the claim, which the next attempt counts. */ }
         return newMutationRetry(failure(operation, 'TRANSPORT', 'Meta could not be reached before sending'));
       }
-      if (!(error instanceof BodyTooLargeError && error.status !== undefined)) return resendOrSelectUncertain('TRANSPORT', 'Meta message outcome is unknown');
-      response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
+      // Keep a status that arrived before the body failed, so an accepted message is never resent.
+      const statusBeforeBodyFailure = error instanceof BodyTooLargeError || error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.status : undefined;
+      if (statusBeforeBodyFailure === undefined) return resendOrSelectUncertain('TRANSPORT', 'Meta message outcome is unknown');
+      response = { status: statusBeforeBodyFailure, headers: (error as { headers?: ProviderResponse['headers'] }).headers ?? {}, body: new Uint8Array() };
       isBodyReadable = false;
     }
     if (response.body.length > this.maxResponseBytes) isBodyReadable = false;
@@ -143,40 +149,49 @@ export class WhatsAppBusinessClient {
     // A Graph or Cloud API throttling code means Meta refused the send before processing it.
     const graphError = isBodyReadable && status >= 400 && status < 500 ? decodeGraphError(response.body) : undefined;
     const isRateLimited = status === 429 || graphError?.isThrottled === true;
-    // A Graph 4xx marked is_transient is a transient refusal, not a definite one.
-    const isTransientRefusal = graphError?.isTransient === true;
-    if (isRateLimited || isTransientRefusal || status === 503) {
+    if (isRateLimited || status === 503) {
       try { await fence.recordCanResend(); }
       catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'Meta retry checkpoint is unavailable')); }
       const kind = isRateLimited ? 'RATE_LIMIT' : 'AVAILABILITY';
       return newMutationRetry(failure(operation, kind, 'Meta did not process the send'), retryAfterMs);
     }
     const { messageId, isComplete } = isBodyReadable ? readSentMessageID(response.body) : { messageId: '', isComplete: false };
-    if (definiteRefusalStatuses.has(status)) {
-      // A body that reports an accepted message means a resend could duplicate it.
-      if (messageId) return newMutationUncertain(zero, failure(operation, 'PROTOCOL', 'Meta returned a contradictory send response'));
+    if (status >= 200 && status < 300) {
+      // Meta accepted the message, so a resend could duplicate it.
+      if (!isBodyReadable) return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'Meta accepted the message, but its response could not be read'));
+      if (!messageId) return newMutationUncertain(zero, failure(operation, 'PROTOCOL', 'Meta accepted the message, but its response is malformed'));
+      if (!isComplete) return newMutationUncertain(zero, failure(operation, 'PROTOCOL', 'Meta send response is incomplete'));
+      try { await fence.recordProviderId(messageId); }
+      catch { /* A lost provider-ID checkpoint leaves the claim, which still counts this send. */ }
+      return newMutationBranch('sent', { messageId });
+    }
+    // A body that reports an accepted message means a resend could duplicate it.
+    if (messageId) return newMutationUncertain(zero, failure(operation, 'PROTOCOL', 'Meta returned a contradictory send response'));
+    // is_transient does not prove Meta skipped the send, so the outcome is unknown.
+    if (graphError?.isTransient === true) return resendOrSelectUncertain('AVAILABILITY', 'Meta reported a transient error; the message may have been sent', retryAfterMs);
+    // An unreadable or oversized body cannot prove a refusal.
+    if (isBodyReadable && definiteRefusalStatuses.has(status)) {
       const kind = status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION';
       if (hasPossibleEarlierSend) return newMutationUncertain(zero, failure(operation, kind, `Meta rejected HTTP ${status}`));
       try { await fence.recordCanResend(); }
       catch { /* The branch is terminal, so a lost canResend checkpoint cannot cause a resend. */ }
       return newMutationBranch('providerRejected', zero, {}, failure(operation, kind, `Meta rejected HTTP ${status}`));
     }
-    if (status < 200 || status >= 300) return resendOrSelectUncertain('AVAILABILITY', `Meta message outcome is unknown after HTTP ${status}`, retryAfterMs);
-    if (!isBodyReadable) return resendOrSelectUncertain('TRANSPORT', 'Meta send response could not be read');
-    if (!messageId) return resendOrSelectUncertain('PROTOCOL', 'Meta send response is malformed');
-    // Meta returned a wamid, so a resend could duplicate the message.
-    if (!isComplete) return newMutationUncertain(zero, failure(operation, 'PROTOCOL', 'Meta send response is incomplete'));
-    try { await fence.recordProviderId(messageId); }
-    catch { /* A lost provider-ID checkpoint leaves the claim, which still counts this send. */ }
-    return newMutationBranch('sent', { messageId });
+    return resendOrSelectUncertain('AVAILABILITY', `Meta message outcome is unknown after HTTP ${status}`, retryAfterMs);
   }
 
   private async resolveToken(call: Call): Promise<string | undefined> {
-    try {
-      const resolved = await this.credentials.resolve(call, call.context.cancellationSignal);
-      const token = resolved.accessToken instanceof SecretString ? resolved.accessToken.reveal() : '';
-      return token && isHeaderSafeCredential(token) ? token : undefined;
-    } catch { return undefined; }
+    const resolution = await this.resolveTokenWithReason(call);
+    return 'token' in resolution ? resolution.token : undefined;
+  }
+
+  /** Resolve the token, separating an unavailable provider from an invalid credential. */
+  private async resolveTokenWithReason(call: Call): Promise<{ token: string } | { isInvalid: boolean }> {
+    let resolved: Credentials;
+    try { resolved = await this.credentials.resolve(call, call.context.cancellationSignal); }
+    catch { return { isInvalid: false }; }
+    const token = resolved.accessToken instanceof SecretString ? resolved.accessToken.reveal() : '';
+    return token && isHeaderSafeCredential(token) ? { token } : { isInvalid: true };
   }
 
   /** Read one page or return a provider decision without exposing its body. */

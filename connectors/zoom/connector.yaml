@@ -190,7 +190,7 @@ spec:
       branches:
         - {id: created, goName: Created, description: Zoom created the meeting and returned its ID and join URL.}
         - {id: providerRejected, goName: ProviderRejected, description: "Zoom conclusively rejected the first send, including a documented daily-limit 429 or a user who cannot host; nothing was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "Zoom may have created the meeting, but the send cap was reached, a resend was refused, or Zoom accepted it without a usable meeting; check the user's meetings before creating it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Zoom may have created the meeting, but the send cap was reached, a resend was refused or found invalid credentials, or Zoom accepted it without a usable meeting; check the user's meetings before creating it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid before any send.", optional: true}
       execution:
         executeMethodTimeout: 30s

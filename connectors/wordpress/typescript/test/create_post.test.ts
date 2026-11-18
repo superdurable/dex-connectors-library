@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { WordPressClient } from '../src/client.js';
 import { CreatePostDefinition } from '../src/generated/definitions.js';
 import type { CreatedPost } from '../src/generated/models.js';
@@ -28,7 +28,7 @@ class AttemptContext {
   async recordHeartbeat(value: unknown): Promise<void> { this.marker = value; }
 }
 
-interface WordPressAnswer { status: number; body: string }
+interface WordPressAnswer { status: number; body: string; bodyError?: 'transport' | 'stalled' | 'tooLarge' }
 
 const created: WordPressAnswer = { status: 201, body: '{"id":43,"status":"draft"}' };
 const serverFailure: WordPressAnswer = { status: 500, body: '{"code":"internal_server_error"}' };
@@ -39,7 +39,10 @@ function newClient(answers: WordPressAnswer[], username = 'editor') {
   const client = new WordPressClient({ siteUrl: 'http://127.0.0.1:12345' } as never, { resolve }, {
     send: async (request: ProviderRequest) => {
       requests.push(request);
-      const { status, body } = answers[Math.min(requests.length - 1, answers.length - 1)]!;
+      const { status, body, bodyError } = answers[Math.min(requests.length - 1, answers.length - 1)]!;
+      if (bodyError === 'transport') throw new ProviderTransportError(false, status, {});
+      if (bodyError === 'stalled') throw new ProviderStalledError(status, {});
+      if (bodyError === 'tooLarge') throw new BodyTooLargeError(status, {});
       return { status, headers: {}, body: Buffer.from(body) };
     },
   });
@@ -87,12 +90,32 @@ describe('WordPress bounded resend of unconfirmed posts', () => {
     expect(requests).toHaveLength(1);
   });
 
-  it('resends a malformed success response below the send cap', async () => {
-    const { client } = newClient([{ status: 201, body: 'not JSON' }, created]);
+  it.each([
+    { status: 201, body: 'not JSON' },
+    { status: 201, body: '{}' },
+    { status: 201, body: '', bodyError: 'transport' },
+    { status: 201, body: '', bodyError: 'stalled' },
+    { status: 201, body: '', bodyError: 'tooLarge' },
+  ] as WordPressAnswer[])('never resends an accepted post whose response is unreadable: %j', async answer => {
+    const { client, requests } = newClient([answer, created]);
+    expect(await create(client, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('never resends an unlisted error response that reports a post ID', async () => {
+    const { client, requests } = newClient([{ status: 409, body: created.body }]);
+    expect(await create(client, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('treats an unreadable refusal body as an unknown outcome', async () => {
+    const { client, requests } = newClient([{ status: 400, body: '', bodyError: 'transport' }, created]);
     const context = new AttemptContext();
     expect(await create(client, context)).toBeInstanceOf(RetryError);
+    expect(context.marker).toMatchObject({ state: 'claimed' });
     context.attempt = 2;
     expect(await create(client, context)).toMatchObject({ branch: 'created' });
+    expect(requests).toHaveLength(2);
   });
 
   it.each([400, 401, 403, 404, 413, 422])('never resends a definite HTTP %i refusal', async status => {
@@ -135,13 +158,13 @@ describe('WordPress bounded resend of unconfirmed posts', () => {
     expect(requests).toHaveLength(0);
   });
 
-  it('retries a credential failure after a possible send and selects defect before any send', async () => {
+  it('selects uncertain for invalid credentials after a possible send and defect before any send', async () => {
     const { client, requests } = newClient([serverFailure]);
     const context = new AttemptContext();
     expect(await create(client, context)).toBeInstanceOf(RetryError);
     context.attempt = 2;
     const { client: invalidClient } = newClient([serverFailure], 'a:b');
-    expect(await create(invalidClient, context)).toBeInstanceOf(RetryError);
+    expect(await create(invalidClient, context)).toMatchObject({ branch: 'uncertain' });
     expect(requests).toHaveLength(1);
     expect(await create(invalidClient, new AttemptContext())).toMatchObject({ branch: 'defect' });
   });

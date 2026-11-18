@@ -20,7 +20,7 @@ export const CreatePostBranch = {
 export const CreatePostBranchCreated = CreatePostBranch.Created;
 /** WordPress conclusively rejected the new post. */
 export const CreatePostBranchProviderRejected = CreatePostBranch.ProviderRejected;
-/** WordPress may have created the post, but the send cap was reached or WordPress returned a post ID without a complete confirmation; inspect Posts before creating another. */
+/** WordPress may have created the post, but the send cap was reached, a resend was refused or found invalid credentials, or WordPress accepted it without a complete confirmation; inspect Posts before creating another. */
 export const CreatePostBranchUncertain = CreatePostBranch.Uncertain;
 /** Local post input, connection credentials, or dispatch fence is invalid before any send. */
 export const CreatePostBranchDefect = CreatePostBranch.Defect;
@@ -30,7 +30,7 @@ export const CreatePostDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "WordPress created the post and returned its numeric ID." },
     { id: "providerRejected", description: "WordPress conclusively rejected the new post.", optional: true },
-    { id: "uncertain", description: "WordPress may have created the post, but the send cap was reached or WordPress returned a post ID without a complete confirmation; inspect Posts before creating another.", optional: true },
+    { id: "uncertain", description: "WordPress may have created the post, but the send cap was reached, a resend was refused or found invalid credentials, or WordPress accepted it without a complete confirmation; inspect Posts before creating another.", optional: true },
     { id: "defect", description: "Local post input, connection credentials, or dispatch fence is invalid before any send.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync" },

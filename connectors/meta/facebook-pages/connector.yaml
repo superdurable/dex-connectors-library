@@ -112,7 +112,7 @@ spec:
       branches:
         - {id: published, goName: Published, description: Meta returned the published post ID.}
         - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the post., optional: true}
-        - {id: uncertain, goName: Uncertain, description: "Meta may have published the post, but the send cap was reached or Meta contradicted itself; inspect the Page before retrying manually.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Meta may have published the post, but the send cap was reached, Meta accepted it with an unreadable response, or Meta contradicted itself; inspect the Page before retrying manually.", optional: true}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid before any send., optional: true}
       mocks:
         - name: publishedDefault

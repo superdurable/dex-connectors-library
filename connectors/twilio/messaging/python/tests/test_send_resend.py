@@ -102,17 +102,25 @@ async def send(
     *,
     max_sends: int = SEND_MESSAGE_DEFINITION.max_sends,
     auth_token: str = "auth-token-sentinel-0123456789ab",
+    max_response_bytes: int = 1048576,
 ) -> MutationResult[Message] | RetryError:
     """Run one Execute attempt of sendMessage, as the Mutation Step passes the definition cap."""
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
         status, body = answer(request)
+        if isinstance(body, httpx.AsyncByteStream):
+            return httpx.Response(status, stream=body)
+        if isinstance(body, bytes):
+            return httpx.Response(status, content=body)
         return httpx.Response(status, content=json.dumps(body).encode())
 
     credentials = StaticCredentialProvider({CONNECTION: Credentials(auth_token=SecretString(auth_token))})
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
-        client = Client(Config(account_sid=ACCOUNT, default_sender="+14155550100"), credentials, transport)
+        config = Config(
+            account_sid=ACCOUNT, default_sender="+14155550100", max_response_bytes=max_response_bytes
+        )
+        client = Client(config, credentials, transport)
         call = Call(
             CALL_ID,
             CONNECTION,
@@ -195,6 +203,58 @@ async def test_refusal_of_a_resend_selects_uncertain() -> None:
     assert len(requests) == 2
 
 
+class BrokenBodyStream(httpx.AsyncByteStream):
+    """Send part of a response body, then drop the connection."""
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        yield b'{"sid":'
+        raise httpx.ReadError("connection dropped")
+
+
+@pytest.mark.parametrize(
+    ("body", "max_response_bytes"),
+    [(b'{"status":"queued"}', 1048576), (b'{"sid":"not-a-sid"}', 1048576), (None, 1048576), (None, 16)],
+)
+async def test_accepted_unusable_response_is_never_resent(
+    body: bytes | None, max_response_bytes: int
+) -> None:
+    requests: list[httpx.Request] = []
+    payload: object = json.dumps(CREATED[1]).encode() if max_response_bytes == 16 else body
+    if payload is None:
+        payload = BrokenBodyStream()
+    result = await send(
+        lambda _: (201, payload), AttemptContext(), requests, max_response_bytes=max_response_bytes
+    )
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 1
+
+
+async def test_error_status_naming_a_created_message_is_read_back_not_resent() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+
+    def answer(request: httpx.Request) -> tuple[int, object]:
+        return (409, CREATED[1]) if request.method == "POST" else (200, CREATED[1])
+
+    result = await send(answer, context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "accepted"
+    assert context.marker is not None and context.marker.provider_id == MESSAGE_SID
+    assert [request.method for request in requests] == ["POST", "GET"]
+
+
+async def test_oversized_refusal_body_is_an_unknown_outcome() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    oversized = b'{"code":21211,"message":"' + b"x" * 65536 + b'"}'
+    answer = sequence((400, oversized), CREATED)
+    assert isinstance(await send(answer, context, requests), RetryError)
+    assert context.marker is not None and context.marker.state == "claimed"
+    context.attempt = 2
+    result = await send(answer, context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "accepted"
+    assert len(requests) == 2
+
+
 async def test_fail_closed_returns_retry() -> None:
     requests: list[httpx.Request] = []
     context = AttemptContext()
@@ -203,13 +263,13 @@ async def test_fail_closed_returns_retry() -> None:
     assert requests == []
 
 
-async def test_credential_failure_after_possible_send_retries() -> None:
+async def test_terminal_credential_failure_after_possible_send_selects_uncertain() -> None:
     requests: list[httpx.Request] = []
     context = AttemptContext()
     assert isinstance(await send(lambda _: SERVER_FAILURE, context, requests), RetryError)
     context.attempt = 2
     result = await send(lambda _: SERVER_FAILURE, context, requests, auth_token="")
-    assert isinstance(result, RetryError)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
     assert len(requests) == 1
     result = await send(lambda _: SERVER_FAILURE, AttemptContext(), requests, auth_token="")
     assert isinstance(result, MutationResult) and result.branch == "defect"

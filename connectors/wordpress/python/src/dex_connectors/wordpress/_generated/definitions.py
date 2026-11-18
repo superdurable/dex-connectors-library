@@ -34,7 +34,7 @@ CREATE_POST_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "WordPress created the post and returned its numeric ID.", False),
         BranchDefinition(PROVIDER_REJECTED, "WordPress conclusively rejected the new post.", True),
-        BranchDefinition(UNCERTAIN, "WordPress may have created the post, but the send cap was reached or WordPress returned a post ID without a complete confirmation; inspect Posts before creating another.", True),
+        BranchDefinition(UNCERTAIN, "WordPress may have created the post, but the send cap was reached, a resend was refused or found invalid credentials, or WordPress accepted it without a complete confirmation; inspect Posts before creating another.", True),
         BranchDefinition(DEFECT, "Local post input, connection credentials, or dispatch fence is invalid before any send.", True),
     ),
     StepDefaults(

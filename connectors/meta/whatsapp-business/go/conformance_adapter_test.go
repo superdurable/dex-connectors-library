@@ -4,6 +4,7 @@
 package whatsappbusiness
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -22,6 +23,14 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	require.NoError(t, err)
 	textContext := singledispatchtest.NewContext("whatsapp-business-conformance", "send-text")
 	templateContext := singledispatchtest.NewContext("whatsapp-business-conformance", "send-template")
+	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(raw []byte) {
+		require.NoError(t, textContext.SetPersistedCheckpoint(json.RawMessage(raw)))
+		require.NoError(t, templateContext.SetPersistedCheckpoint(json.RawMessage(raw)))
+	})
+	for range priorAttempt {
+		textContext.AdvanceAttempt()
+		templateContext.AdvanceAttempt()
+	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
 		if attempt > 1 {
 			textContext.AdvanceAttempt()

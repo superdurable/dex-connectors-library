@@ -34,7 +34,7 @@ SEND_MESSAGE_DEFINITION = MutationDefinition(
     (
         BranchDefinition(ACCEPTED, "Twilio created the message and returned its SID; delivery status arrives later through getMessage.", False),
         BranchDefinition(PROVIDER_REJECTED, "Twilio conclusively rejected the message, such as an invalid To number, an unverified trial recipient, an unsubscribed recipient, or an unusable sender; nothing was sent.", True),
-        BranchDefinition(UNCERTAIN, "Twilio may have created the message, but the send cap was reached, a saved SID could not be confirmed, or Twilio returned a SID without a usable message; check Twilio before sending again.", True),
+        BranchDefinition(UNCERTAIN, "Twilio may have created the message, but the send cap was reached, a saved SID could not be confirmed, a resend was refused or found invalid credentials, or Twilio accepted it without a usable message; check Twilio before sending again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid before any send.", True),
     ),
     StepDefaults(

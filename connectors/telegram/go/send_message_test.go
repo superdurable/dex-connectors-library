@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -97,17 +98,63 @@ func TestSendMessageResendsUnknownOutcomeBelowCap(t *testing.T) {
 	}
 }
 
-func TestSendMessageResendsMalformedSuccessBelowCap(t *testing.T) {
-	server, requests := newScriptedServer(t, []int{http.StatusOK, http.StatusOK}, []string{`not JSON`, sentMessageBody})
+func TestSendMessageNeverResendsAnAcceptedUnreadableResponse(t *testing.T) {
+	for _, body := range []string{`not JSON`, `{}`, `{"ok":true,"result":{"text":"` + strings.Repeat("x", 200) + `"}}`} {
+		t.Run(body, func(t *testing.T) {
+			server, requests := newScriptedServer(t, []int{http.StatusOK}, []string{body})
+			client, err := New(Config{BaseURL: server.URL, MaxResponseBytes: 128}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: Credentials{BotToken: sdkgo.NewSecretString(testBotToken)}})
+			require.NoError(t, err)
+			uncertain, err := sdkgo.RunMutation(singledispatchtest.NewContext("malformed-flow", "send-step"), client.SendMessage(), testConnection, testSendInput)
+			require.NoError(t, err, "a 2xx means Telegram created the message, so a resend could duplicate it")
+			require.Equal(t, SendMessageBranchUncertain, uncertain.Branch)
+			require.Equal(t, 1, *requests)
+		})
+	}
+}
+
+func TestSendMessageAcceptedBodyBreaksAfterHeadersSelectsUncertain(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.Header().Set("Content-Length", "100")
+		w.WriteHeader(http.StatusOK)
+		_, err := fmt.Fprint(w, `{"ok":`)
+		require.NoError(t, err)
+		w.(http.Flusher).Flush()
+		connection, _, err := w.(http.Hijacker).Hijack()
+		require.NoError(t, err)
+		require.NoError(t, connection.Close())
+	}))
+	defer server.Close()
 	client := newTestClient(t, server.URL)
-	ctx := singledispatchtest.NewContext("malformed-flow", "send-step")
+	uncertain, err := sdkgo.RunMutation(singledispatchtest.NewContext("body-breaks-flow", "send-step"), client.SendMessage(), testConnection, testSendInput)
+	require.NoError(t, err)
+	require.Equal(t, SendMessageBranchUncertain, uncertain.Branch)
+	require.Equal(t, 1, requests)
+}
+
+func TestSendMessageUnlistedErrorReportingAcceptanceIsNeverResent(t *testing.T) {
+	server, requests := newScriptedServer(t, []int{http.StatusConflict}, []string{sentMessageBody})
+	client := newTestClient(t, server.URL)
+	uncertain, err := sdkgo.RunMutation(singledispatchtest.NewContext("conflict-ok-flow", "send-step"), client.SendMessage(), testConnection, testSendInput)
+	require.NoError(t, err)
+	require.Equal(t, SendMessageBranchUncertain, uncertain.Branch)
+	require.Equal(t, 1, *requests)
+}
+
+func TestSendMessageInvalidBotTokenAfterPossibleSendSelectsUncertain(t *testing.T) {
+	server, requests := newScriptedServer(t, []int{http.StatusInternalServerError}, []string{`{"ok":false}`})
+	client := newTestClient(t, server.URL)
+	ctx := singledispatchtest.NewContext("invalid-token-flow", "send-step")
 	_, err := sdkgo.RunMutation(ctx, client.SendMessage(), testConnection, testSendInput)
 	require.Error(t, err)
 	ctx.AdvanceAttempt()
-	sent, err := sdkgo.RunMutation(ctx, client.SendMessage(), testConnection, testSendInput)
+	invalid, err := New(Config{BaseURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: Credentials{BotToken: sdkgo.NewSecretString("not-a-token")}})
 	require.NoError(t, err)
-	require.Equal(t, SendMessageBranchSent, sent.Branch)
-	require.Equal(t, 2, *requests)
+	uncertain, err := sdkgo.RunMutation(ctx, invalid.SendMessage(), testConnection, testSendInput)
+	require.NoError(t, err)
+	require.Equal(t, SendMessageBranchUncertain, uncertain.Branch)
+	require.Equal(t, 1, *requests)
 }
 
 func TestSendMessageSelectsUncertainAtCap(t *testing.T) {

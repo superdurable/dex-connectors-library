@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { TwilioClient } from '../src/client.js';
 import { SendMessageDefinition } from '../src/generated/definitions.js';
 import type { Message } from '../src/generated/models.js';
@@ -30,18 +30,21 @@ class AttemptContext {
   async recordHeartbeat(value: unknown): Promise<void> { this.marker = value; }
 }
 
-interface TwilioAnswer { status: number; body: string }
+interface TwilioAnswer { status: number; body: string; bodyError?: 'transport' | 'stalled' | 'tooLarge' }
 
 const created: TwilioAnswer = { status: 201, body: JSON.stringify({ sid: messageSid, account_sid: accountSid, from: '+14155550100', to: '+14155550123', status: 'queued' }) };
 const serverFailure: TwilioAnswer = { status: 500, body: '{"code":20500}' };
 
-function newClient(answers: TwilioAnswer[], authToken = 'auth-token-sentinel-0123456789ab') {
+function newClient(answers: TwilioAnswer[] | ((request: ProviderRequest) => TwilioAnswer), authToken = 'auth-token-sentinel-0123456789ab') {
   const requests: ProviderRequest[] = [];
   const resolve = async () => ({ authMethodId: 'auth-token', authToken: new SecretString(authToken) });
   const client = new TwilioClient({ accountSid, defaultSender: '+14155550100' }, { resolve }, {
     send: async (request: ProviderRequest) => {
       requests.push(request);
-      const { status, body } = answers[Math.min(requests.length - 1, answers.length - 1)]!;
+      const { status, body, bodyError } = typeof answers === 'function' ? answers(request) : answers[Math.min(requests.length - 1, answers.length - 1)]!;
+      if (bodyError === 'transport') throw new ProviderTransportError(false, status, {});
+      if (bodyError === 'stalled') throw new ProviderStalledError(status, {});
+      if (bodyError === 'tooLarge') throw new BodyTooLargeError(status, {});
       return { status, headers: {}, body: Buffer.from(body) };
     },
   });
@@ -123,13 +126,46 @@ describe('Twilio bounded resend of unconfirmed messages', () => {
     expect(requests).toHaveLength(0);
   });
 
-  it('retries a credential failure after a possible send and selects defect before any send', async () => {
+  it.each([
+    { status: 201, body: '{"status":"queued"}' },
+    { status: 201, body: '{"sid":"not-a-sid"}' },
+    { status: 201, body: '', bodyError: 'transport' },
+    { status: 201, body: '', bodyError: 'stalled' },
+    { status: 201, body: '', bodyError: 'tooLarge' },
+  ] as TwilioAnswer[])('never resends an accepted message whose response is unusable: %j', async answer => {
+    const { client, requests } = newClient([answer]);
+    expect(await send(client, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('reads back an error status that names a created message instead of resending', async () => {
+    const { client, requests } = newClient(request => request.method === 'POST' ? { status: 409, body: created.body } : { status: 200, body: created.body });
+    const context = new AttemptContext();
+    expect(await send(client, context)).toMatchObject({ branch: 'accepted', value: { sid: messageSid } });
+    expect(JSON.stringify(context.marker)).toContain(messageSid);
+    expect(requests.map(request => request.method)).toEqual(['POST', 'GET']);
+  });
+
+  it.each([
+    { status: 400, body: '', bodyError: 'transport' },
+    { status: 400, body: '', bodyError: 'tooLarge' },
+  ] as TwilioAnswer[])('treats an unreadable refusal body as an unknown outcome: %j', async answer => {
+    const { client, requests } = newClient([answer, created]);
+    const context = new AttemptContext();
+    expect(await send(client, context)).toBeInstanceOf(RetryError);
+    expect(context.marker).toMatchObject({ state: 'claimed' });
+    context.attempt = 2;
+    expect(await send(client, context)).toMatchObject({ branch: 'accepted' });
+    expect(requests).toHaveLength(2);
+  });
+
+  it('selects uncertain for terminal credentials after a possible send and defect before any send', async () => {
     const { client, requests } = newClient([serverFailure]);
     const context = new AttemptContext();
     expect(await send(client, context)).toBeInstanceOf(RetryError);
     context.attempt = 2;
     const { client: invalidClient } = newClient([serverFailure], '');
-    expect(await send(invalidClient, context)).toBeInstanceOf(RetryError);
+    expect(await send(invalidClient, context)).toMatchObject({ branch: 'uncertain' });
     expect(requests).toHaveLength(1);
     expect(await send(invalidClient, new AttemptContext())).toMatchObject({ branch: 'defect' });
   });

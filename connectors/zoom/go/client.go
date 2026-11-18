@@ -291,8 +291,9 @@ func (client *Client) sendOnce(
 	}()
 	response := providerResponse{statusCode: httpResponse.StatusCode, header: httpResponse.Header.Clone()}
 	if !isSuccessStatus(httpResponse.StatusCode) {
-		response.body, err = io.ReadAll(io.LimitReader(httpResponse.Body, providerhttp.MaxErrorBodyBytes))
-		response.hasBodyReadFailed = err != nil
+		response.body, err = providerhttp.ReadBoundedBody(httpResponse.Body, providerhttp.MaxErrorBodyBytes)
+		response.isBodyTooLarge = errors.Is(err, providerhttp.ErrBodyTooLarge)
+		response.hasBodyReadFailed = err != nil && !response.isBodyTooLarge
 		return response, true, nil
 	}
 	response.body, err = providerhttp.ReadBoundedBody(httpResponse.Body, client.maxResponseBytes)

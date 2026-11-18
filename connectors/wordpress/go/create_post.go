@@ -89,23 +89,23 @@ func (operation CreatePostOperation) Invoke(call sdkgo.Call, input CreatePostInp
 	// An earlier send may have created the post, so a refusal of this resend cannot prove nothing changed.
 	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
 	credentials, err := operation.client.credentials.Resolve(call)
-	if err != nil || credentials.Validate() != nil {
-		return localCreateFailure(fence, hasPossibleEarlierSend, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
+	if err != nil {
+		return localCreateFailure(fence, hasPossibleEarlierSend, false, sdkgo.FailureAuthentication, "connection credentials are unavailable")
 	}
 	password := strings.ReplaceAll(credentials.ApplicationPassword.Reveal(), " ", "")
-	if !validWordPressUsername(credentials.Username) || !providerhttp.IsHeaderSafeCredential(password) {
-		return localCreateFailure(fence, hasPossibleEarlierSend, sdkgo.FailureAuthentication, "connection credentials are invalid")
+	if credentials.Validate() != nil || !validWordPressUsername(credentials.Username) || !providerhttp.IsHeaderSafeCredential(password) {
+		return localCreateFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureAuthentication, "connection credentials are invalid")
 	}
 	endpoint := operation.client.siteURL + "/wp-json/wp/v2/posts"
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, endpoint, bytes.NewReader(payload))
 	if err != nil {
-		return localCreateFailure(fence, hasPossibleEarlierSend, sdkgo.FailureLocalDefect, "WordPress post request could not be built")
+		return localCreateFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureLocalDefect, "WordPress post request could not be built")
 	}
 	request.SetBasicAuth(credentials.Username, password)
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Content-Type", "application/json")
 	if err := singledispatch.PrepareHTTPWrite(request); err != nil {
-		return localCreateFailure(fence, hasPossibleEarlierSend, sdkgo.FailureLocalDefect, "WordPress post request is invalid")
+		return localCreateFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureLocalDefect, "WordPress post request is invalid")
 	}
 	observation := &dispatchObservation{}
 	var response *http.Response
@@ -139,30 +139,31 @@ func (operation CreatePostOperation) Invoke(call sdkgo.Call, input CreatePostInp
 		}
 		return createRetry(kind, "WordPress did not create the post", retryAfter)
 	}
-	isDefiniteRefusalStatus := isDefiniteRefusalStatus(response.StatusCode)
 	isSuccessStatus := response.StatusCode >= 200 && response.StatusCode < 300
-	if !isDefiniteRefusalStatus && !isSuccessStatus {
-		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureAvailability, "WordPress post outcome is unknown after HTTP "+strconv.Itoa(response.StatusCode), retryAfter)
-	}
-	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
-	if err != nil {
-		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureTransport, "WordPress post response could not be read", 0)
-	}
+	body, readErr := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+	isBodyReadable := readErr == nil
 	var wire struct {
 		ID     int64  `json:"id"`
 		Status string `json:"status"`
 	}
-	isWireDecoded := json.Unmarshal(body, &wire) == nil
 	// A positive post ID in the body means WordPress created the post.
-	isAccepted := isWireDecoded && wire.ID > 0
-	if isDefiniteRefusalStatus {
-		if isAccepted {
-			return createUncertain(sdkgo.FailureProtocol, "WordPress returned a contradictory post response")
-		}
-		return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, rejectionFailureKind(response.StatusCode), "WordPress rejected the post with HTTP "+strconv.Itoa(response.StatusCode))
+	isAccepted := isBodyReadable && json.Unmarshal(body, &wire) == nil && wire.ID > 0
+	if isSuccessStatus && !isBodyReadable {
+		// WordPress accepted the post, so a resend could duplicate it.
+		return createUncertain(sdkgo.FailureTransport, "WordPress accepted the post, but its response could not be read")
 	}
-	if !isAccepted {
-		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureProtocol, "WordPress post response is malformed", 0)
+	if isSuccessStatus && !isAccepted {
+		return createUncertain(sdkgo.FailureProtocol, "WordPress accepted the post, but its response is malformed")
+	}
+	if !isSuccessStatus && isAccepted {
+		return createUncertain(sdkgo.FailureProtocol, "WordPress returned a contradictory post response")
+	}
+	if !isSuccessStatus {
+		// An unreadable or oversized error body cannot prove a refusal.
+		if isBodyReadable && isDefiniteRefusalStatus(response.StatusCode) {
+			return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, rejectionFailureKind(response.StatusCode), "WordPress rejected the post with HTTP "+strconv.Itoa(response.StatusCode))
+		}
+		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureAvailability, "WordPress post outcome is unknown after HTTP "+strconv.Itoa(response.StatusCode), retryAfter)
 	}
 	// A lost provider-ID checkpoint leaves the claim, which still counts this send.
 	_ = fence.RecordProviderID(strconv.FormatInt(wire.ID, 10))
@@ -213,8 +214,12 @@ func rejectOrSelectUncertain(fence *singledispatch.Fence, hasPossibleEarlierSend
 	return createFailure(CreatePostBranchProviderRejected, kind, message)
 }
 
-// localCreateFailure selects defect only when no earlier send may have created the post.
-func localCreateFailure(fence *singledispatch.Fence, hasPossibleEarlierSend bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[CreatedPost] {
+// localCreateFailure selects defect only when no earlier send may have created the post. After a
+// possible send, a terminal failure selects uncertain and a transient one returns Retry.
+func localCreateFailure(fence *singledispatch.Fence, hasPossibleEarlierSend bool, isTerminal bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[CreatedPost] {
+	if hasPossibleEarlierSend && isTerminal {
+		return createUncertain(kind, message+"; an earlier attempt may have created the post")
+	}
 	if hasPossibleEarlierSend {
 		// notSent would hide the earlier possible send, so nothing is recorded.
 		return createRetry(kind, message+"; no post was created in this attempt", 0)

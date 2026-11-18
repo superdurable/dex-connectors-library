@@ -363,6 +363,10 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
 	authorization, failure, isTransient := client.resolveAuthorization(call, "sendMessage")
 	if failure != nil {
+		if hasPossibleEarlierSend && !isTransient {
+			// Terminal credentials forbid the resend, so only the earlier possible send remains.
+			return client.uncertainSend(call, requested, providerResponse{}, failure.Kind, failure.Message+"; an earlier attempt may have created the message")
+		}
 		if hasPossibleEarlierSend {
 			// notSent would hide the earlier possible send, so nothing is recorded.
 			return sdkgo.NewMutationRetry[Message](*failure, 0)
@@ -385,7 +389,8 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 			// The request was never sent; a lost canResend checkpoint leaves the claim, which still counts.
 			_ = fence.RecordCanResend()
 			if hasPossibleEarlierSend {
-				return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureLocalDefect, err.Error()+"; no message was sent in this attempt"), 0)
+				// The same input cannot build a request later, so only the earlier possible send remains.
+				return client.uncertainSend(call, requested, providerResponse{}, sdkgo.FailureLocalDefect, err.Error()+"; an earlier attempt may have created the message")
 			}
 			return sdkgo.NewMutationBranch(SendMessageBranchDefect, Message{}, failurePointer("sendMessage", sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
 		}
@@ -398,25 +403,31 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		return client.resendOrSelectUncertain(call, canResendUnknownOutcome, requested, providerResponse{}, sdkgo.FailureTransport, "Twilio message outcome is unknown")
 	}
 	response := attempt.response
+	isBodyUnreadable := response.isBodyTooLarge || response.hasBodyReadFailed
 	switch {
 	case response.statusCode >= 200 && response.statusCode < 300:
+		// Twilio created the message, so an unusable body selects uncertain and is never resent.
 		if response.isBodyTooLarge {
-			return client.resendOrSelectUncertain(call, canResendUnknownOutcome, requested, response, sdkgo.FailureResponseTooLarge, "Twilio message response exceeds the configured size limit")
+			return client.uncertainSend(call, requested, response, sdkgo.FailureResponseTooLarge, "Twilio accepted the message, but its response exceeds the configured size limit")
 		}
 		if response.hasBodyReadFailed {
-			return client.resendOrSelectUncertain(call, canResendUnknownOutcome, requested, response, sdkgo.FailureTransport, "Twilio message response was interrupted")
+			return client.uncertainSend(call, requested, response, sdkgo.FailureTransport, "Twilio accepted the message, but its response was interrupted")
 		}
 		message, err := client.decodeMessage(response.body, authorization)
 		if err != nil {
 			if messageSIDPattern.MatchString(readMessageSID(response.body)) {
-				// Twilio returned a created message SID, so a resend could duplicate the message.
 				return sdkgo.NewMutationUncertain(requested, newFailure("sendMessage", sdkgo.FailureProtocol, "Twilio accepted the request but returned an unusable message"), client.receipt(call, response, "", 0))
 			}
-			return client.resendOrSelectUncertain(call, canResendUnknownOutcome, requested, response, sdkgo.FailureProtocol, "Twilio message response is malformed")
+			return client.uncertainSend(call, requested, response, sdkgo.FailureProtocol, "Twilio accepted the message, but its response is malformed")
 		}
 		// A lost read-back checkpoint cannot change the accepted provider result.
 		_ = fence.RecordProviderID(message.SID)
 		return sdkgo.NewMutationBranch(SendMessageBranchAccepted, message, nil, client.receipt(call, response, message.SID, 0))
+	case !isBodyUnreadable && messageSIDPattern.MatchString(readMessageSID(response.body)):
+		// An error status naming a created message is contradictory, so the SID is read back, never resent.
+		messageSID := readMessageSID(response.body)
+		_ = fence.RecordProviderID(messageSID)
+		return client.readBackSentMessage(call, singledispatch.Marker{CallID: call.ID, ProviderID: messageSID}, requested)
 	case response.statusCode == http.StatusTooManyRequests || response.statusCode == http.StatusServiceUnavailable:
 		checkpointErr := fence.RecordCanResend()
 		if response.statusCode == http.StatusTooManyRequests {
@@ -444,7 +455,7 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 			message = refreshFailure.Message
 		}
 		return client.rejectOrSelectUncertain(call, fence, hasPossibleEarlierSend, requested, response, newFailure("sendMessage", sdkgo.FailureAuthentication, message), errorCode)
-	case isDefiniteRefusalStatus(response.statusCode) && !messageSIDPattern.MatchString(readMessageSID(response.body)):
+	case isDefiniteRefusalStatus(response.statusCode) && !isBodyUnreadable:
 		errorCode := readErrorCode(response.body)
 		requested.ErrorCode = errorCode
 		return client.rejectOrSelectUncertain(call, fence, hasPossibleEarlierSend, requested, response, *rejectionFailure("sendMessage", "message", response.statusCode, errorCode), errorCode)
@@ -761,8 +772,9 @@ func (client *Client) exchangeWithContext(
 	}()
 	response = providerResponse{statusCode: httpResponse.StatusCode, header: httpResponse.Header.Clone()}
 	if httpResponse.StatusCode < 200 || httpResponse.StatusCode >= 300 {
-		response.body, err = io.ReadAll(io.LimitReader(httpResponse.Body, providerhttp.MaxErrorBodyBytes))
-		response.hasBodyReadFailed = err != nil
+		response.body, err = providerhttp.ReadBoundedBody(httpResponse.Body, providerhttp.MaxErrorBodyBytes)
+		response.isBodyTooLarge = errors.Is(err, providerhttp.ErrBodyTooLarge)
+		response.hasBodyReadFailed = err != nil && !response.isBodyTooLarge
 		return response, true, nil
 	}
 	response.body, err = providerhttp.ReadBoundedBody(httpResponse.Body, client.maxResponseBytes)

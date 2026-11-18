@@ -870,7 +870,7 @@
         }
       ],
       "expected": {
-        "branch": "",
+        "branch": "uncertain",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -878,10 +878,15 @@
           "sendCount": 1,
           "state": "claimed"
         },
+        "output": {
+          "chatId": 0,
+          "date": 0,
+          "messageId": 0
+        },
         "requestCount": 1,
-        "retry": true,
+        "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "90197eab-afd7-512f-909c-3b20379e32b1",
       "input": {

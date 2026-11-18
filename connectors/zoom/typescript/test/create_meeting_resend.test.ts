@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { ZoomClient } from '../src/client.js';
 import { CreateMeetingDefinition } from '../src/generated/definitions.js';
 import type { CreateMeetingInput, Meeting } from '../src/generated/models.js';
@@ -29,24 +29,28 @@ class AttemptContext {
   async recordHeartbeat(value: unknown): Promise<void> { this.marker = value; }
 }
 
-interface ZoomAnswer { status: number; body: string }
+interface ZoomAnswer { status: number; body: string; bodyError?: 'transport' | 'stalled' | 'tooLarge' }
 
 const meetingBody = '{"id":92674392836,"topic":"Consultation","type":2,"start_time":"2036-02-24T17:00:00Z","duration":30,"timezone":"America/Los_Angeles"}';
 const created: ZoomAnswer = { status: 201, body: meetingBody };
 const serverFailure: ZoomAnswer = { status: 500, body: '{"code":500,"message":"Unknown"}' };
 
-function newClient(answers: ZoomAnswer[], hasCredentials = true) {
+function newClient(answers: ZoomAnswer[] | ((request: ProviderRequest) => ZoomAnswer), hasCredentials = true, accessToken = 'zoom-test-access-token', maxResponseBytes?: number) {
   const requests: ProviderRequest[] = [];
-  const credentials = { accessToken: new SecretString('zoom-test-access-token'), oauthClientId: 'client-id',
+  const credentials = { accessToken: new SecretString(accessToken), oauthClientId: 'client-id',
     oauthClientSecret: new SecretString('client-secret'), refreshToken: new SecretString('refresh-token') };
   const resolve = async () => {
     if (!hasCredentials) throw new Error('connection credentials are unavailable');
     return credentials;
   };
-  const client = new ZoomClient({ endpoint: 'http://127.0.0.1:12345/v2' } as never, { resolve, resolveWithRefresh: resolve } as never, {
+  const config = { endpoint: 'http://127.0.0.1:12345/v2', ...(maxResponseBytes === undefined ? {} : { maxResponseBytes }) };
+  const client = new ZoomClient(config as never, { resolve, resolveWithRefresh: resolve } as never, {
     send: async (request: ProviderRequest) => {
       requests.push(request);
-      const { status, body } = answers[Math.min(requests.length - 1, answers.length - 1)]!;
+      const { status, body, bodyError } = typeof answers === 'function' ? answers(request) : answers[Math.min(requests.length - 1, answers.length - 1)]!;
+      if (bodyError === 'transport') throw new ProviderTransportError(false, status, {});
+      if (bodyError === 'stalled') throw new ProviderStalledError(status, {});
+      if (bodyError === 'tooLarge') throw new BodyTooLargeError(status, {});
       return { status, headers: {}, body: Buffer.from(body) };
     },
   });
@@ -123,6 +127,57 @@ describe('Zoom bounded resend of unconfirmed meeting creates', () => {
   it('never resends an accepted meeting ID with an unusable body', async () => {
     const { client, requests } = newClient([{ status: 201, body: '{"id":92674392836,"start_time":"not a time"}' }]);
     expect(await create(client, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it.each([
+    [{ status: 201, body: '{"id":"not-a-number"}' }, undefined],
+    [{ status: 201, body: '{}' }, undefined],
+    [{ status: 201, body: `{"agenda":"${'x'.repeat(4096)}"}` }, 2048],
+    [{ status: 201, body: '', bodyError: 'transport' }, undefined],
+    [{ status: 201, body: '', bodyError: 'stalled' }, undefined],
+    [{ status: 201, body: '', bodyError: 'tooLarge' }, undefined],
+  ] as Array<[ZoomAnswer, number | undefined]>)('never resends an accepted create whose response is unusable: %j', async (answer, maxResponseBytes) => {
+    const { client, requests } = newClient([answer], true, 'zoom-test-access-token', maxResponseBytes);
+    expect(await create(client, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('reads back a client error that names a created meeting instead of resending', async () => {
+    const { client, requests } = newClient(request => request.method === 'POST' ? { status: 425, body: '{"id":92674392836}' } : { status: 200, body: meetingBody });
+    const context = new AttemptContext();
+    expect(await create(client, context)).toMatchObject({ branch: 'created', value: { id: 92674392836 } });
+    expect(JSON.stringify(context.marker)).toContain('92674392836');
+    expect(requests.map(request => request.method)).toEqual(['POST', 'GET']);
+  });
+
+  it('retries an unlisted client error with an unknown-outcome failure kind', async () => {
+    const { client } = newClient([{ status: 425, body: '{"code":425}' }]);
+    const result = await create(client, new AttemptContext());
+    expect(result).toBeInstanceOf(RetryError);
+    expect((result as RetryError).failure.kind).toBe('AVAILABILITY');
+  });
+
+  it.each([
+    { status: 400, body: '', bodyError: 'transport' },
+    { status: 400, body: '', bodyError: 'tooLarge' },
+  ] as ZoomAnswer[])('treats an unreadable refusal body as an unknown outcome: %j', async answer => {
+    const { client, requests } = newClient([answer, created]);
+    const context = new AttemptContext();
+    expect(await create(client, context)).toBeInstanceOf(RetryError);
+    expect(context.marker).toMatchObject({ state: 'claimed' });
+    context.attempt = 2;
+    expect(await create(client, context)).toMatchObject({ branch: 'created' });
+    expect(requests).toHaveLength(2);
+  });
+
+  it('selects uncertain for invalid credentials after a possible send', async () => {
+    const { client, requests } = newClient([serverFailure]);
+    const context = new AttemptContext();
+    expect(await create(client, context)).toBeInstanceOf(RetryError);
+    context.attempt = 2;
+    const { client: invalidClient } = newClient([serverFailure], true, '');
+    expect(await create(invalidClient, context)).toMatchObject({ branch: 'uncertain' });
     expect(requests).toHaveLength(1);
   });
 

@@ -185,9 +185,10 @@ been verified against a live Zoom account.
 | 429 with Zoom's documented daily-limit message | `providerRejected` with a connector-owned rate-limit message (or `uncertain` after an earlier possible send) |
 | Other 429, including per-second and unrecognized messages, or 503 | Checkpoint permission to retry after Zoom's delay when supplied; retry exhaustion fails the Flow |
 | DNS, connect, or TLS failure before any connection opened | Retry |
-| Timeout, dropped connection, 3xx, 408, 409, another 4xx, or another 5xx after dispatch | Retry and resend below the send cap; `uncertain` at the cap |
-| 2xx whose body is oversized, unreadable, malformed, or reflects the credential | Retry and resend below the send cap; `uncertain` at the cap |
-| 2xx with a meeting ID but an otherwise unusable meeting | `uncertain`, without another create |
+| Timeout, dropped connection, 3xx, 408, 409, another 4xx, another 5xx, or an error status whose body is oversized or unreadable, after dispatch | Retry and resend below the send cap; `uncertain` at the cap |
+| Error status whose body names a created meeting ID | Checkpoint the ID and read the meeting back, without another create |
+| 2xx whose body is oversized, unreadable, malformed, reflects the credential, or has a meeting ID but an otherwise unusable meeting | `uncertain`, without another create, because Zoom created the meeting |
+| Invalid credentials or an unbuildable request after an earlier possible send | `uncertain`, without another create |
 | Later attempt with an accepted meeting ID checkpoint | Read the meeting back; transient read failure retries without another create |
 | Later attempt at the send cap without a meeting ID | `uncertain`, without another create |
 | Later attempt after a possible send whose start time has passed | `uncertain`, without another create |

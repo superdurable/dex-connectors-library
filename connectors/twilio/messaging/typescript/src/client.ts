@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { SecretString, resolveCredentialAfterRejection, type Call, type CredentialProvider, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import type { Config, Credentials, Message } from './generated/models.js';
 import { GetMessageOperation, SendMessageOperation } from './operations.js';
@@ -119,7 +119,7 @@ export class TwilioClient {
     const body = form ? Buffer.from(encodeGoForm(form), 'utf8') : undefined;
     const request: ProviderRequest = {
       url, method, headers: { Authorization: `Basic ${Buffer.from(`${authorization.username}:${authorization.password}`).toString('base64')}`, Accept: 'application/json', ...(body ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}) },
-      ...(body ? { body } : {}), maxResponseBytes: Math.max(this.maxResponseBytes, MaxErrorBodyBytes),
+      ...(body ? { body } : {}), maxResponseBytes: Math.max(this.maxResponseBytes, MaxErrorBodyBytes), maxErrorResponseBytes: MaxErrorBodyBytes,
       addressPolicy: this.addressPolicy, timeoutMs: requestTimeoutMs, signal: signal ?? call.context.cancellationSignal,
     };
     try {
@@ -127,8 +127,11 @@ export class TwilioClient {
       return { response, isTooLarge: response.status >= 200 && response.status < 300 && response.body.length > this.maxResponseBytes, isBodyReadFailed: false };
     } catch (error) {
       if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers) {
-        if (error.status < 200 || error.status >= 300) return { response: { status: error.status, headers: error.headers, body: Buffer.alloc(0) }, isTooLarge: false, isBodyReadFailed: false };
         return { response: { status: error.status, headers: error.headers, body: Buffer.alloc(0) }, isTooLarge: true, isBodyReadFailed: false };
+      }
+      // Headers arrived before the body failed, so the status still decides whether Twilio applied the request.
+      if ((error instanceof ProviderTransportError && !error.isProvablyNotSent || error instanceof ProviderStalledError) && error.status !== undefined && error.status >= 100) {
+        return { response: { status: error.status, headers: error.headers ?? {}, body: Buffer.alloc(0) }, isTooLarge: false, isBodyReadFailed: true };
       }
       const safe = error instanceof Error ? error : new Error('Twilio transport failed');
       return { error: safe, isProvablyNotSent: error instanceof AddressRefusal || (error instanceof ProviderTransportError && error.isProvablyNotSent) };

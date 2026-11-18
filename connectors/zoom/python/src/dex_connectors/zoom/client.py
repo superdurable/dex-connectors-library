@@ -234,7 +234,7 @@ class Client:
                 status=response.status_code,
                 headers=response.headers,
                 is_dispatched=True,
-                is_body_too_large=200 <= response.status_code < 300,
+                is_body_too_large=True,
             )
         except ProviderTransportError:
             return Exchange(

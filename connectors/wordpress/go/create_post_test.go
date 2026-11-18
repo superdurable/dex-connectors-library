@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -109,17 +110,64 @@ func TestCreatePostResendsUnknownOutcomeBelowCap(t *testing.T) {
 	}
 }
 
-func TestCreatePostResendsMalformedSuccessBelowCap(t *testing.T) {
-	server, requests := newScriptedServer(t, []int{http.StatusCreated, http.StatusCreated}, []string{`not JSON`, createdPostBody})
+func TestCreatePostNeverResendsAnAcceptedUnreadableResponse(t *testing.T) {
+	for _, body := range []string{`not JSON`, `{}`, `{"id":43,"content":"` + strings.Repeat("x", 200) + `"}`} {
+		t.Run(body, func(t *testing.T) {
+			server, requests := newScriptedServer(t, []int{http.StatusCreated}, []string{body})
+			client, err := New(Config{SiteURL: server.URL, MaxResponseBytes: 128}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: Credentials{Username: "editor", ApplicationPassword: sdkgo.NewSecretString("abcd efgh")}})
+			require.NoError(t, err)
+			ctx := singledispatchtest.NewContext("malformed-flow", "create-post-step")
+			uncertain, err := sdkgo.RunMutation(ctx, client.CreatePost(), testConnection, testCreateInput)
+			require.NoError(t, err, "WordPress accepted the post, so a resend could duplicate it")
+			require.Equal(t, CreatePostBranchUncertain, uncertain.Branch)
+			require.Equal(t, 1, *requests)
+		})
+	}
+}
+
+func TestCreatePostAcceptedBodyBreaksAfterHeadersSelectsUncertain(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.Header().Set("Content-Length", "100")
+		w.WriteHeader(http.StatusCreated)
+		_, err := fmt.Fprint(w, `{"id":`)
+		require.NoError(t, err)
+		w.(http.Flusher).Flush()
+		connection, _, err := w.(http.Hijacker).Hijack()
+		require.NoError(t, err)
+		require.NoError(t, connection.Close())
+	}))
+	defer server.Close()
 	client := newTestClient(t, server.URL)
-	ctx := singledispatchtest.NewContext("malformed-flow", "create-post-step")
+	uncertain, err := sdkgo.RunMutation(singledispatchtest.NewContext("body-breaks-flow", "create-post-step"), client.CreatePost(), testConnection, testCreateInput)
+	require.NoError(t, err)
+	require.Equal(t, CreatePostBranchUncertain, uncertain.Branch)
+	require.Equal(t, 1, requests)
+}
+
+func TestCreatePostUnlistedErrorWithAPostIDIsNeverResent(t *testing.T) {
+	server, requests := newScriptedServer(t, []int{http.StatusConflict}, []string{createdPostBody})
+	client := newTestClient(t, server.URL)
+	uncertain, err := sdkgo.RunMutation(singledispatchtest.NewContext("conflict-id-flow", "create-post-step"), client.CreatePost(), testConnection, testCreateInput)
+	require.NoError(t, err)
+	require.Equal(t, CreatePostBranchUncertain, uncertain.Branch)
+	require.Equal(t, 1, *requests)
+}
+
+func TestCreatePostInvalidCredentialsAfterPossibleSendSelectUncertain(t *testing.T) {
+	server, requests := newScriptedServer(t, []int{http.StatusInternalServerError}, []string{`{}`})
+	client := newTestClient(t, server.URL)
+	ctx := singledispatchtest.NewContext("invalid-credential-flow", "create-post-step")
 	_, err := sdkgo.RunMutation(ctx, client.CreatePost(), testConnection, testCreateInput)
 	require.Error(t, err)
 	ctx.AdvanceAttempt()
-	created, err := sdkgo.RunMutation(ctx, client.CreatePost(), testConnection, testCreateInput)
+	invalid, err := New(Config{SiteURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {Username: "bad:user", ApplicationPassword: sdkgo.NewSecretString("abcdefgh")}})
 	require.NoError(t, err)
-	require.Equal(t, CreatePostBranchCreated, created.Branch)
-	require.Equal(t, 2, *requests)
+	uncertain, err := sdkgo.RunMutation(ctx, invalid.CreatePost(), testConnection, testCreateInput)
+	require.NoError(t, err)
+	require.Equal(t, CreatePostBranchUncertain, uncertain.Branch)
+	require.Equal(t, 1, *requests)
 }
 
 func TestCreatePostSelectsUncertainAtCap(t *testing.T) {

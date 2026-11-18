@@ -143,8 +143,17 @@ class _MessageSend:
             pass  # The branch is terminal, so a lost canResend checkpoint cannot cause a resend.
         return _branch(self.operation, "providerRejected", kind, message)
 
-    async def local_failure(self, kind: FailureKind, message: str) -> MutationAttempt[SentMessage]:
-        """Select defect only when no earlier send may have delivered."""
+    async def local_failure(
+        self, is_terminal: bool, kind: FailureKind, message: str
+    ) -> MutationAttempt[SentMessage]:
+        """Select defect only when no earlier send may have delivered.
+
+        After a possible send, a terminal failure selects uncertain and a transient one returns Retry.
+        """
+        if self.has_possible_earlier_send and is_terminal:
+            return _uncertain(
+                self.operation, kind, message + "; an earlier attempt may have sent the WhatsApp message"
+            )
         if self.has_possible_earlier_send:
             # notSent would hide the earlier possible send, so nothing is recorded.
             return _retry(self.operation, kind, message + "; no message was sent in this attempt")
@@ -207,12 +216,17 @@ async def _send_message(
     )
     try:
         credentials = await client.credentials.resolve(call)
+    except (ValueError, LookupError, OSError, AttributeError):
+        return await attempt.local_failure(
+            False, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
+        )
+    try:
         token = credentials.access_token.reveal()
         if not is_header_safe_credential(token):
             raise ValueError("invalid system-user token")
-    except (ValueError, LookupError, OSError, AttributeError):
+    except (ValueError, AttributeError):
         return await attempt.local_failure(
-            FailureKind.AUTHENTICATION, "connection credentials are unavailable or invalid"
+            True, FailureKind.AUTHENTICATION, "connection credentials are invalid"
         )
     try:
         request = client.http_client.build_request(
@@ -226,7 +240,9 @@ async def _send_message(
             },
         )
     except (ValueError, httpx.HTTPError):
-        return await attempt.local_failure(FailureKind.LOCAL_DEFECT, "message request could not be built")
+        return await attempt.local_failure(
+            True, FailureKind.LOCAL_DEFECT, "message request could not be built"
+        )
     try:
         response = await fence.dispatch(_MessageDispatch(client.http_client, request).send)
     except (CheckpointError, InsufficientAttemptTimeError):
@@ -260,9 +276,7 @@ async def _classify_response(
     graph_error = decode_graph_error(body) if body is not None and 400 <= status < 500 else None
     # A Graph or Cloud API throttling code means Meta refused the send before processing it.
     is_rate_limited = status == 429 or (graph_error is not None and graph_error.is_throttled)
-    # A Graph 4xx marked is_transient is a transient refusal, not a definite one.
-    is_transient_refusal = graph_error is not None and graph_error.is_transient
-    if is_rate_limited or is_transient_refusal or status == 503:
+    if is_rate_limited or status == 503:
         try:
             await attempt.fence.record_can_resend()
         except Exception:
@@ -270,31 +284,43 @@ async def _classify_response(
         kind = FailureKind.RATE_LIMIT if is_rate_limited else FailureKind.AVAILABILITY
         return _retry(operation, kind, "Meta did not process the send", retry_after)
     message_id, is_complete = _read_sent_message_id(body) if body is not None else ("", False)
-    if status in _DEFINITE_REFUSAL_STATUSES:
-        if message_id:
-            # The body reports an accepted message, so a resend could duplicate it.
-            return _uncertain(operation, FailureKind.PROTOCOL, "Meta returned a contradictory send response")
+    if 200 <= status < 300:
+        # Meta accepted the message, so a resend could duplicate it.
+        if body is None:
+            return _uncertain(
+                operation,
+                FailureKind.TRANSPORT,
+                "Meta accepted the message, but its response could not be read",
+            )
+        if not message_id:
+            return _uncertain(
+                operation, FailureKind.PROTOCOL, "Meta accepted the message, but its response is malformed"
+            )
+        if not is_complete:
+            return _uncertain(operation, FailureKind.PROTOCOL, "Meta send response is incomplete")
+        try:
+            await attempt.fence.record_provider_id(message_id)
+        except Exception:
+            pass  # A lost provider-ID checkpoint leaves the claim, which still counts this send.
+        return MutationAttempt.branch_result("sent", SentMessage(message_id), Receipt())
+    if message_id:
+        # The body reports an accepted message, so a resend could duplicate it.
+        return _uncertain(operation, FailureKind.PROTOCOL, "Meta returned a contradictory send response")
+    # is_transient does not prove Meta skipped the send, so the outcome is unknown.
+    if graph_error is not None and graph_error.is_transient:
+        return attempt.resend_or_select_uncertain(
+            FailureKind.AVAILABILITY,
+            "Meta reported a transient error; the message may have been sent",
+            retry_after,
+        )
+    # An unreadable or oversized body cannot prove a refusal.
+    if body is not None and status in _DEFINITE_REFUSAL_STATUSES:
         return await attempt.reject_or_select_uncertain(
             _rejection_kind(status), f"Meta rejected HTTP {status}"
         )
-    if not 200 <= status < 300:
-        return attempt.resend_or_select_uncertain(
-            FailureKind.AVAILABILITY, f"Meta message outcome is unknown after HTTP {status}", retry_after
-        )
-    if body is None:
-        return attempt.resend_or_select_uncertain(
-            FailureKind.TRANSPORT, "Meta send response could not be read"
-        )
-    if not message_id:
-        return attempt.resend_or_select_uncertain(FailureKind.PROTOCOL, "Meta send response is malformed")
-    if not is_complete:
-        # Meta returned a wamid, so a resend could duplicate the message.
-        return _uncertain(operation, FailureKind.PROTOCOL, "Meta send response is incomplete")
-    try:
-        await attempt.fence.record_provider_id(message_id)
-    except Exception:
-        pass  # A lost provider-ID checkpoint leaves the claim, which still counts this send.
-    return MutationAttempt.branch_result("sent", SentMessage(message_id), Receipt())
+    return attempt.resend_or_select_uncertain(
+        FailureKind.AVAILABILITY, f"Meta message outcome is unknown after HTTP {status}", retry_after
+    )
 
 
 class SendTextMessageOperation:

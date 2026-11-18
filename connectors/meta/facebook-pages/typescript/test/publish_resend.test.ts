@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { FacebookPagesClient } from '../src/client.js';
 import { PublishTextPostDefinition } from '../src/generated/definitions.js';
 import type { PublishedPost } from '../src/generated/models.js';
@@ -28,18 +28,22 @@ class AttemptContext {
   async recordHeartbeat(value: unknown): Promise<void> { this.marker = value; }
 }
 
-interface MetaAnswer { status: number; body: string }
+interface MetaAnswer { status: number; body: string; bodyError?: 'transport' | 'stalled' | 'tooLarge' }
 
 const published: MetaAnswer = { status: 200, body: '{"id":"123456789_987654321"}' };
 const serverFailure: MetaAnswer = { status: 500, body: '{"error":{"message":"unknown"}}' };
 
-function newClient(answers: MetaAnswer[], token = 'synthetic-page-token') {
+function newClient(answers: MetaAnswer[], token = 'synthetic-page-token', maxResponseBytes?: number) {
   const requests: ProviderRequest[] = [];
   const resolve = async () => ({ pageAccessToken: new SecretString(token) });
-  const client = new FacebookPagesClient({ baseUrl: 'http://127.0.0.1:12345/v25.0' } as never, { resolve }, {
+  const config = { baseUrl: 'http://127.0.0.1:12345/v25.0', ...(maxResponseBytes === undefined ? {} : { maxResponseBytes }) };
+  const client = new FacebookPagesClient(config as never, { resolve }, {
     send: async (request: ProviderRequest) => {
       requests.push(request);
-      const { status, body } = answers[Math.min(requests.length - 1, answers.length - 1)]!;
+      const { status, body, bodyError } = answers[Math.min(requests.length - 1, answers.length - 1)]!;
+      if (bodyError === 'transport') throw new ProviderTransportError(false, status, {});
+      if (bodyError === 'stalled') throw new ProviderStalledError(status, {});
+      if (bodyError === 'tooLarge') throw new BodyTooLargeError(status, {});
       return { status, headers: {}, body: Buffer.from(body) };
     },
   });
@@ -56,7 +60,7 @@ async function publish(client: FacebookPagesClient, context: AttemptContext, max
 }
 
 describe('Facebook Pages bounded resend of unconfirmed posts', () => {
-  it.each([[500, ''], [502, ''], [408, ''], [409, ''], [425, ''], [418, ''], [200, '{}']])('resends an unknown HTTP %i outcome below the send cap', async (status, body) => {
+  it.each([[500, ''], [502, ''], [408, ''], [409, ''], [425, ''], [418, ''], [400, '{"error":{"code":2,"is_transient":true}}']])('resends an unknown HTTP %i outcome below the send cap', async (status, body) => {
     const { client, requests } = newClient([{ status, body }, published]);
     const context = new AttemptContext();
     expect(await publish(client, context)).toBeInstanceOf(RetryError);
@@ -102,11 +106,61 @@ describe('Facebook Pages bounded resend of unconfirmed posts', () => {
     expect(context.marker).toMatchObject({ state: 'canResend' });
   });
 
-  it('retries a transient Graph refusal after checkpointing canResend', async () => {
-    const { client } = newClient([{ status: 400, body: '{"error":{"code":2,"is_transient":true}}' }]);
+  it('treats a transient Graph error as unknown and selects uncertain at the send cap', async () => {
+    const { client, requests } = newClient([{ status: 400, body: '{"error":{"code":2,"is_transient":true}}' }]);
+    const context = new AttemptContext();
+    for (let attempt = 1; attempt < sendCap; attempt++) {
+      context.attempt = attempt;
+      expect(await publish(client, context)).toBeInstanceOf(RetryError);
+      expect(context.marker).toMatchObject({ state: 'claimed' });
+    }
+    context.attempt = sendCap;
+    expect(await publish(client, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(3);
+  });
+
+  it.each([
+    [{ status: 200, body: '{}' }, undefined],
+    [{ status: 200, body: 'not JSON' }, undefined],
+    [{ status: 200, body: `{"id":"${'1'.repeat(80)}"}` }, 64],
+    [{ status: 200, body: '', bodyError: 'transport' }, undefined],
+    [{ status: 200, body: '', bodyError: 'stalled' }, undefined],
+    [{ status: 200, body: '', bodyError: 'tooLarge' }, undefined],
+  ] as Array<[MetaAnswer, number | undefined]>)('never resends an accepted post whose response is unreadable: %j', async (answer, maxResponseBytes) => {
+    const { client, requests } = newClient([answer], 'synthetic-page-token', maxResponseBytes);
+    expect(await publish(client, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it.each([
+    [{ status: 400, body: '', bodyError: 'transport' }, undefined],
+    [{ status: 400, body: `{"error":{"code":100,"message":"${'x'.repeat(100)}"}}` }, 64],
+  ] as Array<[MetaAnswer, number | undefined]>)('treats an unreadable client error as unknown: %j', async (answer, maxResponseBytes) => {
+    const { client, requests } = newClient([answer, published], 'synthetic-page-token', maxResponseBytes);
     const context = new AttemptContext();
     expect(await publish(client, context)).toBeInstanceOf(RetryError);
-    expect(context.marker).toMatchObject({ state: 'canResend' });
+    expect(context.marker).toMatchObject({ state: 'claimed' });
+    context.attempt = 2;
+    expect(await publish(client, context)).toMatchObject({ branch: 'published' });
+    expect(requests).toHaveLength(2);
+  });
+
+  it('selects uncertain for an unlisted client error that reports a post ID', async () => {
+    const { client, requests } = newClient([{ status: 409, body: published.body }]);
+    expect(await publish(client, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('selects uncertain for a refusal after a rate-limited resend', async () => {
+    const { client, requests } = newClient([serverFailure, { status: 429, body: '' }, { status: 400, body: '{"error":{"code":100}}' }]);
+    const context = new AttemptContext();
+    for (const attempt of [1, 2]) {
+      context.attempt = attempt;
+      expect(await publish(client, context)).toBeInstanceOf(RetryError);
+    }
+    context.attempt = 3;
+    expect(await publish(client, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(3);
   });
 
   it('selects uncertain for a refusal of a resend after a possible send', async () => {
@@ -135,13 +189,13 @@ describe('Facebook Pages bounded resend of unconfirmed posts', () => {
     expect(requests).toHaveLength(0);
   });
 
-  it('retries a credential failure after a possible send and selects defect before any send', async () => {
+  it('selects uncertain for invalid credentials after a possible send and defect before any send', async () => {
     const { client, requests } = newClient([serverFailure]);
     const context = new AttemptContext();
     expect(await publish(client, context)).toBeInstanceOf(RetryError);
     context.attempt = 2;
     const { client: invalidClient } = newClient([serverFailure], 'bad\ntoken');
-    expect(await publish(invalidClient, context)).toBeInstanceOf(RetryError);
+    expect(await publish(invalidClient, context)).toMatchObject({ branch: 'uncertain' });
     expect(requests).toHaveLength(1);
     expect(await publish(invalidClient, new AttemptContext())).toMatchObject({ branch: 'defect' });
   });

@@ -140,15 +140,25 @@ class PublishTextPostOperation:
         has_possible_earlier_send = decision.prior_send_upper_bound > 0
         try:
             credential = await self.client.credentials.resolve(call)
-            access_token = credential.page_access_token.reveal()
-            if not is_header_safe_credential(access_token):
-                raise ValueError("invalid Page token")
         except (ValueError, LookupError, OSError, AttributeError):
             return await _local_failure(
                 fence,
                 has_possible_earlier_send,
+                False,
                 FailureKind.AUTHENTICATION,
-                "connection credentials are unavailable or invalid",
+                "connection credentials are unavailable",
+            )
+        try:
+            access_token = credential.page_access_token.reveal()
+            if not is_header_safe_credential(access_token):
+                raise ValueError("invalid Page token")
+        except (ValueError, AttributeError):
+            return await _local_failure(
+                fence,
+                has_possible_earlier_send,
+                True,
+                FailureKind.AUTHENTICATION,
+                "connection credentials are invalid",
             )
         try:
             request = self.client.http_client.build_request(
@@ -164,7 +174,11 @@ class PublishTextPostOperation:
             )
         except (ValueError, httpx.HTTPError):
             return await _local_failure(
-                fence, has_possible_earlier_send, FailureKind.LOCAL_DEFECT, "post request could not be built"
+                fence,
+                has_possible_earlier_send,
+                True,
+                FailureKind.LOCAL_DEFECT,
+                "post request could not be built",
             )
         try:
             response = await fence.dispatch(_PublishDispatch(self.client.http_client, request).send)
@@ -194,9 +208,7 @@ class PublishTextPostOperation:
             graph_error = decode_graph_error(body) if body is not None and 400 <= status < 500 else None
             # A Graph throttling code means Meta refused the post before processing it.
             is_rate_limited = status == 429 or (graph_error is not None and graph_error.is_throttled)
-            # A Graph 4xx marked is_transient is a transient refusal, not a definite one.
-            is_transient_refusal = graph_error is not None and graph_error.is_transient
-            if is_rate_limited or is_transient_refusal or status == 503:
+            if is_rate_limited or status == 503:
                 try:
                     await fence.record_can_resend()
                 except Exception:
@@ -204,35 +216,43 @@ class PublishTextPostOperation:
                 kind = FailureKind.RATE_LIMIT if is_rate_limited else FailureKind.AVAILABILITY
                 return _retry(kind, "Meta did not process the post", retry_after)
             accepted_post_id = _read_post_id(body) if body is not None else ""
-            if status in _DEFINITE_REFUSAL_STATUSES:
-                if accepted_post_id:
-                    # The body reports a created post, so a resend could duplicate it.
-                    return _uncertain(FailureKind.PROTOCOL, "Meta returned a contradictory publish response")
-                return await _reject_or_select_uncertain(
-                    fence, has_possible_earlier_send, _rejection_kind(status), f"Meta rejected HTTP {status}"
-                )
-            if not 200 <= status < 300:
+            if 200 <= status < 300:
+                # Meta accepted the post, so a resend could duplicate it.
+                if body is None:
+                    return _uncertain(
+                        FailureKind.TRANSPORT, "Meta accepted the post, but its response could not be read"
+                    )
+                if not accepted_post_id:
+                    return _uncertain(
+                        FailureKind.PROTOCOL, "Meta accepted the post, but its response is malformed"
+                    )
+                try:
+                    await fence.record_provider_id(accepted_post_id)
+                except Exception:
+                    pass  # A lost provider-ID checkpoint leaves the claim, which still counts this send.
+                return MutationAttempt.branch_result("published", PublishedPost(accepted_post_id), Receipt())
+            if accepted_post_id:
+                # The body reports a created post, so a resend could duplicate it.
+                return _uncertain(FailureKind.PROTOCOL, "Meta returned a contradictory publish response")
+            # is_transient does not prove Meta skipped the post, so the outcome is unknown.
+            if graph_error is not None and graph_error.is_transient:
                 return _resend_or_select_uncertain(
                     can_resend_unknown_outcome,
                     FailureKind.AVAILABILITY,
-                    f"Meta publish outcome is unknown after HTTP {status}",
+                    "Meta reported a transient error; the post may have been published",
                     retry_after,
                 )
-            if body is None:
-                return _resend_or_select_uncertain(
-                    can_resend_unknown_outcome,
-                    FailureKind.TRANSPORT,
-                    "Meta publish response could not be read",
+            # An unreadable or oversized body cannot prove a refusal.
+            if body is not None and status in _DEFINITE_REFUSAL_STATUSES:
+                return await _reject_or_select_uncertain(
+                    fence, has_possible_earlier_send, _rejection_kind(status), f"Meta rejected HTTP {status}"
                 )
-            if not accepted_post_id:
-                return _resend_or_select_uncertain(
-                    can_resend_unknown_outcome, FailureKind.PROTOCOL, "Meta publish response is malformed"
-                )
-            try:
-                await fence.record_provider_id(accepted_post_id)
-            except Exception:
-                pass  # A lost provider-ID checkpoint leaves the claim, which still counts this send.
-            return MutationAttempt.branch_result("published", PublishedPost(accepted_post_id), Receipt())
+            return _resend_or_select_uncertain(
+                can_resend_unknown_outcome,
+                FailureKind.AVAILABILITY,
+                f"Meta publish outcome is unknown after HTTP {status}",
+                retry_after,
+            )
         finally:
             await response.aclose()
 
@@ -281,9 +301,14 @@ async def _reject_or_select_uncertain(
 
 
 async def _local_failure(
-    fence: Fence, has_possible_earlier_send: bool, kind: FailureKind, message: str
+    fence: Fence, has_possible_earlier_send: bool, is_terminal: bool, kind: FailureKind, message: str
 ) -> MutationAttempt[PublishedPost]:
-    """Select defect only when no earlier send may have published."""
+    """Select defect only when no earlier send may have published.
+
+    After a possible send, a terminal failure selects uncertain and a transient one returns Retry.
+    """
+    if has_possible_earlier_send and is_terminal:
+        return _uncertain(kind, message + "; an earlier attempt may have published the post")
     if has_possible_earlier_send:
         # notSent would hide the earlier possible send, so nothing is recorded.
         return _retry(kind, message + "; no post was sent in this attempt")

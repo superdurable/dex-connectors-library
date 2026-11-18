@@ -346,14 +346,16 @@ class SchedulePostOperation:
             return await _local_schedule_failure(
                 fence,
                 has_possible_earlier_send,
+                True,
                 FailureKind.AUTHENTICATION,
                 "connection credentials require reauthorization",
             )
         if error:
-            try:
-                await fence.record_not_sent()
-            except Exception:
-                pass  # Without notSent the next attempt counts this attempt as a possible send.
+            if not has_possible_earlier_send:
+                try:
+                    await fence.record_not_sent()
+                except Exception:
+                    pass  # Without notSent the next attempt counts this attempt as a possible send.
             return _mutation_retry(FailureKind.TRANSPORT, "connection refresh failed")
         payload = {
             "text": input.text,
@@ -389,21 +391,9 @@ class SchedulePostOperation:
                 return _mutation_retry(FailureKind.AVAILABILITY, "Hootsuite retry checkpoint is unavailable")
             kind = FailureKind.RATE_LIMIT if exchange.status == 429 else FailureKind.AVAILABILITY
             return _mutation_retry(kind, "Hootsuite did not schedule the message", exchange.retry_after)
-        is_definite_refusal_status = exchange.status in _DEFINITE_REFUSAL_STATUSES
-        if not is_definite_refusal_status and not 200 <= exchange.status < 300:
-            return _resend_or_select_uncertain(
-                can_resend_unknown_outcome,
-                FailureKind.AVAILABILITY,
-                f"Hootsuite schedule outcome is unknown after HTTP {exchange.status}",
-                exchange.retry_after,
-            )
-        if exchange.error:
-            return _resend_or_select_uncertain(
-                can_resend_unknown_outcome,
-                FailureKind.TRANSPORT,
-                "Hootsuite schedule response could not be read",
-            )
-        document = _document(exchange.body)
+        is_success_status = 200 <= exchange.status < 300
+        is_body_readable = not exchange.error
+        document = _document(exchange.body) if is_body_readable else None
         data = document.get("data") if document else None
         # A message ID in the body means Hootsuite scheduled the message.
         is_accepted = (
@@ -413,21 +403,35 @@ class SchedulePostOperation:
             and isinstance(data[0].get("id"), str)
             and bool(data[0]["id"])
         )
-        if is_definite_refusal_status:
-            if is_accepted:
-                return _mutation_uncertain(
-                    FailureKind.PROTOCOL, "Hootsuite returned a contradictory schedule response"
+        if is_success_status and not is_body_readable:
+            # Hootsuite accepted the request, so a resend could duplicate the message.
+            return _mutation_uncertain(
+                FailureKind.TRANSPORT, "Hootsuite accepted the request, but its response could not be read"
+            )
+        if is_success_status and not is_accepted:
+            return _mutation_uncertain(
+                FailureKind.PROTOCOL, "Hootsuite accepted the request, but its response is malformed"
+            )
+        if not is_success_status and is_accepted:
+            return _mutation_uncertain(
+                FailureKind.PROTOCOL, "Hootsuite returned a contradictory schedule response"
+            )
+        if not is_success_status:
+            # An unreadable or oversized error body cannot prove a refusal.
+            if is_body_readable and exchange.status in _DEFINITE_REFUSAL_STATUSES:
+                return await _reject_or_select_uncertain(
+                    fence,
+                    has_possible_earlier_send,
+                    _rejection_kind(exchange.status),
+                    f"Hootsuite rejected HTTP {exchange.status}",
                 )
-            return await _reject_or_select_uncertain(
-                fence,
-                has_possible_earlier_send,
-                _rejection_kind(exchange.status),
-                f"Hootsuite rejected HTTP {exchange.status}",
-            )
-        if not is_accepted or not isinstance(data, list):
             return _resend_or_select_uncertain(
-                can_resend_unknown_outcome, FailureKind.PROTOCOL, "Hootsuite schedule response is malformed"
+                can_resend_unknown_outcome,
+                FailureKind.AVAILABILITY,
+                f"Hootsuite schedule outcome is unknown after HTTP {exchange.status}",
+                exchange.retry_after,
             )
+        assert isinstance(data, list)
         try:
             await fence.record_provider_id(data[0]["id"])
         except Exception:
@@ -512,9 +516,14 @@ async def _reject_or_select_uncertain(
 
 
 async def _local_schedule_failure(
-    fence: Fence, has_possible_earlier_send: bool, kind: FailureKind, message: str
+    fence: Fence, has_possible_earlier_send: bool, is_terminal: bool, kind: FailureKind, message: str
 ) -> MutationAttempt[ScheduledPostReceipt]:
-    """Select defect only when no earlier send may have scheduled the message."""
+    """Select defect only when no earlier send may have scheduled the message.
+
+    After a possible send, a terminal failure selects uncertain and a transient one returns Retry.
+    """
+    if has_possible_earlier_send and is_terminal:
+        return _mutation_uncertain(kind, message + "; an earlier attempt may have scheduled the message")
     if has_possible_earlier_send:
         # notSent would hide the earlier possible send, so nothing is recorded.
         return _mutation_retry(kind, message + "; no message was scheduled in this attempt")

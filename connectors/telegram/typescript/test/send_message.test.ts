@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { TelegramClient } from '../src/client.js';
 import { SendMessageDefinition } from '../src/generated/definitions.js';
 import type { SentMessage } from '../src/generated/models.js';
@@ -28,7 +28,7 @@ class AttemptContext {
   async recordHeartbeat(value: unknown): Promise<void> { this.marker = value; }
 }
 
-interface TelegramAnswer { status: number; body: string }
+interface TelegramAnswer { status: number; body: string; bodyError?: 'transport' | 'stalled' | 'tooLarge' }
 
 const sent: TelegramAnswer = { status: 200, body: '{"ok":true,"result":{"message_id":52,"date":1794110000,"chat":{"id":-1001234567890}}}' };
 const serverFailure: TelegramAnswer = { status: 500, body: '{"ok":false,"error_code":500}' };
@@ -39,7 +39,10 @@ function newClient(answers: TelegramAnswer[], token = '123456:fake_test_token') 
   const client = new TelegramClient({ baseUrl: 'http://127.0.0.1:12345' } as never, { resolve }, {
     send: async (request: ProviderRequest) => {
       requests.push(request);
-      const { status, body } = answers[Math.min(requests.length - 1, answers.length - 1)]!;
+      const { status, body, bodyError } = answers[Math.min(requests.length - 1, answers.length - 1)]!;
+      if (bodyError === 'transport') throw new ProviderTransportError(false, status, {});
+      if (bodyError === 'stalled') throw new ProviderStalledError(status, {});
+      if (bodyError === 'tooLarge') throw new BodyTooLargeError(status, {});
       return { status, headers: {}, body: Buffer.from(body) };
     },
   });
@@ -87,12 +90,32 @@ describe('Telegram bounded resend of unconfirmed messages', () => {
     expect(requests).toHaveLength(1);
   });
 
-  it('resends a malformed success response below the send cap', async () => {
-    const { client } = newClient([{ status: 200, body: 'not JSON' }, sent]);
+  it.each([
+    { status: 200, body: 'not JSON' },
+    { status: 200, body: '{}' },
+    { status: 200, body: '', bodyError: 'transport' },
+    { status: 200, body: '', bodyError: 'stalled' },
+    { status: 200, body: '', bodyError: 'tooLarge' },
+  ] as TelegramAnswer[])('never resends an accepted message whose response is unreadable: %j', async answer => {
+    const { client, requests } = newClient([answer, sent]);
+    expect(await send(client, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('never resends an unlisted error response that reports acceptance', async () => {
+    const { client, requests } = newClient([{ status: 409, body: sent.body }]);
+    expect(await send(client, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('treats an unreadable refusal body as an unknown outcome', async () => {
+    const { client, requests } = newClient([{ status: 400, body: '', bodyError: 'transport' }, sent]);
     const context = new AttemptContext();
     expect(await send(client, context)).toBeInstanceOf(RetryError);
+    expect(context.marker).toMatchObject({ state: 'claimed' });
     context.attempt = 2;
     expect(await send(client, context)).toMatchObject({ branch: 'sent' });
+    expect(requests).toHaveLength(2);
   });
 
   it.each([400, 401, 403, 404, 413, 422])('never resends a definite HTTP %i refusal', async status => {
@@ -135,13 +158,13 @@ describe('Telegram bounded resend of unconfirmed messages', () => {
     expect(requests).toHaveLength(0);
   });
 
-  it('retries a credential failure after a possible send and selects defect before any send', async () => {
+  it('selects uncertain for an invalid token after a possible send and defect before any send', async () => {
     const { client, requests } = newClient([serverFailure]);
     const context = new AttemptContext();
     expect(await send(client, context)).toBeInstanceOf(RetryError);
     context.attempt = 2;
     const { client: invalidClient } = newClient([serverFailure], 'bad');
-    expect(await send(invalidClient, context)).toBeInstanceOf(RetryError);
+    expect(await send(invalidClient, context)).toMatchObject({ branch: 'uncertain' });
     expect(requests).toHaveLength(1);
     expect(await send(invalidClient, new AttemptContext())).toMatchObject({ branch: 'defect' });
   });

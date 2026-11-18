@@ -848,7 +848,7 @@
       "operation": "createPost"
     },
     {
-      "callId": "30c89916-7ab7-5184-895d-531268a4b96f",
+      "callId": "7952bb7c-c16c-5373-a3ac-70e1ad2f9244",
       "exchanges": [
         {
           "body": "{\"id\":0,\"status\":\"draft\"}",
@@ -876,26 +876,30 @@
         }
       ],
       "expected": {
-        "branch": "",
+        "branch": "uncertain",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
-          "callId": "30c89916-7ab7-5184-895d-531268a4b96f",
+          "callId": "7952bb7c-c16c-5373-a3ac-70e1ad2f9244",
           "sendCount": 1,
           "state": "claimed"
         },
+        "output": {
+          "id": 0,
+          "status": ""
+        },
         "requestCount": 1,
-        "retry": true,
+        "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
-      "idempotencyKey": "30c89916-7ab7-5184-895d-531268a4b96f",
+      "idempotencyKey": "7952bb7c-c16c-5373-a3ac-70e1ad2f9244",
       "input": {
         "content": "\u003cp\u003eDraft.\u003c/p\u003e",
         "status": "draft",
         "title": "Meridian release"
       },
-      "name": "createPost-invalid-confirmation",
+      "name": "createPost-invalid-confirmation-uncertain",
       "operation": "createPost"
     },
     {
@@ -1623,6 +1627,61 @@
       },
       "name": "listPosts-transport",
       "operation": "listPosts"
+    },
+    {
+      "callId": "153cb121-c32c-557a-8a30-6e74edece522",
+      "exchanges": [
+        {
+          "body": "{\"id\":47,\"status\":\"draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/posts",
+          "requestBody": {
+            "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Meridian release"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "153cb121-c32c-557a-8a30-6e74edece522",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "153cb121-c32c-557a-8a30-6e74edece522",
+      "input": {
+        "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+        "status": "draft",
+        "title": "Meridian release"
+      },
+      "name": "createPost-error-with-post-id-uncertain",
+      "operation": "createPost"
     }
   ],
   "schemaVersion": 1

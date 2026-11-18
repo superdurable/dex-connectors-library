@@ -115,12 +115,19 @@ class Client:
 
     async def resolve_bot_token(self, call: Call) -> str:
         """Read the token without exposing it through Flow state or failures."""
+        return (await self.resolve_bot_token_or_reason(call))[0]
+
+    async def resolve_bot_token_or_reason(self, call: Call) -> tuple[str, bool]:
+        """Return the token, or empty and whether the stored token is invalid rather than unavailable."""
         try:
             credentials = await self.credentials.resolve(call)
-            token = credentials.bot_token.reveal()
         except (ValueError, LookupError, OSError, AttributeError):
-            return ""
-        return token if _BOT_TOKEN.fullmatch(token) else ""
+            return "", False
+        try:
+            token = credentials.bot_token.reveal()
+        except (ValueError, AttributeError):
+            return "", True
+        return (token, False) if _BOT_TOKEN.fullmatch(token) else ("", True)
 
     async def request(self, request: httpx.Request) -> Exchange:
         """Send one request and classify read interruption separately from no send."""
@@ -208,13 +215,14 @@ class SendMessageOperation:
         can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
         # An earlier send may have created the message, so a refusal of a resend proves nothing.
         has_possible_earlier_send = decision.prior_send_upper_bound > 0
-        token = await self.client.resolve_bot_token(call)
+        token, is_invalid = await self.client.resolve_bot_token_or_reason(call)
         if not token:
             return await _local_send_failure(
                 fence,
                 has_possible_earlier_send,
+                is_invalid,
                 FailureKind.AUTHENTICATION,
-                "bot token is unavailable or invalid",
+                "bot token is invalid" if is_invalid else "bot token is unavailable",
             )
         try:
             request = self.client.http_client.build_request(
@@ -227,6 +235,7 @@ class SendMessageOperation:
             return await _local_send_failure(
                 fence,
                 has_possible_earlier_send,
+                True,
                 FailureKind.LOCAL_DEFECT,
                 "Telegram send request could not be built",
             )
@@ -259,38 +268,40 @@ class SendMessageOperation:
                 return _send_retry(FailureKind.AVAILABILITY, "Telegram retry checkpoint is unavailable")
             kind = FailureKind.RATE_LIMIT if exchange.status == 429 else FailureKind.AVAILABILITY
             return _send_retry(kind, "Telegram did not process the send", exchange.retry_after)
-        is_definite_refusal_status = exchange.status in _DEFINITE_REFUSAL_STATUSES
-        if not is_definite_refusal_status and not 200 <= exchange.status < 300:
+        is_success_status = 200 <= exchange.status < 300
+        is_body_readable = not exchange.error
+        try:
+            envelope = json.loads(exchange.body) if is_body_readable else None
+        except (ValueError, UnicodeDecodeError):
+            envelope = None
+        # Telegram refuses with an error status, so ok:true or a 2xx means it created the message.
+        is_accepted = isinstance(envelope, dict) and envelope.get("ok") is True
+        if is_success_status and not is_body_readable:
+            return _send_uncertain(
+                FailureKind.TRANSPORT, "Telegram accepted the message, but its response could not be read"
+            )
+        if is_success_status and not is_accepted:
+            return _send_uncertain(
+                FailureKind.PROTOCOL, "Telegram accepted the message, but its response is malformed"
+            )
+        if not is_success_status and is_accepted:
+            # The body reports acceptance, so a resend could duplicate the message.
+            return _send_uncertain(FailureKind.PROTOCOL, "Telegram returned a contradictory send response")
+        if not is_success_status:
+            # An unreadable or oversized error body cannot prove a refusal.
+            if is_body_readable and exchange.status in _DEFINITE_REFUSAL_STATUSES:
+                return await _reject_or_select_uncertain(
+                    fence,
+                    has_possible_earlier_send,
+                    _rejection_kind(exchange.status),
+                    f"Telegram rejected the message with HTTP {exchange.status}",
+                )
             return _resend_or_select_uncertain(
                 can_resend_unknown_outcome,
                 FailureKind.AVAILABILITY,
                 f"Telegram message outcome is unknown after HTTP {exchange.status}",
             )
-        if exchange.error:
-            return _resend_or_select_uncertain(
-                can_resend_unknown_outcome, FailureKind.TRANSPORT, "Telegram send response could not be read"
-            )
-        try:
-            envelope = json.loads(exchange.body)
-        except (ValueError, UnicodeDecodeError):
-            envelope = None
-        is_accepted = isinstance(envelope, dict) and envelope.get("ok") is True
-        if is_definite_refusal_status:
-            if is_accepted:
-                # The body reports acceptance, so a resend could duplicate the message.
-                return _send_uncertain(
-                    FailureKind.PROTOCOL, "Telegram returned a contradictory send response"
-                )
-            return await _reject_or_select_uncertain(
-                fence,
-                has_possible_earlier_send,
-                _rejection_kind(exchange.status),
-                f"Telegram rejected the message with HTTP {exchange.status}",
-            )
-        if not isinstance(envelope, dict) or not is_accepted:
-            return _resend_or_select_uncertain(
-                can_resend_unknown_outcome, FailureKind.PROTOCOL, "Telegram send response is malformed"
-            )
+        assert isinstance(envelope, dict)
         result = envelope.get("result")
         chat = result.get("chat") if isinstance(result, dict) else None
         if (
@@ -495,9 +506,14 @@ async def _reject_or_select_uncertain(
 
 
 async def _local_send_failure(
-    fence: Fence, has_possible_earlier_send: bool, kind: FailureKind, message: str
+    fence: Fence, has_possible_earlier_send: bool, is_terminal: bool, kind: FailureKind, message: str
 ) -> MutationAttempt[SentMessage]:
-    """Select defect only when no earlier send may have created the message."""
+    """Select defect only when no earlier send may have created the message.
+
+    After a possible send, a terminal failure selects uncertain and a transient one returns Retry.
+    """
+    if has_possible_earlier_send and is_terminal:
+        return _send_uncertain(kind, message + "; an earlier attempt may have sent the message")
     if has_possible_earlier_send:
         # notSent would hide the earlier possible send, so nothing is recorded.
         return _send_retry(kind, message + "; no message was sent in this attempt")

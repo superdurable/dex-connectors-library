@@ -106,6 +106,10 @@ func (operation SendGroupRobotMessageOperation) Invoke(call sdkgo.Call, input Se
 		hasPossibleEarlierSend: decision.MaximumPriorSends > 0,
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
+	if err != nil && post.hasPossibleEarlierSend {
+		// notSent would hide the earlier possible send, so nothing is recorded.
+		return retryGroupRobotPost(sdkgo.FailureAuthentication, "WeCom group robot credentials are unavailable; nothing was posted in this attempt", 0)
+	}
 	if err != nil || credentials.Validate() != nil {
 		return post.localFailure(sdkgo.FailureAuthentication, "WeCom group robot credentials are unavailable")
 	}
@@ -230,11 +234,12 @@ func (post groupRobotPost) rejectOrSelectUncertain(kind sdkgo.FailureKind, messa
 	return rejectedGroupRobotPost(SendGroupRobotMessageBranchProviderRejected, kind, message)
 }
 
-// localFailure selects defect only when no earlier send of this call may have posted.
+// localFailure selects defect only when no earlier send of this call may have posted. Every
+// caller reports a terminal failure, so after a possible send it selects uncertain.
 func (post groupRobotPost) localFailure(kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentGroupRobotMessage] {
 	if post.hasPossibleEarlierSend {
 		// notSent would hide the earlier possible send, so nothing is recorded.
-		return retryGroupRobotPost(kind, message+"; nothing was posted in this attempt", 0)
+		return uncertainGroupRobotPost(kind, message+"; an earlier attempt may have posted to the group chat")
 	}
 	// The branch is terminal, so a lost notSent checkpoint cannot cause a resend.
 	_ = post.fence.RecordNotSent()

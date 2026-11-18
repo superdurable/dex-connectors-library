@@ -7,7 +7,7 @@ import {
   type Query, type QueryAttempt,
 } from '@superdurable/connectors-sdk';
 import {
-  BodyTooLargeError, ProviderTransportError, parseRetryAfter, sendProviderRequest, validateBaseURL,
+  BodyTooLargeError, ProviderStalledError, ProviderTransportError, parseRetryAfter, sendProviderRequest, validateBaseURL,
   type ProviderRequest, type ProviderResponse,
 } from '@superdurable/connectors-sdk/providerhttp';
 import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
@@ -41,7 +41,7 @@ export interface WordPressExchange {
   /** Complete bounded response body. */ body: Uint8Array;
   /** Provider response headers used for pagination and retry. */ headers: ProviderResponse['headers'];
   /** Retry-After delay in milliseconds. */ retryAfterMs: number;
-  /** Safe transport or credential classification. */ error?: 'request' | 'tooLarge' | 'auth';
+  /** Safe transport or credential classification; read means the body failed after its status arrived. */ error?: 'request' | 'read' | 'tooLarge' | 'auth';
   /** Whether the request may have reached WordPress. */ requestSent: boolean;
 }
 
@@ -83,13 +83,21 @@ export class WordPressClient {
 
   /** Resolve a Basic authorization header without exposing the password in failures. */
   async authorization(call: Call): Promise<string | undefined> {
+    const resolution = await this.authorizationWithReason(call);
+    return 'header' in resolution ? resolution.header : undefined;
+  }
+
+  /** Resolve the Basic authorization header, separating unavailable from invalid credentials. */
+  async authorizationWithReason(call: Call): Promise<{ header: string } | { isInvalid: boolean }> {
+    let credentials: Credentials;
+    try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
+    catch { return { isInvalid: false }; }
     try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
       const username = credentials.username;
       const password = credentials.applicationPassword.reveal().replaceAll(' ', '');
-      if (!username || /[:\r\n\0]/.test(username) || !password || /[\r\n\0]/.test(password)) return undefined;
-      return `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
-    } catch { return undefined; }
+      if (!username || /[:\r\n\0]/.test(username) || !password || /[\r\n\0]/.test(password)) return { isInvalid: true };
+      return { header: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}` };
+    } catch { return { isInvalid: true }; }
   }
 
   /** Send one bounded REST request and retain positive no-send evidence. */
@@ -109,6 +117,10 @@ export class WordPressClient {
       if (error instanceof BodyTooLargeError)
         return { status: error.status ?? 0, body: new Uint8Array(), headers: error.headers ?? {},
           retryAfterMs: this.retryAfter(error.headers ?? {}), error: 'tooLarge', requestSent: true };
+      // Headers arrived before the body failed, so the status still decides whether WordPress created the post.
+      if ((error instanceof ProviderTransportError && !error.isProvablyNotSent || error instanceof ProviderStalledError) && error.status !== undefined && error.status >= 100)
+        return { status: error.status, body: new Uint8Array(), headers: error.headers ?? {},
+          retryAfterMs: this.retryAfter(error.headers ?? {}), error: 'read', requestSent: true };
       if (error instanceof ProviderTransportError)
         return { status: 0, body: new Uint8Array(), headers: {}, retryAfterMs: 0,
           error: 'request', requestSent: !error.isProvablyNotSent };
@@ -158,8 +170,9 @@ export class CreatePostOperation implements Mutation<CreatePostInput, CreatedPos
     const canResendUnknownOutcome = priorSendUpperBound + 1 < effectiveMaxSends(call, operationMaxSends);
     // An earlier send may have created the post, so a refusal of a resend proves nothing.
     const hasPossibleEarlierSend = priorSendUpperBound > 0;
-    const authorization = await this.client.authorization(call);
-    if (!authorization) return localCreateFailure(fence, hasPossibleEarlierSend, 'AUTHENTICATION');
+    const resolution = await this.client.authorizationWithReason(call);
+    if (!('header' in resolution)) return localCreateFailure(fence, hasPossibleEarlierSend, resolution.isInvalid, 'AUTHENTICATION');
+    const authorization = resolution.header;
     let exchange: WordPressExchange;
     try {
       exchange = await fence.dispatch(signal => this.client.exchange(call, 'POST',
@@ -184,18 +197,22 @@ export class CreatePostOperation implements Mutation<CreatePostInput, CreatedPos
       catch { return createRetry('AVAILABILITY'); }
       return createRetry(exchange.status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY', exchange.retryAfterMs);
     }
-    const isDefiniteRefusal = definiteRefusalStatuses.has(exchange.status);
-    if (!isDefiniteRefusal && (exchange.status < 200 || exchange.status >= 300))
-      return resendOrSelectUncertain(canResendUnknownOutcome, 'AVAILABILITY', exchange.retryAfterMs);
-    if (exchange.error) return resendOrSelectUncertain(canResendUnknownOutcome, 'TRANSPORT');
-    const body = parseJSON(exchange.body);
+    const isSuccessStatus = exchange.status >= 200 && exchange.status < 300;
+    const isBodyReadable = !exchange.error;
+    const body = isBodyReadable ? parseJSON(exchange.body) : undefined;
     // A positive post ID in the body means WordPress created the post.
     const isAccepted = isRecord(body) && Number.isSafeInteger(body.id) && (body.id as number) > 0;
-    if (isDefiniteRefusal) {
-      if (isAccepted) return createUncertain('PROTOCOL');
-      return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, rejectionKind(exchange.status));
+    // WordPress accepted the post, so a resend could duplicate it.
+    if (isSuccessStatus && !isBodyReadable) return createUncertain('TRANSPORT');
+    if (isSuccessStatus && !isAccepted) return createUncertain('PROTOCOL');
+    if (!isSuccessStatus && isAccepted) return createUncertain('PROTOCOL');
+    if (!isSuccessStatus) {
+      // An unreadable or oversized error body cannot prove a refusal.
+      if (isBodyReadable && definiteRefusalStatuses.has(exchange.status))
+        return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, rejectionKind(exchange.status));
+      return resendOrSelectUncertain(canResendUnknownOutcome, 'AVAILABILITY', exchange.retryAfterMs);
     }
-    if (!isAccepted || !isRecord(body)) return resendOrSelectUncertain(canResendUnknownOutcome, 'PROTOCOL');
+    if (!isRecord(body)) return createUncertain('PROTOCOL');
     const id = body.id as number;
     try { await fence.recordProviderId(String(id)); }
     catch { /* A lost provider-ID checkpoint leaves the claim, which still counts this send. */ }
@@ -226,9 +243,10 @@ async function rejectOrSelectUncertain(fence: ReturnType<typeof newFence>, hasPo
   return createFailure('providerRejected', kind);
 }
 
-/** Select defect only when no earlier send may have created the post. */
+/** Select defect only when no earlier send may have created the post; afterwards a terminal failure selects uncertain. */
 async function localCreateFailure(fence: ReturnType<typeof newFence>, hasPossibleEarlierSend: boolean,
-  kind: Failure['kind']): Promise<MutationAttempt<CreatedPost>> {
+  isTerminal: boolean, kind: Failure['kind']): Promise<MutationAttempt<CreatedPost>> {
+  if (hasPossibleEarlierSend && isTerminal) return createUncertain(kind);
   // notSent would hide the earlier possible send, so nothing is recorded.
   if (hasPossibleEarlierSend) return createRetry(kind);
   try { await fence.recordNotSent(); }
@@ -304,7 +322,7 @@ async function readPost(client: WordPressClient, call: Call, path: string): Prom
 function classifyQuery<T>(exchange: WordPressExchange, operation: 'getPost' | 'listPosts',
   empty: T): QueryAttempt<T> | undefined {
   if (exchange.error === 'auth') return queryFailure(operation, 'defect', 'AUTHENTICATION', empty);
-  if (exchange.error === 'request') return queryRetry(operation, 'AVAILABILITY');
+  if (exchange.error === 'request' || exchange.error === 'read') return queryRetry(operation, 'AVAILABILITY');
   if (exchange.status === 429) return queryRetry(operation, 'RATE_LIMIT', exchange.retryAfterMs);
   if (exchange.status === 408 || exchange.status === 409 || exchange.status >= 500)
     return queryRetry(operation, 'AVAILABILITY', exchange.retryAfterMs);
