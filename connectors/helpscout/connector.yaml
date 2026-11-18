@@ -196,8 +196,8 @@ spec:
       branches:
         - {id: replied, goName: Replied, description: "Help Scout created the reply or note and returned its thread ID."}
         - {id: notFound, goName: NotFound, description: "The conversation does not exist, was merged, or is not visible to the app's Help Scout user; nothing was added.", optional: true}
-        - {id: providerRejected, goName: ProviderRejected, description: "Help Scout conclusively rejected the thread, such as a locked conversation with 100 threads or an unknown customer; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The thread may exist: the send cap is reached after answers that were lost, a server error other than 503, an unlisted status, or a 2xx without a thread ID, or an accepted thread could not be confirmed by read-back. Without a thread ID, an unknown outcome is resent while the cap allows.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Help Scout conclusively rejected the thread with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as invalid text or an unknown customer; nothing was added.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The thread may exist: the send cap is reached after answers that were lost, a server error other than 503, or an unlisted status; Help Scout accepted the thread with a 2xx but no valid thread ID; an accepted thread could not be confirmed by read-back; or a refusal, local failure, or authorization failure followed a possible earlier send. Below the cap, an unknown outcome is resent.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -215,8 +215,8 @@ spec:
           failure: {kind: NOT_FOUND, message: "The conversation does not exist, was merged, or is not visible to the app's Help Scout user; nothing was added."}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "Matches a locked conversation with too many threads (HTTP 412)."
-          failure: {kind: PROVIDER_REJECTION, message: "Help Scout conclusively rejected the thread, such as a locked conversation with 100 threads or an unknown customer; nothing was added."}
+          description: "Matches a reply to an unknown customer (HTTP 422)."
+          failure: {kind: PROVIDER_REJECTION, message: "Help Scout conclusively rejected the thread, such as invalid text or an unknown customer; nothing was added."}
     - name: updateConversation
       goName: UpdateConversation
       inputType: UpdateConversationInput
@@ -249,8 +249,8 @@ spec:
           failure: {kind: NOT_FOUND, message: "The conversation does not exist, was merged, or is not visible to the app's Help Scout user."}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "Matches a locked conversation that refuses an update (HTTP 412)."
-          failure: {kind: PROVIDER_REJECTION, message: "Help Scout refused to change the locked conversation (HTTP 412)."}
+          description: "Matches an assignee who is not a user or team of the account (HTTP 422)."
+          failure: {kind: PROVIDER_REJECTION, message: "Help Scout rejected the assignee (HTTP 422)."}
         - name: invalidResponseFailure
           branch: invalidResponse
           description: "Matches an oversized conversation read before a status update."

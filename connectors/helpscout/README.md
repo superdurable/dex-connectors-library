@@ -162,21 +162,31 @@ operation uses the Connector SDK's single-dispatch fence with sync durability:
   classification; a short budget records `notSent` and returns Retry;
 - a `429`, `503`, or a traced DNS, connect, or TLS failure before a
   connection was obtained records `canResend` and returns Retry;
-- a `201` with a valid `Resource-Id` records the thread ID. If Dex retries
-  after acceptance, the connector lists that conversation's thread pages
-  and confirms the ID without another POST. A temporary read failure returns
+- a `201` with a valid `Resource-Id` records the thread ID, even when its
+  body is unreadable, oversized, or malformed. If Dex retries after
+  acceptance, the connector lists that conversation's thread pages and
+  confirms the ID without another POST. A temporary read failure returns
   Retry; an inconclusive read selects `uncertain`;
-- an accepted response without a valid ID, ambiguous transport failure,
+- a `2xx` without a valid `Resource-Id` was accepted but cannot be read back,
+  so it selects `uncertain` and is never resent;
+- an ambiguous transport failure, including the end of the write window,
   `3xx`, `408`, `409`, `410`, another unlisted status, or a `5xx` other than
   `503`, including the `504` Help Scout calls safe to retry, returns Retry so
   the next attempt resends while fewer sends than the cap may have taken
   effect, which can add a duplicate thread; the send that reaches the cap
   selects `uncertain`;
 - a `404`, or a merged conversation on the read before a reply, selects
-  `notFound`; a `400`, `401`, `403`, `411`, `412` or `423` for a locked
-  conversation, `413`, `414`, `415`, or `422` selects `providerRejected`.
+  `notFound`; a `400`, `401`, `403`, `411`, `413`, `414`, `415`, or `422`
+  selects `providerRejected`. A `412` or `423` for a locked conversation is
+  an unknown outcome like any other unlisted status.
   Each records `canResend` first, and nothing was added. After a possible
-  earlier send, any of these refusals selects `uncertain` instead.
+  earlier send, any of these refusals selects `uncertain` instead;
+- an earlier send is possible whenever the decision is not a plain first
+  send: a read-back decision, a saved thread ID, or any earlier claim, even
+  one a later `429` marked `canResend`. Then a credential, local, or
+  pre-send read failure records nothing: a transient one returns Retry, and
+  a terminal one selects `uncertain` instead of `defect`. Only a first send
+  records `notSent` before such a Retry or `defect`.
 
 Do not override this Step's Execute durability to async. Async local-phase
 heartbeats are not visible to later attempts, so the fence cannot prevent a
@@ -334,11 +344,11 @@ and the Receipt carries Help Scout's `logRef` for support.
 | 404 | `notFound` where declared, otherwise `providerRejected` |
 | 410 | `notFound` for reads; Retry for an `updateConversation` write; the fenced reply resends within the send cap |
 | 409, other unlisted 4xx | `providerRejected`, `CONFLICT` for reads; Retry for an `updateConversation` write; the fenced reply resends within the send cap, then selects `uncertain` |
-| 412, 423 | `providerRejected`, a locked conversation or customer |
+| 412, 423 | `providerRejected`, a locked conversation or customer, for reads; Retry for an `updateConversation` write; the fenced reply resends within the send cap, then selects `uncertain` |
 | 301 | `merged` for `getConversation`; the fenced reply resends within the send cap if its POST receives one |
 | other 3xx | `providerRejected`, `PROTOCOL` on reads; Retry for an `updateConversation` write; the fenced reply resends within the send cap |
 | 408, 429, 5xx, transport failure | Retry, after `X-RateLimit-Retry-After` or `Retry-After`; see the reply's exceptions above |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for reads and the `updateConversation` read before any write; Retry after a write; a reply uses `Resource-Id` to confirm acceptance, or resends within the send cap without it |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for reads and the `updateConversation` read before any write; Retry after a write; a reply uses `Resource-Id` to confirm acceptance, or selects `uncertain` without it |
 | unreadable or foreign fence checkpoint | Retry without sending for the fenced reply |
 | invalid input or credentials | `defect`, with no request |
 

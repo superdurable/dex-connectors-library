@@ -67,10 +67,11 @@ func TestReplyToConversationAddsAnInternalNoteWithoutReadingTheConversation(t *t
 	require.JSONEq(t, `{"text":"Customer is on the Pro plan."}`, fake.recordedRequests()[0].body)
 
 	withCustomer := newFakeHelpScout(t, map[string]http.HandlerFunc{"POST /v2/conversations/501/reply": createdThread("not-a-number")})
-	_, err = replyToConversation(t, newFakeBackedClient(t, withCustomer), newStepContext("reply"), helpscout.ReplyToConversationInput{
+	withoutID, err := replyToConversation(t, newFakeBackedClient(t, withCustomer), newStepContext("reply"), helpscout.ReplyToConversationInput{
 		ConversationID: 501, Text: "Hello", CustomerID: 42,
 	})
-	requireRetry(t, err, sdkgo.FailureTransport) // A 201 without a thread ID cannot be read back, so it resends below the cap.
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.UncertainBranchID, withoutID.Branch, "an accepted 201 without a thread ID is never resent")
 	require.Len(t, withCustomer.recordedRequests(), 1, "an explicit customer needs no read")
 }
 
@@ -163,8 +164,12 @@ func TestReplyToConversationRetriesOnlyWhatHelpScoutProvablyDidNotApply(t *testi
 		{name: "lost answer", handler: dropConnection, isRetry: true, kind: sdkgo.FailureTransport},
 		{name: "unlisted status", handler: respondJSON(http.StatusGone, helpScoutErrorBody("Gone", nil)),
 			isRetry: true, kind: sdkgo.FailureNotFound},
-		{name: "locked conversation", handler: respondJSON(http.StatusPreconditionFailed, helpScoutErrorBody("Conversation Locked", nil)),
-			branch: helpscout.ReplyToConversationBranchProviderRejected, kind: sdkgo.FailureProviderRejection},
+		{name: "locked conversation is unknown", handler: respondJSON(http.StatusPreconditionFailed, helpScoutErrorBody("Conversation Locked", nil)),
+			isRetry: true, kind: sdkgo.FailureProviderRejection},
+		{name: "locked customer is unknown", handler: respondJSON(http.StatusLocked, helpScoutErrorBody("Locked", nil)),
+			isRetry: true, kind: sdkgo.FailureProviderRejection},
+		{name: "unknown customer", handler: respondJSON(http.StatusUnprocessableEntity, helpScoutErrorBody("Unprocessable", nil)),
+			branch: helpscout.ReplyToConversationBranchProviderRejected, kind: sdkgo.FailureValidation},
 		{name: "invalid status", handler: respondJSON(http.StatusBadRequest, helpScoutErrorBody("Bad request", map[string]string{"status": "EnumValue"})),
 			branch: helpscout.ReplyToConversationBranchProviderRejected, kind: sdkgo.FailureValidation},
 		{name: "deleted conversation", handler: respondJSON(http.StatusNotFound, helpScoutErrorBody("Not Found", nil)),
@@ -612,6 +617,131 @@ func TestReplyFencePreventsTransportReplayOnAReusedConnection(t *testing.T) {
 		helpscout.ReplyToConversationInput{ConversationID: 501, Text: "Triage note", IsInternalNote: true})
 	requireRetry(t, err, sdkgo.FailureTransport) // The fence, not HTTP replay, decides the resend.
 	require.Len(t, fake.requestsTo(http.MethodPost, "/v2/conversations/501/notes"), 1)
+}
+
+func TestReplyFenceAcceptedUnusableBodyKeepsTheThreadID(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		body   string
+		config helpscout.Config
+	}{
+		{name: "undecodable body", body: `{broken`},
+		{name: "oversized body", body: strings.Repeat("x", 512), config: helpscout.Config{MaxResponseBytes: 64}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fake := newFakeHelpScout(t, map[string]http.HandlerFunc{"POST /v2/conversations/501/notes": func(response http.ResponseWriter, _ *http.Request) {
+				response.Header().Set("Resource-Id", "568")
+				response.WriteHeader(http.StatusCreated)
+				_, _ = io.WriteString(response, test.body) // A failed write fails the assertions instead.
+			}})
+			client := newTestClient(t, fake.redirectingClient(), staticCredentials(""), test.config)
+			result, err := replyToConversation(t, client, singledispatchtest.NewContext("helpscout-test-flow", "reply"),
+				helpscout.ReplyToConversationInput{ConversationID: 501, Text: "Triage note", IsInternalNote: true})
+			require.NoError(t, err)
+			require.Equal(t, helpscout.ReplyToConversationBranchReplied, result.Branch)
+			require.EqualValues(t, 568, result.Value.ThreadID)
+			require.Len(t, fake.requestsTo(http.MethodPost, "/v2/conversations/501/notes"), 1)
+		})
+	}
+}
+
+func TestReplyFenceRefusalAfterARateLimitedResendIsUncertain(t *testing.T) {
+	var posts atomic.Int32
+	fake := newFakeHelpScout(t, map[string]http.HandlerFunc{"POST /v2/conversations/501/notes": func(response http.ResponseWriter, request *http.Request) {
+		switch posts.Add(1) {
+		case 1:
+			respondJSON(http.StatusBadGateway, helpScoutErrorBody("Bad gateway", nil))(response, request)
+		case 2:
+			respondJSON(http.StatusTooManyRequests, helpScoutErrorBody("Too many requests", nil))(response, request)
+		default:
+			respondJSON(http.StatusUnprocessableEntity, helpScoutErrorBody("Invalid", nil))(response, request)
+		}
+	}})
+	client := newFakeBackedClient(t, fake)
+	step := singledispatchtest.NewContext("helpscout-test-flow", "rate-limited-resend")
+	input := helpscout.ReplyToConversationInput{ConversationID: 501, Text: "Note", IsInternalNote: true}
+	_, err := replyToConversation(t, client, step, input)
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	step.AdvanceAttempt()
+	_, err = replyToConversation(t, client, step, input)
+	requireRetry(t, err, sdkgo.FailureRateLimit)
+	require.Equal(t, singledispatch.StateCanResend, lastReplyMarker(t, step).State, "the third attempt decides SendAllowed with a prior send")
+	step.AdvanceAttempt()
+	result, err := replyToConversation(t, client, step, input)
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.UncertainBranchID, result.Branch, "the first send may have created the note")
+	require.EqualValues(t, 3, posts.Load())
+}
+
+func TestReplyFenceCredentialFailureAfterAPossibleSendRecordsNothing(t *testing.T) {
+	for _, test := range []struct {
+		name        string
+		credentials func(fake *fakeHelpScout) *helpscout.Client
+		isRetry     bool
+	}{
+		{name: "transient", isRetry: true, credentials: func(fake *fakeHelpScout) *helpscout.Client {
+			return newTestClient(t, fake.redirectingClient(), sdkgo.StaticCredentialProvider[helpscout.Credentials]{}, helpscout.Config{})
+		}},
+		{name: "terminal", credentials: func(fake *fakeHelpScout) *helpscout.Client {
+			return newRefreshingClient(t, testsupport.NewRefreshingCredentialSource(helpscout.Credentials{
+				AppID: "app-id", AppSecret: sdkgo.NewSecretString("app-secret"),
+			}, nil), fake.redirectingClient())
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fake := newFakeHelpScout(t, map[string]http.HandlerFunc{
+				"POST /v2/conversations/501/notes": respondJSON(http.StatusBadGateway, helpScoutErrorBody("Bad gateway", nil)),
+				"POST /v2/oauth2/token":            respondJSON(http.StatusUnauthorized, `{"error":"invalid_client"}`),
+			})
+			step := singledispatchtest.NewContext("helpscout-test-flow", "credentials-after-send")
+			input := helpscout.ReplyToConversationInput{ConversationID: 501, Text: "Note", IsInternalNote: true}
+			_, err := replyToConversation(t, newFakeBackedClient(t, fake), step, input)
+			requireRetry(t, err, sdkgo.FailureAvailability)
+			step.AdvanceAttempt()
+			result, err := replyToConversation(t, test.credentials(fake), step, input)
+			if test.isRetry {
+				requireRetry(t, err, sdkgo.FailureAvailability)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, sdkgo.UncertainBranchID, result.Branch, "defect would hide the possible first send")
+			}
+			require.Equal(t, singledispatch.StateClaimed, lastReplyMarker(t, step).State, "notSent would hide the possible first send")
+			require.Len(t, fake.requestsTo(http.MethodPost, "/v2/conversations/501/notes"), 1)
+		})
+	}
+}
+
+func TestReplyFencePrimaryCustomerReadRetryAfterAPossibleSendRecordsNothing(t *testing.T) {
+	var reads atomic.Int32
+	fake := newFakeHelpScout(t, map[string]http.HandlerFunc{
+		"GET /v2/conversations/501": func(response http.ResponseWriter, _ *http.Request) {
+			if reads.Add(1) == 1 {
+				writeJSON(response, http.StatusOK, conversationJSON(501, "active", 123))
+				return
+			}
+			response.WriteHeader(http.StatusServiceUnavailable)
+		},
+		"POST /v2/conversations/501/reply": respondJSON(http.StatusBadGateway, helpScoutErrorBody("Bad gateway", nil)),
+	})
+	client := newFakeBackedClient(t, fake)
+	step := singledispatchtest.NewContext("helpscout-test-flow", "read-after-send")
+	input := helpscout.ReplyToConversationInput{ConversationID: 501, Text: "Response to Jane"}
+	_, err := replyToConversation(t, client, step, input)
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	step.AdvanceAttempt()
+	_, err = replyToConversation(t, client, step, input)
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Equal(t, singledispatch.StateClaimed, lastReplyMarker(t, step).State, "notSent would hide the possible first send")
+	require.Len(t, fake.requestsTo(http.MethodPost, "/v2/conversations/501/reply"), 1)
+}
+
+func lastReplyMarker(t *testing.T, step *singledispatchtest.Context) singledispatch.Marker {
+	t.Helper()
+	frames := step.Heartbeats()
+	require.NotEmpty(t, frames)
+	var marker singledispatch.Marker
+	require.NoError(t, json.Unmarshal(frames[len(frames)-1], &marker))
+	return marker
 }
 
 type failingReader struct{}

@@ -152,7 +152,7 @@ def reply_to_conversation_not_found_failure() -> Case[ConversationReply]:
 setattr(reply_to_conversation_not_found_failure, '__module__', "dex_connectors.helpscout.helpscoutmock")
 
 def reply_to_conversation_provider_rejected_failure() -> Case[ConversationReply]:
-    return Case.branch_result(PROVIDER_REJECTED, ConversationReply(), Failure(FailureKind.PROVIDER_REJECTION, CONNECTOR_ID, "replyToConversation", "Help Scout conclusively rejected the thread, such as a locked conversation with 100 threads or an unknown customer; nothing was added."))
+    return Case.branch_result(PROVIDER_REJECTED, ConversationReply(), Failure(FailureKind.PROVIDER_REJECTION, CONNECTOR_ID, "replyToConversation", "Help Scout conclusively rejected the thread, such as invalid text or an unknown customer; nothing was added."))
 
 setattr(reply_to_conversation_provider_rejected_failure, '__module__', "dex_connectors.helpscout.helpscoutmock")
 
@@ -197,7 +197,7 @@ def update_conversation_not_found_failure() -> Case[UpdateConversationOutput]:
 setattr(update_conversation_not_found_failure, '__module__', "dex_connectors.helpscout.helpscoutmock")
 
 def update_conversation_provider_rejected_failure() -> Case[UpdateConversationOutput]:
-    return Case.branch_result(PROVIDER_REJECTED, UpdateConversationOutput(conversation=Conversation(status='')), Failure(FailureKind.PROVIDER_REJECTION, CONNECTOR_ID, "updateConversation", "Help Scout refused to change the locked conversation (HTTP 412)."))
+    return Case.branch_result(PROVIDER_REJECTED, UpdateConversationOutput(conversation=Conversation(status='')), Failure(FailureKind.PROVIDER_REJECTION, CONNECTOR_ID, "updateConversation", "Help Scout rejected the assignee (HTTP 422)."))
 
 setattr(update_conversation_provider_rejected_failure, '__module__', "dex_connectors.helpscout.helpscoutmock")
 

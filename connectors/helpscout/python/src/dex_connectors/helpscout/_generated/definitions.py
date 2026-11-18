@@ -72,8 +72,8 @@ REPLY_TO_CONVERSATION_DEFINITION = MutationDefinition(
     (
         BranchDefinition(REPLIED, "Help Scout created the reply or note and returned its thread ID.", False),
         BranchDefinition(NOT_FOUND, "The conversation does not exist, was merged, or is not visible to the app's Help Scout user; nothing was added.", True),
-        BranchDefinition(PROVIDER_REJECTED, "Help Scout conclusively rejected the thread, such as a locked conversation with 100 threads or an unknown customer; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "The thread may exist: the send cap is reached after answers that were lost, a server error other than 503, an unlisted status, or a 2xx without a thread ID, or an accepted thread could not be confirmed by read-back. Without a thread ID, an unknown outcome is resent while the cap allows.", True),
+        BranchDefinition(PROVIDER_REJECTED, "Help Scout conclusively rejected the thread with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as invalid text or an unknown customer; nothing was added.", True),
+        BranchDefinition(UNCERTAIN, "The thread may exist: the send cap is reached after answers that were lost, a server error other than 503, or an unlisted status; Help Scout accepted the thread with a 2xx but no valid thread ID; an accepted thread could not be confirmed by read-back; or a refusal, local failure, or authorization failure followed a possible earlier send. Below the cap, an unknown outcome is resent.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

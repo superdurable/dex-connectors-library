@@ -31,7 +31,11 @@ Other branches are optional. An unwired optional branch fails its Flow.
 `replyToConversation` uses sync durability and a durable dispatch fence with
 the manifest send cap: an unconfirmed sent reply is resent while the cap
 allows and selects `uncertain` at the cap, while a confirmed 429 or 503
-permits a retry. `updateConversation` writes final values and can safely
+permits a retry. A `2xx` is accepted and never resent: its `Resource-Id`
+confirms the thread even when the body breaks or the write window aborts
+it, and a `2xx` without a valid ID selects `uncertain`. After a possible
+earlier send, a credential, local, or refusal failure records nothing and
+selects `uncertain` or returns Retry, never `defect`. `updateConversation` writes final values and can safely
 repeat after a lost answer. Both mutations derive their idempotency key from
 the Dex Call ID; Help Scout receives no idempotency header.
 

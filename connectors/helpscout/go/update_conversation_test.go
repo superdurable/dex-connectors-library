@@ -188,6 +188,15 @@ func TestUpdateConversationMapsFailuresAndRetriesALostWrite(t *testing.T) {
 	_, err = updateConversation(t, newFakeBackedClient(t, conflicted), helpscout.UpdateConversationInput{ConversationID: 501, Status: helpscout.ConversationStatusClosed})
 	requireRetry(t, err, sdkgo.FailureAvailability) // A 409 is an unknown outcome, so the absolute write repeats.
 
+	for _, status := range []int{http.StatusPreconditionFailed, http.StatusLocked} {
+		locked := newFakeHelpScout(t, map[string]http.HandlerFunc{
+			"GET /v2/conversations/501":   stored.read,
+			"PATCH /v2/conversations/501": respondJSON(status, helpScoutErrorBody("Locked", nil)),
+		})
+		_, err = updateConversation(t, newFakeBackedClient(t, locked), helpscout.UpdateConversationInput{ConversationID: 501, Status: helpscout.ConversationStatusClosed})
+		requireRetry(t, err, sdkgo.FailureAvailability) // A 412 or 423 is not a listed refusal, so the absolute write repeats.
+	}
+
 	var reads atomic.Int32
 	invalidReadBack := newFakeHelpScout(t, map[string]http.HandlerFunc{
 		"GET /v2/conversations/501": func(response http.ResponseWriter, request *http.Request) {
