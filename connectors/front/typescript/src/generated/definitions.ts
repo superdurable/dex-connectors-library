@@ -85,11 +85,11 @@ export const ReplyToConversationBranch = {
 } as const;
 /** Front accepted the reply for delivery or created the comment. */
 export const ReplyToConversationBranchReplied = ReplyToConversationBranch.Replied;
-/** The conversation does not exist, was merged, or is not visible to the API token; nothing was sent. */
+/** The conversation does not exist or is not visible to the API token (HTTP 404); nothing was sent. A merged conversation's 301 is an unknown outcome instead. */
 export const ReplyToConversationBranchNotFound = ReplyToConversationBranch.NotFound;
 /** Front conclusively rejected the reply or comment, such as a token without send permission or an unknown author; nothing was sent. */
 export const ReplyToConversationBranchProviderRejected = ReplyToConversationBranch.ProviderRejected;
-/** The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, an unlisted status, an ambiguous server error, or a refusal with an unreadable body; Front accepted it with a 2xx that carries no usable provider ID; a refusal or a reconnection requirement follows a possible earlier send; or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows; a 2xx is never resent. */
+/** The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, a 3xx such as a merged conversation's 301, an unlisted status, an ambiguous server error, or a refusal with an unreadable body; Front accepted it with a 2xx that carries no usable provider ID; a refusal or a reconnection requirement follows a possible earlier send; or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows; a 2xx is never resent. */
 export const ReplyToConversationBranchUncertain = ReplyToConversationBranch.Uncertain;
 /** Local input, connection credentials that require reauthorization or are unusable before a first send, or the connector definition is invalid; transient credential failures Retry. */
 export const ReplyToConversationBranchDefect = ReplyToConversationBranch.Defect;
@@ -98,9 +98,9 @@ export const ReplyToConversationDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "replyToConversation" },
   branches: [
     { id: "replied", description: "Front accepted the reply for delivery or created the comment." },
-    { id: "notFound", description: "The conversation does not exist, was merged, or is not visible to the API token; nothing was sent.", optional: true },
+    { id: "notFound", description: "The conversation does not exist or is not visible to the API token (HTTP 404); nothing was sent. A merged conversation's 301 is an unknown outcome instead.", optional: true },
     { id: "providerRejected", description: "Front conclusively rejected the reply or comment, such as a token without send permission or an unknown author; nothing was sent.", optional: true },
-    { id: "uncertain", description: "The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, an unlisted status, an ambiguous server error, or a refusal with an unreadable body; Front accepted it with a 2xx that carries no usable provider ID; a refusal or a reconnection requirement follows a possible earlier send; or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows; a 2xx is never resent.", optional: true },
+    { id: "uncertain", description: "The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, a 3xx such as a merged conversation's 301, an unlisted status, an ambiguous server error, or a refusal with an unreadable body; Front accepted it with a 2xx that carries no usable provider ID; a refusal or a reconnection requirement follows a possible earlier send; or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows; a 2xx is never resent.", optional: true },
     { id: "defect", description: "Local input, connection credentials that require reauthorization or are unusable before a first send, or the connector definition is invalid; transient credential failures Retry.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },

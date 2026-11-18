@@ -106,6 +106,13 @@ it('treats a reply refusal with an unreadable body as an unknown outcome', async
   expect(result.kind).toBe('retry');
 });
 
+it('treats a merged redirect after a reply as an unknown outcome', async () => {
+  const provider = client(async () => ({ status: 301, headers: { location: 'https://api2.frontapp.com/conversations/cnv_200' }, body: Buffer.from('{}') }));
+  const result = await provider.replyToConversation().invoke(heartbeatCall('replyToConversation'), reply);
+  expect(result.kind).toBe('retry');
+  if (result.kind === 'retry') expect(result.failure.message).toContain('cnv_200');
+});
+
 it('never selects defect for a reply credential failure after a possible send', async () => {
   for (const [error, kind] of [[new ReauthorizationRequiredError(), 'uncertain'], [new TypeError('broker unavailable'), 'retry']] as const) {
     const context = new HeartbeatContext(undefined);

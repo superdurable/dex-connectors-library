@@ -197,6 +197,20 @@ async def test_unreadable_refusal_body_is_an_unknown_reply_outcome() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(("max_sends", "kind"), [(3, "retry"), (1, "uncertain")])
+async def test_merged_redirect_after_a_reply_is_an_unknown_outcome(max_sends: int, kind: str) -> None:
+    """A 3xx is not a definite refusal, so it resends below the cap."""
+    location = {"Location": "https://api2.frontapp.com/conversations/cnv_200"}
+    provider, _ = recording(lambda request: httpx.Response(301, headers=location, json={}))
+    async with provider:
+        attempt = await new_client(provider).reply_to_conversation().invoke(
+            new_call(HeartbeatContext(), "replyToConversation", max_sends), REPLY
+        )
+    assert attempt.kind == kind
+    assert attempt.failure is not None and "cnv_200" in attempt.failure.message
+
+
+@pytest.mark.asyncio
 async def test_update_retries_a_refusal_whose_body_cannot_be_read() -> None:
     """Repeating an absolute write is safe, so an unreadable refusal retries."""
 

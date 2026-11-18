@@ -215,7 +215,9 @@ export class ReplyToConversationOperation implements Mutation<ReplyToConversatio
     }
     if (result.outcome === 'unconfirmed') return this.resendOrUncertain(call, output, permit, { ...result.failure!, message: `${result.failure!.message}; the reply or comment may exist` }, result.retryAfterMs);
     // Front documents its 301 as a merged conversation, a definite refusal of the write.
-    if ((result.outcome === 'notFound' && status === 404) || result.outcome === 'merged') return this.reject(call, output, permit, 'notFound', result.failure!);
+    // A 3xx after a write is not a definite refusal, so the merged 301 is an unknown outcome.
+    if (result.outcome === 'merged') { const merged = mergedID(result); return this.resendOrUncertain(call, output, permit, { ...result.failure!, message: merged ? `the conversation was merged into ${merged}; the reply or comment may exist` : `${result.failure!.message}; the reply or comment may exist` }); }
+    if (result.outcome === 'notFound' && status === 404) return this.reject(call, output, permit, 'notFound', result.failure!);
     if (result.outcome === 'rejected' && status === 401) {
       const replacement = await this.client.replacementAfterRejection(call, rejectedToken);
       if (replacement === 'replacement') {

@@ -295,12 +295,12 @@ func (client *Client) classifyReplyExchange(call sdkgo.Call, output Conversation
 		}
 		return client.rejectReply(call, output, permit, ReplyToConversationBranchNotFound, result.failure)
 	case exchangeMerged:
-		// Front documents this 301 as a merged conversation, a definite refusal of the write.
+		// A 3xx after a write is not a definite refusal, so the merged 301 is an unknown outcome.
 		failure := result.failure
 		if mergedInto := mergedConversationID(result.response.header.Get("Location")); mergedInto != "" {
-			failure.Message = fmt.Sprintf("the conversation was merged into %s; reply to that conversation", mergedInto)
+			failure.Message = fmt.Sprintf("the conversation was merged into %s; the reply or comment may exist", mergedInto)
 		}
-		return client.rejectReply(call, output, permit, ReplyToConversationBranchNotFound, failure)
+		return client.resendOrSelectUncertain(call, output, permit, failure, 0)
 	case exchangeRejected:
 		if result.response.statusCode == http.StatusUnauthorized {
 			return client.classifyRejectedReplyCredential(call, output, credentials, permit)

@@ -137,7 +137,7 @@ func TestReplyToConversationClassifiesEveryAnswer(t *testing.T) {
 		"server error":   {status: http.StatusInternalServerError, isRetry: true, shouldKeepDispatch: true},
 		"timeout status": {status: http.StatusRequestTimeout, isRetry: true, shouldKeepDispatch: true},
 		"missing":        {status: http.StatusNotFound, branch: front.ReplyToConversationBranchNotFound, shouldKeepDispatch: true},
-		"merged":         {status: http.StatusMovedPermanently, location: "https://api2.frontapp.com/conversations/cnv_yo1kg5q", branch: front.ReplyToConversationBranchNotFound, shouldKeepDispatch: true},
+		"merged":         {status: http.StatusMovedPermanently, location: "https://api2.frontapp.com/conversations/cnv_yo1kg5q", isRetry: true, shouldKeepDispatch: true},
 		"no send right":  {status: http.StatusForbidden, branch: front.ReplyToConversationBranchProviderRejected, shouldKeepDispatch: true},
 		"bad author":     {status: http.StatusBadRequest, branch: front.ReplyToConversationBranchProviderRejected, shouldKeepDispatch: true},
 		"conflict":       {status: http.StatusConflict, isRetry: true, shouldKeepDispatch: true},

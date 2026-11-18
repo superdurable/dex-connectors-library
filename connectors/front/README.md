@@ -227,12 +227,13 @@ failure before a connection was obtained records `canResend` and retries;
 Front's non-application of a `503` remains **unverified against a live
 Front account**. Other unknown outcomes, including `408`, `409`, other `5xx`,
 an unlisted status, transport loss, a refusal status whose error body is
-oversized or unreadable, and a request cut off by the fence's write window,
+oversized or unreadable, a merged-conversation `301` or any other `3xx`, and
+a request cut off by the fence's write window,
 return Retry so the next attempt resends while fewer sends than the cap may
 have taken effect, which can deliver a duplicate reply; the send that reaches
 the cap selects `uncertain`. A later attempt counts every earlier possible
-send, also after a `429` or `503` recorded `canResend`. A `404` or
-merged-conversation `301` selects `notFound`, and a `400`, `401`, `403`,
+send, also after a `429` or `503` recorded `canResend`. A `404` selects
+`notFound`, and a `400`, `401`, `403`,
 `411`, `413`, `414`, `415`, or `422` selects `providerRejected`; each records
 `canResend` first. After a possible earlier send, any of these refusals, and
 a local request or credential failure that requires reconnection, selects
@@ -393,7 +394,7 @@ Failure names only the HTTP status.
 | 404 | `notFound` where declared, otherwise `providerRejected`; `providerRejected` on an `updateConversation` write after its read found the conversation |
 | 410 | `notFound` for reads; Retry for an `updateConversation` write; resend within the send cap for `replyToConversation` |
 | 409, other unlisted 4xx | `providerRejected`, `CONFLICT` for reads; Retry for an `updateConversation` write or read-back; resend within the send cap, then `uncertain`, for `replyToConversation` |
-| 301 | `merged` for `getConversation`, `notFound` for the Mutations, naming the absorbing conversation |
+| 301 | `merged` for `getConversation` and `notFound` for `updateConversation`, naming the absorbing conversation; `replyToConversation` treats it as an unknown outcome, resending within the send cap, then selecting `uncertain` |
 | other 3xx | `providerRejected`, `PROTOCOL`, for reads; Retry for an `updateConversation` write; resend within the send cap for `replyToConversation`; redirects are never followed |
 | 429 | Retry after `Retry-After` seconds, capped at an hour; without it, at the `X-Ratelimit-Reset` second, one second to a minute later |
 | 408, 5xx, transport failure | Retry for reads and repeat-safe writes; `replyToConversation` Retries a 503 or provably unsent failure and resends other unknown outcomes within the send cap, then selects `uncertain` |

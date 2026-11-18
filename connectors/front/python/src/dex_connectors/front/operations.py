@@ -1027,18 +1027,22 @@ class ReplyToConversationOperation:
                 ),
                 answer.retry_after,
             )
-        if (answer.outcome == "notFound" and answer.status == 404) or answer.outcome == "merged":
-            # Front documents its 301 as a merged conversation, a definite refusal of the write.
-            reply_failure = answer.error
-            if answer.outcome == "merged":
-                merged = merged_conversation_id(answer.headers.get("Location", "") if answer.headers else "")
-                if merged:
-                    reply_failure = failure(
-                        reply_failure.kind,
-                        operation,
-                        f"the conversation was merged into {merged}; reply to that conversation",
-                    )
-            return await permit.reject(call, output, "notFound", reply_failure)
+        if answer.outcome == "merged":
+            # A 3xx after a write is not a definite refusal, so the merged 301 is an unknown outcome.
+            merged = merged_conversation_id(answer.headers.get("Location", "") if answer.headers else "")
+            return permit.resend_or_uncertain(
+                call,
+                output,
+                failure(
+                    answer.error.kind,
+                    operation,
+                    f"the conversation was merged into {merged}; the reply or comment may exist"
+                    if merged
+                    else answer.error.message + "; the reply or comment may exist",
+                ),
+            )
+        if answer.outcome == "notFound" and answer.status == 404:
+            return await permit.reject(call, output, "notFound", answer.error)
         if answer.status == 401:
             return await self._rejected_credential(call, output, credentials, permit)
         if answer.outcome == "rejected" and answer.status in DEFINITE_REFUSAL_STATUSES:

@@ -218,7 +218,7 @@ func ReplyToConversationReplied(value front.ConversationReply, failure *sdkgo.Fa
 	return connectormock.Branch(front.ReplyToConversationBranchReplied, value, failure)
 }
 
-// ReplyToConversationNotFound selects the notFound branch: The conversation does not exist, was merged, or is not visible to the API token; nothing was sent.
+// ReplyToConversationNotFound selects the notFound branch: The conversation does not exist or is not visible to the API token (HTTP 404); nothing was sent. A merged conversation's 301 is an unknown outcome instead.
 func ReplyToConversationNotFound(value front.ConversationReply, failure *sdkgo.Failure) connectormock.Case[front.ConversationReply] {
 	return connectormock.Branch(front.ReplyToConversationBranchNotFound, value, failure)
 }
