@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import { ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { SlackClient } from '../src/client.js';
 import { PostChannelMessageDefinition } from '../src/generated/definitions.js';
 import type { PostMessageOutput } from '../src/generated/models.js';
@@ -221,6 +221,49 @@ describe('Slack bounded resend of unconfirmed posts', () => {
     const { client, requests } = newClient(() => error);
     expect(await post(client, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
     expect(requests).toHaveLength(1);
+  });
+
+  it.each([
+    { name: 'a non-JSON body', answer: (): SlackAnswer | Error => ({ status: 409, body: 'conflict' }) },
+    { name: 'an oversized body', answer: (): SlackAnswer | Error => new BodyTooLargeError(409, {}) },
+    { name: 'a body broken mid-read', answer: (): SlackAnswer | Error => new ProviderTransportError(false, 409, {}) },
+    { name: 'a stalled body', answer: (): SlackAnswer | Error => new ProviderStalledError(409, {}) },
+  ])('never resends a 409 with $name', async ({ answer }) => {
+    const { client, requests } = newClient(answer);
+    expect(await post(client, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('reads back a 409 that names a message timestamp', async () => {
+    const { client, requests } = newClient(request => request.method === 'GET'
+      ? { status: 200, body: '{"ok":true,"messages":[{"ts":"2.0","user":"UBOT","text":"hello"}]}' }
+      : { status: 409, body: '{"ok":false,"error":"conflict","ts":"2.0"}' });
+    const context = new AttemptContext();
+    expect(await post(client, context)).toMatchObject({ branch: 'sent' });
+    expect(requests.map(request => request.method)).toEqual(['POST', 'GET']);
+    expect(callMarker(context.marker)).toMatchObject({ state: 'claimed', providerId: '2.0' });
+  });
+
+  it('keeps counting an unreadable 401 send after its credential refresh succeeds', async () => {
+    const requests: ProviderRequest[] = [];
+    let forcedRefreshes = 0;
+    const credentials = (botToken: string) => ({ botToken: new SecretString(botToken), userToken: new SecretString('user-token') });
+    const provider = {
+      resolve: async () => credentials('rejected-bot'), resolveWithRefresh: async () => credentials('rejected-bot'),
+      resolveAfterRejection: async () => { forcedRefreshes++; return credentials('replacement-bot'); },
+    };
+    const client = new SlackClient({}, provider, {
+      send: async (request: ProviderRequest) => {
+        requests.push(request);
+        return { status: 401, headers: {}, body: Buffer.from('{"ok":') };
+      },
+    });
+    const context = new AttemptContext();
+    // An unreadable rejection cannot prove nothing was posted, so canResend is never recorded.
+    expect(await post(client, context)).toBeInstanceOf(RetryError);
+    expect(requests).toHaveLength(1);
+    expect(forcedRefreshes).toBe(1);
+    expect(callMarker(context.marker)).toMatchObject({ state: 'claimed', sendCount: 1 });
   });
 
   it('treats an unreadable 401 body as an unknown outcome', async () => {

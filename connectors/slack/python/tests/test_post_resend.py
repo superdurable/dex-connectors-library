@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of Slack posts whose outcome is unknown."""
 
+import asyncio
 import json
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
@@ -23,7 +24,13 @@ from dex_connectors.sdk.singledispatch import Marker
 
 from dex_connectors.slack import Client, Config, Credentials
 from dex_connectors.slack._generated.definitions import POST_CHANNEL_MESSAGE_DEFINITION
-from dex_connectors.slack.models import PostChannelMessageInput, PostMessageOutput
+from dex_connectors.slack.models import (
+    MessageButton,
+    PostButtonMessageInput,
+    PostChannelMessageInput,
+    PostMessageOutput,
+    PostThreadReplyInput,
+)
 
 REFERENCE = ConnectionRef("slack", "workspace")
 CALL_ID = CallID("74390522-858d-5ed6-bdf7-04e979ba9e4f")
@@ -366,6 +373,35 @@ async def test_unreadable_unauthorized_body_is_an_unknown_outcome() -> None:
     assert context.marker is not None and context.marker.state == "claimed"
 
 
+class RefreshingCredentials(SequencedCredentials):
+    """Replace the bot token once Slack rejects it."""
+
+    def __init__(self) -> None:
+        super().__init__(["rejected-bot"])
+        self.forced_refreshes = 0
+
+    async def resolve_after_rejection(self, call: Call) -> Credentials:
+        """Return a replacement bot token after a rejection."""
+        self.forced_refreshes += 1
+        self.bot_tokens = ["replacement-bot"]
+        return await self.resolve(call)
+
+
+@pytest.mark.asyncio
+async def test_unreadable_unauthorized_body_still_counts_after_a_refresh() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    credentials = RefreshingCredentials()
+    result = await post(
+        lambda _: httpx.Response(401, content=b'{"ok":'), context, requests, credentials=credentials
+    )
+    # An unreadable rejection cannot prove nothing was posted, so canResend is never recorded.
+    assert isinstance(result, RetryError)
+    assert credentials.forced_refreshes == 1
+    assert len(requests) == 1
+    assert context.marker is not None and context.marker.state == "claimed"
+
+
 class FailingProviderIDContext(AttemptContext):
     """Fail every heartbeat write that would save a provider ID."""
 
@@ -467,3 +503,100 @@ async def test_checkpointed_timestamp_is_read_back_not_resent() -> None:
     result = await post(answer, context, requests)
     assert isinstance(result, MutationResult) and result.branch == "uncertain"
     assert [request.method for request in requests] == ["GET"]
+
+
+class StalledBodyStream(httpx.AsyncByteStream):
+    """Stall the body after headers arrive, past the Fence write window."""
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        await asyncio.sleep(30)
+        yield b"{}"
+
+
+WRITE_OPERATIONS = ("postChannelMessage", "postThreadReply", "postButtonMessage")
+
+
+async def post_operation(
+    operation: str, answer: Answer, context: AttemptContext, requests: list[httpx.Request]
+) -> MutationResult[PostMessageOutput] | RetryError:
+    """Run one Execute attempt of the named Slack write with the manifest send cap."""
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        answered = answer(request)
+        if isinstance(answered, httpx.Response):
+            return answered
+        status, body = answered
+        return httpx.Response(status, json=body)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
+        client = Client(Config(), SequencedCredentials(["bot-token"]), transport)
+        call = Call(CALL_ID, REFERENCE, OperationRef("slack", operation), context=context, max_sends=3)
+        try:
+            if operation == "postThreadReply":
+                return await run_mutation(
+                    client.post_thread_reply(), call, PostThreadReplyInput("C123", "1.0", "hello")
+                )
+            if operation == "postButtonMessage":
+                return await run_mutation(
+                    client.post_button_message(),
+                    call,
+                    PostButtonMessageInput("C123", "1.0", "Approve?", (MessageButton("approve", "Approve"),)),
+                )
+            return await run_mutation(
+                client.post_channel_message(), call, PostChannelMessageInput("C123", "hello")
+            )
+        except RetryError as error:
+            return error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", WRITE_OPERATIONS)
+@pytest.mark.parametrize("status", [200, 409])
+async def test_write_deadline_cutting_the_body_after_headers_is_never_resent(
+    operation: str, status: int
+) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    # A short Step deadline keeps the Fence write window near one second.
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.5)
+    result = await post_operation(
+        operation, lambda _: httpx.Response(status, stream=StalledBodyStream()), context, requests
+    )
+    # Slack answered before the window cut the body, so the post may exist and is never resent.
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 1
+    assert context.marker is not None and context.marker.state == "claimed"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "response",
+    [
+        lambda: httpx.Response(409, content=b"conflict"),
+        lambda: httpx.Response(409, content=b'{"ok":false,"error":"' + b"x" * (4 << 20) + b'"}'),
+        lambda: httpx.Response(409, stream=BrokenBodyStream()),
+    ],
+    ids=["not-json", "oversized", "broken-mid-body"],
+)
+async def test_conflict_with_unusable_body_is_never_resent(response: Callable[[], httpx.Response]) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    result = await post_operation("postThreadReply", lambda _: response(), context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_conflict_naming_a_timestamp_is_read_back() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+
+    def answer(request: httpx.Request) -> tuple[int, dict[str, object]]:
+        if request.method == "GET":
+            return 200, {"ok": True, "messages": [{"ts": "2.0", "thread_ts": "1.0", "text": "hello"}]}
+        return 409, {"ok": False, "error": "conflict", "ts": "2.0"}
+
+    result = await post_operation("postThreadReply", answer, context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "sent"
+    assert [request.method for request in requests] == ["POST", "GET"]
+    assert context.marker is not None and context.marker.provider_id == "2.0"

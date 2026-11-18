@@ -369,7 +369,13 @@ async function postMessage(client: SlackClient, call: Call, definition: Mutation
     // Slack answered 2xx before the body broke, so the post may exist and is never resent.
     return newMutationUncertain(emptyPost, failure(operation, 'TRANSPORT', 'Slack answered the post, but its response body is unreadable'), client.receipt(call, response));
   }
-  if (!response.error && response.status >= 200 && response.status < 500 && response.status !== 409 && !isPostSuccess(response) && isAcceptedBody(response)) {
+  if (response.status === 409) {
+    // Slack's replay semantics are unverified, so a 409 may mean the post exists whatever its body is.
+    const conflictTimestamp = response.error ? '' : acceptedTimestamp(response);
+    if (conflictTimestamp) return readBackAfterRecordingTimestamp(client, call, fence, operation, channelId, threadTimestamp, conflictTimestamp);
+    return newMutationUncertain(emptyPost, failure(operation, 'PROTOCOL', 'Slack returned a conflict without a confirmable message identity'), client.receipt(call, response));
+  }
+  if (!response.error && response.status >= 200 && response.status < 500 && !isPostSuccess(response) && isAcceptedBody(response)) {
     // A non-success response whose body reports a post is unknown, so a named timestamp is read back.
     const timestamp = acceptedTimestamp(response);
     if (timestamp) return readBackAfterRecordingTimestamp(client, call, fence, operation, channelId, threadTimestamp, timestamp);
@@ -378,6 +384,8 @@ async function postMessage(client: SlackClient, call: Call, definition: Mutation
   if (response.status === 401 || (!response.error && response.status >= 200 && response.status < 300 && body?.ok === false && isCredentialRejected(response))) {
     const replacement = await client.refreshRejectedToken(call, 'bot', credential.token);
     if (!replacement.token) return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, canResendUnknownOutcome, response, client.receipt(call, response), failure(operation, 'AUTHENTICATION', replacement.terminal ? 'Slack rejected the connection credential; reconnect the connection' : 'Slack credential refresh is temporarily unavailable'));
+    // An unreadable rejection cannot prove nothing was posted, so this send still counts.
+    if (!isDefiniteRefusal(response)) return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, 'AUTHENTICATION', 'Slack connection credential was refreshed after an unconfirmed rejection'), undefined, client.receipt(call, response));
     if (!await canResend(fence)) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Slack retry checkpoint could not be recorded'));
     return newMutationRetry(failure(operation, 'AUTHENTICATION', 'Slack connection credential was refreshed after rejection'));
   }
@@ -388,7 +396,6 @@ async function postMessage(client: SlackClient, call: Call, definition: Mutation
     }
     return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, 'TRANSPORT', 'Slack message outcome is unknown'), undefined, client.receipt(call, response));
   }
-  if (response.status === 409) return newMutationUncertain(emptyPost, failure(operation, 'PROTOCOL', 'Slack returned a conflict without a confirmable message identity'), client.receipt(call, response));
   if (body?.ok === false) {
     if (response.status >= 200 && response.status < 300 && ['service_unavailable', 'ratelimited'].includes(body.error ?? '')) {
       if (!await canResend(fence)) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Slack retry checkpoint could not be recorded'));
