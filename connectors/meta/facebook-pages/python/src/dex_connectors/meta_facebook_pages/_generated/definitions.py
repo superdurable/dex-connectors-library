@@ -66,7 +66,7 @@ PUBLISH_TEXT_POST_DEFINITION = MutationDefinition(
     (
         BranchDefinition(PUBLISHED, "Meta returned the published post ID.", False),
         BranchDefinition(PROVIDER_REJECTED, "Meta definitively rejected the post.", True),
-        BranchDefinition(UNCERTAIN, "Meta may have published the post, but the send cap was reached or Meta contradicted itself; inspect the Page before retrying manually.", True),
+        BranchDefinition(UNCERTAIN, "Meta may have published the post, but the send cap was reached, Meta accepted it with an unreadable response, or Meta contradicted itself; inspect the Page before retrying manually.", True),
         BranchDefinition(DEFECT, "Local input or connection credentials are invalid before any send.", True),
     ),
     StepDefaults(

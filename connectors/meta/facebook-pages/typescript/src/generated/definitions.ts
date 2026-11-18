@@ -86,7 +86,7 @@ export const PublishTextPostBranch = {
 export const PublishTextPostBranchPublished = PublishTextPostBranch.Published;
 /** Meta definitively rejected the post. */
 export const PublishTextPostBranchProviderRejected = PublishTextPostBranch.ProviderRejected;
-/** Meta may have published the post, but the send cap was reached or Meta contradicted itself; inspect the Page before retrying manually. */
+/** Meta may have published the post, but the send cap was reached, Meta accepted it with an unreadable response, or Meta contradicted itself; inspect the Page before retrying manually. */
 export const PublishTextPostBranchUncertain = PublishTextPostBranch.Uncertain;
 /** Local input or connection credentials are invalid before any send. */
 export const PublishTextPostBranchDefect = PublishTextPostBranch.Defect;
@@ -96,7 +96,7 @@ export const PublishTextPostDefinition: MutationDefinition = {
   branches: [
     { id: "published", description: "Meta returned the published post ID." },
     { id: "providerRejected", description: "Meta definitively rejected the post.", optional: true },
-    { id: "uncertain", description: "Meta may have published the post, but the send cap was reached or Meta contradicted itself; inspect the Page before retrying manually.", optional: true },
+    { id: "uncertain", description: "Meta may have published the post, but the send cap was reached, Meta accepted it with an unreadable response, or Meta contradicted itself; inspect the Page before retrying manually.", optional: true },
     { id: "defect", description: "Local input or connection credentials are invalid before any send.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync" },
