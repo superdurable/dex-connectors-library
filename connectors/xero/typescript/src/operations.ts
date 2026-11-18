@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { CreateInvoiceDefinition, FindContactByEmailDefinition, GetInvoiceDefinition, ListContactsDefinition, ListInvoicesDefinition, RecordPaymentDefinition } from './generated/definitions.js';
 import type { Contact, ContactPage, CreateInvoiceInput, CreateInvoiceOutput, FindContactByEmailInput, FindContactByEmailOutput, GetInvoiceInput, Invoice, InvoicePage, ListContactsInput, ListInvoicesInput, Payment, RecordPaymentInput, RecordPaymentOutput } from './generated/models.js';
 import { escapeGoPath, type XeroClient, type XeroExchange } from './client.js';
@@ -129,7 +129,7 @@ export class CreateInvoiceOperation implements Mutation<CreateInvoiceInput, Crea
     try { payload = createInvoicePayload(input); } catch (error) { return defectMutation('createInvoice', requested, error); }
     const result = await this.client.exchange(call, 'createInvoice', { method: 'PUT', path: '/Invoices', query: { unitdp: '4' }, payload, isMutation: true });
     const receipt = this.client.receipt(call, result);
-    if (result.outcome !== 'succeeded') return mutationExchange(result, requested, receipt);
+    if (result.outcome !== 'succeeded') return mutationExchange(call, result, requested, receipt);
     let wire: Record<string, unknown>;
     try { wire = singleResource(result.response!.body, 'Invoices'); }
     catch (error) { return retryUnusableMutation('createInvoice','Xero accepted the invoice but returned an unusable invoice: ', error); }
@@ -158,7 +158,7 @@ export class RecordPaymentOperation implements Mutation<RecordPaymentInput, Reco
     try { payload = recordPaymentPayload(input); } catch (error) { return defectMutation('recordPayment', requested, error); }
     const result = await this.client.exchange(call, 'recordPayment', { method: 'PUT', path: '/Payments', payload, isMutation: true });
     const receipt = this.client.receipt(call, result);
-    if (result.outcome !== 'succeeded') return mutationExchange(result, requested, receipt);
+    if (result.outcome !== 'succeeded') return mutationExchange(call, result, requested, receipt);
     let wire: Record<string, unknown>;
     try { wire = singleResource(result.response!.body, 'Payments'); }
     catch (error) { return retryUnusableMutation('recordPayment','Xero accepted the payment but returned an unusable payment: ', error); }
@@ -224,12 +224,15 @@ function queryExchange<T>(result: XeroExchange, zero: T, receipt: ReceiptDraft, 
 }
 /** Statuses that prove a write was refused; 409, 501, 3xx, and other statuses are unknown. */
 const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
-function mutationExchange<T>(result: XeroExchange, zero: T, receipt: ReceiptDraft): MutationAttempt<T> {
+function mutationExchange<T>(call: Call, result: XeroExchange, zero: T, receipt: ReceiptDraft): MutationAttempt<T> {
   // A 500 or an unusable answer is unknown; the key makes the identical resend safe.
   if (result.outcome === 'retry' || result.outcome === 'serverError' || result.outcome === 'invalid') return newMutationRetry(result.failure!, result.retryAfterMs);
   const status = result.response?.status ?? 0;
   // A 409, 501, 3xx, or other unlisted status does not prove a refusal; the key makes the repeat safe.
   if (result.outcome === 'rejected' && status >= 300 && !definiteRefusalStatuses.has(status)) return newMutationRetry(result.failure!, result.retryAfterMs);
+  // Xero checks credentials before replaying the keyed answer, so after a possible send they prove nothing.
+  const isCredentialFailure = result.failure?.kind === 'AUTHENTICATION' || result.failure?.kind === 'AUTHORIZATION';
+  if (call.context.attempt > 1 && (result.outcome === 'defect' || (result.outcome === 'rejected' && isCredentialFailure))) return newMutationUncertain(zero, result.failure!, receipt);
   return newMutationBranch(result.outcome === 'dailyLimit' ? 'dailyLimitReached' : result.outcome === 'defect' ? 'defect' : 'providerRejected', zero, receipt, result.failure);
 }
 

@@ -293,6 +293,32 @@ func TestCreateInvoiceMapsRejectionsLimitsAndUnknownOutcomes(t *testing.T) {
 	}
 }
 
+func TestCreateInvoiceSelectsUncertainForACredentialFailureOnALaterAttempt(t *testing.T) {
+	forbidden := newRecordingXero(t, func(response http.ResponseWriter, _ recordedRequest, _ int) {
+		writeJSON(t, response, http.StatusForbidden, `{"title":"Forbidden","status":403,"detail":"AuthorizationUnsuccessful"}`)
+	})
+	result, err := sdkgo.RunMutation(newLaterAttemptXeroDexContext("create-later-403"), newXeroClient(t, forbidden.URL).CreateInvoice(),
+		xeroConnection, validCreateInvoiceInput())
+	require.NoError(t, err)
+	require.Equal(t, xero.CreateInvoiceBranchUncertain, result.Branch, "an earlier attempt may have created the invoice")
+	require.Equal(t, sdkgo.FailureAuthorization, result.Failure.Kind)
+
+	validation := newRecordingXero(t, func(response http.ResponseWriter, _ recordedRequest, _ int) {
+		writeJSON(t, response, http.StatusBadRequest, `{"ErrorNumber":10,"Type":"ValidationException","Message":"SENTINEL"}`)
+	})
+	result, err = sdkgo.RunMutation(newLaterAttemptXeroDexContext("create-later-400"), newXeroClient(t, validation.URL).CreateInvoice(),
+		xeroConnection, validCreateInvoiceInput())
+	require.NoError(t, err)
+	require.Equal(t, xero.CreateInvoiceBranchProviderRejected, result.Branch, "Xero replays the keyed answer, so a 400 stays definite")
+
+	unconfigured, err := xero.New(xero.Config{}, sdkgo.StaticCredentialProvider[xero.Credentials]{}, xero.WithLocalProviderURL(validation.URL))
+	require.NoError(t, err)
+	result, err = sdkgo.RunMutation(newLaterAttemptXeroDexContext("create-later-defect"), unconfigured.CreateInvoice(),
+		xeroConnection, validCreateInvoiceInput())
+	require.NoError(t, err)
+	require.Equal(t, xero.CreateInvoiceBranchUncertain, result.Branch, "a later attempt never selects defect")
+}
+
 func TestCreateInvoiceRejectsInexactOrInvalidInputBeforeAnyRequest(t *testing.T) {
 	provider := newRecordingXero(t, func(response http.ResponseWriter, _ recordedRequest, _ int) {
 		writeJSON(t, response, http.StatusInternalServerError, `{}`)

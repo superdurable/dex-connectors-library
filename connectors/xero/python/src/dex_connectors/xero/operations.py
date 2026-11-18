@@ -386,6 +386,16 @@ def _mutation_outcome(client: Client, call: Call, result: Exchange, empty: _T) -
     ):
         # A 409, 501, 3xx, or other unlisted status does not prove a refusal; the key makes the repeat safe.
         return MutationAttempt.retry(_require_failure(result), result.retry_after)
+    classified_failure = _require_failure(result)
+    # Xero checks credentials before replaying the keyed answer, so after a possible send they prove nothing.
+    if call.context is not None and call.context.attempt > 1 and (
+        result.outcome == "defect"
+        or (
+            result.outcome == "rejected"
+            and classified_failure.kind in (FailureKind.AUTHENTICATION, FailureKind.AUTHORIZATION)
+        )
+    ):
+        return MutationAttempt.uncertain(empty, classified_failure, client.receipt(call, result))
     branch = {"daily": "dailyLimitReached", "defect": "defect"}.get(result.outcome, "providerRejected")
     return MutationAttempt.branch_result(branch, empty, client.receipt(call, result), result.error)
 
