@@ -19,6 +19,8 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -62,6 +64,19 @@ def query_encode(values: dict[str, str]) -> str:
     """Encode sorted query pairs as Go url.Values.Encode does."""
     return "&".join(
         f"{query_escape(key)}={query_escape(value)}" for key, value in sorted(values.items())
+    )
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential resolution failure that no retry fixes; every other error is transient."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
     )
 
 
@@ -191,15 +206,15 @@ class Client:
         """Resolve and refresh the connection's credentials; raises SessionError when unavailable."""
         try:
             credentials = await self.credentials.resolve(call)
-        except ReauthorizationRequiredError:
-            raise SessionError(
-                failure(
-                    operation,
-                    FailureKind.AUTHENTICATION,
-                    "Jira connection credentials are unavailable; reconnect the connection",
-                )
-            ) from None
-        except Exception:
+        except Exception as error:
+            if _is_terminal_credential_error(error):
+                raise SessionError(
+                    failure(
+                        operation,
+                        FailureKind.AUTHENTICATION,
+                        "Jira connection credentials are unavailable; reconnect the connection",
+                    )
+                ) from None
             raise SessionError(
                 failure(
                     operation, FailureKind.AVAILABILITY, "Jira credential lookup is temporarily unavailable"
