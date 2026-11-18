@@ -47,6 +47,13 @@ func TestEveryOperationClassifiesCredentialFailuresTheSameWay(t *testing.T) {
 			client, err := onedrive.New(onedrive.Config{Endpoint: graph.URL}, failingCredentialProvider{err: testCase.err})
 			require.NoError(t, err)
 
+			// A later write attempt may follow an applied write, so even a terminal failure retries.
+			later := newDexContext("credential-later")
+			later.attempt = 2
+			_, laterErr := sdkgo.RunMutation(later, client.UploadFile(), graphConnection, onedrive.UploadFileInput{DriveID: teamDriveID, Name: "a.txt", ConflictBehavior: onedrive.ConflictBehaviorFail, MimeType: "text/plain", TextContent: "x"})
+			var laterRetry *sdkgo.RetryError
+			require.ErrorAs(t, laterErr, &laterRetry)
+
 			created, err := sdkgo.RunMutation(newDexContext("credential-mutation"), client.CreateFolder(), graphConnection, onedrive.CreateFolderInput{DriveID: teamDriveID, Name: "Dex copies"})
 			if testCase.isTerminal {
 				require.NoError(t, err)

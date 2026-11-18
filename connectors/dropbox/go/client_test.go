@@ -21,7 +21,12 @@ import (
 
 var testConnection = sdkgo.ConnectionRef{Provider: "dropbox", Name: "dropbox"}
 
-type queryContext struct{ dex.Context }
+type queryContext struct {
+	dex.Context
+	attempt int32
+}
+
+func (fake queryContext) Attempt() int32 { return max(fake.attempt, 1) }
 
 func (queryContext) FlowID() string              { return "dropbox-provider-test" }
 func (queryContext) StepExecutionID() string     { return "query" }
@@ -213,9 +218,46 @@ func TestUploadFileClassifiesCredentialFailures(t *testing.T) {
 			client, err := New(Config{BaseURL: "http://127.0.0.1:1", ContentBaseURL: "http://127.0.0.1:1"}, failingCredentialSource{resolveErr: testCase.resolveErr})
 			require.NoError(t, err)
 			result, err := sdkgo.RunMutation(queryContext{}, client.UploadFile(), testConnection, UploadFileInput{Path: "/Projects/example.txt", ContentBase64: "SGVsbG8="})
+			var retry *sdkgo.RetryError
+			// A later attempt may follow a stored overwrite, so even a terminal failure retries.
+			_, laterErr := sdkgo.RunMutation(queryContext{attempt: 2}, client.UploadFile(), testConnection, UploadFileInput{Path: "/Projects/example.txt", ContentBase64: "SGVsbG8="})
+			require.ErrorAs(t, laterErr, &retry)
 			if testCase.isTerminal {
 				require.NoError(t, err)
 				require.Equal(t, UploadFileBranchDefect, result.Branch)
+				return
+			}
+			require.ErrorAs(t, err, &retry)
+		})
+	}
+}
+
+func TestUploadFileSelectsProviderRejectedOnlyForADefiniteAnswer(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		status     int
+		body       string
+		isRejected bool
+	}{
+		{"forbidden", http.StatusForbidden, `{"error_summary":"access_denied/..."}`, true},
+		{"documented endpoint error", http.StatusConflict, `{"error_summary":"path/insufficient_space/..","error":{".tag":"path"}}`, true},
+		{"conflict without a summary", http.StatusConflict, `not json`, false},
+		{"unlisted status", http.StatusPreconditionFailed, `{"error_summary":"x"}`, false},
+		{"refusal carrying a stored file", http.StatusBadRequest, `{"id":"id:example","name":"example.txt","path_display":"/Projects/example.txt"}`, false},
+		{"token echoed in a 2xx", http.StatusOK, `{"echo":"test-token"}`, false},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(testCase.status)
+				_, _ = w.Write([]byte(testCase.body))
+			}))
+			defer server.Close()
+			client, err := New(Config{ContentBaseURL: server.URL, MaxUploadBytes: 8}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: testCredentials()})
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(queryContext{}, client.UploadFile(), testConnection, UploadFileInput{Path: "/Projects/example.txt", ContentBase64: "SGVsbG8="})
+			if testCase.isRejected {
+				require.NoError(t, err)
+				require.Equal(t, UploadFileBranchProviderRejected, result.Branch)
 				return
 			}
 			var retry *sdkgo.RetryError

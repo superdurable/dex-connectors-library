@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -188,11 +189,8 @@ func TestUpsertWebhookClassifiesTypeformAnswers(t *testing.T) {
 		expectedKind   sdkgo.FailureKind
 	}{
 		{"http URL refused", respondJSON(http.StatusBadRequest, providerError("webhook_url_https_required")), typeform.UpsertWebhookBranchProviderRejected, sdkgo.FailureValidation},
-		{"plan without webhooks", respondJSON(http.StatusPaymentRequired, providerError("PAYMENT_REQUIRED")), typeform.UpsertWebhookBranchProviderRejected, sdkgo.FailureProviderRejection},
 		{"missing scope", respondJSON(http.StatusForbidden, providerError("AUTHENTICATION_ERROR")), typeform.UpsertWebhookBranchProviderRejected, sdkgo.FailureAuthorization},
 		{"missing form", respondJSON(http.StatusNotFound, providerError("NOT_EXISTING_ID")), typeform.UpsertWebhookBranchNotFound, sdkgo.FailureNotFound},
-		{"unreadable 2xx", respondJSON(http.StatusOK, `{"id":`), typeform.UpsertWebhookBranchInvalidResponse, sdkgo.FailureProtocol},
-		{"another tag in the answer", newFakeWebhooks().upsertRoute(testFormID, "other-tag"), typeform.UpsertWebhookBranchInvalidResponse, sdkgo.FailureProtocol},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			fake := newFakeTypeform(t, map[string]http.HandlerFunc{"PUT " + testWebhookPath: test.handler})
@@ -214,6 +212,12 @@ func TestUpsertWebhookRetriesAServerErrorOrALostAnswerBecauseThePutIsIdempotent(
 		expectedKind sdkgo.FailureKind
 	}{
 		{"server error", respondJSON(http.StatusInternalServerError, providerError("SERVER_ERROR")), sdkgo.FailureAvailability},
+		{"unlisted refusal status", respondJSON(http.StatusPaymentRequired, providerError("PAYMENT_REQUIRED")), sdkgo.FailureProtocol},
+		{"conflict", respondJSON(http.StatusConflict, providerError("CONFLICT")), sdkgo.FailureProtocol},
+		{"refusal status carrying a webhook", respondJSON(http.StatusBadRequest, `{"id":"webhook_1","code":"VALIDATION_ERROR"}`), sdkgo.FailureProtocol},
+		{"oversized refusal body", respondJSON(http.StatusForbidden, `{"code":"`+strings.Repeat("x", 70000)+`"}`), sdkgo.FailureProtocol},
+		{"unreadable 2xx", respondJSON(http.StatusOK, `{"id":`), sdkgo.FailureProtocol},
+		{"another tag in the answer", newFakeWebhooks().upsertRoute(testFormID, "other-tag"), sdkgo.FailureProtocol},
 		{"lost answer", func(response http.ResponseWriter, _ *http.Request) {
 			connection, _, err := response.(http.Hijacker).Hijack()
 			if err == nil {

@@ -30,7 +30,8 @@ from dex_connectors.sdk.providerhttp import (
 )
 
 from ._generated import definitions as definitions
-from .client import Client, Credentials
+from ._generated.connection import is_credential_material_error
+from .client import Client, Credentials, _IncompleteErrorBody
 from .models import (
     Form,
     FormAnswer,
@@ -60,12 +61,13 @@ _ZERO = datetime.min.replace(tzinfo=UTC)
 _HOST_ERROR = "Typeform could not be reached or its answer was lost"
 _MALFORMED = "Typeform returned a malformed response"
 _REVOKED_MESSAGE = "the Typeform connection needs reauthorization or is no longer available; reconnect it"
+_UNSETTLED_PUT = "Typeform's answer did not confirm the webhook PUT, so the idempotent PUT is repeated"
 OutputT = TypeVar("OutputT")
 
 
 def _is_terminal_credential_error(error: BaseException) -> bool:
     """Report a credential failure no later attempt resolves without a person."""
-    return isinstance(
+    return is_credential_material_error(error) or isinstance(
         error,
         (
             ReauthorizationRequiredError,
@@ -74,6 +76,20 @@ def _is_terminal_credential_error(error: BaseException) -> bool:
             CredentialBrokerRejectedError,
         ),
     )
+
+
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
+def _is_definite_refusal(status: int, body: bytes) -> bool:
+    """Report an allowlisted refusal status whose body does not carry a stored webhook."""
+    if status not in _DEFINITE_REFUSAL_STATUSES or isinstance(body, _IncompleteErrorBody):
+        return False
+    try:
+        document = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return True
+    return not (isinstance(document, dict) and document.get("id") not in (None, ""))
 
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -294,6 +310,7 @@ class _Operation:
         object_id: str = "",
         has_not_found: bool = True,
         credentials: Credentials | None = None,
+        is_idempotent_write: bool = False,
     ) -> tuple[bytes | None, QueryAttempt[OutputT] | None]: ...
 
     @overload
@@ -310,6 +327,7 @@ class _Operation:
         object_id: str = "",
         has_not_found: bool = True,
         credentials: Credentials | None = None,
+        is_idempotent_write: bool = False,
     ) -> tuple[bytes | None, MutationAttempt[OutputT] | None]: ...
 
     async def _exchange(
@@ -325,6 +343,7 @@ class _Operation:
         object_id: str = "",
         has_not_found: bool = True,
         credentials: Credentials | None = None,
+        is_idempotent_write: bool = False,
     ) -> tuple[bytes | None, Any]:
         if credentials is None:
             try:
@@ -356,6 +375,10 @@ class _Operation:
         try:
             response, response_body = await self.client.request(token, method, path, query, body)
         except BodyTooLargeError:
+            if is_idempotent_write:
+                return None, _attempt(
+                    operation, mutation, "retry", empty, call, FailureKind.PROTOCOL, _UNSETTLED_PUT
+                )
             return None, _attempt(
                 operation,
                 mutation,
@@ -387,6 +410,14 @@ class _Operation:
             )
             if branch == "notFound" and not has_not_found:
                 branch = "providerRejected"
+            if (
+                is_idempotent_write
+                and branch != "retry"
+                and not _is_definite_refusal(response.status_code, response_body)
+            ):
+                return None, _attempt(
+                    operation, mutation, "retry", empty, call, FailureKind.PROTOCOL, _UNSETTLED_PUT
+                )
             return None, _attempt(
                 operation, mutation, branch, empty, call, kind, message, branch != "retry", object_id, delay
             )
@@ -844,6 +875,7 @@ class UpsertWebhookOperation(_Operation):
             body=request_body,
             object_id=input.form_id,
             credentials=credentials,
+            is_idempotent_write=True,
         )
         if result is not None:
             return result
@@ -877,15 +909,6 @@ class UpsertWebhookOperation(_Operation):
                 updated_at=_timestamp(data.get("updated_at")),
             )
         except (ValueError, TypeError, AttributeError):
-            return _attempt(
-                operation,
-                True,
-                "invalidResponse",
-                empty,
-                call,
-                FailureKind.PROTOCOL,
-                _MALFORMED,
-                True,
-                input.form_id,
-            )
+            # A malformed 2xx leaves the webhook state unconfirmed; repeating the PUT is harmless.
+            return _attempt(operation, True, "retry", empty, call, FailureKind.PROTOCOL, _UNSETTLED_PUT)
         return MutationAttempt.branch_result("upserted", webhook, self.client.receipt(call, webhook.id))

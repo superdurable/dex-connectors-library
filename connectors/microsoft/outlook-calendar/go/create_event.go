@@ -4,11 +4,15 @@
 package outlookcalendar
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 // CreateEventInput describes one event to create. Every attempt of one Step execution
@@ -65,98 +69,236 @@ func (CreateEventOperation) IdempotencyKey(callID sdkgo.CallID, input CreateEven
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke looks the idempotency key up first and returns an event that already carries it.
-// Otherwise it POSTs the event with the key as transactionId and as the extended-property
-// marker. A lost response, a 5xx, or a 429 is retried, and the retry finds the event through
-// the marker; a 400 or 409 is checked the same way before it is reported. Graph does not
-// document what a repeated transactionId returns, so the connector never relies on it alone.
+// acceptedEventProviderID marks a 2xx whose event ID could not be read, so no later attempt POSTs again.
+const acceptedEventProviderID = "accepted"
+
+// Invoke runs under a single-dispatch Fence capped at the call's send limit. Every attempt looks
+// the idempotency key up first through the extended-property marker and returns an event that
+// carries it. Otherwise it POSTs with the key as transactionId and marker. An unknown outcome
+// resends below the cap and selects uncertain at it; a 2xx is never resent; only a definite
+// refusal of a first send selects providerRejected.
 func (operation CreateEventOperation) Invoke(call sdkgo.Call, input CreateEventInput) sdkgo.MutationAttempt[CreateEventOutput] {
-	const operationID = "createEvent"
 	idempotencyKey := string(call.IdempotencyKey)
 	display, err := validateCreateEventInput(input, idempotencyKey)
 	if err != nil {
-		return sdkgo.NewMutationBranch(CreateEventBranchDefect, CreateEventOutput{}, failurePointer(sdkgo.FailureValidation, operationID, err.Error()), sdkgo.Receipt{})
+		return sdkgo.NewMutationBranch(CreateEventBranchDefect, CreateEventOutput{}, failurePointer(sdkgo.FailureValidation, createEventOperationID, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, mailboxRoot, failure, isRetryable := operation.client.resolveCredentials(call, operationID)
-	if isRetryable {
-		return sdkgo.NewMutationRetry[CreateEventOutput](*failure, 0)
-	}
-	if failure != nil {
-		return sdkgo.NewMutationBranch(CreateEventBranchDefect, CreateEventOutput{}, failure, sdkgo.Receipt{})
-	}
-	existing := operation.client.findEventByIdempotencyKey(call, &credentials, operationID, mailboxRoot, idempotencyKey, input.CalendarID, display)
-	if existing.outcome != eventReadMissing {
-		return operation.existingEventAttempt(call, existing)
-	}
-	response, err := operation.client.send(call, &credentials, graphRequest{
-		method: http.MethodPost, path: calendarPath(mailboxRoot, input.CalendarID) + "/events",
-		payload: buildCreateEventPayload(input, idempotencyKey),
-	})
+	fence, err := singledispatch.NewFence(call, CreateEventDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
 	if err != nil {
-		requestFailure := asProviderRequestError(err)
-		switch requestFailure.kind {
-		case sdkgo.FailureResponseTooLarge:
-			return sdkgo.NewMutationBranch(CreateEventBranchInvalidResponse, CreateEventOutput{}, failurePointer(requestFailure.kind, operationID, requestFailure.message), operation.client.receipt(call, response, ""))
-		case sdkgo.FailureLocalDefect:
-			return sdkgo.NewMutationBranch(CreateEventBranchDefect, CreateEventOutput{}, failurePointer(requestFailure.kind, operationID, requestFailure.message), sdkgo.Receipt{})
-		default:
-			return sdkgo.NewMutationRetry[CreateEventOutput](calendarFailure(sdkgo.FailureTransport, operationID, "create outcome is unknown; the retry looks the idempotency key up first"), 0)
-		}
+		return sdkgo.NewMutationBranch(CreateEventBranchDefect, CreateEventOutput{}, failurePointer(sdkgo.FailureLocalDefect, createEventOperationID, "createEvent dispatch fence could not be constructed"), sdkgo.Receipt{})
 	}
-	receipt := operation.client.receipt(call, response, "")
-	switch {
-	case isSuccessStatus(response.statusCode):
-		event, err := decodeEvent(response.body, input.CalendarID, display)
-		if err != nil || (event.TransactionID != "" && event.TransactionID != idempotencyKey) {
-			message := "provider returned an event with another transactionId"
-			if err != nil {
-				message = "provider returned an invalid event: " + err.Error()
-			}
-			return sdkgo.NewMutationBranch(CreateEventBranchInvalidResponse, CreateEventOutput{}, failurePointer(sdkgo.FailureProtocol, operationID, message), receipt)
-		}
-		return sdkgo.NewMutationBranch(CreateEventBranchCreated, CreateEventOutput{Event: event}, nil, operation.client.receipt(call, response, event.ID))
-	case response.statusCode == http.StatusBadRequest || response.statusCode == http.StatusConflict:
-		return operation.rejectedCreateAttempt(call, &credentials, mailboxRoot, input, idempotencyKey, display, response)
+	decision := fence.Decide()
+	if decision.Kind == singledispatch.FailClosed {
+		// An unreadable checkpoint is an unknown outcome; the retry budget bounds these attempts.
+		return sdkgo.NewMutationRetry[CreateEventOutput](calendarFailure(sdkgo.FailureTransport, createEventOperationID, "an earlier attempt may have created the event, and its dispatch checkpoint is unreadable"), 0)
 	}
-	classification := classifyFailureStatus(response)
-	if classification.isRetryable {
-		return sdkgo.NewMutationRetry[CreateEventOutput](calendarFailure(classification.kind, operationID, classification.message), classification.retryAfter)
+	attempt := &createEventAttempt{
+		client: operation.client, call: call, fence: fence, input: input, idempotencyKey: idempotencyKey, display: display,
+		hasPossibleEarlierSend:  decision.Kind != singledispatch.SendAllowed || decision.MaximumPriorSends > 0 || decision.Marker.ProviderID != "",
+		canResendUnknownOutcome: decision.MaximumPriorSends+1 < call.MaxSends(),
+		isAccepted:              decision.Marker.ProviderID != "",
+		isSendForbidden:         decision.Kind == singledispatch.ReadBackRequired || decision.Marker.ProviderID != "",
 	}
-	return sdkgo.NewMutationBranch(CreateEventBranchProviderRejected, CreateEventOutput{}, failurePointer(classification.kind, operationID, classification.message), receipt)
+	return attempt.run()
 }
 
-// rejectedCreateAttempt reads the key back after a 400 or 409; a 409 without the event may still be committing.
-func (operation CreateEventOperation) rejectedCreateAttempt(call sdkgo.Call, credentials *Credentials, mailboxRoot string, input CreateEventInput, idempotencyKey string, display eventDisplay, rejected graphResponse) sdkgo.MutationAttempt[CreateEventOutput] {
-	const operationID = "createEvent"
-	readBack := operation.client.findEventByIdempotencyKey(call, credentials, operationID, mailboxRoot, idempotencyKey, input.CalendarID, display)
-	if readBack.outcome != eventReadMissing {
-		return operation.existingEventAttempt(call, readBack)
-	}
-	classification := classifyFailureStatus(rejected)
-	if rejected.statusCode == http.StatusConflict {
-		return sdkgo.NewMutationRetry[CreateEventOutput](calendarFailure(classification.kind, operationID, classification.message), classification.retryAfter)
-	}
-	return sdkgo.NewMutationBranch(CreateEventBranchProviderRejected, CreateEventOutput{}, failurePointer(classification.kind, operationID, classification.message), operation.client.receipt(call, rejected, ""))
+const createEventOperationID = "createEvent"
+
+// createEventAttempt carries one createEvent attempt's Fence decision and resolved connection.
+type createEventAttempt struct {
+	client         *Client
+	call           sdkgo.Call
+	fence          *singledispatch.Fence
+	input          CreateEventInput
+	idempotencyKey string
+	display        eventDisplay
+	credentials    Credentials
+	mailboxRoot    string
+	// hasPossibleEarlierSend reports an earlier attempt whose POST may have created the event.
+	hasPossibleEarlierSend bool
+	// canResendUnknownOutcome reports that this attempt's POST would leave a further send under the cap.
+	canResendUnknownOutcome bool
+	// isAccepted reports that an earlier attempt received a 2xx, so the event exists.
+	isAccepted bool
+	// isSendForbidden reports that this attempt may only read back.
+	isSendForbidden bool
 }
 
-// existingEventAttempt maps a lookup of the idempotency key, before or after the POST, to a createEvent result.
-func (operation CreateEventOperation) existingEventAttempt(call sdkgo.Call, read eventReadResult) sdkgo.MutationAttempt[CreateEventOutput] {
-	const operationID = "createEvent"
-	receipt := operation.client.receipt(call, read.response, read.event.ID)
+func (attempt *createEventAttempt) run() sdkgo.MutationAttempt[CreateEventOutput] {
+	credentials, mailboxRoot, failure, isRetryable := attempt.client.resolveCredentials(attempt.call, createEventOperationID)
+	if failure != nil {
+		return attempt.credentialFailure(*failure, isRetryable)
+	}
+	attempt.credentials, attempt.mailboxRoot = credentials, mailboxRoot
+	if lookup, isDecided := attempt.lookUp(); isDecided {
+		return lookup
+	}
+	if attempt.isSendForbidden {
+		return attempt.uncertain(calendarFailure(sdkgo.FailureTransport, createEventOperationID, "an earlier attempt may have created the event, and the marker lookup cannot confirm it"), graphResponse{})
+	}
+	return attempt.send()
+}
+
+// credentialFailure keeps notSent and defect for a first send only; after a possible send it retries or selects uncertain.
+func (attempt *createEventAttempt) credentialFailure(failure sdkgo.Failure, isRetryable bool) sdkgo.MutationAttempt[CreateEventOutput] {
+	if attempt.hasPossibleEarlierSend {
+		if isRetryable {
+			return sdkgo.NewMutationRetry[CreateEventOutput](failure, 0)
+		}
+		return attempt.uncertain(calendarFailure(failure.Kind, createEventOperationID, "an earlier attempt may have created the event, and the connection credentials are unavailable to confirm it"), graphResponse{})
+	}
+	if err := attempt.fence.RecordNotSent(); err != nil {
+		return sdkgo.NewMutationRetry[CreateEventOutput](calendarFailure(sdkgo.FailureAvailability, createEventOperationID, "credentials and the no-send checkpoint are unavailable"), 0)
+	}
+	if isRetryable {
+		return sdkgo.NewMutationRetry[CreateEventOutput](failure, 0)
+	}
+	return sdkgo.NewMutationBranch(CreateEventBranchDefect, CreateEventOutput{}, &failure, sdkgo.Receipt{})
+}
+
+// lookUp finds the event by its marker; false means the marker is on no event yet.
+func (attempt *createEventAttempt) lookUp() (sdkgo.MutationAttempt[CreateEventOutput], bool) {
+	read := attempt.client.findEventByIdempotencyKey(attempt.call, &attempt.credentials, createEventOperationID, attempt.mailboxRoot, attempt.idempotencyKey, attempt.input.CalendarID, attempt.display)
 	switch read.outcome {
+	case eventReadMissing:
+		return sdkgo.MutationAttempt[CreateEventOutput]{}, false
 	case eventReadFound:
+		// The found event is authoritative even if its checkpoint is lost.
+		_ = attempt.fence.RecordProviderID(read.event.ID)
 		return sdkgo.NewMutationBranch(CreateEventBranchCreated, CreateEventOutput{
 			Event: read.event, WasAlreadyCreated: true, DuplicateEventIDs: read.duplicateEventIDs,
-		}, nil, receipt)
-	case eventReadRetry:
-		return sdkgo.NewMutationRetry[CreateEventOutput](read.failure, read.retryAfter)
+		}, nil, attempt.client.receipt(attempt.call, read.response, read.event.ID)), true
 	case eventReadRejected:
-		return sdkgo.NewMutationBranch(CreateEventBranchProviderRejected, CreateEventOutput{}, &read.failure, receipt)
+		if isDefiniteGraphRefusal(read.response) {
+			if attempt.hasPossibleEarlierSend {
+				return attempt.uncertain(read.failure, read.response), true
+			}
+			// Nothing was sent; a lost checkpoint leaves no claim to misreport.
+			_ = attempt.fence.RecordNotSent()
+			return sdkgo.NewMutationBranch(CreateEventBranchProviderRejected, CreateEventOutput{}, &read.failure, attempt.client.receipt(attempt.call, read.response, "")), true
+		}
 	case eventReadInvalid:
-		return sdkgo.NewMutationBranch(CreateEventBranchInvalidResponse, CreateEventOutput{}, &read.failure, receipt)
-	default:
-		return sdkgo.NewMutationBranch(CreateEventBranchDefect, CreateEventOutput{}, &read.failure, sdkgo.Receipt{})
+		if !attempt.hasPossibleEarlierSend {
+			// Nothing was sent yet, so an unusable lookup answer can end the Step without a duplicate.
+			_ = attempt.fence.RecordNotSent()
+			return sdkgo.NewMutationBranch(CreateEventBranchInvalidResponse, CreateEventOutput{}, &read.failure, attempt.client.receipt(attempt.call, read.response, "")), true
+		}
+	case eventReadDefect:
+		if !attempt.hasPossibleEarlierSend {
+			_ = attempt.fence.RecordNotSent()
+			return sdkgo.NewMutationBranch(CreateEventBranchDefect, CreateEventOutput{}, &read.failure, sdkgo.Receipt{}), true
+		}
+		return attempt.uncertain(read.failure, graphResponse{}), true
 	}
+	// A transient, unlisted, or unreadable lookup answer leaves the outcome unknown.
+	return sdkgo.NewMutationRetry[CreateEventOutput](read.failure, read.retryAfter), true
+}
+
+// send POSTs the event once under the Fence and classifies the answer.
+func (attempt *createEventAttempt) send() sdkgo.MutationAttempt[CreateEventOutput] {
+	var response graphResponse
+	var sendErr error
+	dispatchErr := attempt.fence.Dispatch(func(requestContext context.Context) error {
+		response, sendErr = attempt.client.send(attempt.call, &attempt.credentials, graphRequest{
+			method: http.MethodPost, path: calendarPath(attempt.mailboxRoot, attempt.input.CalendarID) + "/events",
+			payload: buildCreateEventPayload(attempt.input, attempt.idempotencyKey), requestContext: requestContext,
+		})
+		return sendErr
+	})
+	if errors.Is(dispatchErr, singledispatch.ErrCheckpoint) || errors.Is(dispatchErr, singledispatch.ErrInsufficientTime) || errors.Is(dispatchErr, singledispatch.ErrDispatchNotAllowed) {
+		return sdkgo.NewMutationRetry[CreateEventOutput](calendarFailure(sdkgo.FailureAvailability, createEventOperationID, "the event POST was not sent in this attempt"), 0)
+	}
+	if sendErr != nil {
+		requestFailure := asProviderRequestError(sendErr)
+		switch {
+		case requestFailure.kind == sdkgo.FailureResponseTooLarge && isSuccessStatus(response.statusCode):
+			return attempt.acceptedWithoutEvent(response)
+		case requestFailure.kind == sdkgo.FailureLocalDefect && !attempt.hasPossibleEarlierSend:
+			return sdkgo.NewMutationBranch(CreateEventBranchDefect, CreateEventOutput{}, failurePointer(requestFailure.kind, createEventOperationID, requestFailure.message), sdkgo.Receipt{})
+		}
+		return attempt.resendOrUncertain(calendarFailure(sdkgo.FailureTransport, createEventOperationID, "create outcome is unknown; the retry looks the idempotency key up first"), 0, response)
+	}
+	if response.statusCode == http.StatusTooManyRequests || response.statusCode == http.StatusServiceUnavailable {
+		classification := classifyFailureStatus(response)
+		// Graph did not process the POST, so it does not count against the cap.
+		_ = attempt.fence.RecordCanResend()
+		return sdkgo.NewMutationRetry[CreateEventOutput](calendarFailure(classification.kind, createEventOperationID, classification.message), classification.retryAfter)
+	}
+	if isSuccessStatus(response.statusCode) {
+		event, err := decodeEvent(response.body, attempt.input.CalendarID, attempt.display)
+		if err != nil || (event.TransactionID != "" && event.TransactionID != attempt.idempotencyKey) {
+			return attempt.acceptedWithoutEvent(response)
+		}
+		// The accepted event is known even if its checkpoint is lost.
+		_ = attempt.fence.RecordProviderID(event.ID)
+		return sdkgo.NewMutationBranch(CreateEventBranchCreated, CreateEventOutput{Event: event}, nil, attempt.client.receipt(attempt.call, response, event.ID))
+	}
+	classification := classifyFailureStatus(response)
+	failure := calendarFailure(classification.kind, createEventOperationID, classification.message)
+	if response.statusCode == http.StatusBadRequest || response.statusCode == http.StatusConflict {
+		read := attempt.client.findEventByIdempotencyKey(attempt.call, &attempt.credentials, createEventOperationID, attempt.mailboxRoot, attempt.idempotencyKey, attempt.input.CalendarID, attempt.display)
+		if read.outcome == eventReadFound {
+			_ = attempt.fence.RecordProviderID(read.event.ID)
+			return sdkgo.NewMutationBranch(CreateEventBranchCreated, CreateEventOutput{
+				Event: read.event, WasAlreadyCreated: true, DuplicateEventIDs: read.duplicateEventIDs,
+			}, nil, attempt.client.receipt(attempt.call, read.response, read.event.ID))
+		}
+		if read.outcome != eventReadMissing {
+			return attempt.resendOrUncertain(failure, classification.retryAfter, response)
+		}
+	}
+	if !isDefiniteGraphRefusal(response) {
+		// Only an allowlisted refusal proves nothing was created; any other answer is unknown.
+		return attempt.resendOrUncertain(failure, classification.retryAfter, response)
+	}
+	if attempt.hasPossibleEarlierSend {
+		return attempt.uncertain(failure, response)
+	}
+	// A lost checkpoint leaves the claim, which agent hosts conservatively report as unknown.
+	_ = attempt.fence.RecordCanResend()
+	return sdkgo.NewMutationBranch(CreateEventBranchProviderRejected, CreateEventOutput{}, &failure, attempt.client.receipt(attempt.call, response, ""))
+}
+
+// acceptedWithoutEvent never resends after a 2xx: it records acceptance and reads the marker back.
+func (attempt *createEventAttempt) acceptedWithoutEvent(response graphResponse) sdkgo.MutationAttempt[CreateEventOutput] {
+	failure := calendarFailure(sdkgo.FailureProtocol, createEventOperationID, "Graph accepted the event, but its response is unusable")
+	if err := attempt.fence.RecordProviderID(acceptedEventProviderID); err != nil {
+		return attempt.uncertain(failure, response)
+	}
+	read := attempt.client.findEventByIdempotencyKey(attempt.call, &attempt.credentials, createEventOperationID, attempt.mailboxRoot, attempt.idempotencyKey, attempt.input.CalendarID, attempt.display)
+	if read.outcome == eventReadFound {
+		_ = attempt.fence.RecordProviderID(read.event.ID)
+		return sdkgo.NewMutationBranch(CreateEventBranchCreated, CreateEventOutput{Event: read.event, DuplicateEventIDs: read.duplicateEventIDs}, nil, attempt.client.receipt(attempt.call, read.response, read.event.ID))
+	}
+	// The marker index may lag the create; the next attempt only reads back.
+	return sdkgo.NewMutationRetry[CreateEventOutput](failure, 0)
+}
+
+// resendOrUncertain retries an unknown outcome while the send cap allows another POST.
+func (attempt *createEventAttempt) resendOrUncertain(failure sdkgo.Failure, retryAfter time.Duration, response graphResponse) sdkgo.MutationAttempt[CreateEventOutput] {
+	if attempt.canResendUnknownOutcome {
+		return sdkgo.NewMutationRetry[CreateEventOutput](failure, retryAfter)
+	}
+	return attempt.uncertain(failure, response)
+}
+
+func (attempt *createEventAttempt) uncertain(failure sdkgo.Failure, response graphResponse) sdkgo.MutationAttempt[CreateEventOutput] {
+	return sdkgo.NewMutationUncertain(CreateEventOutput{}, failure, attempt.client.receipt(attempt.call, response, ""))
+}
+
+// isDefiniteGraphRefusal reports an allowlisted refusal status whose body carries no created item ID.
+func isDefiniteGraphRefusal(response graphResponse) bool {
+	switch response.statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var body struct {
+		ID json.RawMessage `json:"id"`
+	}
+	return json.Unmarshal(response.body, &body) != nil || len(body.ID) == 0 || string(body.ID) == "null" || string(body.ID) == `""`
 }
 
 func validateCreateEventInput(input CreateEventInput, idempotencyKey string) (eventDisplay, error) {

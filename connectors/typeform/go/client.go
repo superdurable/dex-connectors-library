@@ -107,9 +107,10 @@ type Client struct {
 
 // typeformResponse is one bounded Typeform answer. A 2xx body is read only up to maxResponseBytes.
 type typeformResponse struct {
-	statusCode int
-	header     http.Header
-	body       []byte
+	statusCode            int
+	header                http.Header
+	body                  []byte
+	isErrorBodyIncomplete bool
 }
 
 // typeformErrorBody holds the documented machine-readable code of a Typeform error object.
@@ -221,7 +222,9 @@ func (client *Client) sendTypeformRequest(
 	result := typeformResponse{statusCode: response.StatusCode, header: response.Header.Clone()}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		// Only the error code is read, so a truncated or unreadable error body keeps its status.
-		result.body, _ = io.ReadAll(io.LimitReader(response.Body, providerhttp.MaxErrorBodyBytes))
+		contents, readErr := io.ReadAll(io.LimitReader(response.Body, providerhttp.MaxErrorBodyBytes+1))
+		result.isErrorBodyIncomplete = readErr != nil || len(contents) > providerhttp.MaxErrorBodyBytes
+		result.body = contents[:min(len(contents), providerhttp.MaxErrorBodyBytes)]
 		return result, nil
 	}
 	result.body, err = providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)

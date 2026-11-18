@@ -24,10 +24,11 @@ import {
   CredentialBrokerRejectedError,
   ObjectNotFoundError,
 } from "@superdurable/connectors-sdk/projectconfig";
-import type {
-  Config,
-  CredentialSource,
-  Credentials,
+import {
+  isCredentialMaterialError,
+  type Config,
+  type CredentialSource,
+  type Credentials,
 } from "./generated/models.js";
 
 /** Report a credential failure no later attempt resolves without a person. */
@@ -36,7 +37,8 @@ function isTerminalCredentialError(error: unknown): boolean {
     error instanceof ReauthorizationRequiredError ||
     error instanceof ObjectNotFoundError ||
     error instanceof ConnectionNotSelectedError ||
-    error instanceof CredentialBrokerRejectedError
+    error instanceof CredentialBrokerRejectedError ||
+    isCredentialMaterialError(error)
   );
 }
 
@@ -317,6 +319,7 @@ export class GraphHTTP {
     payload?: unknown,
     ifMatch = "",
     nextLink = "",
+    signal?: AbortSignal,
   ): Promise<GraphResponse> {
     const target = nextLink
       ? this.baseURL === graphBase
@@ -353,7 +356,8 @@ export class GraphHTTP {
           ? "privateNetworkHTTP"
           : "publicHTTPS",
         timeoutMs: 20_000,
-        signal: call.context.cancellationSignal,
+        // A fenced write passes its write-window signal.
+        signal: signal ?? call.context.cancellationSignal,
         ...(body ? { body } : {}),
       };
       let response: GraphResponse;

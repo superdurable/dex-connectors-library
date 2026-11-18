@@ -220,6 +220,8 @@ type graphResponse struct {
 	header    http.Header
 	body      []byte
 	requestID string
+	// isErrorBodyIncomplete marks an error body dropped for exceeding its bound.
+	isErrorBodyIncomplete bool
 }
 
 type graphRequestError struct {
@@ -434,6 +436,7 @@ func (client *Client) readResponse(httpResponse *http.Response, responseLimit in
 	if isOversized {
 		// An oversized error body carries no usable code, so the status alone classifies it.
 		response.body = nil
+		response.isErrorBodyIncomplete = true
 		readErr = nil
 	}
 	if readErr != nil || closeErr != nil {

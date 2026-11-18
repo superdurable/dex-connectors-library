@@ -409,25 +409,44 @@ func newCalendarClient(t *testing.T, providerURL string) *outlookcalendar.Client
 
 type calendarDexContext struct {
 	context.Context
-	step string
+	step      string
+	mutex     sync.Mutex
+	heartbeat json.RawMessage
+	attemptNo int32
 }
 
 func newCalendarDexContext(step string) *calendarDexContext {
 	return &calendarDexContext{Context: context.Background(), step: step}
 }
-func (*calendarDexContext) FlowID() string                                  { return "calendar-flow" }
-func (*calendarDexContext) RunID() string                                   { return "run" }
-func (*calendarDexContext) FlowStartedAt() time.Time                        { return time.Unix(1, 0) }
-func (context *calendarDexContext) StepExecutionID() string                 { return context.step }
-func (*calendarDexContext) FromStepExecutionID() string                     { return "" }
-func (*calendarDexContext) RecoveryError() *dex.RecoveryErrorInfo           { return nil }
-func (*calendarDexContext) FirstAttemptAt() time.Time                       { return time.Unix(1, 0) }
-func (*calendarDexContext) Attempt() int32                                  { return 1 }
-func (*calendarDexContext) HasTimerFired() bool                             { return false }
-func (*calendarDexContext) HasTimerFiredByIndex(int) bool                   { return false }
-func (*calendarDexContext) WaitForMethodFailed() bool                       { return false }
-func (*calendarDexContext) RecordHeartbeat(any) error                       { return nil }
-func (*calendarDexContext) GetLastHeartbeatValue(any) (bool, error)         { return false, nil }
+func (*calendarDexContext) FlowID() string                        { return "calendar-flow" }
+func (*calendarDexContext) RunID() string                         { return "run" }
+func (*calendarDexContext) FlowStartedAt() time.Time              { return time.Unix(1, 0) }
+func (context *calendarDexContext) StepExecutionID() string       { return context.step }
+func (*calendarDexContext) FromStepExecutionID() string           { return "" }
+func (*calendarDexContext) RecoveryError() *dex.RecoveryErrorInfo { return nil }
+func (*calendarDexContext) FirstAttemptAt() time.Time             { return time.Unix(1, 0) }
+func (context *calendarDexContext) Attempt() int32                { return max(context.attemptNo, 1) }
+func (*calendarDexContext) HasTimerFired() bool                   { return false }
+func (*calendarDexContext) HasTimerFiredByIndex(int) bool         { return false }
+func (*calendarDexContext) WaitForMethodFailed() bool             { return false }
+func (context *calendarDexContext) RecordHeartbeat(value any) error {
+	context.mutex.Lock()
+	defer context.mutex.Unlock()
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	context.heartbeat = encoded
+	return nil
+}
+func (context *calendarDexContext) GetLastHeartbeatValue(target any) (bool, error) {
+	context.mutex.Lock()
+	defer context.mutex.Unlock()
+	if len(context.heartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(context.heartbeat, target)
+}
 func (*calendarDexContext) SetStepExecutionLocal(string, any) error         { return nil }
 func (*calendarDexContext) GetStepExecutionLocal(string, any) (bool, error) { return false, nil }
 func (*calendarDexContext) RecordEvent(string, any) error                   { return nil }

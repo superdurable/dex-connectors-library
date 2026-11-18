@@ -15,6 +15,8 @@ from dex_connectors.sdk.projectconfig.broker import (
 from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.typeform import Client, Config, Credentials, GetFormInput, UpsertWebhookInput
+from dex_connectors.typeform._generated.connection import _ProjectCredentialSource
+from dex_connectors.typeform.connection import CredentialMaterialError
 from dex_connectors.typeform.operations import _classify_status, _form, _response, _timestamp
 
 
@@ -155,9 +157,44 @@ class _LaterAttemptContext:
     attempt = 2
 
 
+def _sdk_decoding_failure() -> ValueError:
+    """Build the error the SDK project provider raises when a decoder rejects material."""
+    try:
+        try:
+            raise CredentialMaterialError("Typeform credential access_token is required")
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+
+
+class _MalformedMaterialProject:
+    async def resolve_credential(self, key: object, call_id: str) -> dict[str, object]:
+        return {"access_token": 7}
+
+
+@pytest.mark.asyncio
+async def test_malformed_stored_credentials_are_terminal_through_the_project_source() -> None:
+    """Stored material that fails the generated checks selects defect without any request."""
+    connection = sdk.ConnectionRef("typeform", "forms")
+    source = _ProjectCredentialSource(_MalformedMaterialProject(), object())  # type: ignore[arg-type]
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda _: pytest.fail("unexpected request"))
+    ) as transport:
+        client = Client(Config(), source, transport)  # type: ignore[arg-type]
+        call = sdk.Call(sdk.CallID("test-call"), connection, sdk.OperationRef("typeform", "upsertWebhook"))
+        upsert_input = UpsertWebhookInput(form_id="form123", tag="hook", url="https://hooks.example.com/t")
+        upsert = await client.upsert_webhook().invoke(call, upsert_input)
+        query = await client.get_form().invoke(call, GetFormInput(form_id="form123"))
+    assert upsert.kind == "branch" and upsert.branch == "defect"
+    assert query.kind == "branch" and query.branch == "defect"
+
+
 @pytest.mark.parametrize(
     ("error", "is_terminal"),
     [
+        (CredentialMaterialError("Typeform credential access_token is required"), True),
+        (_sdk_decoding_failure(), True),
         (sdk.ReauthorizationRequiredError(), True),
         (ObjectNotFoundError("connection"), True),
         (ConnectionNotSelectedError("connection"), True),
@@ -190,3 +227,31 @@ async def test_every_credential_resolve_failure_shares_one_classification(
     expected = "branch" if is_terminal else "retry"
     assert query.kind == expected and upsert.kind == expected
     assert later_upsert.kind == "retry"
+
+
+@pytest.mark.parametrize(
+    ("status", "body"),
+    [
+        (402, b'{"code":"PAYMENT_REQUIRED"}'),
+        (409, b'{"code":"CONFLICT"}'),
+        (400, b'{"id":"webhook_1","code":"VALIDATION_ERROR"}'),
+        (200, b'{"id":'),
+        (200, b'{"id":"w1","form_id":"form123","tag":"other","url":"https://x.test","enabled":true}'),
+        (403, b"x" * 70000),
+    ],
+)
+@pytest.mark.asyncio
+async def test_upsert_webhook_repeats_an_unsettled_put(status: int, body: bytes) -> None:
+    """An unlisted status, a refusal carrying a webhook, or an unusable body retries the idempotent PUT."""
+    connection = sdk.ConnectionRef("typeform", "forms")
+    stored = Credentials(access_token=sdk.SecretString("inert-token"), webhook_secret=sdk.SecretString("s"))
+    credentials = sdk.StaticCredentialProvider({connection: stored})
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda _: httpx.Response(status, content=body))
+    ) as transport:
+        client = Client(Config(max_response_bytes=1024), credentials, transport)
+        call = sdk.Call(sdk.CallID("test-call"), connection, sdk.OperationRef("typeform", "upsertWebhook"))
+        upsert_input = UpsertWebhookInput(form_id="form123", tag="hook", url="https://hooks.example.com/t")
+        attempt = await client.upsert_webhook().invoke(call, upsert_input)
+    assert attempt.kind == "retry"
+    assert attempt.failure is not None and attempt.failure.kind == sdk.FailureKind.PROTOCOL

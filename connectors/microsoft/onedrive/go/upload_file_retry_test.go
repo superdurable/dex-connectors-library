@@ -75,7 +75,10 @@ func TestUploadFileClassifiesRejectionsAndThrottling(t *testing.T) {
 		{name: "throttled", response: graphfake.Response{StatusCode: http.StatusTooManyRequests, Code: "activityLimitReached", Header: http.Header{"Retry-After": {"3"}}}},
 		{name: "locked with other content", response: graphfake.Response{StatusCode: http.StatusLocked, Code: "resourceLocked"}, wantBranch: onedrive.UploadFileBranchProviderRejected, wantKind: sdkgo.FailureConflict},
 		{name: "denied", response: graphfake.Response{StatusCode: http.StatusForbidden, Code: "accessDenied"}, wantBranch: onedrive.UploadFileBranchProviderRejected, wantKind: sdkgo.FailureAuthorization},
-		{name: "quota", response: graphfake.Response{StatusCode: http.StatusInsufficientStorage, Code: "quotaLimitReached"}, wantBranch: onedrive.UploadFileBranchProviderRejected, wantKind: sdkgo.FailureQuotaExhausted},
+		// Every 5xx and unlisted 4xx is unknown, so the safe PUT repeats instead of selecting a branch.
+		{name: "quota", response: graphfake.Response{StatusCode: http.StatusInsufficientStorage, Code: "quotaLimitReached"}},
+		{name: "not implemented", response: graphfake.Response{StatusCode: http.StatusNotImplemented, Code: "notSupported"}},
+		{name: "precondition failed", response: graphfake.Response{StatusCode: http.StatusPreconditionFailed, Code: "resourceModified"}},
 		{name: "blocked type", response: graphfake.Response{StatusCode: http.StatusBadRequest, Code: "invalidRequest"}, wantBranch: onedrive.UploadFileBranchProviderRejected, wantKind: sdkgo.FailureProviderRejection},
 	} {
 		t.Run(test.name, func(t *testing.T) {

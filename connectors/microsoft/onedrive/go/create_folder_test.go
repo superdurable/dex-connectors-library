@@ -100,4 +100,33 @@ func TestCreateFolderRejectsInvalidNamesAndClassifiesRejections(t *testing.T) {
 	_, err = sdkgo.RunMutation(newDexContext("folder-unavailable"), client.CreateFolder(), graphConnection, onedrive.CreateFolderInput{DriveID: teamDriveID, Name: "x"})
 	require.Error(t, err)
 	require.NotContains(t, err.Error(), "GRAPH-MESSAGE-SENTINEL")
+
+	// A 409 without nameAlreadyExists or an unlisted status is unknown, so the safe creation repeats.
+	for _, status := range []int{http.StatusConflict, http.StatusPreconditionFailed, http.StatusInsufficientStorage} {
+		graph.Intercept(func(request graphfake.Request) *graphfake.Response {
+			return &graphfake.Response{StatusCode: status, Code: "otherConflict"}
+		})
+		_, err = sdkgo.RunMutation(newDexContext("folder-unsettled"), client.CreateFolder(), graphConnection, onedrive.CreateFolderInput{DriveID: teamDriveID, Name: "x"})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, status)
+	}
+}
+
+func TestCreateFolderRetriesADefiniteReadBackRefusalOnALaterAttempt(t *testing.T) {
+	graph := newGraph(t)
+	graph.Intercept(func(request graphfake.Request) *graphfake.Response {
+		if request.Method == http.MethodPost {
+			return &graphfake.Response{StatusCode: http.StatusConflict, Code: "nameAlreadyExists"}
+		}
+		return &graphfake.Response{StatusCode: http.StatusForbidden, Code: "accessDenied"}
+	})
+	client := newGraphClient(t, graph.URL)
+	first, err := sdkgo.RunMutation(newDexContext("folder-read-back-denied"), client.CreateFolder(), graphConnection, onedrive.CreateFolderInput{DriveID: teamDriveID, Name: "x"})
+	require.NoError(t, err)
+	require.Equal(t, onedrive.CreateFolderBranchProviderRejected, first.Branch)
+	later := newDexContext("folder-read-back-denied-later")
+	later.attempt = 2
+	_, err = sdkgo.RunMutation(later, client.CreateFolder(), graphConnection, onedrive.CreateFolderInput{DriveID: teamDriveID, Name: "x"})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an earlier attempt may have created the folder")
 }

@@ -13,6 +13,7 @@ import httpx
 from dex_connectors.sdk import (
     Call,
     CallID,
+    Failure,
     FailureKind,
     IdempotencyKey,
     MutationAttempt,
@@ -148,11 +149,38 @@ def _mutation_read_failure(
     if result is None:
         return None
     branch, failure, delay, received = result
-    return (
-        MutationAttempt.branch_result(branch, zero, received, failure)
-        if branch
-        else MutationAttempt.retry(failure, delay)
-    )
+    # A read-back follows a write, so only a definite refusal on a first attempt selects a branch.
+    if branch and not _is_later_attempt(call) and _is_definite_write_refusal(exchange):
+        return MutationAttempt.branch_result(branch, zero, received, failure)
+    return MutationAttempt.retry(failure, delay)
+
+
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
+def _is_definite_write_refusal(exchange: Exchange) -> bool:
+    """Report an allowlisted refusal status whose fully read body describes no item."""
+    if exchange.error or exchange.is_error_body_incomplete:
+        return False
+    if exchange.status not in _DEFINITE_REFUSAL_STATUSES:
+        return False
+    try:
+        _response_item(exchange)
+    except (ValueError, TypeError, UnicodeError, KeyError):
+        return True
+    return False
+
+
+def _is_later_attempt(call: Call) -> bool:
+    """Report an attempt that may follow an earlier attempt's applied write."""
+    return call.context is not None and call.context.attempt > 1
+
+
+def _write_credential_failure(call: Call, failure: Failure, zero: T) -> MutationAttempt[T]:
+    """Retry a credential failure after a possible earlier write, where defect would misreport it."""
+    if _is_later_attempt(call) and failure.kind is FailureKind.AUTHENTICATION:
+        return MutationAttempt.retry(failure)
+    return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), failure)
 
 
 def _response_item(exchange: Exchange) -> DriveItem:
@@ -645,7 +673,9 @@ class UploadFileOperation:
         credentials, failure = await self.client.resolve_credentials(call, operation, input.drive_id)
         if failure is not None and failure.kind is FailureKind.AVAILABILITY:
             return MutationAttempt.retry(failure)
-        if failure is not None or credentials is None:
+        if failure is not None:
+            return _write_credential_failure(call, failure, zero)
+        if credentials is None:
             return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), failure)
         target = (
             self.client.child_url(input.drive_id, input.parent_folder_id, input.name)
@@ -699,6 +729,15 @@ class UploadFileOperation:
                 ),
                 delay,
             )
+        if not _is_definite_write_refusal(exchange):
+            # An unlisted status, such as 501 or 507, or an unreadable body leaves the PUT unsettled.
+            return MutationAttempt.retry(
+                graph_failure(
+                    FailureKind.PROTOCOL,
+                    operation,
+                    "provider answer did not settle the upload, so the PUT repeats",
+                )
+            )
         return MutationAttempt.branch_result(
             defs.PROVIDER_REJECTED,
             zero,
@@ -730,11 +769,8 @@ class UploadFileOperation:
         try:
             item = _response_item(exchange)
         except (ValueError, TypeError, UnicodeError):
-            return MutationAttempt.branch_result(
-                defs.INVALID_RESPONSE,
-                zero,
-                received,
-                graph_failure(FailureKind.PROTOCOL, operation, "provider returned an invalid item response"),
+            return MutationAttempt.retry(
+                graph_failure(FailureKind.PROTOCOL, operation, "provider returned an invalid item response")
             )
         received = receipt(call, exchange.request_id, item.id, self.client.now())
         if not item.is_folder and not item.is_package and not item.quick_xor_hash:
@@ -803,7 +839,9 @@ class CreateFolderOperation:
         credentials, failure = await self.client.resolve_credentials(call, operation, input.drive_id)
         if failure is not None and failure.kind is FailureKind.AVAILABILITY:
             return MutationAttempt.retry(failure)
-        if failure is not None or credentials is None:
+        if failure is not None:
+            return _write_credential_failure(call, failure, zero)
+        if credentials is None:
             return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), failure)
         body = json.dumps(
             {"@microsoft.graph.conflictBehavior": "fail", "folder": {}, "name": input.name},
@@ -862,6 +900,15 @@ class CreateFolderOperation:
                 ),
                 delay,
             )
+        if not _is_definite_write_refusal(exchange):
+            # Another 409, an unlisted status, or an unreadable body leaves the creation unsettled.
+            return MutationAttempt.retry(
+                graph_failure(
+                    FailureKind.PROTOCOL,
+                    operation,
+                    "provider answer did not settle the folder creation, so it repeats",
+                )
+            )
         return MutationAttempt.branch_result(
             defs.PROVIDER_REJECTED,
             zero,
@@ -895,11 +942,8 @@ class CreateFolderOperation:
         try:
             item = _response_item(exchange)
         except (ValueError, TypeError, UnicodeError):
-            return MutationAttempt.branch_result(
-                defs.INVALID_RESPONSE,
-                zero,
-                received,
-                graph_failure(FailureKind.PROTOCOL, operation, "provider returned an invalid item response"),
+            return MutationAttempt.retry(
+                graph_failure(FailureKind.PROTOCOL, operation, "provider returned an invalid item response")
             )
         received = receipt(call, exchange.request_id, item.id, self.client.now())
         if item.is_folder:

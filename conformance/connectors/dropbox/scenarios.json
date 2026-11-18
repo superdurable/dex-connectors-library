@@ -1727,18 +1727,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "file": {
-            "id": "",
-            "kind": "",
-            "name": "",
-            "pathDisplay": ""
-          }
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1747,7 +1739,7 @@
         "contentBase64": "SGVsbG8=",
         "path": "/Projects/example.txt"
       },
-      "name": "uploadFile-invalidResponse",
+      "name": "uploadFile-invalidMetadataRetries",
       "operation": "uploadFile"
     },
     {
