@@ -7,7 +7,14 @@ import { createServer } from 'node:http';
 import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { OpenAIClient, pathEscape } from '../src/client.js';
-import type { CreateRequest } from '../src/generated/models.js';
+import { decodeCredentials, type CreateRequest } from '../src/generated/models.js';
+
+/** Return the error the SDK project provider throws when the generated decoder rejects stored material. */
+function sdkWrappedMaterialError(): TypeError {
+  try { decodeCredentials({ unexpected_field: 'value' }); }
+  catch { return new TypeError('project credential decoding failed'); }
+  throw new Error('malformed stored material decoded');
+}
 import { Mock, validateCreateResponseAnswer, validateCreateResponseRequest } from '../src/mock.js';
 
 const input: CreateRequest = { Model: '', Input: 'Summarize this.', Instructions: '', StructuredOutput: null };
@@ -220,6 +227,7 @@ describe('createResponse checkpoint recovery', () => {
     ['unavailable', async () => { throw new Error('vault unavailable'); }, 'retry'],
     ['reauthorization', async () => { throw new ReauthorizationRequiredError(); }, 'uncertain'],
     ['invalid', async () => ({ apiKey: new SecretString('bad\nkey') }), 'uncertain'],
+    ['malformed stored', async () => { throw sdkWrappedMaterialError(); }, 'uncertain'],
   ] as const)('after a possible create, %s credentials select %s', async (_name, resolve, expected) => {
     const provider = new OpenAIClient({ endpoint: 'http://localhost:34080/v1', model: 'gpt-test' }, { resolve }, { send: async () => { throw new Error('unexpected send'); } });
     const { invocation, heartbeats } = call(2);
@@ -231,6 +239,7 @@ describe('createResponse checkpoint recovery', () => {
   it.each([
     ['unavailable', async () => { throw new Error('vault unavailable'); }, 'retry'],
     ['reauthorization', async () => { throw new ReauthorizationRequiredError(); }, 'branch'],
+    ['malformed stored', async () => { throw sdkWrappedMaterialError(); }, 'branch'],
   ] as const)('before any create, %s credentials select %s', async (_name, resolve, expected) => {
     const provider = new OpenAIClient({ endpoint: 'http://localhost:34080/v1', model: 'gpt-test' }, { resolve }, { send: async () => { throw new Error('unexpected send'); } });
     const { invocation, heartbeats } = call(1);

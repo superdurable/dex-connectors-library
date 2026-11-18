@@ -27,6 +27,7 @@ from dex_connectors.sdk import (
 )
 from dex_connectors.sdk.projectconfig import ConnectionNotSelectedError, CredentialBrokerUnavailableError
 
+import dex_connectors.openai._generated.connection as generated_connection
 import dex_connectors.openai.client as openai_client
 from dex_connectors.openai import (
     COMPLETED,
@@ -471,6 +472,16 @@ _UNAVAILABLE = _FailingCredentialProvider(CredentialBrokerUnavailableError("brok
 _REAUTHORIZATION = _FailingCredentialProvider(ReauthorizationRequiredError())
 
 
+class _MalformedProject:
+    """Serve stored credential material that fails the generated decoder."""
+
+    async def resolve_credential(self, key: object, call_id: str) -> dict[str, object]:
+        return {"unexpected_field": "value"}
+
+
+_MALFORMED = generated_connection._ProjectCredentialSource(_MalformedProject(), object())  # type: ignore[arg-type]
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("credentials", "expected"),
@@ -481,8 +492,17 @@ _REAUTHORIZATION = _FailingCredentialProvider(ReauthorizationRequiredError())
         (_REAUTHORIZATION, UNCERTAIN),
         (_FailingCredentialProvider(ConnectionNotSelectedError()), UNCERTAIN),
         (StaticCredentialProvider({CONNECTION: Credentials(SecretString(""))}), UNCERTAIN),
+        (_MALFORMED, UNCERTAIN),
     ],
-    ids=["unavailable", "not configured", "unlisted", "reauthorization", "not selected", "invalid"],
+    ids=[
+        "unavailable",
+        "not configured",
+        "unlisted",
+        "reauthorization",
+        "not selected",
+        "invalid",
+        "malformed",
+    ],
 )
 async def test_credential_failure_after_a_possible_create(credentials: Any, expected: str) -> None:
     """Unavailable credentials retry; lasting failures select uncertain, never defect."""
@@ -504,8 +524,8 @@ async def test_credential_failure_after_a_possible_create(credentials: Any, expe
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("credentials", "expected"),
-    [(_UNAVAILABLE, "retry"), (_REAUTHORIZATION, DEFECT)],
-    ids=["unavailable", "reauthorization"],
+    [(_UNAVAILABLE, "retry"), (_REAUTHORIZATION, DEFECT), (_MALFORMED, DEFECT)],
+    ids=["unavailable", "reauthorization", "malformed"],
 )
 async def test_credential_failure_before_the_first_create(credentials: Any, expected: str) -> None:
     """An unavailable broker retries and counts no send; a lasting failure before any send is a defect."""
