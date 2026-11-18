@@ -11,7 +11,14 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import urlencode
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -137,15 +144,31 @@ class Client:
 
     async def resolve_credentials(self, call: Call, operation: str) -> tuple[str, str] | Failure:
         """Resolve and validate a Mailchimp key without returning it in failures."""
+        connection, _ = await self.resolve_classified_credentials(call, operation)
+        return connection
+
+    async def resolve_classified_credentials(
+        self, call: Call, operation: str
+    ) -> tuple[tuple[str, str] | Failure, bool]:
+        """Resolve a Mailchimp key and report whether a failure may succeed on a later attempt.
+
+        Only a lookup error other than a reauthorization requirement is transient.
+        """
+        unavailable = failure(FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable")
         try:
             credentials = await self._credentials.resolve(call)
+        except ReauthorizationRequiredError:
+            return unavailable, False
+        except Exception:
+            return unavailable, True
+        try:
             key = credentials.api_key.reveal()
             match = _API_KEY.fullmatch(key)
             if not is_header_safe_credential(key) or match is None:
                 raise ValueError("invalid Mailchimp API key")
-            return key, self._api_base_url or f"https://{match.group(1)}.api.mailchimp.com/3.0"
+            return (key, self._api_base_url or f"https://{match.group(1)}.api.mailchimp.com/3.0"), False
         except Exception:
-            return failure(FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable")
+            return unavailable, False
 
     async def exchange(
         self,

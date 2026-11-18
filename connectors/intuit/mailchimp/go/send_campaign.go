@@ -103,8 +103,12 @@ func (operation SendCampaignOperation) Invoke(call sdkgo.Call, input SendCampaig
 
 // readThenSend reads the campaign, which is also the read-back of any earlier send, and sends a draft.
 func (attempt *sendCampaignAttempt) readThenSend() sdkgo.MutationAttempt[SendCampaignOutput] {
-	connection, failure := attempt.client.resolveConnection(attempt.call, sendCampaignOperation)
+	connection, failure, isTransient := attempt.client.resolveClassifiedConnection(attempt.call, sendCampaignOperation)
 	if failure != nil {
+		if attempt.hasPossibleEarlierSend && isTransient {
+			// A later attempt reads the campaign before any resend; notSent would hide the earlier send.
+			return sdkgo.NewMutationRetry[SendCampaignOutput](*failure, 0)
+		}
 		if attempt.hasPossibleEarlierSend {
 			return sdkgo.NewMutationUncertain(SendCampaignOutput{}, mailchimpFailure(sdkgo.FailureAuthentication, sendCampaignOperation,
 				"an earlier attempt may have sent the campaign, and the connection credentials are unavailable to read it; reconnect the connection"), sdkgo.Receipt{})
@@ -212,7 +216,11 @@ func (attempt *sendCampaignAttempt) refuseOrSelectUncertain(branch sdkgo.BranchI
 
 // readBackWithoutSend never sends; it reports alreadySent only when Mailchimp shows the campaign sending or sent.
 func (client *Client) readBackWithoutSend(call sdkgo.Call, input SendCampaignInput, reason string) sdkgo.MutationAttempt[SendCampaignOutput] {
-	connection, failure := client.resolveConnection(call, sendCampaignOperation)
+	connection, failure, isTransient := client.resolveClassifiedConnection(call, sendCampaignOperation)
+	if failure != nil && isTransient {
+		// The next attempt reads the campaign again before any send.
+		return sdkgo.NewMutationRetry[SendCampaignOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationUncertain(SendCampaignOutput{}, mailchimpFailure(sdkgo.FailureAuthentication, sendCampaignOperation,
 			reason+", and the connection credentials are unavailable to read the campaign; reconnect the connection"), sdkgo.Receipt{})

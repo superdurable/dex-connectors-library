@@ -233,6 +233,43 @@ func TestSendCampaignRetriesAnUnknownSendOutcomeAndReadsBeforeResending(t *testi
 	require.Equal(t, 1, provider.sendCount())
 }
 
+// failingMailchimpCredentials fails every credential lookup with err.
+type failingMailchimpCredentials struct{ err error }
+
+func (provider failingMailchimpCredentials) Resolve(sdkgo.Call) (mailchimp.Credentials, error) {
+	return mailchimp.Credentials{}, provider.err
+}
+
+func TestSendCampaignRetriesATransientCredentialFailureAfterAPossibleSend(t *testing.T) {
+	provider := newCampaignScript(t, "save", serverError(t))
+	first := newMailchimpDexContext("send-credentials-after-send")
+	_, err := runSendCampaign(t, first, provider.URL)
+	requireRetry(t, err)
+
+	for name, test := range map[string]struct {
+		err         error
+		isRetryable bool
+	}{
+		"transient lookup":         {err: errors.New("credential store unavailable"), isRetryable: true},
+		"reauthorization required": {err: sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), isRetryable: false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			second := first.nextAttempt()
+			client, err := mailchimp.New(mailchimp.Config{}, failingMailchimpCredentials{err: test.err}, mailchimp.WithAPIBaseURL(provider.URL+"/3.0"))
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(second, client.SendCampaign(), mailchimpConnection, validSendCampaignInput())
+			if test.isRetryable {
+				requireRetry(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, mailchimp.SendCampaignBranchUncertain, result.Branch, "the earlier send may have landed")
+			}
+			require.Zero(t, second.heartbeatCount, "notSent would hide the earlier possible send")
+			require.Equal(t, 1, provider.sendCount())
+		})
+	}
+}
+
 func TestSendCampaignSelectsSentForAnAccepted2xxWhoseBodyIsUnusable(t *testing.T) {
 	for _, test := range []struct {
 		name  string

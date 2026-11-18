@@ -158,11 +158,14 @@ class SendCampaignAttempt {
   /** Read the campaign, which is also the read-back of an earlier send, and send a draft. */
   async readThenSend(): Promise<MutationAttempt<SendCampaignOutput>> {
     const operation = 'sendCampaign';
-    const connection = await this.client.resolveConnection(this.call);
-    if (!connection) {
+    const resolved = await this.client.resolveClassifiedConnection(this.call);
+    if (!('connection' in resolved)) {
+      // A later attempt reads the campaign before any resend; notSent would hide the earlier send.
+      if (this.hasPossibleEarlierSend && resolved.isTransient) return newMutationRetry(mailchimpFailure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'));
       if (this.hasPossibleEarlierSend) return newMutationUncertain(emptySend, mailchimpFailure(operation, 'AUTHENTICATION', 'an earlier attempt may have sent the campaign, and the connection credentials are unavailable to read it; reconnect the connection'), zeroReceipt());
       return credentialMutationDefect(operation, emptySend);
     }
+    const connection = resolved.connection;
     const read = await this.client.exchange(this.call, connection, operation, 'GET', `/campaigns/${this.input.campaignId}`, new URLSearchParams({ fields: campaignFields }));
     const readReceipt = this.client.receipt(this.call, read, this.input.campaignId);
     if (read.outcome === 'rateLimited' || read.outcome === 'notSent' || read.outcome === 'unavailable') return this.retryBeforeSend(read.failure!, read.retryAfterMs);
@@ -233,8 +236,11 @@ function hasLegacyDispatch(call: Call): boolean {
 /** Never send; report alreadySent only when Mailchimp shows the campaign sending or sent. */
 async function readBackWithoutSend(client: MailchimpClient, call: Call, input: SendCampaignInput, reason: string): Promise<MutationAttempt<SendCampaignOutput>> {
   const operation = 'sendCampaign';
-  const connection = await client.resolveConnection(call);
-  if (!connection) return newMutationUncertain(emptySend, mailchimpFailure(operation, 'AUTHENTICATION', `${reason}, and the connection credentials are unavailable to read the campaign; reconnect the connection`), zeroReceipt());
+  const resolved = await client.resolveClassifiedConnection(call);
+  // The next attempt reads the campaign again before any send.
+  if (!('connection' in resolved) && resolved.isTransient) return newMutationRetry(mailchimpFailure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'));
+  if (!('connection' in resolved)) return newMutationUncertain(emptySend, mailchimpFailure(operation, 'AUTHENTICATION', `${reason}, and the connection credentials are unavailable to read the campaign; reconnect the connection`), zeroReceipt());
+  const connection = resolved.connection;
   const read = await client.exchange(call, connection, operation, 'GET', `/campaigns/${input.campaignId}`, new URLSearchParams({ fields: campaignFields }));
   const receipt = client.receipt(call, read, input.campaignId);
   // Reading is harmless to repeat, and a retry of this path never sends.

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import type { Call, CredentialProvider, Failure, ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import type { Config, Credentials } from './generated/models.js';
 import { GetMemberOperation, ListMembersOperation, UpsertMemberOperation, UpdateMemberTagsOperation, SendCampaignOperation } from './operations.js';
 
@@ -77,12 +77,21 @@ export class MailchimpClient {
 
   /** Resolve the current API key and its data center without exposing it in failures. */
   async resolveConnection(call: Call): Promise<{ key: string; baseURL: string } | undefined> {
+    const resolved = await this.resolveClassifiedConnection(call);
+    return 'connection' in resolved ? resolved.connection : undefined;
+  }
+
+  /**
+   * Resolve the API key and report whether a failure may succeed on a later attempt: only a lookup
+   * error other than a reauthorization requirement is transient.
+   */
+  async resolveClassifiedConnection(call: Call): Promise<{ connection: { key: string; baseURL: string } } | { isTransient: boolean }> {
     let key: string;
     try { key = (await this.credentials.resolve(call, call.context.cancellationSignal)).apiKey.reveal(); }
-    catch { return undefined; }
+    catch (error) { return { isTransient: !(error instanceof ReauthorizationRequiredError) }; }
     const match = /^([A-Za-z0-9]{8,128})-([a-z]{2,10}[0-9]{1,4})$/.exec(key);
-    if (!match || !isHeaderSafeCredential(key)) return undefined;
-    return { key, baseURL: this.apiBaseURL ?? `https://${match[2]}.api.mailchimp.com/3.0` };
+    if (!match || !isHeaderSafeCredential(key)) return { isTransient: false };
+    return { connection: { key, baseURL: this.apiBaseURL ?? `https://${match[2]}.api.mailchimp.com/3.0` } };
   }
 
   /**

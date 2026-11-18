@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { MailchimpClient } from '../src/client.js';
 import { SendCampaignDefinition, UpsertMemberDefinition } from '../src/generated/definitions.js';
@@ -51,8 +51,12 @@ class CampaignScript {
   }
 }
 
-function newClient(answer: (request: ProviderRequest) => Answer): MailchimpClient {
-  return new MailchimpClient({}, { resolve: async () => ({ apiKey: new SecretString('mailchimpfixturekey-us6') }) }, {
+function newClient(answer: (request: ProviderRequest) => Answer, resolveError?: Error): MailchimpClient {
+  const resolve = async () => {
+    if (resolveError) throw resolveError;
+    return { apiKey: new SecretString('mailchimpfixturekey-us6') };
+  };
+  return new MailchimpClient({}, { resolve }, {
     send: async (request: ProviderRequest) => {
       const { status, body } = answer(request);
       return { status, headers: {}, body: Buffer.from(body) };
@@ -60,10 +64,10 @@ function newClient(answer: (request: ProviderRequest) => Answer): MailchimpClien
   });
 }
 
-async function send(script: CampaignScript, context: AttemptContext, maxSendsOverride?: number): Promise<MutationResult<SendCampaignOutput> | RetryError> {
+async function send(script: CampaignScript, context: AttemptContext, maxSendsOverride?: number, resolveError?: Error): Promise<MutationResult<SendCampaignOutput> | RetryError> {
   const call = { id: callId, connection: { provider: 'mailchimp', name: 'test' }, operation: SendCampaignDefinition.operation, context,
     ...(maxSendsOverride === undefined ? {} : { maxSendsOverride }) } as unknown as Call;
-  try { return await runMutation(newClient(request => script.answer(request)).sendCampaign(), call, { campaignId, expectedListId: listId }); }
+  try { return await runMutation(newClient(request => script.answer(request), resolveError).sendCampaign(), call, { campaignId, expectedListId: listId }); }
   catch (error) {
     if (error instanceof RetryError) return error;
     throw error;
@@ -80,6 +84,22 @@ describe('Mailchimp sendCampaign bounded resend', () => {
     expect(await send(script, context)).toMatchObject({ branch: 'sent' });
     expect(script.sends).toBe(2);
     expect(context.marker).toMatchObject({ state: 'claimed', sendCount: 2 });
+  });
+
+  it.each([
+    ['a transient lookup retries', new Error('credential store unavailable'), true],
+    ['a reauthorization requirement selects uncertain', new ReauthorizationRequiredError(), false],
+  ])('after a possible send, %s without recording notSent', async (_name, resolveError, isRetryable) => {
+    const script = new CampaignScript('save', [() => serverError]);
+    const context = new AttemptContext();
+    expect(await send(script, context)).toBeInstanceOf(RetryError);
+    const heartbeats = context.heartbeats;
+    context.attempt = 2;
+    const result = await send(script, context, undefined, resolveError);
+    if (isRetryable) expect(result).toBeInstanceOf(RetryError);
+    else expect(result).toMatchObject({ branch: 'uncertain' });
+    expect(context.heartbeats).toBe(heartbeats);
+    expect(script.sends).toBe(1);
   });
 
   it('reads back an earlier send and never resends it', async () => {

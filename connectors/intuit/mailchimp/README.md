@@ -234,10 +234,12 @@ loss or a result lost before commit, so the operations take these positions:
   `alreadySent` or `uncertain`.
 - After a possible earlier send, a definite refusal of the resend, a campaign
   that is no longer a sendable draft (such as one canceled while sending), a
-  missing or undecodable campaign, or unavailable connection credentials
-  select `uncertain` instead of `providerRejected`, `notSendable`,
-  `notFound`, `invalidResponse`, or `defect`, because the earlier send may
-  have landed. A refused resend reads the campaign first and selects
+  missing or undecodable campaign, or invalid connection credentials or a
+  reauthorization requirement select `uncertain` instead of
+  `providerRejected`, `notSendable`, `notFound`, `invalidResponse`, or
+  `defect`, because the earlier send may have landed. A credential lookup
+  that may succeed later returns Retry, and the next attempt reads the
+  campaign first. A refused resend reads the campaign first and selects
   `alreadySent` when it is sending or sent.
 - A campaign read that must be retried after a possible earlier send records
   no `notSent` checkpoint, which could hide that send; the earlier marker

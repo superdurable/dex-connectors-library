@@ -222,19 +222,27 @@ func (client *Client) SendCampaign() SendCampaignOperation {
 
 // resolveConnection returns a header-safe API key and its API base URL, or a safe defect Failure.
 func (client *Client) resolveConnection(call sdkgo.Call, operation string) (resolvedConnection, *sdkgo.Failure) {
+	connection, failure, _ := client.resolveClassifiedConnection(call, operation)
+	return connection, failure
+}
+
+// resolveClassifiedConnection also reports whether a failure may succeed on a later attempt: only a
+// lookup error other than a reauthorization requirement is transient.
+func (client *Client) resolveClassifiedConnection(call sdkgo.Call, operation string) (resolvedConnection, *sdkgo.Failure, bool) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil {
-		return resolvedConnection{}, mailchimpFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
+		isTransient := !errors.Is(err, sdkgo.ErrReauthorizationRequired)
+		return resolvedConnection{}, mailchimpFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), isTransient
 	}
 	dataCenter, err := validateResolvedCredentials(credentials)
 	if err != nil {
-		return resolvedConnection{}, mailchimpFailurePointer(sdkgo.FailureAuthentication, operation, err.Error())
+		return resolvedConnection{}, mailchimpFailurePointer(sdkgo.FailureAuthentication, operation, err.Error()), false
 	}
 	apiBaseURL := client.apiBaseURL
 	if apiBaseURL == "" {
 		apiBaseURL = "https://" + dataCenter + ".api.mailchimp.com/3.0"
 	}
-	return resolvedConnection{credentials: credentials, apiBaseURL: apiBaseURL}, nil
+	return resolvedConnection{credentials: credentials, apiBaseURL: apiBaseURL}, nil, false
 }
 
 // exchange sends one authenticated request under the Step context of call.

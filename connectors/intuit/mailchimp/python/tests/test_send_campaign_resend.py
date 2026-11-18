@@ -113,14 +113,30 @@ def server_error() -> httpx.Response:
     return problem(500, "Internal Server Error")
 
 
+class FailingCredentials:
+    """Fail every credential lookup with one error."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: sdk.Call) -> mailchimp.Credentials:
+        """Raise the configured lookup error."""
+        raise self.error
+
+
 async def send(
-    answer: Answer, context: AttemptContext, *, max_sends: int = SEND_CAMPAIGN_DEFINITION.max_sends
+    answer: Answer,
+    context: AttemptContext,
+    *,
+    max_sends: int = SEND_CAMPAIGN_DEFINITION.max_sends,
+    credentials: object | None = None,
 ) -> sdk.MutationResult[mailchimp.SendCampaignOutput] | sdk.RetryError:
     """Run one Execute attempt of sendCampaign, as MutationStep passes the definition cap."""
     async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
         client = mailchimp.Client(
             mailchimp.Config(),
-            sdk.StaticCredentialProvider(
+            credentials  # type: ignore[arg-type]
+            or sdk.StaticCredentialProvider(
                 {CONNECTION: mailchimp.Credentials(sdk.SecretString("mailchimpfixturekey-us6"))}
             ),
             http_client,
@@ -157,6 +173,31 @@ async def test_unknown_send_outcome_is_resent_after_reading_a_draft() -> None:
     assert branch(await send(script, context)) == "sent"
     assert script.sends == 2
     assert context.marker.send_count == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_retryable"),
+    [
+        (RuntimeError("credential store unavailable"), True),
+        (sdk.ReauthorizationRequiredError("revoked"), False),
+    ],
+    ids=["transient lookup", "reauthorization required"],
+)
+async def test_credential_failure_after_a_possible_send(error: Exception, is_retryable: bool) -> None:
+    """A transient lookup retries and a terminal one selects uncertain; neither records notSent."""
+    script = CampaignScript("save", server_error)
+    context = AttemptContext()
+    assert isinstance(await send(script, context), sdk.RetryError)
+    heartbeats = context.heartbeats
+    context.attempt = 2
+    result = await send(script, context, credentials=FailingCredentials(error))
+    if is_retryable:
+        assert isinstance(result, sdk.RetryError)
+    else:
+        assert branch(result) == "uncertain"
+    assert context.heartbeats == heartbeats, "notSent would hide the earlier possible send"
+    assert script.sends == 1
 
 
 @pytest.mark.asyncio

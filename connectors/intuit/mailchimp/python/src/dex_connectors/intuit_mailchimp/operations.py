@@ -687,8 +687,13 @@ class _SendCampaignAttempt:
     async def read_then_send(self) -> MutationAttempt[SendCampaignOutput]:
         """Read the campaign, which is also the read-back of an earlier send, and send a draft."""
         empty = SendCampaignOutput(Campaign(status=""))
-        connection = await self._client.resolve_credentials(self._call, "sendCampaign")
+        connection, is_transient = await self._client.resolve_classified_credentials(
+            self._call, "sendCampaign"
+        )
         if not isinstance(connection, tuple):
+            if self._has_possible_earlier_send and is_transient:
+                # A later attempt reads the campaign before any resend; notSent would hide the earlier send.
+                return MutationAttempt.retry(connection)
             if self._has_possible_earlier_send:
                 return MutationAttempt.uncertain(
                     empty,
@@ -884,7 +889,10 @@ async def _read_back_without_send(
 ) -> MutationAttempt[SendCampaignOutput]:
     """Never send; report alreadySent only when Mailchimp shows the campaign sending or sent."""
     empty = SendCampaignOutput(Campaign(status=""))
-    connection = await client.resolve_credentials(call, "sendCampaign")
+    connection, is_transient = await client.resolve_classified_credentials(call, "sendCampaign")
+    if not isinstance(connection, tuple) and is_transient:
+        # The next attempt reads the campaign again before any send.
+        return MutationAttempt.retry(connection)
     if not isinstance(connection, tuple):
         return MutationAttempt.uncertain(
             empty,
