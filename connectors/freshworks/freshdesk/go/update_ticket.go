@@ -109,8 +109,12 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 	return sdkgo.NewMutationBranch(UpdateTicketBranchUpdated, UpdateTicketOutput{Ticket: updated}, nil, receipt)
 }
 
-// updateTicketWriteAttemptForExchange repeats the absolute PUT on every outcome except a definite refusal.
+// updateTicketWriteAttemptForExchange repeats the absolute PUT on every outcome except a definite
+// refusal whose body was read completely.
 func updateTicketWriteAttemptForExchange(result freshdeskExchange, receipt sdkgo.Receipt, value UpdateTicketOutput) (sdkgo.MutationAttempt[UpdateTicketOutput], bool) {
+	if result.isBodyIncomplete {
+		return sdkgo.NewMutationRetry[UpdateTicketOutput](result.failure, result.retryAfter), true
+	}
 	switch result.outcome {
 	case exchangeSucceeded, exchangeNotFound, exchangeDefect:
 		return updateTicketAttemptForExchange(result, receipt, value)

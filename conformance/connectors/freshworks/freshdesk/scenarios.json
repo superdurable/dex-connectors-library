@@ -2822,11 +2822,27 @@
             ]
           },
           "status": 201
+        },
+        {
+          "body": "{\"code\":\"not_found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/1203",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZnJlc2hkZXNrVGVzdEtleTAxMjM0NTY3ODk6WA=="
+            ]
+          },
+          "status": 404
         }
       ],
       "expected": {
         "branch": "uncertain",
-        "failureKind": "PROTOCOL",
+        "failureKind": "NOT_FOUND",
         "heartbeat": {
           "attempt": 1,
           "callId": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
@@ -2843,7 +2859,7 @@
             "updatedAt": "0001-01-01T00:00:00Z"
           }
         },
-        "requestCount": 1,
+        "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -2888,7 +2904,7 @@
         }
       ],
       "expected": {
-        "branch": "",
+        "branch": "uncertain",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -2896,8 +2912,99 @@
           "sendCount": 1,
           "state": "claimed"
         },
+        "output": {
+          "ticket": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": 0,
+            "priority": 0,
+            "status": 0,
+            "updatedAt": "0001-01-01T00:00:00Z"
+          }
+        },
         "requestCount": 1,
-        "retry": true,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
+      "input": {
+        "description": "Charged twice",
+        "requester": {
+          "email": "jane@example.com"
+        },
+        "subject": "Billing issue"
+      },
+      "name": "createTicket-uncertain-answer-without-id",
+      "operation": "createTicket"
+    },
+    {
+      "callId": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
+      "exchanges": [
+        {
+          "body": "{\"id\":1203,\"status\":\"open\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tickets",
+          "requestBody": {
+            "description": "Charged twice",
+            "email": "jane@example.com",
+            "subject": "Billing issue"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZnJlc2hkZXNrVGVzdEtleTAxMjM0NTY3ODk6WA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"id\":1203,\"subject\":\"Billing issue\",\"description_text\":\"Charged twice\",\"status\":2,\"priority\":1,\"requester_id\":6007738334,\"created_at\":\"2026-01-29T10:00:00Z\",\"updated_at\":\"2026-01-29T10:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/1203",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZnJlc2hkZXNrVGVzdEtleTAxMjM0NTY3ODk6WA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
+          "providerId": "1203",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "ticket": {
+            "createdAt": "2026-01-29T10:00:00Z",
+            "description": "Charged twice",
+            "id": 1203,
+            "priority": 1,
+            "requesterId": 6007738334,
+            "status": 2,
+            "subject": "Billing issue",
+            "updatedAt": "2026-01-29T10:00:00Z"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2909,7 +3016,224 @@
         },
         "subject": "Billing issue"
       },
-      "name": "createTicket-resend-answer-without-id",
+      "name": "createTicket-accepted-id-read-back",
+      "operation": "createTicket"
+    },
+    {
+      "attempts": 2,
+      "callId": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"service_unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/1203",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZnJlc2hkZXNrVGVzdEtleTAxMjM0NTY3ODk6WA=="
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"id\":1203,\"subject\":\"Billing issue\",\"description_text\":\"Charged twice\",\"status\":2,\"priority\":1,\"requester_id\":6007738334,\"created_at\":\"2026-01-29T10:00:00Z\",\"updated_at\":\"2026-01-29T10:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/1203",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZnJlc2hkZXNrVGVzdEtleTAxMjM0NTY3ODk6WA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "ticket": {
+            "createdAt": "2026-01-29T10:00:00Z",
+            "description": "Charged twice",
+            "id": 1203,
+            "priority": 1,
+            "requesterId": 6007738334,
+            "status": 2,
+            "subject": "Billing issue",
+            "updatedAt": "2026-01-29T10:00:00Z"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
+      "input": {
+        "description": "Charged twice",
+        "requester": {
+          "email": "jane@example.com"
+        },
+        "subject": "Billing issue"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTicket-saved-id-read-back",
+      "operation": "createTicket",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
+        "providerId": "1203",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "attempts": 3,
+      "callId": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"server_error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tickets",
+          "requestBody": {
+            "description": "Charged twice",
+            "email": "jane@example.com",
+            "subject": "Billing issue"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZnJlc2hkZXNrVGVzdEtleTAxMjM0NTY3ODk6WA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"code\":\"rate_limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tickets",
+          "requestBody": {
+            "description": "Charged twice",
+            "email": "jane@example.com",
+            "subject": "Billing issue"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZnJlc2hkZXNrVGVzdEtleTAxMjM0NTY3ODk6WA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"errors\":[{\"field\":\"group_id\",\"code\":\"invalid_value\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tickets",
+          "requestBody": {
+            "description": "Charged twice",
+            "email": "jane@example.com",
+            "subject": "Billing issue"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZnJlc2hkZXNrVGVzdEtleTAxMjM0NTY3ODk6WA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "ticket": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": 0,
+            "priority": 0,
+            "status": 0,
+            "updatedAt": "0001-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
+      "input": {
+        "description": "Charged twice",
+        "requester": {
+          "email": "jane@example.com"
+        },
+        "subject": "Billing issue"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "RATE_LIMIT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
+            "sendCount": 1,
+            "state": "canResend"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTicket-refusal-after-rate-limited-resend",
       "operation": "createTicket"
     },
     {
@@ -3155,6 +3479,30 @@
             ]
           },
           "status": 201
+        },
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/1201/conversations",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZnJlc2hkZXNrVGVzdEtleTAxMjM0NTY3ODk6WA=="
+            ]
+          },
+          "status": 200
         }
       ],
       "expected": {
@@ -3176,7 +3524,7 @@
             "source": 0
           }
         },
-        "requestCount": 1,
+        "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -3188,6 +3536,180 @@
       },
       "name": "addNote-uncertain-accepted-id",
       "operation": "addNote"
+    },
+    {
+      "callId": "e90559f3-dbfc-56b0-915a-9f5b984451f3",
+      "exchanges": [
+        {
+          "body": "{\"id\":9003,\"created_at\":\"not a timestamp\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tickets/1201/notes",
+          "requestBody": {
+            "body": "Checking billing",
+            "private": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZnJlc2hkZXNrVGVzdEtleTAxMjM0NTY3ODk6WA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "[{\"id\":9003,\"ticket_id\":1201,\"user_id\":7001,\"source\":2,\"private\":true,\"incoming\":false,\"body_text\":\"Checking billing\",\"created_at\":\"2026-01-29T10:00:00Z\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/1201/conversations",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZnJlc2hkZXNrVGVzdEtleTAxMjM0NTY3ODk6WA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e90559f3-dbfc-56b0-915a-9f5b984451f3",
+          "providerId": "9003",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "conversation": {
+            "body": "Checking billing",
+            "createdAt": "2026-01-29T10:00:00Z",
+            "id": 9003,
+            "isPrivate": true,
+            "source": 2,
+            "ticketId": 1201,
+            "userId": 7001
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e90559f3-dbfc-56b0-915a-9f5b984451f3",
+      "input": {
+        "body": "Checking billing",
+        "ticketId": 1201
+      },
+      "name": "addNote-accepted-id-read-back",
+      "operation": "addNote"
+    },
+    {
+      "callId": "e90559f3-dbfc-56b0-915a-9f5b984451f3",
+      "exchanges": [
+        {
+          "body": "[{\"id\":9001,\"ticket_id\":1201,\"user_id\":7001,\"source\":0,\"private\":false,\"incoming\":false,\"body_text\":\"An earlier reply\",\"created_at\":\"2026-01-28T10:00:00Z\"}]",
+          "headers": {
+            "Link": "\u003chttps://acme.freshdesk.com/api/v2/tickets/1201/conversations?page=2\u003e; rel=\"next\""
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/1201/conversations",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZnJlc2hkZXNrVGVzdEtleTAxMjM0NTY3ODk6WA=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "[{\"id\":9004,\"ticket_id\":1201,\"user_id\":7001,\"source\":0,\"private\":false,\"incoming\":false,\"body_text\":\"Checking billing\",\"created_at\":\"2026-01-29T10:00:00Z\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/1201/conversations",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZnJlc2hkZXNrVGVzdEtleTAxMjM0NTY3ODk6WA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "conversation": {
+            "body": "Checking billing",
+            "createdAt": "2026-01-29T10:00:00Z",
+            "id": 9004,
+            "isPrivate": false,
+            "source": 0,
+            "ticketId": 1201,
+            "userId": 7001
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e90559f3-dbfc-56b0-915a-9f5b984451f3",
+      "input": {
+        "body": "Checking billing",
+        "isPublicReply": true,
+        "ticketId": 1201
+      },
+      "name": "addNote-saved-id-read-back",
+      "operation": "addNote",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "e90559f3-dbfc-56b0-915a-9f5b984451f3",
+        "providerId": "9004",
+        "sendCount": 1,
+        "state": "claimed"
+      }
     },
     {
       "callId": "48246f2d-954c-5e93-93a1-e3e71a052e4e",

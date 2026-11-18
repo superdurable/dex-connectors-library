@@ -394,9 +394,9 @@ const CreateTicketBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 var CreateTicketDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createTicket"},
 	Branches: []sdkgo.BranchDefinition{
-		{ID: CreateTicketBranchCreated, Description: "Freshdesk created the ticket and returned it."},
+		{ID: CreateTicketBranchCreated, Description: "Freshdesk created the ticket and returned it, or the ticket was read back by the ID Freshdesk returned."},
 		{ID: CreateTicketBranchProviderRejected, Description: "Freshdesk conclusively rejected the ticket, such as an unknown status, group, or agent; no ticket was created.", Optional: true},
-		{ID: CreateTicketBranchUncertain, Description: "The ticket may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Freshdesk returned the ticket ID with an invalid ticket. The Step does not send it again.", Optional: true},
+		{ID: CreateTicketBranchUncertain, Description: "The ticket may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, an oversized refusal, or another server error besides 503; or Freshdesk accepted the ticket with an unusable answer and the ticket could not be read back by its ID. The Step does not send it again.", Optional: true},
 		{ID: CreateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -551,10 +551,10 @@ const AddNoteBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 var AddNoteDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "addNote"},
 	Branches: []sdkgo.BranchDefinition{
-		{ID: AddNoteBranchAdded, Description: "Freshdesk added the note or reply and returned it."},
+		{ID: AddNoteBranchAdded, Description: "Freshdesk added the note or reply and returned it, or the ticket's conversation list shows it by the ID Freshdesk returned."},
 		{ID: AddNoteBranchNotFound, Description: "The ticket does not exist or is not visible to the connection's agent; nothing was added.", Optional: true},
 		{ID: AddNoteBranchProviderRejected, Description: "Freshdesk conclusively rejected the note or reply; nothing was added.", Optional: true},
-		{ID: AddNoteBranchUncertain, Description: "The note or reply may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Freshdesk returned the conversation ID with an invalid conversation. The Step does not send it again.", Optional: true},
+		{ID: AddNoteBranchUncertain, Description: "The note or reply may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, an oversized refusal, or another server error besides 503; or Freshdesk accepted it with an unusable answer and the ticket's conversation list did not show it by its ID. The Step does not send it again.", Optional: true},
 		{ID: AddNoteBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
