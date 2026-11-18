@@ -156,7 +156,7 @@ func (client *Client) SetFlags() SetFlagsOperation { return SetFlagsOperation{cl
 func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
 	credentials, err := client.credentials.Resolve(call)
 	switch {
-	case isTransientCredentialError(err):
+	case err != nil && !isTerminalCredentialError(err):
 		return Credentials{}, emailFailurePointer(sdkgo.FailureAvailability, operation,
 			"connection credentials could not be read now; nothing was sent")
 	case err != nil || validateResolvedCredentials(credentials) != nil:
@@ -165,12 +165,11 @@ func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Cre
 	return credentials, nil
 }
 
-// isTransientCredentialError reports a credential resolution failure that a later attempt may not repeat,
-// such as an unavailable credential broker; any other failure is terminal.
-func isTransientCredentialError(err error) bool {
-	return errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) || errors.Is(err, projectconfig.ErrExchangePending) ||
-		errors.Is(err, projectconfig.ErrRefreshFailed) || errors.Is(err, projectconfig.ErrOutcomeUnknown) ||
-		errors.Is(err, projectconfig.ErrConflict) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
+// isTerminalCredentialError reports a resolve failure no later attempt clears; every other resolve error is transient.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // isTransientCredentialFailure reports a resolveCredentials failure that returns Retry instead of selecting defect.

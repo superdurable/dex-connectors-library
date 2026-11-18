@@ -13,7 +13,9 @@ from typing import TYPE_CHECKING
 
 import httpx
 from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind
-from dex_connectors.sdk.projectconfig.storage import ObjectConflictError
+from dex_connectors.sdk.credentials import ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
@@ -28,8 +30,13 @@ if TYPE_CHECKING:
         SetFlagsOperation,
     )
 
-# A credential broker, store, refresh, or exchange that is unavailable now may answer on a later attempt.
-_TRANSIENT_CREDENTIAL_ERRORS = (OSError, ObjectConflictError)
+# Only these resolve failures need a person; every other resolve error is transient.
+_TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
 _HOST_LABEL = re.compile(r"[A-Za-z0-9_](?:[A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?\Z")
 
 
@@ -135,7 +142,12 @@ class Client:
         """
         try:
             credentials = await self.credentials.resolve(call)
-        except _TRANSIENT_CREDENTIAL_ERRORS as error:
+        except _TERMINAL_CREDENTIAL_ERRORS as error:
+            raise MailFailure(
+                "defect",
+                _failure(FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable"),
+            ) from error
+        except Exception as error:
             raise MailFailure(
                 "retry",
                 _failure(
@@ -143,11 +155,6 @@ class Client:
                     operation,
                     "connection credentials could not be read now; nothing was sent",
                 ),
-            ) from error
-        except Exception as error:
-            raise MailFailure(
-                "defect",
-                _failure(FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable"),
             ) from error
         try:
             values = (

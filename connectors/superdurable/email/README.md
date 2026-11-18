@@ -306,9 +306,12 @@ take these positions:
   the source again to rebuild the reply: a temporary IMAP failure returns
   Retry and keeps the accepted checkpoint, so a later attempt still selects
   `sent`, and a source that is gone selects `uncertain`.
-- A credential broker or store that is temporarily unavailable returns Retry
-  in every operation and is not counted as a submission; it never selects
-  `defect`, and after an accepted submission it keeps the accepted checkpoint.
+- A credential resolve failure is terminal only for reauthorization, a
+  missing or unselected connection, or a broker refusal. Any other, such as a
+  temporarily unavailable credential broker or store, a timeout, or a
+  connection that is not configured yet, returns Retry in every operation and
+  is not counted as a submission; it never selects `defect`, and after an
+  accepted submission it keeps the accepted checkpoint.
 
 Keep these two Steps sync to reduce replay risk before an async result commit.
 Both durability modes use the same attempt and retry rules. The ten attempts
@@ -344,8 +347,8 @@ name the command and the reply and enhanced status codes, such as
 | SMTP 4xx | n/a | n/a | Retry, checkpoint cleared |
 | SMTP 5xx, such as a rejected recipient or sender | n/a | n/a | `providerRejected`, nothing sent |
 | Unparseable server response | `invalidResponse` | Retry | `invalidResponse` for the reply source; `providerRejected` for an unusable SMTP answer before the final dot |
-| Invalid input or connection credentials | `defect`, no connection | `defect` on the first attempt, Retry on a later one | `defect`; `uncertain` after an earlier possible submission |
-| Credential broker or store temporarily unavailable | Retry | Retry | Retry, not counted |
+| Invalid input, unusable credential material, or a terminal credential resolve failure | `defect`, no connection | `defect` on the first attempt, Retry on a later one | `defect`; `uncertain` after an earlier possible submission |
+| Any other credential resolve failure, such as a temporarily unavailable broker or store | Retry | Retry | Retry, not counted |
 
 ## Not in this release
 

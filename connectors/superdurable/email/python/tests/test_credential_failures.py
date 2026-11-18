@@ -7,7 +7,13 @@ from typing import cast
 import dex
 import pytest
 from dex_connectors.sdk import Call, CallID, ConnectionRef, IdempotencyKey, OperationRef
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk.credentials import ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.superdurable_email import (
     Config,
@@ -41,8 +47,42 @@ class MissingConnection:
     """Fail every resolution with a terminal configuration error."""
 
     async def resolve(self, call: Call) -> Credentials:
-        """Raise the static provider's missing-connection error."""
-        raise ValueError("connection is not configured")
+        """Raise the broker's not-selected error."""
+        raise ConnectionNotSelectedError()
+
+
+class FailingCredentials:
+    """Fail every resolution with error."""
+
+    def __init__(self, error: Exception) -> None:
+        """Keep the error to raise."""
+        self.error = error
+
+    async def resolve(self, call: Call) -> Credentials:
+        """Raise the configured error."""
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "kind"),
+    [
+        (CredentialBrokerUnavailableError(), "retry"),
+        (ValueError("connection is not configured"), "retry"),
+        (RuntimeError("unlisted"), "retry"),
+        (ReauthorizationRequiredError(), "branch"),
+        (ObjectNotFoundError(), "branch"),
+        (ConnectionNotSelectedError(), "branch"),
+        (CredentialBrokerRejectedError(), "branch"),
+    ],
+)
+async def test_send_classifies_credential_resolve_failures(error: Exception, kind: str) -> None:
+    """Only the terminal classes select defect; every other resolve failure Retries without sending."""
+    client = client_with(FailingCredentials(error))
+    attempt = await client.send_message().invoke(make_call(Context()), SEND_INPUT)
+    assert attempt.kind == kind
+    if kind == "branch":
+        assert attempt.branch == "defect"
 
 
 def client_with(provider: object) -> Client:

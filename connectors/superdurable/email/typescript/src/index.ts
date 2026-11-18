@@ -3,6 +3,7 @@
 
 import { SecretString, type CredentialProvider } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
+import { z } from 'zod';
 import type { Config, Credentials } from './generated/models.js';
 import { ConfigSchema } from './generated/models.js';
 import { ConnectorID } from './generated/definitions.js';
@@ -27,8 +28,9 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
   const credentialProvider: CredentialProvider<Credentials> = {
     async resolve(_call, signal) {
       const fields = await project.resolveCredential(ConnectorID, connectionName, signal);
-      if (typeof fields.username !== 'string' || typeof fields.password !== 'string') throw new TypeError('email credentials are unavailable');
-      return { username: fields.username, password: new SecretString(fields.password), ...(typeof fields.smtp_username === 'string' ? { smtpUsername: fields.smtp_username } : {}), ...(typeof fields.smtp_password === 'string' ? { smtpPassword: new SecretString(fields.smtp_password) } : {}) };
+      // A ZodError marks unusable stored material, which the client treats as terminal.
+      const decoded = z.object({ username: z.string(), password: z.string() }).parse(fields);
+      return { username: decoded.username, password: new SecretString(decoded.password), ...(typeof fields.smtp_username === 'string' ? { smtpUsername: fields.smtp_username } : {}), ...(typeof fields.smtp_password === 'string' ? { smtpPassword: new SecretString(fields.smtp_password) } : {}) };
     },
   };
   return newConnection(new EmailClient(config, credentialProvider), { provider: ConnectorID, name: connectionName });

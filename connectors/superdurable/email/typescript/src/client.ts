@@ -3,8 +3,9 @@
 
 import { ImapFlow } from 'imapflow';
 import { isIP } from 'node:net';
-import type { Call, CredentialProvider, Failure } from '@superdurable/connectors-sdk';
-import { ConflictError, CredentialBrokerUnavailableError, ExchangePendingError, OutcomeUnknownError, RefreshFailedError } from '@superdurable/connectors-sdk/projectconfig';
+import { z } from 'zod';
+import { ReauthorizationRequiredError, type Call, type CredentialProvider, type Failure } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 import { SearchMessagesOperation, GetMessageOperation, SendMessageOperation, ReplyToMessageOperation, MoveMessageOperation, SetFlagsOperation } from './operations.js';
 
@@ -23,10 +24,11 @@ export class CredentialFailure extends MailFailure {
   }
 }
 
-/** A credential broker, store, refresh, or exchange that is unavailable now may answer on a later attempt. */
-function isTransientCredentialError(error: unknown): boolean {
-  return error instanceof CredentialBrokerUnavailableError || error instanceof RefreshFailedError || error instanceof ExchangePendingError
-    || error instanceof OutcomeUnknownError || error instanceof ConflictError;
+/** Report a resolve failure no later attempt clears; a ZodError is stored material the decoder rejected. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError
+    || error instanceof z.ZodError;
 }
 
 /** Optional trust roots for a private IMAP or SMTP certificate authority. */
@@ -69,7 +71,7 @@ export class EmailClient {
   async resolveCredentials(call: Call): Promise<Credentials> {
     let credentials: Credentials;
     try { credentials = await this.credentials.resolve(call); }
-    catch (error) { throw new CredentialFailure(isTransientCredentialError(error)); }
+    catch (error) { throw new CredentialFailure(!isTerminalCredentialError(error)); }
     if (!credentials || !credentials.username || !credentials.password?.reveal() ||
       [credentials.username, credentials.password.reveal(), credentials.smtpUsername || '', credentials.smtpPassword?.reveal() || ''].some(hasControls)) {
       throw new CredentialFailure();
