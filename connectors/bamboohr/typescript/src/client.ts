@@ -115,14 +115,16 @@ export class BambooHRClient {
       }
       // An oversized write refusal proves nothing about the write; 429 and 503 still prove no processing.
       if (error instanceof BodyTooLargeError && status !== undefined && method !== 'GET' && status !== 429 && status !== 503) return this.failure('unavailable', operation, 'RESPONSE_TOO_LARGE', `BambooHR write response exceeds the configured maxResponseBytes limit (HTTP ${status})`, 0, status);
-      if (error instanceof BodyTooLargeError && status !== undefined && status > 0 && headers) response = { status, headers, body: Buffer.alloc(0) };
+      // A 429 or 503 proves no processing even when its body broke, so it keeps its status classification.
+      if ((error instanceof BodyTooLargeError && status !== undefined && status > 0 && headers) || status === 429 || status === 503) response = { status: status!, headers: headers ?? {}, body: Buffer.alloc(0) };
       else if (error instanceof ProviderTransportError && error.isProvablyNotSent) return this.failure('notSent', operation, 'TRANSPORT', 'BambooHR could not be reached; no request was sent');
       else if (status !== undefined && status > 0) return this.failure('unavailable', operation, 'TRANSPORT', `BambooHR response could not be read (HTTP ${status})`, 0, status);
       else if (error instanceof BodyTooLargeError) return this.failure('unavailable', operation, 'TRANSPORT', 'BambooHR response could not be read');
       else return this.failure('unavailable', operation, 'TRANSPORT', 'BambooHR request failed before a response arrived');
     }
     if (response.status >= 200 && response.status < 300) {
-      if (Buffer.from(response.body).includes(Buffer.from(key))) return this.failure('invalid', operation, 'PROTOCOL', 'BambooHR response reflected the connection credential');
+      // The echoed body is dropped, but the accepted headers stay so the Location ID can still be read.
+      if (Buffer.from(response.body).includes(Buffer.from(key))) return { ...this.failure('invalid', operation, 'PROTOCOL', 'BambooHR response reflected the connection credential', 0, response.status), acceptedResponse: { status: response.status, headers: response.headers, body: Buffer.alloc(0) } };
       return { kind: 'success', response };
     }
     const retryAfterMs = parseRetryAfter(header(response, 'retry-after'), this.now());

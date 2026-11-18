@@ -211,8 +211,13 @@ class Client:
         path: str,
         query: dict[str, str] | None = None,
         payload: dict[str, str] | None = None,
+        observed_heads: list[tuple[int, httpx.Headers]] | None = None,
     ) -> Exchange:
-        """Send one request, classify status, and discard untrusted error text."""
+        """Send one request, classify status, and discard untrusted error text.
+
+        ``observed_heads`` receives the status and headers as soon as they arrive, before the
+        body is read, so a caller whose deadline cancels the body read still knows a 2xx came.
+        """
         key = credentials.api_key.reveal()
         authorization = base64.b64encode(f"{key}:x".encode()).decode("ascii")
         headers = {"Authorization": f"Basic {authorization}", "Accept": "application/json"}
@@ -227,6 +232,8 @@ class Client:
                 headers=headers,
             )
             response, _ = await send_traced(self._http_client, request)
+            if observed_heads is not None:
+                observed_heads.append((response.status_code, response.headers))
             try:
                 body = await read_bounded_body(response, self.config.max_response_bytes)
             except BodyTooLargeError:

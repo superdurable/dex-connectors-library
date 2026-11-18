@@ -401,8 +401,9 @@ take these positions:
   selects `providerRejected`. After an earlier possible send, a refusal cannot
   prove nothing was added, and a duplicate-email 409 may come from that earlier
   send succeeding, so both select `uncertain` without another POST. A 2xx is
-  accepted even when its body is oversized or the connection breaks while the
-  body arrives: the connector takes the ID from the body or the `Location`
+  accepted even when its body is oversized, echoes the API key, the connection
+  breaks while the body arrives, or the attempt's write window ends after the
+  status arrived: the connector takes the ID from the body or the `Location`
   header, and a 2xx without a usable employee ID selects `uncertain`, because a
   resend would add a second employee. An oversized refusal proves nothing about
   the POST, so it is an unknown outcome. Terminal credentials while a saved
@@ -439,7 +440,7 @@ the API key is dropped. An oversized error body contributes no code.
 | 429 with `Retry-After` | Retry after `Retry-After` | same | Retry after `Retry-After` |
 | 429 without `Retry-After` | Retry | Retry | Retry |
 | connection refused before sending | Retry | Retry | Retry |
-| 503 | Retry, after `Retry-After` when present | same | Retry |
+| 503, also when its body breaks | Retry, after `Retry-After` when present | same | Retry, not counted as a send |
 | 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | same | Retry below the send cap, then `uncertain` |
 | oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | Retry | the ID from `Location`, otherwise `uncertain` |
 | oversized non-2xx other than 429 and 503 | by status | Retry | Retry below the send cap, then `uncertain` |

@@ -107,6 +107,31 @@ describe('BambooHR addEmployee bounded resend', () => {
     expect(requests).toHaveLength(1);
   });
 
+  it.each([429, 503])('records canResend for an HTTP %i whose body breaks, so it is not counted as a send', async status => {
+    const requests: ProviderRequest[] = [];
+    const client = new BambooHRClient({ companyDomain: 'acme' }, { resolve: async () => ({ apiKey: new SecretString('inert-key') }) }, {
+      send: async (request: ProviderRequest) => { requests.push(request); throw new ProviderTransportError(false, status, {}); },
+    });
+    const context = new AttemptContext();
+    expect(await add(client, context)).toBeInstanceOf(RetryError);
+    expect(context.marker).toMatchObject({ state: 'canResend' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('reads the Location ID of an accepted POST whose body echoes the credential', async () => {
+    const requests: ProviderRequest[] = [];
+    const client = new BambooHRClient({ companyDomain: 'acme' }, { resolve: async () => ({ apiKey: new SecretString('inert-key') }) }, {
+      send: async (request: ProviderRequest) => {
+        requests.push(request);
+        return { status: 201, headers: { location: 'https://acme.bamboohr.com/api/v1/employees/142' }, body: Buffer.from('{"echo":"inert-key"}') };
+      },
+    });
+    const result = await add(client, new AttemptContext());
+    expect(result).toMatchObject({ branch: 'created', value: { employeeId: '142' } });
+    expect(JSON.stringify(result)).not.toContain('inert-key');
+    expect(requests).toHaveLength(1);
+  });
+
   it('counts a send before a 429 and selects uncertain for a later refusal', async () => {
     const statuses = [500, 429, 400];
     const { client, requests } = newClient(() => ({ status: statuses[requests.length - 1]!, body: '{}' }));

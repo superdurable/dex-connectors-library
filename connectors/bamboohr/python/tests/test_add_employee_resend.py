@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of BambooHR employee additions whose outcome is unknown."""
 
+import asyncio
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
 
@@ -192,6 +193,79 @@ async def test_accepted_post_whose_body_breaks_is_never_resent(headers: dict[str
     result = await run_add(respond, AttemptContext())
     assert isinstance(result, MutationResult) and result.branch == branch
     assert len(requests) == 1
+
+
+class _SlowAcceptedBody(httpx.AsyncByteStream):
+    """Send 2xx headers, then hold the body past the write window."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        await asyncio.sleep(30)
+        yield b"{}"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("headers", "branch"),
+    [({"Location": "https://acme.bamboohr.com/api/v1/employees/142"}, "created"), ({}, "uncertain")],
+)
+async def test_write_deadline_after_accepted_headers_is_never_resent(
+    headers: dict[str, str], branch: str
+) -> None:
+    """The Fence write window ends while the 2xx body is still arriving; the POST was accepted."""
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=3)
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(201, headers=headers, stream=_SlowAcceptedBody())
+
+    result = await run_add(respond, context)
+    assert isinstance(result, MutationResult) and result.branch == branch
+    assert [request.method for request in requests] == ["POST"]
+
+
+@pytest.mark.asyncio
+async def test_saved_employee_id_with_can_resend_marker_is_read_back() -> None:
+    """A saved ID forces a read-back even when the marker allows a resend."""
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    context.attempt = 3
+    context.heartbeat_value = Marker(CALL_ID, 2, State.CAN_RESEND, "142", 1)
+    result = await add(200, {"id": "142"}, context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "created"
+    assert [request.method for request in requests] == ["GET"]
+
+
+@pytest.mark.asyncio
+async def test_accepted_body_echoing_the_credential_uses_the_location_id() -> None:
+    """The echoed body is discarded; the Location header still proves the created employee."""
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            201,
+            headers={"Location": "https://acme.bamboohr.com/api/v1/employees/142"},
+            json={"echo": "inert-key"},
+        )
+
+    result = await run_add(respond, AttemptContext())
+    assert isinstance(result, MutationResult) and result.branch == "created"
+    assert result.value == AddEmployeeOutput("142")
+    assert "inert-key" not in repr(result)
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_transient_credential_failure_before_any_send_retries_and_records_not_sent() -> None:
+    def respond(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request may be sent")
+
+    context = AttemptContext()
+    result = await run_add(respond, context, _FailingCredentialProvider(RuntimeError("store unavailable")))
+    assert isinstance(result, RetryError)
+    assert context.marker is not None and context.marker.state == "notSent"
 
 
 @pytest.mark.asyncio

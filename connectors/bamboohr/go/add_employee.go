@@ -106,11 +106,10 @@ func (operation AddEmployeeOperation) Invoke(call sdkgo.Call, input AddEmployeeI
 			return addEmployeeUncertain(receipt, sdkgo.FailureTransport, "earlier attempts may have added the employee up to the send cap; no employee ID is available for read-back")
 		}
 		return operation.readBackAddedEmployee(call, decision.Marker.ProviderID)
-	case singledispatch.ReadBackThenResendAllowed:
-		// BambooHR returns an ID only for an employee it added, so a saved ID is read back, never resent.
-		if decision.Marker.ProviderID != "" {
-			return operation.readBackAddedEmployee(call, decision.Marker.ProviderID)
-		}
+	}
+	// BambooHR returns an ID only for an employee it added, so a saved ID is read back, never resent.
+	if decision.Marker.CallID == call.ID && decision.Marker.ProviderID != "" {
+		return operation.readBackAddedEmployee(call, decision.Marker.ProviderID)
 	}
 	canResendUnknownOutcome := decision.MaximumPriorSends+1 < call.MaxSends()
 	hasPossibleEarlierSend := decision.MaximumPriorSends > 0

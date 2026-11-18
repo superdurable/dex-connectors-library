@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from email.utils import parseaddr
 from typing import Any
 
+import httpx
 from dex_connectors.sdk import (
     Call,
     CallID,
@@ -834,9 +835,8 @@ class AddEmployeeOperation:
                     "no employee ID is available for read-back",
                 )
             return await self._read_back(call, saved_identifier)
-        is_earlier_send_unresolved = decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
         # BambooHR returns an ID only for an employee it added, so a saved ID is read back, never resent.
-        if is_earlier_send_unresolved and saved_identifier:
+        if saved_identifier:
             return await self._read_back(call, saved_identifier)
         can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
         has_possible_earlier_send = decision.prior_send_upper_bound > 0
@@ -889,9 +889,17 @@ class AddEmployeeOperation:
             if value:
                 payload[key] = value
 
+        observed_heads: list[tuple[int, httpx.Headers]] = []
+
         async def send(deadline: datetime) -> Exchange:
             return await self.client.exchange(
-                call, credentials, "addEmployee", "POST", "/employees", payload=payload
+                call,
+                credentials,
+                "addEmployee",
+                "POST",
+                "/employees",
+                payload=payload,
+                observed_heads=observed_heads,
             )
 
         try:
@@ -905,11 +913,18 @@ class AddEmployeeOperation:
                 )
             )
         except Exception:
-            return _resend_or_select_add_uncertain(
-                can_resend_unknown_outcome,
-                receipt,
-                bamboohr_failure("addEmployee", FailureKind.TRANSPORT, "the dispatch outcome is unavailable"),
-            )
+            if observed_heads and 200 <= observed_heads[-1][0] < 300:
+                # The write window cut the body after BambooHR accepted, so only the headers remain.
+                status_code, headers = observed_heads[-1]
+                exchange = Exchange("unavailable", status_code, headers)
+            else:
+                return _resend_or_select_add_uncertain(
+                    can_resend_unknown_outcome,
+                    receipt,
+                    bamboohr_failure(
+                        "addEmployee", FailureKind.TRANSPORT, "the dispatch outcome is unavailable"
+                    ),
+                )
         if 200 <= exchange.status_code < 300:
             try:
                 identifier = _employee_id(_read_json(exchange.body)["id"])
