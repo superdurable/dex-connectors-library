@@ -14,7 +14,7 @@ from ._generated.definitions import (
     EXECUTE_NON_IDEMPOTENT_DEFINITION,
     QUERY_DEFINITION,
 )
-from .client import Client, Config, Credentials
+from .client import Client, Config, Credentials, _CredentialMaterialError
 from .models import ExecuteStatementInput, QueryRowsInput, RowSet, StatementExecution
 
 
@@ -105,9 +105,9 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
-        password = material.get("password")
+        password = material.get("password") if isinstance(material, dict) else None
         if not isinstance(password, str) or not password:
-            raise ValueError("PostgreSQL credential password is required")
+            raise _CredentialMaterialError("PostgreSQL credential password is required")
         return Credentials(SecretString(password))
 
 

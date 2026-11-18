@@ -32,6 +32,7 @@ from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker, State
 from psycopg import generators, pq
 
+import dex_connectors.postgresql.connection as postgresql_connection
 from dex_connectors.postgresql import Client, Config, Credentials, ExecuteStatementInput, QueryRowsInput
 from dex_connectors.postgresql._generated.definitions import (
     EXECUTE_DEFINITION,
@@ -41,6 +42,7 @@ from dex_connectors.postgresql.client import (
     _bind_parameters,
     _classify_failure,
     _command_name,
+    _CredentialMaterialError,
     _decode_column,
     _read_result,
 )
@@ -847,7 +849,21 @@ _CREDENTIAL_FAILURES: list[tuple[Exception, bool]] = [
     (RejectedCredentialNotRefreshedError(), False),
     (TimeoutError(), False),
     (RuntimeError("unlisted"), False),
+    (_CredentialMaterialError("PostgreSQL credential password is required"), True),
 ]
+
+
+@pytest.mark.asyncio
+async def test_project_credential_source_rejects_malformed_material_as_terminal() -> None:
+    """The project source raises the terminal material error for malformed stored material."""
+
+    class MalformedProject:
+        async def resolve_credential(self, key: object, call_id: str) -> object:
+            return ["not", "a", "mapping"]
+
+    source = postgresql_connection._ProjectCredentialSource(MalformedProject(), object())  # type: ignore[arg-type]
+    with pytest.raises(_CredentialMaterialError):
+        await source.resolve(_call("execute"))
 
 
 @pytest.mark.asyncio
