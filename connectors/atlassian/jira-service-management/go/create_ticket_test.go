@@ -249,7 +249,7 @@ func TestCreateTicketChecksPriorDispatchBeforeResolvingCredentials(t *testing.T)
 	require.NoError(t, err)
 	require.Equal(t, jiraservicemanagement.CreateTicketBranchCreated, result.Branch)
 	client, err := jiraservicemanagement.New(jiraservicemanagement.Config{CloudID: testCloudID, Endpoint: provider.URL},
-		sdkgo.StaticCredentialProvider[jiraservicemanagement.Credentials]{})
+		unavailableCredentials{isTerminal: true})
 	require.NoError(t, err)
 	replay, err := sdkgo.RunMutation(ctx.nextAttempt(), client.CreateTicket(), jsmConnection, validCreateTicketInput())
 	require.NoError(t, err)
@@ -273,8 +273,14 @@ func TestCreateTicketCredentialFailureAfterAPossibleSendRecordsNoNotSentMarker(t
 	requireRetry(t, err, sdkgo.FailureRateLimit)
 	require.Contains(t, string(ctx.recordedHeartbeat), `"state":"canResend"`)
 	ctx = ctx.nextAttempt()
+	transient, err := jiraservicemanagement.New(jiraservicemanagement.Config{CloudID: testCloudID, Endpoint: provider.URL},
+		unavailableCredentials{})
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(ctx, transient.CreateTicket(), jsmConnection, validCreateTicketInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Zero(t, ctx.heartbeatCount, "notSent would hide the earlier possible send")
 	client, err := jiraservicemanagement.New(jiraservicemanagement.Config{CloudID: testCloudID, Endpoint: provider.URL},
-		sdkgo.StaticCredentialProvider[jiraservicemanagement.Credentials]{})
+		unavailableCredentials{isTerminal: true})
 	require.NoError(t, err)
 	result, err := sdkgo.RunMutation(ctx, client.CreateTicket(), jsmConnection, validCreateTicketInput())
 	require.NoError(t, err)
@@ -408,4 +414,21 @@ func TestCreateTicketRejectsInvalidInputWithoutARequest(t *testing.T) {
 		require.Equal(t, jiraservicemanagement.CreateTicketBranchDefect, result.Branch, name)
 		require.Zero(t, ctx.heartbeatCount, name)
 	}
+}
+
+func TestCreateTicketRefusalWithAnUnreadableBodyIsAnUnknownOutcome(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		hijacker, isHijacker := response.(http.Hijacker)
+		require.True(t, isHijacker)
+		connection, buffered, err := hijacker.Hijack()
+		require.NoError(t, err)
+		_, err = buffered.WriteString("HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nContent-Length: 100\r\n\r\n{\"errors\":")
+		require.NoError(t, err)
+		require.NoError(t, buffered.Flush())
+		require.NoError(t, connection.Close())
+	})
+	ctx := newTestDexContext("create-cut-refusal")
+	_, err := sdkgo.RunMutation(ctx, newTestClient(t, provider.URL).CreateTicket(), jsmConnection, validCreateTicketInput())
+	requireRetry(t, err, sdkgo.FailureTransport)
+	require.Contains(t, string(ctx.recordedHeartbeat), `"state":"claimed"`, "a cut refusal body may hide an accepted create")
 }

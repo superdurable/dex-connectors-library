@@ -13,7 +13,14 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import quote, quote_plus
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -230,7 +237,7 @@ class Client:
             token = credentials.access_token.reveal()
             if not token or any(character in token for character in "\r\n\x00"):
                 raise ValueError("invalid access token")
-        except Exception:
+        except (ValueError, LookupError, ReauthorizationRequiredError):
             return None, Classification(
                 "defect",
                 failure(
@@ -238,6 +245,16 @@ class Client:
                     FailureKind.AUTHENTICATION,
                     "Jira Service Management connection credentials are unavailable; "
                     "reconnect the connection",
+                ),
+            )
+        except Exception:
+            # A credential store or broker outage is transient; a later attempt resolves again.
+            return None, Classification(
+                "retry",
+                failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "Jira Service Management credential lookup is temporarily unavailable",
                 ),
             )
         if not self.cloud_id and not self._resolved_cloud_id:
@@ -362,10 +379,15 @@ class Client:
         query: dict[str, str] | None = None,
         payload: Any = None,
         experimental: bool = False,
+        observed_statuses: list[int] | None = None,
     ) -> ProviderResponse:
-        """Send one authenticated exchange and refresh once after HTTP 401."""
+        """Send one authenticated exchange and refresh once after HTTP 401.
+
+        ``observed_statuses`` receives each status when its headers arrive, before the body is read.
+        """
         response = await self._exchange(
-            call, credentials, method, family, path, query=query, payload=payload, experimental=experimental
+            call, credentials, method, family, path, query=query, payload=payload, experimental=experimental,
+            observed_statuses=observed_statuses,
         )
         if response.status_code == 401 and hasattr(self.credentials, "resolve_after_rejection"):
             try:
@@ -380,6 +402,7 @@ class Client:
                         query=query,
                         payload=payload,
                         experimental=experimental,
+                        observed_statuses=observed_statuses,
                     )
             except Exception:
                 pass
@@ -396,19 +419,24 @@ class Client:
         query: dict[str, str] | None = None,
         payload: Any = None,
         experimental: bool = False,
+        observed_statuses: list[int] | None = None,
     ) -> ProviderResponse:
         remaining = _operation_deadline.get() - time.monotonic()
         if remaining < 3 and method != "GET":
             return ProviderResponse(too_little_time=True)
         if remaining <= 0:
             return ProviderResponse(too_little_time=True)
+        statuses = [] if observed_statuses is None else observed_statuses
         try:
             async with asyncio.timeout(None if remaining == float("inf") else remaining):
                 return await self._exchange_once(
                     call, credentials, method, family, path,
-                    query=query, payload=payload, experimental=experimental,
+                    query=query, payload=payload, experimental=experimental, observed_statuses=statuses,
                 )
         except TimeoutError:
+            if statuses:
+                # Headers arrived before the deadline, so the status still classifies the write.
+                return ProviderResponse(statuses[-1], has_body_read_failed=True, is_dispatched=True)
             return ProviderResponse(is_dispatched=method != "GET", transport_error=True)
 
     async def _exchange_once(
@@ -422,6 +450,7 @@ class Client:
         query: dict[str, str] | None = None,
         payload: Any = None,
         experimental: bool = False,
+        observed_statuses: list[int],
     ) -> ProviderResponse:
         remaining = _operation_deadline.get() - time.monotonic()
         target = self.endpoint
@@ -446,6 +475,7 @@ class Client:
                 method, target, json=payload, headers=headers, timeout=min(20, remaining)
             )
             response, _ = await send_traced(self.http_client, request)
+            observed_statuses.append(response.status_code)
             limit = (
                 self.config.max_response_bytes if 200 <= response.status_code < 300 else MAX_ERROR_BODY_BYTES
             )
@@ -685,6 +715,17 @@ class Client:
                     operation,
                     FailureKind.CONFLICT,
                     f"Jira Service Management {subject} outcome requires read-back after HTTP 409",
+                ),
+            )
+        if response.has_body_read_failed or response.is_body_too_large or response.reflects_secret:
+            # A refusal status proves nothing when its body could not be read in full.
+            return Classification(
+                "uncertain",
+                failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    f"Jira Service Management {subject} outcome is unknown after HTTP {status} "
+                    "with an unreadable body",
                 ),
             )
         if status == 404:

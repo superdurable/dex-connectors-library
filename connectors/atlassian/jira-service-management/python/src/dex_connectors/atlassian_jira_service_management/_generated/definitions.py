@@ -130,7 +130,7 @@ TRANSITION_TICKET_DEFINITION = MutationDefinition(
     ),
     StepDefaults(
         timedelta(seconds=30),
-        2,
+        1,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
     repeat_on_unknown=RepeatOnUnknown.SAFE,

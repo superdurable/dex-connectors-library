@@ -1522,6 +1522,11 @@
       "expected": {
         "branch": "transitioned",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+          "state": "claimed"
+        },
         "output": {
           "issueId": "10042",
           "issueKey": "ITH-42",
@@ -1765,6 +1770,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+          "state": "canResend"
+        },
         "output": {
           "issueId": "10042",
           "issueKey": "ITH-42",
@@ -2994,6 +3004,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -3041,6 +3056,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -3086,6 +3106,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+          "state": "notSent"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -3554,6 +3579,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+          "state": "canResend"
+        },
         "requestCount": 2,
         "retry": true,
         "retryAfterMs": 0,
@@ -4020,9 +4050,37 @@
             ]
           },
           "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+          "state": "canResend"
         },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "input": {
+        "destinationStatusName": "In progress",
+        "issueIdOrKey": "ITH-42",
+        "resolutionName": "Done",
+        "transitionId": "31",
+        "transitionName": "Start Progress"
+      },
+      "name": "transitionTicket-write-outage",
+      "operation": "transitionTicket"
+    },
+    {
+      "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "exchanges": [
         {
-          "body": "{\"id\":\"10042\",\"key\":\"ITH-42\",\"fields\":{\"status\":{\"id\":\"10001\",\"name\":\"Waiting for support\",\"statusCategory\":{\"key\":\"new\"}}},\"transitions\":[{\"id\":\"31\",\"name\":\"Start Progress\",\"to\":{\"id\":\"10002\",\"name\":\"In progress\",\"statusCategory\":{\"key\":\"indeterminate\"}}}]}",
+          "body": "{\"id\":\"10042\",\"key\":\"ITH-42\",\"fields\":{\"status\":{\"id\":\"10002\",\"name\":\"In progress\",\"statusCategory\":{\"key\":\"indeterminate\"}}},\"transitions\":[{\"id\":\"41\",\"name\":\"Start Progress\",\"to\":{\"id\":\"10001\",\"name\":\"Waiting for support\",\"statusCategory\":{\"key\":\"new\"}}}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -4049,8 +4107,73 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
-        "requestCount": 3,
+        "requestCount": 1,
         "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "input": {
+        "issueIdOrKey": "ITH-42",
+        "transitionName": "Start Progress"
+      },
+      "name": "transitionTicket-repeat-after-possible-send-never-transitions-again",
+      "operation": "transitionTicket",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"10042\",\"key\":\"ITH-42\",\"fields\":{\"status\":{\"id\":\"10002\",\"name\":\"In progress\",\"statusCategory\":{\"key\":\"indeterminate\"}}},\"transitions\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "transitioned",
+        "failureKind": "",
+        "output": {
+          "isAlreadyInDestinationStatus": true,
+          "issueId": "10042",
+          "issueKey": "ITH-42",
+          "previousStatus": {
+            "categoryKey": "indeterminate",
+            "id": "10002",
+            "name": "In progress"
+          },
+          "status": {
+            "categoryKey": "indeterminate",
+            "id": "10002",
+            "name": "In progress"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4058,12 +4181,66 @@
       "input": {
         "destinationStatusName": "In progress",
         "issueIdOrKey": "ITH-42",
-        "resolutionName": "Done",
-        "transitionId": "31",
-        "transitionName": "Start Progress"
+        "transitionId": "31"
       },
-      "name": "transitionTicket-write-outage",
-      "operation": "transitionTicket"
+      "name": "transitionTicket-repeat-after-possible-send-recognizes-destination",
+      "operation": "transitionTicket",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "exchanges": [
+        {
+          "body": "{\"errorMessages\":[\"Issue does not exist\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "NOT_FOUND",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "input": {
+        "issueIdOrKey": "ITH-42",
+        "transitionId": "31"
+      },
+      "name": "transitionTicket-repeat-after-possible-send-not-found-retries",
+      "operation": "transitionTicket",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+        "sendCount": 1,
+        "state": "claimed"
+      }
     },
     {
       "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
@@ -4512,6 +4689,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -5704,6 +5886,11 @@
       "expected": {
         "branch": "transitioned",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+          "state": "claimed"
+        },
         "output": {
           "issueId": "10042",
           "issueKey": "ITH-42",

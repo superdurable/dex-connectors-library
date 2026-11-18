@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { RetryError, runMutation, SecretString, StaticCredentialProvider, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, StaticCredentialProvider, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { BodyTooLargeError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { JiraServiceManagementClient } from '../src/client.js';
-import { AddCommentDefinition, CreateTicketDefinition } from '../src/generated/definitions.js';
+import { AddCommentDefinition, CreateTicketDefinition, TransitionTicketDefinition } from '../src/generated/definitions.js';
+import type { TransitionTicketInput } from '../src/generated/models.js';
 
 const callId = 'ab66bfde-d934-5d47-9e00-bdf172b83392';
 const connection = { provider: 'atlassian', name: 'jsm-test' };
@@ -164,6 +165,136 @@ describe('Jira Service Management bounded resend of unconfirmed writes', () => {
   it('retries an untrusted checkpoint without sending', async () => {
     const { client, requests } = newClient(201, created);
     expect(await run(client, 'createTicket', new AttemptContext(2, { callId: 'another-call', attempt: 1, state: 'claimed' }))).toBe('retry');
+    expect(requests).toEqual([]);
+  });
+
+  it('treats a refusal status whose body exceeds the limit as an unknown outcome', async () => {
+    const context = new AttemptContext();
+    expect(await run(newStallingClient(() => ({ status: 400, body: oversizedBody })).client, 'addComment', context)).toBe('retry');
+    expect(JSON.stringify(context.marker)).toContain('"state":"claimed"');
+  });
+
+  it('never resends a write whose 2xx body the write deadline cut off', async () => {
+    const { client, requests } = newStallingClient(() => ({ status: 201, body: stalledBody }));
+    expect(await run(client, 'createTicket', new ShortWindowContext())).toBe('uncertain');
+    expect(requests).toHaveLength(1);
+  });
+
+  it('retries a transient credential failure before any send and records notSent', async () => {
+    const context = new AttemptContext();
+    const { client, requests } = newStallingClient(() => ({ status: 201, body: created }), failingCredentials(() => new Error('credential broker unavailable')));
+    expect(await run(client, 'createTicket', context)).toBe('retry');
+    expect(JSON.stringify(context.marker)).toContain('"state":"notSent"');
+    expect(requests).toEqual([]);
+  });
+});
+
+/** A scripted body that sends the status, then stalls until the write window aborts the request. */
+const stalledBody = '<stalled>';
+/** A scripted body larger than the error-body limit. */
+const oversizedBody = '<oversized>';
+
+/** A first attempt whose write window ends long before a stalled body would finish. */
+class ShortWindowContext extends AttemptContext {
+  override readonly deadline = new Date(Date.now() + 1_500);
+}
+
+type CredentialSourceForTest = ConstructorParameters<typeof JiraServiceManagementClient>[1];
+
+/** A credential source whose every lookup throws `error`. */
+function failingCredentials(error: () => Error): CredentialSourceForTest {
+  const resolve = async () => { throw error(); };
+  return { resolve, resolveWithRefresh: resolve } as unknown as CredentialSourceForTest;
+}
+
+function newStallingClient(answer: Answer, credentials?: CredentialSourceForTest) {
+  const requests: ProviderRequest[] = [];
+  const source = credentials ?? new StaticCredentialProvider([[connection, { accessToken: new SecretString('jsm-access-token'), refreshToken: new SecretString(''), oauthClientId: 'client-id', oauthClientSecret: new SecretString('secret') }]]);
+  const client = new JiraServiceManagementClient({ endpoint: 'http://127.0.0.1:12345', cloudId: '11223344-a1b2-4b33-8c44-def123456789' }, source, {
+    send: async (request: ProviderRequest) => {
+      requests.push(request);
+      const { status, body } = answer(request);
+      if (body === stalledBody) {
+        await new Promise(resolve => request.signal?.addEventListener('abort', resolve, { once: true }));
+        throw new ProviderTransportError(false, status, {});
+      }
+      if (body === oversizedBody) throw new BodyTooLargeError(status, {});
+      return { status, headers: {}, body: Buffer.from(body) };
+    },
+  });
+  return { client, requests };
+}
+
+const inProgress = '{"id":"10042","key":"ITH-42","fields":{"status":{"id":"3","name":"In progress","statusCategory":{"key":"indeterminate"}}},"transitions":[{"id":"21","name":"Pending","to":{"id":"1","name":"Waiting for support","statusCategory":{"key":"new"}}}]}';
+const waiting = '{"id":"10042","key":"ITH-42","fields":{"status":{"id":"1","name":"Waiting for support","statusCategory":{"key":"new"}}},"transitions":[{"id":"11","name":"Pending","to":{"id":"3","name":"In progress","statusCategory":{"key":"indeterminate"}}}]}';
+const pending: TransitionTicketInput = { issueIdOrKey: 'ITH-42', transitionName: 'Pending' };
+const transitionPosts = (requests: ProviderRequest[]) => requests.filter(request => request.method === 'POST').length;
+
+async function runTransition(client: JiraServiceManagementClient, context: AttemptContext, input: TransitionTicketInput = pending): Promise<string> {
+  const call = { id: callId, connection, operation: TransitionTicketDefinition.operation, context } as unknown as Call;
+  try { return (await runMutation(client.transitionTicket(), call, input)).branch; }
+  catch (error) { if (error instanceof RetryError) return 'retry'; throw error; }
+}
+
+describe('Jira Service Management transition behind the single-dispatch fence', () => {
+  it('never transitions again after an unknown outcome', async () => {
+    const issue = { body: inProgress };
+    const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: issue.body } : { status: 502, body: '{}' });
+    const context = new AttemptContext();
+    expect(await runTransition(client, context)).toBe('retry');
+    // Jira applied the toggle late; a resend would move the request back.
+    issue.body = waiting;
+    for (const attempt of [2, 3]) {
+      context.attempt = attempt;
+      expect(await runTransition(client, context)).toBe('retry');
+    }
+    expect(transitionPosts(requests)).toBe(1);
+  });
+
+  it('recognizes the destination status on a repeated attempt', async () => {
+    const issue = { body: waiting };
+    const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: issue.body } : { status: 504, body: '' });
+    const move: TransitionTicketInput = { issueIdOrKey: 'ITH-42', transitionId: '11', destinationStatusName: 'In progress' };
+    const context = new AttemptContext();
+    expect(await runTransition(client, context, move)).toBe('retry');
+    issue.body = inProgress;
+    context.attempt = 2;
+    expect(await runTransition(client, context, move)).toBe('transitioned');
+    expect(transitionPosts(requests)).toBe(1);
+  });
+
+  it.each([[404, '{}'], [200, '{"id":"x"}'], [403, '{}']])('never selects a failure branch after a possible send (HTTP %i)', async (status, body) => {
+    const { client, requests } = newStallingClient(() => ({ status, body }));
+    expect(await runTransition(client, new AttemptContext(2))).toBe('retry');
+    expect(requests).toHaveLength(1);
+  });
+
+  it('lets the next attempt send after a rate limit', async () => {
+    const statuses = [429, 204];
+    const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: inProgress } : { status: statuses.shift()!, body: '' });
+    const context = new AttemptContext();
+    expect(await runTransition(client, context)).toBe('retry');
+    expect(JSON.stringify(context.marker)).toContain('"state":"canResend"');
+    context.attempt = 2;
+    expect(await runTransition(client, context)).toBe('transitioned');
+    expect(transitionPosts(requests)).toBe(2);
+  });
+
+  it('is transitioned when the write deadline cuts a 2xx body', async () => {
+    const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: inProgress } : { status: 200, body: stalledBody });
+    expect(await runTransition(client, new ShortWindowContext())).toBe('transitioned');
+    expect(transitionPosts(requests)).toBe(1);
+  });
+
+  it('follows the send history on credential failures', async () => {
+    const terminal = failingCredentials(() => new ReauthorizationRequiredError());
+    const answer: Answer = () => ({ status: 204, body: '' });
+    expect(await runTransition(newStallingClient(answer, terminal).client, new AttemptContext())).toBe('defect');
+    expect(await runTransition(newStallingClient(answer, terminal).client, new AttemptContext(2))).toBe('retry');
+    const context = new AttemptContext();
+    const { client, requests } = newStallingClient(answer, failingCredentials(() => new Error('credential broker unavailable')));
+    expect(await runTransition(client, context)).toBe('retry');
+    expect(JSON.stringify(context.marker)).toContain('"state":"notSent"');
     expect(requests).toEqual([]);
   });
 });
