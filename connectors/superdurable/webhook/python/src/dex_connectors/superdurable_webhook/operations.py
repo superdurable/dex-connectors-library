@@ -21,6 +21,7 @@ from dex_connectors.sdk import (
     Receipt,
 )
 from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk.projectconfig.storage import ObjectConflictError
 from dex_connectors.sdk.providerhttp import ProviderTransportError, parse_retry_after, send_traced
 
 from ._generated.definitions import SEND_EVENT_DEFINITION
@@ -28,6 +29,9 @@ from .client import Client
 from .models import SendEventInput, SendEventOutput
 
 _DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+# A credential broker, store, refresh, or exchange that is unavailable now may answer on a later attempt;
+# CredentialBrokerUnavailableError and the other transient SDK errors are OSError subclasses.
+_TRANSIENT_CREDENTIAL_ERRORS = (OSError, CredentialBrokerUnavailableError, ObjectConflictError)
 
 
 class SendEventOperation:
@@ -63,8 +67,10 @@ class SendEventOperation:
             return _defect(call, output, FailureKind.VALIDATION, "sendEvent payload exceeds maxBodyBytes")
         try:
             credentials = await self.client.credentials.resolve(call)
-        except CredentialBrokerUnavailableError:
-            return MutationAttempt.retry(_failure(FailureKind.AVAILABILITY, "credential broker unavailable"))
+        except _TRANSIENT_CREDENTIAL_ERRORS:
+            return MutationAttempt.retry(
+                _failure(FailureKind.AVAILABILITY, "credential broker or store unavailable; nothing was sent")
+            )
         except Exception:
             return _defect(call, output, FailureKind.AUTHENTICATION, "webhook signing secret unavailable")
         secret = credentials.signing_secret.reveal()

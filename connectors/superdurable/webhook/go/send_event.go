@@ -86,9 +86,9 @@ func (operation SendEventOperation) Invoke(call sdkgo.Call, input SendEventInput
 		return sendEventDefect(call, output, sdkgo.FailureValidation, "sendEvent payload exceeds the connection's maxBodyBytes")
 	}
 	credentials, err := client.credentials.Resolve(call)
-	if errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) {
+	if isTransientCredentialError(err) {
 		return sdkgo.NewMutationRetry[SendEventOutput](sendEventFailure(sdkgo.FailureAvailability,
-			"the credential broker is temporarily unavailable, so nothing was sent"), 0)
+			"the credential broker or store is temporarily unavailable, so nothing was sent"), 0)
 	}
 	if err != nil || credentials.SigningSecret.Reveal() == "" {
 		return sendEventDefect(call, output, sdkgo.FailureAuthentication, "the webhook signing secret is unavailable")
@@ -203,6 +203,14 @@ func sendEventDefect(call sdkgo.Call, output SendEventOutput, kind sdkgo.Failure
 		return sdkgo.NewMutationRetry[SendEventOutput](failure, 0)
 	}
 	return sdkgo.NewMutationBranch(SendEventBranchDefect, output, &failure, sdkgo.Receipt{})
+}
+
+// isTransientCredentialError reports a credential resolution failure that a later attempt may not repeat,
+// such as an unavailable credential broker; any other failure is terminal.
+func isTransientCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) || errors.Is(err, projectconfig.ErrExchangePending) ||
+		errors.Is(err, projectconfig.ErrRefreshFailed) || errors.Is(err, projectconfig.ErrOutcomeUnknown) ||
+		errors.Is(err, projectconfig.ErrConflict) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
 }
 
 // hasPossibleEarlierSend reports whether an earlier attempt of this Step may have delivered the event.

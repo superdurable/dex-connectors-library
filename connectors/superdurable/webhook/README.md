@@ -215,7 +215,8 @@ the project configuration that the application loads. `configuration` may be
 | `408`, `425` (Too Early), or `429` | Retry with the same `webhook-id`, after `Retry-After` when sent |
 | `409`, such as a receiver's answer for a `webhook-id` still in flight | Retry with the same `webhook-id`, after `Retry-After` when sent |
 | Connection refused, DNS or TLS failure before the request was written | Retry with the same `webhook-id` |
-| The project's credential broker is temporarily unavailable, so the signing secret cannot be read | Retry; nothing was sent |
+| The project's credential broker, store, refresh, or exchange is temporarily unavailable, so the signing secret cannot be read | Retry; nothing was sent |
+| The signing secret is missing or unusable | `defect` on the Step's first attempt; Retry on a later one |
 | `400`, `401`, `403`, `404`, `411`, `413`, `414`, `415`, or `422` on the Step's first attempt | `rejected` (optional), with the status code |
 | The same refusal on a later attempt, which may follow a delivered event | Retry with the same `webhook-id` |
 | A redirect, `410`, or any other unlisted `3xx` or `4xx` | Retry with the same `webhook-id`, after `Retry-After` when sent |
