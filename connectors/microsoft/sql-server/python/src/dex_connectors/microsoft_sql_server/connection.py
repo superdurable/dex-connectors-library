@@ -33,9 +33,11 @@ class Connection:
         reference: ConnectionRef,
         query: Query[QueryRowsInput, RowSet],
         execute: Mutation[ExecuteStatementInput, StatementExecution],
-        execute_non_idempotent: Mutation[ExecuteStatementInput, StatementExecution] | None = None,
         client: Client | None = None,
+        *,
+        execute_non_idempotent: Mutation[ExecuteStatementInput, StatementExecution] | None = None,
     ) -> None:
+        """Bind the operations; keyword-only `execute_non_idempotent` keeps released calls working."""
         reference.validate()
         if reference.provider != CONNECTOR_ID or query is None or execute is None:
             raise ValueError(f"{_LABEL} connection provider and operations are required")
@@ -89,7 +91,10 @@ def new_connection(client: Client, reference: ConnectionRef) -> Connection:
     """Bind a provider client to a logical connection reference."""
     if client is None:
         raise ValueError(f"{_LABEL} client is required")
-    return Connection(reference, client.query(), client.execute(), client.execute_non_idempotent(), client)
+    execute_non_idempotent = client.execute_non_idempotent()
+    return Connection(
+        reference, client.query(), client.execute(), client, execute_non_idempotent=execute_non_idempotent
+    )
 
 
 def new_connection_with_operations(
@@ -104,7 +109,7 @@ def new_connection_with_operations(
     `execute_non_idempotent` is optional so earlier callers keep working; without it, a
     `new_execute_non_idempotent_step` built on this connection raises ValueError.
     """
-    return Connection(reference, query, execute, execute_non_idempotent)
+    return Connection(reference, query, execute, execute_non_idempotent=execute_non_idempotent)
 
 
 class _ProjectCredentialSource:
