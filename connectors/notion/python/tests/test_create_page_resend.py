@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
-from dex_connectors.sdk.singledispatch import Marker
+from dex_connectors.sdk.singledispatch import Marker, State
 
 import dex_connectors.notion as notion
 from dex_connectors.notion._generated.definitions import CREATE_PAGE_DEFINITION
@@ -34,20 +34,33 @@ class AttemptContext:
         self.attempt = 1
         self.run_id = "run"
         self.deadline = datetime.now(UTC) + timedelta(seconds=120)
-        self.marker: Marker | None = None
-        self.raw_marker: object = None
+        self.heartbeat_value: object = None
+        self.read_error: Exception | None = None
+
+    @property
+    def marker(self) -> Marker | None:
+        """Decode this call's marker from a single marker or the checkpoint map."""
+        if isinstance(self.heartbeat_value, Marker) or self.heartbeat_value is None:
+            return self.heartbeat_value
+        assert isinstance(self.heartbeat_value, dict)
+        return Marker.from_wire(self.heartbeat_value["singleDispatchMarkers"][str(CALL_ID)])
 
     def has_last_heartbeat_value(self) -> bool:
         """Report whether an earlier attempt recorded a heartbeat."""
-        return self.marker is not None or self.raw_marker is not None
+        return self.heartbeat_value is not None or self.read_error is not None
 
     def get_last_heartbeat_value(self, value_type: type[object]) -> object:
-        """Return the last marker, or an untrusted raw value."""
-        return self.marker if self.marker is not None else self.raw_marker
+        """Return the last heartbeat, translating a seeded marker to the checkpoint map the SDK reads."""
+        if self.read_error is not None:
+            raise self.read_error
+        if isinstance(self.heartbeat_value, Marker) and value_type is not Marker:
+            marker = self.heartbeat_value
+            return {"singleDispatchMarkers": {str(marker.call_id): marker.to_wire()}}
+        return self.heartbeat_value
 
     async def heartbeat(self, value: object = None) -> None:
-        """Record the attempt's marker."""
-        self.marker = value if isinstance(value, Marker) else None
+        """Record the attempt's heartbeat exactly as written."""
+        self.heartbeat_value = value
 
 
 async def create_page(
@@ -130,17 +143,17 @@ async def test_saved_page_id_is_read_back_instead_of_resent() -> None:
     requests: list[httpx.Request] = []
     context = AttemptContext()
     context.attempt = 2
-    context.marker = Marker(CALL_ID, 1, "claimed", PAGE_ID, 1)  # type: ignore[arg-type]
+    context.heartbeat_value = Marker(CALL_ID, 1, State.CLAIMED, PAGE_ID, 1)
     result = await create_page(500, {}, context, requests)
     assert isinstance(result, sdk.MutationResult) and result.branch == "created"
     assert [request.method for request in requests] == ["GET"]
 
 
 @pytest.mark.asyncio
-async def test_untrusted_checkpoint_returns_retry_without_sending() -> None:
+async def test_unreadable_checkpoint_returns_retry_without_sending() -> None:
     requests: list[httpx.Request] = []
     context = AttemptContext()
     context.attempt = 2
-    context.raw_marker = {"callId": "foreign", "attempt": 1, "state": "claimed"}
+    context.read_error = RuntimeError("heartbeat store unavailable")
     assert isinstance(await create_page(200, PAGE, context, requests), sdk.RetryError)
     assert requests == []

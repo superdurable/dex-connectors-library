@@ -7,6 +7,7 @@ from pathlib import Path
 
 import dex_connectors.sdk as sdk
 import httpx
+from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.google_youtube as youtube
 
@@ -43,7 +44,7 @@ async def test_ambiguous_resend_after_refresh_counts_toward_the_send_cap() -> No
         return httpx.Response(401 if len(inserts) == 1 else 500)
 
     credentials = ManageRefreshingCredentials()
-    context = HeartbeatContext()
+    context = HeartbeatContext(call_id=CALL_ID)
     input_value = youtube.AddPlaylistItemInput("PLexample123", "dQw4w9WgXcQ")
     async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
         config = youtube.Config(endpoint="http://127.0.0.1/youtube/v3")
@@ -60,4 +61,6 @@ async def test_ambiguous_resend_after_refresh_counts_toward_the_send_cap() -> No
     # The refreshed resend shares one fence claim with the rejected insert.
     assert inserts == ["rejected-token", "replacement-token", "rejected-token", "rejected-token"]
     assert credentials.forced_refreshes == 1
-    assert context.heartbeat_payload == {"attempt": 3, "callId": CALL_ID, "sendCount": 3, "state": "claimed"}
+    marker = context.get_last_heartbeat_value(Marker)
+    assert isinstance(marker, Marker)
+    assert marker.to_wire() == {"attempt": 3, "callId": CALL_ID, "sendCount": 3, "state": "claimed"}
