@@ -18,6 +18,7 @@ from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.intuit_mailchimp as mailchimp
+import dex_connectors.intuit_mailchimp._generated.connection as generated_connection
 from dex_connectors.intuit_mailchimp._generated.definitions import SEND_CAMPAIGN_DEFINITION
 from dex_connectors.intuit_mailchimp.operations import _LegacySendDispatchMarker
 
@@ -120,6 +121,30 @@ def server_error() -> httpx.Response:
     return problem(500, "Internal Server Error")
 
 
+def sdk_wrapped_material_error() -> ValueError:
+    """Return the error the SDK project provider raises when the decoder rejects stored material."""
+    try:
+        try:
+            raise generated_connection.CredentialMaterialError("stored credential is malformed")
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+
+
+class MalformedProject:
+    """Serve stored credential material that fails the generated decoder."""
+
+    async def resolve_credential(self, key: object, call_id: str) -> dict[str, object]:
+        """Return material with an undeclared field."""
+        return {"unexpected_field": "value"}
+
+
+def malformed_stored_credentials() -> object:
+    """Return the generated project credential source over malformed stored material."""
+    return generated_connection._ProjectCredentialSource(MalformedProject(), object())  # type: ignore[arg-type]
+
+
 class FailingCredentials:
     """Fail every credential lookup with one error."""
 
@@ -193,6 +218,7 @@ async def test_unknown_send_outcome_is_resent_after_reading_a_draft() -> None:
         (ObjectNotFoundError(), False),
         (ConnectionNotSelectedError(), False),
         (CredentialBrokerRejectedError(), False),
+        (sdk_wrapped_material_error(), False),
     ],
     ids=[
         "transient lookup",
@@ -202,6 +228,7 @@ async def test_unknown_send_outcome_is_resent_after_reading_a_draft() -> None:
         "object not found",
         "not selected",
         "broker rejected",
+        "malformed material behind the SDK wrapper",
     ],
 )
 async def test_credential_failure_after_a_possible_send(error: Exception, is_retryable: bool) -> None:
@@ -406,6 +433,21 @@ async def test_transient_credential_failure_before_any_send_records_not_sent() -
     assert isinstance(result, sdk.RetryError)
     assert context.marker.state == "notSent" and context.marker.send_count == 0
     assert script.requests == []
+
+
+@pytest.mark.asyncio
+async def test_malformed_stored_credentials_are_terminal() -> None:
+    """Malformed stored material selects defect before any send and uncertain after one, never retrying."""
+    unsent = CampaignScript("save")
+    unsent_result = await send(unsent, AttemptContext(), credentials=malformed_stored_credentials())
+    assert branch(unsent_result) == "defect"
+    assert unsent.requests == []
+    script = CampaignScript("save", server_error)
+    context = AttemptContext()
+    assert isinstance(await send(script, context), sdk.RetryError)
+    context.attempt = 2
+    assert branch(await send(script, context, credentials=malformed_stored_credentials())) == "uncertain"
+    assert script.sends == 1
 
 
 @pytest.mark.asyncio

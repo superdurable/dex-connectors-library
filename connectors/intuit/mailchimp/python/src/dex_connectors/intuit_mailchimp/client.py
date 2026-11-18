@@ -168,8 +168,11 @@ class Client:
             CredentialBrokerRejectedError,
         ):
             return unavailable, False
-        except Exception:
-            return unavailable, True
+        except Exception as error:
+            # Imported here because the generated connection module imports this one.
+            from ._generated.connection import is_credential_material_error
+
+            return unavailable, not is_credential_material_error(error)
         try:
             key = credentials.api_key.reveal()
             match = _API_KEY.fullmatch(key)
