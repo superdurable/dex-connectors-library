@@ -213,7 +213,10 @@ class Client:
                 if error.provably_not_sent
                 else "Mailchimp request failed before a response arrived"
             )
-            return Exchange(outcome, failure(FailureKind.TRANSPORT, operation, message))
+            # A status means headers arrived before the body broke, which a write must not resend after.
+            return Exchange(
+                outcome, failure(FailureKind.TRANSPORT, operation, message), status=error.status_code or 0
+            )
         except (ValueError, TypeError):
             return Exchange(
                 "defect", failure(FailureKind.LOCAL_DEFECT, operation, "Mailchimp request could not be built")

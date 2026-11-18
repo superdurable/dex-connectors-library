@@ -56,6 +56,11 @@ func (result mailchimpExchange) isOutcomeUnknownAfterDispatch() bool {
 	}
 }
 
+// isSuccessStatus reports a 2xx, which proves Mailchimp accepted a request whatever its body holds.
+func isSuccessStatus(status int) bool {
+	return status >= http.StatusOK && status < http.StatusMultipleChoices
+}
+
 // isDefiniteRefusalStatus lists the statuses that prove a write was refused; 409, 3xx, and others are unknown.
 func isDefiniteRefusalStatus(status int) bool {
 	switch status {

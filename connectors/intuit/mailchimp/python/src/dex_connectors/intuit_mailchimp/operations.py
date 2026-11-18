@@ -791,7 +791,8 @@ class _SendCampaignAttempt:
                 ),
             )
         receipt = self._client.receipt(self._call, sent, self._input.campaign_id)
-        if sent.outcome == "succeeded":
+        if sent.outcome == "succeeded" or 200 <= sent.status < 300:
+            # A 2xx accepted the send even when its body is unreadable or oversized; it is never resent.
             return MutationAttempt.branch_result("sent", output, receipt)
         assert sent.failure is not None
         if sent.outcome in ("rateLimited", "notSent") or (
@@ -832,8 +833,8 @@ class _SendCampaignAttempt:
         self, retry_failure: Failure, retry_after: float
     ) -> MutationAttempt[SendCampaignOutput]:
         """Record notSent before a pre-send Retry so the next attempt does not count a send."""
-        if self._decision.kind == DecisionKind.SEND_ALLOWED:
-            # After READ_BACK_THEN_RESEND_ALLOWED, notSent would hide the earlier possible send.
+        if self._decision.kind == DecisionKind.SEND_ALLOWED and not self._has_possible_earlier_send:
+            # After a possible earlier send, notSent could hide it, so the earlier marker stays.
             try:
                 await self._fence.record_not_sent()
             except Exception:
