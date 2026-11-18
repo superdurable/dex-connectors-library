@@ -593,6 +593,10 @@ func TestCreateEnvelopeClassifiesCredentialFailuresBeforeTheFirstSend(t *testing
 		"connection unselected":  {err: projectconfig.ErrConnectionNotSelected, wantBranch: docusign.CreateEnvelopeFromTemplateBranchDefect},
 		"broker rejected":        {err: projectconfig.ErrCredentialBrokerRejected, wantBranch: docusign.CreateEnvelopeFromTemplateBranchDefect},
 		"reauthorization needed": {err: sdkgo.ErrReauthorizationRequired, wantBranch: docusign.CreateEnvelopeFromTemplateBranchDefect},
+		"project reauthorization": {err: projectconfig.ErrReauthorizationRequired,
+			wantBranch: docusign.CreateEnvelopeFromTemplateBranchDefect},
+		"not configured": {err: errors.New("connection is not configured")},
+		"unlisted":       {err: errors.New("unlisted resolve failure")},
 	} {
 		t.Run(name, func(t *testing.T) {
 			fake := newFakeDocuSign(t, nil)
