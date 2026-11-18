@@ -552,7 +552,8 @@ func isSuccessStatus(statusCode int) bool { return statusCode >= 200 && statusCo
 // isTerminalCredentialError reports a credential resolution failure that no retry fixes; others, such as broker outages, may pass.
 func isTerminalCredentialError(err error) bool {
 	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
-		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+		errors.Is(err, projectconfig.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // isDefiniteWriteRefusalStatus reports a status proving Confluence refused a write; others leave it unknown.

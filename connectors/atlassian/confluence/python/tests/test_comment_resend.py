@@ -9,6 +9,12 @@ from datetime import UTC, datetime, timedelta
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.atlassian_confluence as confluence
@@ -300,6 +306,27 @@ async def test_credential_failures_retry_when_transient_and_are_uncertain_after_
     after_send = await run_with(respond, context, reauthorize)
     assert not isinstance(after_send, str) and after_send.branch == "uncertain"
     assert posts(requests) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (ValueError("connection is not configured"), "retry:AVAILABILITY"),
+        (LookupError("unlisted"), "retry:AVAILABILITY"),
+        (AttributeError("unlisted"), "retry:AVAILABILITY"),
+        (CredentialBrokerUnavailableError(), "retry:AVAILABILITY"),
+        (ConnectionNotSelectedError(), "defect"),
+        (CredentialBrokerRejectedError(), "defect"),
+        (ObjectNotFoundError("absent"), "defect"),
+    ],
+)
+async def test_credential_failure_before_any_send_is_classified(error: Exception, expected: str) -> None:
+    def respond(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request is expected")
+
+    result = await run_with(respond, AttemptContext(), _FailingCredentials(error))
+    assert (result if isinstance(result, str) else result.branch) == expected
 
 
 class _SlowAcceptedBody(httpx.AsyncByteStream):
