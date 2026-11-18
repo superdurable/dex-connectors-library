@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
+from dex_connectors.sdk.providerhttp import ProviderTransportError
 
 from dex_connectors import sdk
 from dex_connectors.docusign import (
@@ -22,6 +23,7 @@ from dex_connectors.docusign.operations import (
     CreateEnvelopeFromTemplateOperation,
     _create_body,
     _CreateDispatchCheckpoint,
+    _CreateSendBudget,
     _go_timestamp,
     _time,
 )
@@ -196,7 +198,10 @@ async def test_checkpoint_controls_retry_send(stored: _CreateDispatchCheckpoint 
         assert result.branch == "created"
         assert client.methods == ["GET", "POST"]
         if is_dispatched:
-            assert context.value == stored, "the resend keeps the earliest dispatch time"
+            assert stored is not None and context.value is not None
+            # The resend keeps the earliest dispatch time.
+            assert context.value.dispatched_at == stored.dispatched_at
+            assert (context.value.attempt, context.value.send_count) == (attempt, attempt)
 
 
 @pytest.mark.asyncio
@@ -228,7 +233,7 @@ async def test_after_send_multiple_matches_selects_uncertain_without_resending()
     call = SimpleNamespace(context=context)
     unknown = failure("createEnvelopeFromTemplate", sdk.FailureKind.AVAILABILITY, "original create failure")
     result = await CreateEnvelopeFromTemplateOperation(ClientStub())._recover_or_uncertain(
-        call, object(), "call-1", True, unknown
+        call, object(), "call-1", _DISPATCHED, _CreateSendBudget(1, 0, 3, False), unknown
     )
     assert result.kind == "uncertain"
     assert result.failure is not None and result.failure.kind == sdk.FailureKind.CONFLICT
@@ -257,8 +262,150 @@ async def test_after_send_miss_resends_below_the_cap(can_resend_later: bool, exp
         has_last_heartbeat_value=lambda: False,
     )
     unknown = failure("createEnvelopeFromTemplate", sdk.FailureKind.AVAILABILITY, "original create failure")
+    sends = _CreateSendBudget(1, 0 if can_resend_later else 2, 3, False)
     result = await CreateEnvelopeFromTemplateOperation(ClientStub())._recover_or_uncertain(
-        SimpleNamespace(context=context), object(), "call-1", can_resend_later, unknown
+        SimpleNamespace(context=context), object(), "call-1", _DISPATCHED, sends, unknown
     )
     assert result.kind == expected
     assert result.failure == unknown
+
+
+_DISPATCHED = _CreateDispatchCheckpoint(True, "2026-10-04T12:00:00Z", 1, 1, False)
+_ENVELOPE_ID = "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a"
+
+
+class _AttemptContext:
+    """One attempt of a Step execution, starting from the heartbeat its previous attempt left."""
+
+    first_attempt_at = datetime(2026, 10, 4, 12, tzinfo=UTC)
+    deadline = None
+
+    def __init__(self, attempt: int, value: _CreateDispatchCheckpoint | None) -> None:
+        self.attempt = attempt
+        self.value = value
+
+    def has_last_heartbeat_value(self) -> bool:
+        return self.value is not None
+
+    def get_last_heartbeat_value(self, _type: object) -> _CreateDispatchCheckpoint | None:
+        return self.value
+
+    async def heartbeat(self, value: _CreateDispatchCheckpoint | None = None) -> None:
+        self.value = value
+
+
+class _ScriptedDocuSign:
+    """Answer each POST from a script and every listing with no tagged envelope."""
+
+    def __init__(self, posts: list[object]) -> None:
+        self.posts = posts
+        self.methods: list[str] = []
+
+    async def open_session(self, _call: object, _operation: str) -> object:
+        return object()
+
+    async def request(
+        self, _call: object, _session: object, method: str, _path: str, *_args: object, **_kwargs: object
+    ) -> ProviderResponse:
+        self.methods.append(method)
+        if method == "GET":
+            return ProviderResponse(200, {}, b'{"envelopes":[]}')
+        answer = self.posts.pop(0)
+        if isinstance(answer, Exception):
+            raise answer
+        assert isinstance(answer, ProviderResponse)
+        return answer
+
+    def classify(self, operation: str, response: ProviderResponse) -> object:
+        return Client.classify(self, operation, response)  # type: ignore[arg-type]
+
+    def now(self) -> datetime:
+        return datetime(2026, 10, 4, 12, tzinfo=UTC)
+
+    def receipt(self, _envelope_id: str = "", _error_code: str = "") -> sdk.Receipt:
+        return sdk.Receipt()
+
+
+async def _run_create_attempt(
+    provider: _ScriptedDocuSign, attempt: int, heartbeat: _CreateDispatchCheckpoint | None
+) -> tuple[sdk.MutationAttempt[object], _CreateDispatchCheckpoint | None]:
+    context = _AttemptContext(attempt, heartbeat)
+    call = SimpleNamespace(id="call-1", idempotency_key="call-1", context=context, max_sends=3)
+    input = CreateEnvelopeFromTemplateInput(
+        template_id=_ENVELOPE_ID,
+        template_roles=(TemplateRole("Customer", "Priya Raman", "priya@example.com"),),
+    )
+    result = await CreateEnvelopeFromTemplateOperation(provider).invoke(call, input)  # type: ignore[arg-type]
+    return result, context.value  # type: ignore[return-value]
+
+
+def _docusign_error(status: int, code: str) -> ProviderResponse:
+    return ProviderResponse(status, {}, json.dumps({"errorCode": code, "message": "inert"}).encode())
+
+
+@pytest.mark.asyncio
+async def test_rate_limited_resends_are_not_counted_and_each_resend_reads_back_first() -> None:
+    created = ProviderResponse(201, {}, json.dumps({"envelopeId": _ENVELOPE_ID, "status": "sent"}).encode())
+    provider = _ScriptedDocuSign(
+        [
+            _docusign_error(500, "UNSPECIFIED_ERROR"),
+            _docusign_error(429, "BURST_APIINVOCATION_LIMIT_EXCEEDED"),
+            _docusign_error(429, "BURST_APIINVOCATION_LIMIT_EXCEEDED"),
+            created,
+        ]
+    )
+    heartbeat = None
+    for attempt in (1, 2, 3):
+        result, heartbeat = await _run_create_attempt(provider, attempt, heartbeat)
+        assert result.kind == "retry", attempt
+        # Every attempt after the unknown send reads back first.
+        assert provider.methods.count("GET") == attempt
+    assert heartbeat is not None and heartbeat.send_count == 1, "the rate-limited resends are not counted"
+    result, _ = await _run_create_attempt(provider, 4, heartbeat)
+    assert result.branch == "created", "one counted send leaves room below the cap of three"
+    assert provider.methods.count("GET") == 4 and provider.methods.count("POST") == 4
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "answer",
+    [
+        ProviderResponse(201, {}, b'{"envelopeId":'),
+        ProviderTransportError(False, 201),
+    ],
+    ids=["unusable summary", "body cut off after the headers"],
+)
+async def test_an_accepted_create_is_never_sent_again(answer: object) -> None:
+    provider = _ScriptedDocuSign([answer])
+    result, heartbeat = await _run_create_attempt(provider, 1, None)
+    assert result.kind == "retry" and heartbeat is not None and heartbeat.is_accepted
+    result, heartbeat = await _run_create_attempt(provider, 2, heartbeat)
+    assert result.kind == "retry", "a later attempt only reads back"
+    result, _ = await _run_create_attempt(provider, 3, heartbeat)
+    assert result.kind == "uncertain", "the read-back attempts reached the cap"
+    assert provider.methods.count("POST") == 1 and provider.methods.count("GET") == 3
+
+
+@pytest.mark.asyncio
+async def test_service_unavailable_retries_without_counting_a_send() -> None:
+    provider = _ScriptedDocuSign([_docusign_error(503, "UNSPECIFIED_ERROR")])
+    result, heartbeat = await _run_create_attempt(provider, 1, None)
+    assert result.kind == "retry"
+    assert provider.methods == ["POST"], "DocuSign answers 503 before it processes the create"
+    assert heartbeat is not None and not heartbeat.is_dispatched and heartbeat.send_count == 0
+
+
+@pytest.mark.asyncio
+async def test_refusal_after_a_lost_checkpoint_selects_uncertain() -> None:
+    provider = _ScriptedDocuSign([_docusign_error(400, "TEMPLATE_ID_INVALID")])
+    result, _ = await _run_create_attempt(provider, 2, None)
+    assert result.kind == "uncertain", "the first attempt may have sent before Dex stored its checkpoint"
+    assert provider.methods == ["GET", "POST"]
+
+
+@pytest.mark.asyncio
+async def test_first_send_refusal_records_no_send() -> None:
+    provider = _ScriptedDocuSign([_docusign_error(400, "TEMPLATE_ID_INVALID")])
+    result, heartbeat = await _run_create_attempt(provider, 1, None)
+    assert result.branch == "providerRejected"
+    assert heartbeat is not None and not heartbeat.is_dispatched and heartbeat.send_count == 0

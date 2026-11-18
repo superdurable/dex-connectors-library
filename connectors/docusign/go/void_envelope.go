@@ -103,7 +103,8 @@ func (client *Client) classifyVoidRefusal(
 	envelope, readOutcome, err := client.readEnvelope(call, session, voidEnvelopeOperationID, envelopeID)
 	switch {
 	case err != nil:
-		return sdkgo.NewMutationBranch(VoidEnvelopeBranchInvalidResponse, VoidedEnvelope{}, docusignFailurePointer(voidEnvelopeOperationID, responseFailureKind(err), responseFailureMessage(err)), receipt)
+		// The status read-back is inconclusive, and voiding again is safe.
+		return sdkgo.NewMutationRetry[VoidedEnvelope](docusignFailure(voidEnvelopeOperationID, responseFailureKind(err), responseFailureMessage(err)), 0)
 	case readOutcome != nil && readOutcome.isRetry:
 		return sdkgo.NewMutationRetry[VoidedEnvelope](readOutcome.failure, readOutcome.retryAfter)
 	case readOutcome != nil && readOutcome.isNotFound:
