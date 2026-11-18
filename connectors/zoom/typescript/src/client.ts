@@ -4,7 +4,7 @@
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import { isCredentialMaterialError, type Config, type Credentials, type CredentialSource } from './generated/models.js';
 import { ListMeetingsOperation, GetMeetingOperation, CreateMeetingOperation, UpdateMeetingOperation, ListPastMeetingParticipantsOperation } from './operations.js';
@@ -74,13 +74,16 @@ export class ZoomClient {
     }
   }
 
-  /** Force one generated refresh after Zoom rejects a fenced create credential. */
-  async refreshAfterRejection(call: Call, previousAccessToken: string): Promise<'replaced' | 'retryable' | 'reauthorize' | 'unsupported'> {
+  /** Force one generated refresh after Zoom rejects a fenced create credential; `retryable` marks a transient failure. */
+  async refreshAfterRejection(call: Call, previousAccessToken: string): Promise<'replaced' | 'retryable' | 'reauthorize' | 'unsupported' | 'notRefreshed'> {
     if (!('resolveAfterRejection' in this.credentials)) return 'unsupported';
     try {
       const replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
       return replacement.accessToken?.reveal() && replacement.accessToken.reveal() !== previousAccessToken ? 'replaced' : 'reauthorize';
-    } catch (error) { return isTerminalCredentialError(error) ? 'reauthorize' : 'retryable'; }
+    } catch (error) {
+      if (error instanceof RejectedCredentialNotRefreshedError) return 'notRefreshed';
+      return isTerminalCredentialError(error) ? 'reauthorize' : 'retryable';
+    }
   }
 
   /** Send one bounded request and refresh once after a rejected credential when allowed. */

@@ -14,6 +14,11 @@ const successful = (status: number) => status >= 200 && status < 300;
 // Only these statuses prove Zoom refused a write; other 4xx statuses leave the outcome unknown.
 const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 
+/** Match only the Fence's pre-send AggregateError: too little time, and the notSent checkpoint failed. */
+function isFenceInsufficientTimeAggregateError(error: unknown): boolean {
+  return error instanceof AggregateError && error.errors.some(cause => cause instanceof InsufficientTimeError);
+}
+
 /** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */
 function effectiveMaxSends(call: Call, operationMaxSends: number): number {
   return operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
@@ -223,7 +228,7 @@ export class CreateMeetingOperation implements Mutation<CreateMeetingInput, Meet
     try { exchange = await fence.dispatch(signal => this.client.exchange(call, resolved.credentials, 'POST', '/users/me/meetings', undefined, built.payload, true, signal)); }
     catch (error) {
       // The Fence raises these before sending, including AggregateError for a short window and a failed notSent.
-      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || error instanceof AggregateError) return newMutationRetry(zoomFailure('createMeeting', 'AVAILABILITY', 'Zoom create was not sent before the attempt deadline or checkpoint'), 0);
+      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || isFenceInsufficientTimeAggregateError(error)) return newMutationRetry(zoomFailure('createMeeting', 'AVAILABILITY', 'Zoom create was not sent before the attempt deadline or checkpoint'), 0);
       return resendOrUncertain(zoomFailure('createMeeting', 'TRANSPORT', 'Zoom meeting outcome is unknown'));
     }
     if ('error' in exchange) {
@@ -248,7 +253,13 @@ export class CreateMeetingOperation implements Mutation<CreateMeetingInput, Meet
       let meeting: Meeting;
       try { meeting = decodeMeeting(responseObject(exchange.response.body)); }
       catch {
-        if (createdMeetingID(exchange.response.body) > 0) return accepted('PROTOCOL', 'Zoom accepted the request but returned an unusable meeting');
+        const acceptedId = createdMeetingID(exchange.response.body);
+        if (acceptedId > 0) {
+          // Zoom returned a created meeting ID, so it is read back and never resent.
+          let isAcceptedIdSaved = true;
+          try { await fence.recordProviderId(String(acceptedId)); } catch { isAcceptedIdSaved = false; }
+          return this.readBack(call, built.requested, String(acceptedId), isAcceptedIdSaved);
+        }
         return accepted('PROTOCOL', 'Zoom accepted the create, but its response is malformed');
       }
       try { await fence.recordProviderId(String(meeting.id)); } catch { /* A lost checkpoint leaves the claim, which still counts this send. */ }
@@ -268,13 +279,14 @@ export class CreateMeetingOperation implements Mutation<CreateMeetingInput, Meet
     if (status === 401 && !isBodyUnreadable) {
       const refreshed = await this.client.refreshAfterRejection(call, resolved.credentials.accessToken.reveal());
       if (refreshed === 'unsupported') return rejectOrUncertain(zoomFailure('createMeeting', 'AUTHENTICATION', 'Zoom rejected the connection credential; reconnect the connection'), receipt);
-      if (refreshed === 'replaced') {
+      // A readable 401 proves Zoom did not process this create, so a replaced or transiently unavailable credential retries.
+      if (refreshed === 'replaced' || refreshed === 'retryable') {
         try { await fence.recordCanResend(); }
         catch { return newMutationRetry(zoomFailure('createMeeting', 'AVAILABILITY', 'Zoom rejected the credential but the resend checkpoint failed'), 0); }
-        return newMutationRetry(result.failure!, 0);
+        return newMutationRetry(refreshed === 'replaced' ? result.failure! : zoomFailure('createMeeting', 'AVAILABILITY', 'Zoom credential refresh is temporarily unavailable'), 0);
       }
-      return rejectOrUncertain(zoomFailure('createMeeting', refreshed === 'reauthorize' ? 'AUTHENTICATION' : 'AVAILABILITY',
-        refreshed === 'reauthorize' ? 'Zoom connection requires reauthorization; reconnect the connection' : 'Zoom credential refresh is temporarily unavailable'), receipt);
+      return rejectOrUncertain(zoomFailure('createMeeting', 'AUTHENTICATION',
+        refreshed === 'reauthorize' ? 'Zoom connection requires reauthorization; reconnect the connection' : 'Zoom rejected the connection credential, and it was not refreshed'), receipt);
     }
     // The documented daily limit refuses the create, so nothing was created by this send.
     if (status === 429 && result.outcome === 'rejected') return rejectOrUncertain(result.failure!, receipt);

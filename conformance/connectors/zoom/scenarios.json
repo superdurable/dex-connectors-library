@@ -1290,37 +1290,61 @@
             ]
           },
           "status": 201
+        },
+        {
+          "body": "{\"id\":92674392836,\"uuid\":\"meeting-instance-1\",\"host_id\":\"zoom-host-1\",\"host_email\":\"host@example.com\",\"topic\":\"Consultation\",\"type\":2,\"status\":\"waiting\",\"start_time\":\"2036-02-24T17:00:00Z\",\"duration\":30,\"timezone\":\"America/Los_Angeles\",\"agenda\":\"Review roadmap\",\"join_url\":\"https://us05web.zoom.us/j/92674392836?pwd=join\",\"created_at\":\"2026-09-30T17:04:05Z\",\"settings\":{\"host_video\":true,\"participant_video\":false,\"join_before_host\":false,\"mute_upon_entry\":true,\"waiting_room\":true,\"auto_recording\":\"none\"},\"start_url\":\"https://example.invalid/secret\",\"password\":\"secret\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/meetings/92674392836",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer zoom-test-access-token"
+            ]
+          },
+          "status": 200
         }
       ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "PROTOCOL",
+        "branch": "created",
+        "failureKind": "",
         "heartbeat": {
           "attempt": 1,
           "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+          "providerId": "92674392836",
           "sendCount": 1,
           "state": "claimed"
         },
         "output": {
           "agenda": "Review roadmap",
+          "createdAt": "2026-09-30T17:04:05Z",
           "durationMinutes": 30,
-          "id": 0,
+          "hostEmail": "host@example.com",
+          "hostId": "zoom-host-1",
+          "id": 92674392836,
+          "joinUrl": "https://us05web.zoom.us/j/92674392836?pwd=join",
           "settings": {
-            "hostVideo": false,
+            "autoRecording": "none",
+            "hostVideo": true,
             "joinBeforeHost": false,
-            "muteUponEntry": false,
+            "muteUponEntry": true,
             "participantVideo": false,
-            "waitingRoom": false
+            "waitingRoom": true
           },
           "startTime": "2036-02-24T17:00:00Z",
+          "status": "waiting",
           "timeZone": "America/Los_Angeles",
           "topic": "Consultation",
-          "type": 2
+          "type": 2,
+          "uuid": "meeting-instance-1"
         },
-        "requestCount": 1,
+        "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "d095d4cd-8f7d-53db-926e-50307d935d1f",
       "input": {
@@ -1338,7 +1362,7 @@
         "timeZone": "America/Los_Angeles",
         "topic": "Consultation"
       },
-      "name": "createMeeting_invalid_accepted",
+      "name": "createMeeting_invalid_accepted_readback",
       "operation": "createMeeting"
     },
     {

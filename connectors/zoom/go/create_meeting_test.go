@@ -376,15 +376,45 @@ func TestCreateMeetingRefusalOfAResendSelectsUncertain(t *testing.T) {
 	require.Equal(t, 2, provider.requestCount())
 }
 
-func TestCreateMeetingAcceptedIDWithUnusableBodyIsNeverResent(t *testing.T) {
-	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
-		writeJSON(t, response, http.StatusCreated, `{"id":92674392836,"start_time":"not a time"}`)
+func TestCreateMeetingAcceptedIDWithUnusableBodyIsReadBackNotResent(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodPost {
+			writeJSON(t, response, http.StatusCreated, `{"id":92674392836,"start_time":"not a time"}`)
+			return
+		}
+		writeJSON(t, response, http.StatusOK, meetingJSON(92674392836, "Consultation with Priya", "2036-02-24T17:00:00Z"))
 	})
 	context := singledispatchtest.NewContext("zoom-flow", "accepted-unusable")
 	result, err := sdkgo.RunMutation(context, newZoomClient(t, provider.URL).CreateMeeting(), zoomConnection, validCreateMeetingInput())
 	require.NoError(t, err)
-	require.Equal(t, zoom.CreateMeetingBranchUncertain, result.Branch)
-	require.Equal(t, 1, provider.requestCount())
+	require.Equal(t, zoom.CreateMeetingBranchCreated, result.Branch)
+	require.Equal(t, "92674392836", lastSingleDispatchMarker(t, context).ProviderID)
+	require.Equal(t, 2, provider.requestCount())
+	require.Equal(t, http.MethodGet, provider.request(t, 1).method)
+}
+
+func TestCreateMeetingAcceptedIDWithUnusableBodyRetriesItsReadBackWithoutResending(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		switch {
+		case request.Method == http.MethodPost:
+			writeJSON(t, response, http.StatusCreated, `{"id":92674392836,"start_time":"not a time"}`)
+		case index == 1:
+			writeJSON(t, response, http.StatusServiceUnavailable, `{"code":503}`)
+		default:
+			writeJSON(t, response, http.StatusOK, meetingJSON(92674392836, "Consultation with Priya", "2036-02-24T17:00:00Z"))
+		}
+	})
+	context := singledispatchtest.NewContext("zoom-flow", "accepted-unusable-retry")
+	client := newZoomClient(t, provider.URL)
+	_, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	context.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	require.NoError(t, err)
+	require.Equal(t, zoom.CreateMeetingBranchCreated, result.Branch)
+	require.Equal(t, 3, provider.requestCount())
+	require.Equal(t, http.MethodGet, provider.request(t, 2).method, "the saved ID is read back, never resent")
 }
 
 func TestCreateMeetingAcceptedUnusableResponseIsNeverResent(t *testing.T) {
@@ -891,7 +921,7 @@ func TestCreateMeetingRejectsUnauthorizedCredentialWhenRefreshFails(t *testing.T
 		message string
 	}{
 		{name: "reauthorization", err: sdkgo.NewReauthorizationRequiredError(errors.New("grant revoked")), kind: sdkgo.FailureAuthentication, message: "reconnect"},
-		{name: "temporary refresh failure", err: errors.New("credential broker unavailable"), kind: sdkgo.FailureAvailability, message: "temporarily unavailable"},
+		{name: "not refreshed", err: projectconfig.ErrRejectedCredentialNotRefreshed, kind: sdkgo.FailureAuthentication, message: "not refreshed"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
@@ -908,6 +938,23 @@ func TestCreateMeetingRejectsUnauthorizedCredentialWhenRefreshFails(t *testing.T
 			require.Equal(t, 1, provider.requestCount())
 		})
 	}
+}
+
+func TestCreateMeetingRetriesAReadableUnauthorizedAfterATransientRefreshFailure(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusUnauthorized, `{"code":124}`)
+	})
+	for _, refreshErr := range []error{errors.New("credential broker unavailable"), projectconfig.ErrCredentialBrokerUnavailable} {
+		client, err := zoom.New(zoom.Config{Endpoint: provider.URL}, rejectionFailingCredentialProvider{err: refreshErr})
+		require.NoError(t, err)
+		context := singledispatchtest.NewContext("zoom-flow", "transient-refresh")
+		_, err = sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "a readable 401 proves nothing was created, so a transient refresh failure retries")
+		heartbeats := context.Heartbeats()
+		requireCheckpointState(t, heartbeats[len(heartbeats)-1], singledispatch.StateCanResend)
+	}
+	require.Equal(t, 2, provider.requestCount())
 }
 
 type rejectionFailingCredentialProvider struct{ err error }

@@ -118,8 +118,10 @@ terminal like reauthorization. Every other credential failure, such as an
 unavailable broker or a static provider without the connection, is transient.
 A transient refresh failure before a provider request returns Retry, and so
 does any credential failure after an earlier possible create. After a create
-request receives 401, a failed refresh selects `providerRejected` with
-reauthorization or temporary-unavailability guidance and no second send, or
+request receives a readable 401, which proves Zoom created nothing, a transient
+refresh failure checkpoints permission to retry and returns Retry. A terminal
+refresh failure, or a credential the broker did not refresh, selects
+`providerRejected` with reauthorization guidance and no second send, or
 `uncertain` when an earlier attempt may have created the meeting.
 
 Server-to-Server OAuth apps use Zoom's `account_credentials` grant, which
@@ -184,13 +186,14 @@ been verified against a live Zoom account.
 | --- | --- |
 | 201 with a valid meeting | `created`, with the meeting ID and join URL |
 | 400, 403, 404, 411, 413, 414, 415, or 422 with a readable body | `providerRejected` with Zoom's error code after checkpointing that no meeting was created; after an earlier possible send, `uncertain` |
-| 401 with a readable body | Force one credential refresh; on success checkpoint permission to retry, otherwise `providerRejected` (or `uncertain` after an earlier possible send) |
+| 401 with a readable body | Force one credential refresh; on success or a transient refresh failure checkpoint permission to retry, otherwise `providerRejected` (or `uncertain` after an earlier possible send) |
 | 429 with Zoom's documented daily-limit message | `providerRejected` with a connector-owned rate-limit message (or `uncertain` after an earlier possible send) |
 | Other 429, including per-second and unrecognized messages, or 503 | Checkpoint permission to retry after Zoom's delay when supplied; retry exhaustion fails the Flow |
 | DNS, connect, or TLS failure before any connection opened | Retry |
 | Timeout, dropped connection, 3xx, 408, 409, another 4xx, another 5xx, or an error status, 401 included, whose body is oversized or unreadable, after dispatch | Retry and resend below the send cap; `uncertain` at the cap |
 | Error status whose body names a created meeting ID | Checkpoint the ID and read the meeting back, without another create; when the ID checkpoint fails, a read-back that cannot finish selects `uncertain` instead of Retry |
-| 2xx whose body is oversized, unreadable, cut off by the write deadline, malformed, reflects the credential, or has a meeting ID but an otherwise unusable meeting | `uncertain`, without another create, because Zoom created the meeting |
+| 2xx with a meeting ID but an otherwise unusable meeting | Checkpoint the ID and read the meeting back, without another create, as for an error status that names one |
+| 2xx whose body is oversized, unreadable, cut off by the write deadline, malformed without a meeting ID, or reflects the credential | `uncertain`, without another create, because Zoom created the meeting |
 | Invalid credentials or an unbuildable request after an earlier possible send | `uncertain`, without another create |
 | Later attempt with an accepted meeting ID checkpoint | Read the meeting back; transient read failure retries without another create |
 | Later attempt at the send cap without a meeting ID | `uncertain`, without another create |

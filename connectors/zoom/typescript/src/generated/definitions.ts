@@ -82,7 +82,7 @@ export const CreateMeetingBranch = {
 export const CreateMeetingBranchCreated = CreateMeetingBranch.Created;
 /** Zoom conclusively rejected the first send, including a documented daily-limit 429 or a user who cannot host; nothing was created. */
 export const CreateMeetingBranchProviderRejected = CreateMeetingBranch.ProviderRejected;
-/** Zoom may have created the meeting, but the send cap was reached, a resend was refused or found invalid credentials, or Zoom accepted it without a usable meeting; check the user's meetings before creating it again. */
+/** Zoom may have created the meeting, but the send cap was reached, a resend was refused or found invalid credentials, Zoom accepted it without a usable meeting ID, or a returned meeting ID could not be read back; check the user's meetings before creating it again. */
 export const CreateMeetingBranchUncertain = CreateMeetingBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid before any send. */
 export const CreateMeetingBranchDefect = CreateMeetingBranch.Defect;
@@ -92,7 +92,7 @@ export const CreateMeetingDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "Zoom created the meeting and returned its ID and join URL." },
     { id: "providerRejected", description: "Zoom conclusively rejected the first send, including a documented daily-limit 429 or a user who cannot host; nothing was created.", optional: true },
-    { id: "uncertain", description: "Zoom may have created the meeting, but the send cap was reached, a resend was refused or found invalid credentials, or Zoom accepted it without a usable meeting; check the user's meetings before creating it again.", optional: true },
+    { id: "uncertain", description: "Zoom may have created the meeting, but the send cap was reached, a resend was refused or found invalid credentials, Zoom accepted it without a usable meeting ID, or a returned meeting ID could not be read back; check the user's meetings before creating it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid before any send.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },

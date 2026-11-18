@@ -15,10 +15,15 @@ from dex_connectors.sdk import (
     FailureKind,
     MutationResult,
     OperationRef,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
+)
+from dex_connectors.sdk.projectconfig.broker import (
+    CredentialBrokerUnavailableError,
+    RejectedCredentialNotRefreshedError,
 )
 from dex_connectors.sdk.singledispatch import Marker, State
 
@@ -100,6 +105,18 @@ def sequence(*answers: tuple[int, object]) -> Answer:
     return answer
 
 
+class RefreshFailingCredentialProvider(StaticCredentialProvider[zoom.Credentials]):
+    """Resolve static credentials and fail the forced refresh after a rejection."""
+
+    def __init__(self, credentials: dict[ConnectionRef, zoom.Credentials], error: Exception) -> None:
+        super().__init__(credentials)
+        self.error = error
+
+    async def resolve_after_rejection(self, call: Call) -> zoom.Credentials:
+        """Raise the configured refresh failure."""
+        raise self.error
+
+
 async def create(
     answer: Answer,
     context: AttemptContext,
@@ -109,8 +126,12 @@ async def create(
     has_credentials: bool = True,
     access_token: str = "zoom-test-access-token",
     max_response_bytes: int = 1048576,
+    refresh_error: Exception | None = None,
 ) -> MutationResult[zoom.Meeting] | RetryError:
-    """Run one Execute attempt of createMeeting, as the Mutation Step passes the definition cap."""
+    """Run one Execute attempt of createMeeting, as the Mutation Step passes the definition cap.
+
+    A ``refresh_error`` makes the credential source fail its refresh after a rejection with it.
+    """
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
@@ -127,7 +148,11 @@ async def create(
         SecretString(access_token),
         SecretString("zoom-refresh-token"),
     )
-    provider = StaticCredentialProvider({CONNECTION: credentials} if has_credentials else {})
+    provider: StaticCredentialProvider[zoom.Credentials] = StaticCredentialProvider(
+        {CONNECTION: credentials} if has_credentials else {}
+    )
+    if refresh_error is not None:
+        provider = RefreshFailingCredentialProvider({CONNECTION: credentials}, refresh_error)
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
         config = zoom.Config(endpoint="https://zoom.example/v2", max_response_bytes=max_response_bytes)
         client = zoom.Client(config, provider, transport)
@@ -208,12 +233,22 @@ async def test_refusal_of_a_resend_selects_uncertain() -> None:
     assert len(requests) == 2
 
 
-async def test_accepted_id_with_unusable_body_is_never_resent() -> None:
+async def test_accepted_id_with_unusable_body_is_read_back_not_resent() -> None:
     requests: list[httpx.Request] = []
-    accepted = (201, {"id": 92674392836, "start_time": "not a time"})
-    result = await create(lambda _: accepted, AttemptContext(), requests)
-    assert isinstance(result, MutationResult) and result.branch == "uncertain"
-    assert len(requests) == 1
+    context = AttemptContext()
+
+    def answer(request: httpx.Request) -> tuple[int, object]:
+        if request.method == "POST":
+            return (201, {"id": 92674392836, "start_time": "not a time"})
+        return (503, {"code": 503}) if len(requests) < 3 else (200, CREATED[1])
+
+    # A transient read-back failure retries, because the saved ID is read back on the next attempt.
+    assert isinstance(await create(answer, context, requests), RetryError)
+    assert context.marker is not None and context.marker.provider_id == "92674392836"
+    context.attempt = 2
+    result = await create(answer, context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "created"
+    assert [request.method for request in requests] == ["POST", "GET", "GET"]
 
 
 class BrokenBodyStream(httpx.AsyncByteStream):
@@ -341,6 +376,31 @@ async def test_credential_failure_after_possible_send_retries() -> None:
     result = await create(lambda _: SERVER_FAILURE, context, requests, has_credentials=False)
     assert isinstance(result, RetryError)
     assert len(requests) == 1
+
+
+@pytest.mark.parametrize(
+    ("refresh_error", "expected"),
+    [
+        (CredentialBrokerUnavailableError("broker down"), "retry"),
+        (TimeoutError(), "retry"),
+        (ReauthorizationRequiredError("revoked"), "providerRejected"),
+        (RejectedCredentialNotRefreshedError("not refreshed"), "providerRejected"),
+    ],
+)
+async def test_readable_unauthorized_retries_only_a_transient_refresh_failure(
+    refresh_error: Exception, expected: str
+) -> None:
+    """A readable 401 proves nothing was created, so a transient refresh failure records canResend."""
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    unauthorized = (401, {"code": 124, "message": "Invalid access token"})
+    result = await create(lambda _: unauthorized, context, requests, refresh_error=refresh_error)
+    assert len(requests) == 1
+    assert context.marker is not None and context.marker.state == State.CAN_RESEND
+    if expected == "retry":
+        assert isinstance(result, RetryError)
+    else:
+        assert isinstance(result, MutationResult) and result.branch == "providerRejected"
 
 
 @pytest.mark.parametrize("unreadable", ["oversized", "interrupted"])
