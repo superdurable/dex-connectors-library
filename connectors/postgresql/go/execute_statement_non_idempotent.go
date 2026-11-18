@@ -113,13 +113,15 @@ func (operation ExecuteStatementNonIdempotentOperation) Invoke(call sdkgo.Call, 
 	return sdkgo.NewMutationBranch(ExecuteStatementNonIdempotentBranchCompleted, newStatementExecution(read), nil, client.receipt(call, connection, classifiedFailure{}))
 }
 
-// settleBeforeCommit records that this attempt sent no COMMIT, then reports its failure.
-// A refusal after a possible earlier send selects uncertain, since that send may have committed.
+// settleBeforeCommit reports a failure before COMMIT. Without a possible earlier send it records
+// notSent first; after one, every failure selects uncertain, since that send may have committed.
 func settleBeforeCommit(fence *singledispatch.Fence, hasPossibleEarlierSend bool, failure classifiedFailure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[StatementExecution] {
+	if hasPossibleEarlierSend {
+		// notSent would hide the earlier possible COMMIT, and the cap forbids another one.
+		failure.disposition = dispositionUncertain
+		return writeAttemptForFailure(executeNonIdempotentOperationID, failure, receipt)
+	}
 	// A lost notSent checkpoint only makes the next attempt select uncertain, never send twice.
 	_ = fence.RecordNotSent()
-	if failure.disposition != dispositionRetry && hasPossibleEarlierSend {
-		failure.disposition = dispositionUncertain
-	}
 	return writeAttemptForFailure(executeNonIdempotentOperationID, failure, receipt)
 }

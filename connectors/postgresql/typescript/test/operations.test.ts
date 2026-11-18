@@ -301,6 +301,18 @@ describe('PostgreSQL executeNonIdempotent', () => {
     expect(lostContext.marker?.state).toBe('notSent');
   });
 
+  it('never records notSent after a possible earlier COMMIT', async () => {
+    const lost = fakeClient({ command: 'UPDATE', rowCount: 1, rows: [] }, { [balanceInput.statement]: new Error('dropped before COMMIT') });
+    const context = new AttemptContext();
+    // A canResend marker that still counts one possibly effective send keeps a send allowed.
+    const seeded = { callId: fencedCall(context).id, attempt: 2, state: 'canResend', sendCount: 1 };
+    context.marker = seeded;
+    context.attempt = 3;
+    expect(await lost.client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    expect(commitCount(lost.queries)).toBe(0);
+    expect(context.marker).toBe(seeded);
+  });
+
   it('selects uncertain after a lost Worker and retries an unreadable checkpoint without connecting', async () => {
     const { client, driver } = fakeClient({ command: 'UPDATE', rowCount: 1, rows: [] });
     const afterLostWorker = new AttemptContext();

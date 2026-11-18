@@ -129,6 +129,30 @@ func TestExecuteStatementNonIdempotentResendsOnlyAfterAProvenRollback(t *testing
 	})
 }
 
+func TestExecuteStatementNonIdempotentNeverRecordsNotSentAfterAPossibleEarlierCommit(t *testing.T) {
+	rejecting := &scriptedDatabase{shape: scriptedpostgresql.Shape{ParameterCount: 2}, execution: scriptedpostgresql.Execution{CommandTag: "UPDATE 1"}, commit: scriptedpostgresql.RejectCommitWithSerializationFailure}
+	_, client := startScriptedDatabase(t, rejecting, nil)
+	step := newFencedStep()
+	_, err := executeNonIdempotent(t, client, step, addToBalanceInput)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	marker := lastMarker(t, step)
+	require.Equal(t, singledispatch.StateCanResend, marker.State)
+	// A canResend marker that still counts one possibly effective send keeps SendAllowed.
+	step.AdvanceAttempt()
+	require.NoError(t, step.SetPersistedCheckpoint(singledispatch.Marker{CallID: marker.CallID, Attempt: 2, State: singledispatch.StateCanResend, SendCount: 1}))
+	step.AdvanceAttempt()
+	heartbeatCount := len(step.Heartbeats())
+
+	dropping := &scriptedDatabase{shape: scriptedpostgresql.Shape{ParameterCount: 2}, execution: scriptedpostgresql.Execution{DropConnection: true}}
+	server, client := startScriptedDatabase(t, dropping, nil)
+	result, err := executeNonIdempotent(t, client, step, addToBalanceInput)
+	require.NoError(t, err)
+	require.Equal(t, postgresql.ExecuteStatementNonIdempotentBranchUncertain, result.Branch, "the earlier attempt counts as a possible COMMIT")
+	require.Empty(t, server.EventsOfKind(scriptedpostgresql.EventCommit))
+	require.Len(t, step.Heartbeats(), heartbeatCount, "notSent would hide the earlier possible COMMIT")
+}
+
 func TestExecuteStatementNonIdempotentSelectsUncertainAfterALostWorker(t *testing.T) {
 	database := &scriptedDatabase{shape: scriptedpostgresql.Shape{ParameterCount: 2}, execution: scriptedpostgresql.Execution{CommandTag: "UPDATE 1"}}
 	server, client := startScriptedDatabase(t, database, nil)

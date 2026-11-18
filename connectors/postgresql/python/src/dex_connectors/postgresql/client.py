@@ -528,17 +528,21 @@ async def _commit(connection: psycopg.AsyncConnection[Any]) -> None:
 async def _settle_before_commit(
     fence: Fence, has_possible_earlier_send: bool, failure: _ClassifiedFailure, receipt: Receipt
 ) -> MutationAttempt[StatementExecution]:
-    """Record that this attempt sent no COMMIT, then report the failure.
+    """Report a failure before COMMIT.
 
-    A refusal after a possible earlier send selects uncertain, since that send may have committed.
+    Without a possible earlier send, record notSent first; after one, every failure selects
+    uncertain, since that send may have committed.
     """
+    if has_possible_earlier_send:
+        # notSent would hide the earlier possible COMMIT, and the cap forbids another one.
+        return _write_attempt(
+            EXECUTE_NON_IDEMPOTENT_OPERATION_ID, replace(failure, disposition="uncertain"), receipt
+        )
     # A lost notSent checkpoint only makes the next attempt select uncertain, never send twice.
     try:
         await fence.record_not_sent()
     except Exception:
         pass
-    if failure.disposition != "retry" and has_possible_earlier_send:
-        failure = replace(failure, disposition="uncertain")
     return _write_attempt(EXECUTE_NON_IDEMPOTENT_OPERATION_ID, failure, receipt)
 
 

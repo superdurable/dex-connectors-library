@@ -772,6 +772,22 @@ async def test_non_idempotent_resends_only_after_a_proven_rollback(monkeypatch: 
 
 
 @pytest.mark.asyncio
+async def test_non_idempotent_never_records_not_sent_after_a_possible_earlier_commit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connection = _balance_connection(monkeypatch)
+    connection.statement_error = OSError("dropped before commit")
+    context = _AttemptContext()
+    # A canResend marker that still counts one possibly effective send keeps a send allowed.
+    seeded = Marker(CALL_ID, 2, State.CAN_RESEND, send_count=1)
+    context.heartbeat_value = seeded
+    context.attempt = 3
+    outcome = await _client().execute_non_idempotent().invoke(_fenced_call(context), _BALANCE_INPUT)
+    assert outcome.kind == "uncertain" and _commit_count(connection) == 0
+    assert context.heartbeat_value is seeded, "notSent would hide the earlier possible COMMIT"
+
+
+@pytest.mark.asyncio
 async def test_non_idempotent_selects_uncertain_after_a_lost_worker(monkeypatch: pytest.MonkeyPatch) -> None:
     connection = _balance_connection(monkeypatch)
     context = _AttemptContext()

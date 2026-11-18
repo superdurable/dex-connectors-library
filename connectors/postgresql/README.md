@@ -251,7 +251,9 @@ records a claim in the Step heartbeat. After an unknown outcome it selects
 `uncertain`, and a later attempt that finds the claim, or no checkpoint after
 a lost Worker, selects `uncertain` without connecting. Only a proven rollback,
 such as a connection lost before `COMMIT` or SQLSTATE 40001 at `COMMIT`,
-records that nothing was committed and returns Retry. An unreadable checkpoint
+records that nothing was committed and returns Retry. A failure before `COMMIT`
+on an attempt whose checkpoint still counts a possible earlier `COMMIT` selects
+`uncertain` and records nothing. An unreadable checkpoint
 returns Retry without connecting. PostgreSQL has no generic read-back for an
 arbitrary statement, so the application reconciles `uncertain` itself; the
 Result's `Receipt.IdempotencyKey` identifies the Step execution.
