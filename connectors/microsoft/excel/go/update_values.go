@@ -72,7 +72,10 @@ func (operation UpdateValuesOperation) Invoke(call sdkgo.Call, input UpdateValue
 	if err != nil {
 		return sdkgo.NewMutationBranch(UpdateValuesBranchDefect, UpdateValuesOutput{}, excelFailurePointer(sdkgo.FailureValidation, updateValuesOperationID, err.Error()), sdkgo.Receipt{})
 	}
-	credential, failure := client.resolveCredential(call, updateValuesOperationID)
+	credential, failure, isCredentialFailureRetryable := client.resolveWriteCredential(call, updateValuesOperationID)
+	if isCredentialFailureRetryable {
+		return sdkgo.NewMutationRetry[UpdateValuesOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(UpdateValuesBranchDefect, UpdateValuesOutput{}, failure, sdkgo.Receipt{})
 	}

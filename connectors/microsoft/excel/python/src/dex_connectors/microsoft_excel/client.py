@@ -82,8 +82,10 @@ class GraphResponse:
 class GraphTransportError(OSError):
     """A Graph request failed before a complete response was received."""
 
-    def __init__(self, is_request_built: bool = True) -> None:
+    def __init__(self, is_request_built: bool = True, status: int = 0) -> None:
         self.is_request_built = is_request_built
+        # The response status when headers arrived before the body failed, otherwise 0.
+        self.status = status
         super().__init__("Microsoft Graph request failed or its response could not be read")
 
 
@@ -190,6 +192,9 @@ class Client:
                 raise GraphTransportError(False) from None
             try:
                 response = await self.http_client.send(request, stream=True, follow_redirects=False)
+            except (httpx.HTTPError, OSError):
+                raise GraphTransportError() from None
+            try:
                 limit = max(self.config.max_response_bytes, 64 * 1024)
                 collected = bytearray()
                 try:
@@ -201,7 +206,7 @@ class Client:
                     await response.aclose()
                 content = bytes(collected)
             except (httpx.HTTPError, OSError):
-                raise GraphTransportError() from None
+                raise GraphTransportError(status=response.status_code) from None
             if (
                 response.status_code == 401
                 and attempt == 0
