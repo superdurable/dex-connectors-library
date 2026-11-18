@@ -99,8 +99,9 @@ make test-dex-compat-current
 ```
 
 It builds selected connectors through a temporary file-backed Go module proxy,
-runs schema 2.0 visualization twice in clean consumer modules, and checks valid,
-deterministic output with complete identities. It also builds real release
+runs schema 2.0 visualization twice in clean consumer modules for every
+non-test Flow source (each Go file with `GetSteps`) in an example `flow`
+package, and checks valid, deterministic output with complete identities. It also builds real release
 metadata and optional Studio UI artifacts, then runs Dex Web's catalog,
 checksum, caching, sandbox, OAuth, and API-key security suites.
 
