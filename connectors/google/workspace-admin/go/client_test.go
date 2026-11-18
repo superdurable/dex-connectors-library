@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	workspaceadmin "github.com/superdurable/dex-connectors-library/connectors/google/workspace-admin/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -149,16 +150,48 @@ func TestRedirectsAreNotFollowedWithTheCredential(t *testing.T) {
 	require.Len(t, directory.recorded(), 1)
 }
 
-func TestUnavailableCredentialsSelectDefectWithoutARequest(t *testing.T) {
-	directory := newFakeDirectory(t)
-	client, err := workspaceadmin.New(workspaceadmin.Config{Endpoint: directory.URL}, sdkgo.StaticCredentialProvider[workspaceadmin.Credentials]{})
-	require.NoError(t, err)
+// resolveErrorCredentials fails every resolution with one error.
+type resolveErrorCredentials struct{ err error }
 
-	result, err := sdkgo.RunQuery(newTestDexContext("no-credentials"), client.GetUser(), testConnection, workspaceadmin.GetUserInput{UserKey: "ada@example.com"})
-	require.NoError(t, err)
-	require.Equal(t, workspaceadmin.GetUserBranchDefect, result.Branch)
-	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
-	require.Empty(t, directory.recorded())
+func (credentials resolveErrorCredentials) Resolve(sdkgo.Call) (workspaceadmin.Credentials, error) {
+	return workspaceadmin.Credentials{}, credentials.err
+}
+
+func (credentials resolveErrorCredentials) ResolveWithRefresh(context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[workspaceadmin.Credentials]) (workspaceadmin.Credentials, error) {
+	return workspaceadmin.Credentials{}, credentials.err
+}
+
+func TestCredentialResolveFailuresRetryUnlessTerminal(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		source     workspaceadmin.CredentialSource
+		isTerminal bool
+	}{
+		{name: "unconfigured static connection", source: sdkgo.StaticCredentialProvider[workspaceadmin.Credentials]{}},
+		{name: "broker unavailable", source: resolveErrorCredentials{err: projectconfig.ErrCredentialBrokerUnavailable}},
+		{name: "unlisted", source: resolveErrorCredentials{err: errors.New("unlisted resolve failure")}},
+		{name: "reauthorization", source: resolveErrorCredentials{err: sdkgo.NewReauthorizationRequiredError(errors.New("revoked"))}, isTerminal: true},
+		{name: "project reauthorization", source: resolveErrorCredentials{err: projectconfig.ErrReauthorizationRequired}, isTerminal: true},
+		{name: "object not found", source: resolveErrorCredentials{err: projectconfig.ErrObjectNotFound}, isTerminal: true},
+		{name: "connection not selected", source: resolveErrorCredentials{err: projectconfig.ErrConnectionNotSelected}, isTerminal: true},
+		{name: "broker rejected", source: resolveErrorCredentials{err: projectconfig.ErrCredentialBrokerRejected}, isTerminal: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			directory := newFakeDirectory(t)
+			client, err := workspaceadmin.New(workspaceadmin.Config{Endpoint: directory.URL}, test.source)
+			require.NoError(t, err)
+			result, err := sdkgo.RunQuery(newTestDexContext("credentials-"+test.name), client.GetUser(), testConnection, workspaceadmin.GetUserInput{UserKey: "ada@example.com"})
+			if test.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, workspaceadmin.GetUserBranchDefect, result.Branch)
+				require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+			} else {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+			}
+			require.Empty(t, directory.recorded())
+		})
+	}
 }
 
 type rejectionRefreshingCredentialProvider struct {

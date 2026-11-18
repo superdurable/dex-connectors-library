@@ -3,7 +3,8 @@
 
 import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
 import { AddUserToGroupOperation, CreateUserOperation, GetUserOperation, ListUsersOperation, RemoveUserFromGroupOperation, SuspendUserOperation, UnsuspendUserOperation } from './operations.js';
@@ -82,17 +83,24 @@ export class WorkspaceAdminClient {
 
   /** Resolve a token through the generated refresh declaration. */
   async resolveAccessToken(call: Call): Promise<string | undefined> {
-    try {
-      const credential = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
-      if (credential.authMethodId && !['workspace-domain-delegation', 'google-oauth'].includes(credential.authMethodId)) return undefined;
-      const token = credential.accessToken?.reveal() ?? '';
-      return isHeaderSafeToken(token) ? token : undefined;
-    } catch { return undefined; }
+    return (await this.resolveAccessTokenResult(call)).token;
+  }
+
+  /** Resolve a token and report whether a failure is transient rather than needing reconnection. */
+  async resolveAccessTokenResult(call: Call): Promise<{ token?: string; isTransient: boolean }> {
+    let credential: Credentials;
+    try { credential = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal); }
+    catch (error) { return { isTransient: !isTerminalCredentialError(error) }; }
+    if (credential.authMethodId && !['workspace-domain-delegation', 'google-oauth'].includes(credential.authMethodId)) return { isTransient: false };
+    const token = credential.accessToken?.reveal() ?? '';
+    return isHeaderSafeToken(token) ? { token, isTransient: false } : { isTransient: false };
   }
 
   /** Send one Directory request, including a single refresh after HTTP 401. */
   async exchange(call: Call, operation: string, method: string, path: string, query?: Record<string, string>, payload?: unknown): Promise<DirectoryExchange> {
-    let token = await this.resolveAccessToken(call);
+    const resolved = await this.resolveAccessTokenResult(call);
+    if (resolved.isTransient) return { outcome: this.outcome('retry', operation, 'AUTHENTICATION', 'connection credentials are temporarily unavailable') };
+    let token = resolved.token;
     if (!token) return { outcome: this.outcome('defect', operation, 'AUTHENTICATION', 'connection credentials are unavailable') };
     let body: Uint8Array | undefined;
     try { if (payload !== undefined) body = Buffer.from(JSON.stringify(payload)); }
@@ -145,6 +153,11 @@ export class WorkspaceAdminClient {
 const retryableForbiddenReasons = new Set(['userRateLimitExceeded', 'rateLimitExceeded', 'quotaExceeded']);
 const reportableReasons = new Set(['badRequest', 'invalid', 'required', 'notFound', 'duplicate', 'conflict', 'conditionNotMet', 'failedPrecondition', 'forbidden', 'insufficientPermissions', 'authError', 'limitExceeded', 'backendError', 'userRateLimitExceeded', 'rateLimitExceeded', 'quotaExceeded']);
 
+/** Report a resolve failure that only reconnection repairs; any other one is transient. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+}
 function isHeaderSafeToken(token: string): boolean { return token !== '' && ![...token].some(character => character.charCodeAt(0) < 33 || character.charCodeAt(0) > 126); }
 function responseHeader(response: ProviderResponse, name: string): string { const value = Object.entries(response.headers).find(([key]) => key.toLowerCase() === name)?.[1]; return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }
 function retryDelay(response: ProviderResponse, now: Date): number { return parseRetryAfter(responseHeader(response, 'retry-after'), now); }

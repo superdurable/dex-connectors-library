@@ -14,12 +14,15 @@ from dex_connectors.sdk import (
     CredentialRefreshDriver,
     Failure,
     FailureKind,
+    ReauthorizationRequiredError,
     Receipt,
     RejectedCredentialRefreshingProvider,
     resolve_credential,
     resolve_credential_after_rejection,
 )
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -49,6 +52,26 @@ if TYPE_CHECKING:
     )
 
 _PROVIDER = "google-workspace-admin"
+
+
+class WorkspaceCredentialMaterialError(ValueError):
+    """Resolved credential material failed a local check, so only reconnection repairs it."""
+
+
+def is_transient_credential_failure(error: BaseException) -> bool:
+    """Report a resolve failure that another attempt may clear; terminal ones need reconnection."""
+    return not isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+            WorkspaceCredentialMaterialError,
+        ),
+    )
+
+
 _REPORTABLE = frozenset(
     (
         "badRequest",
@@ -243,7 +266,9 @@ class Client:
         if not is_header_safe_credential(
             credential.access_token.reveal()
         ) or credential.auth_method_id not in ("", "workspace-domain-delegation", "google-oauth"):
-            raise ValueError("Google Workspace Admin connection credentials are unavailable")
+            raise WorkspaceCredentialMaterialError(
+                "Google Workspace Admin connection credentials are unavailable"
+            )
         return credential
 
     async def exchange(
