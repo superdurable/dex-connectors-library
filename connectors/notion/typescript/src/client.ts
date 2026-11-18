@@ -4,7 +4,7 @@
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { CreatePageOperation, GetPageOperation, QueryDatabaseOperation, SearchOperation, UpdatePagePropertiesOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.notion.com';
@@ -94,7 +94,7 @@ export class NotionClient {
       credentials = await this.credentials.resolve(call, signal ?? call.context.cancellationSignal);
     } catch (error) {
       if (error instanceof ReauthorizationRequiredError) return { outcome: { disposition: 'defect', failure: failure(operation, 'AUTHENTICATION', 'Notion connection must be authorized again'), receipt: emptyReceipt, isProvablyNotSent: true } };
-      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError) {
+      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error)) {
         return { outcome: { disposition: 'defect', failure: failure(operation, 'AUTHENTICATION', 'Notion connection credentials are unavailable'), receipt: emptyReceipt, isProvablyNotSent: true } };
       }
       return { outcome: { disposition: 'retry', failure: failure(operation, 'AUTHENTICATION', 'Notion connection credentials are temporarily unavailable'), receipt: emptyReceipt, isProvablyNotSent: true } };

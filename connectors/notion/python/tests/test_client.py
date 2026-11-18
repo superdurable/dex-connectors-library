@@ -20,6 +20,7 @@ from dex_connectors.sdk.projectconfig import (
     ObjectNotFoundError,
 )
 
+import dex_connectors.notion._generated.connection as generated_connection
 from dex_connectors.notion import Client, Config, Credentials
 from dex_connectors.notion.client import classify_read, classify_write
 
@@ -54,6 +55,7 @@ def _call() -> Call:
         (ObjectNotFoundError(), False),
         (ConnectionNotSelectedError(), False),
         (CredentialBrokerRejectedError(), False),
+        (generated_connection.CredentialMaterialError("stored credential is malformed"), False),
     ],
 )
 async def test_credential_failures_are_terminal_only_for_the_reconnect_set(
@@ -65,6 +67,26 @@ async def test_credential_failures_are_terminal_only_for_the_reconnect_set(
         _, credential_failure, is_transient = await client.resolve_credentials(_call(), "search")
         assert is_transient == expected_transient and credential_failure is not None
         assert credential_failure.kind == FailureKind.AUTHENTICATION
+    finally:
+        await client.aclose()
+
+
+class MalformedProject:
+    """Serve stored credential material that fails the generated decoder."""
+
+    async def resolve_credential(self, key: object, call_id: str) -> dict[str, object]:
+        """Return material with an undeclared field."""
+        return {"unexpected_field": "value"}
+
+
+@pytest.mark.asyncio
+async def test_malformed_stored_credentials_from_the_project_source_are_terminal() -> None:
+    """The generated project credential source rejects malformed material, and the client never retries it."""
+    source = generated_connection._ProjectCredentialSource(MalformedProject(), object())  # type: ignore[arg-type]
+    client = Client(Config(), source)  # type: ignore[arg-type]
+    try:
+        _, credential_failure, is_transient = await client.resolve_credentials(_call(), "search")
+        assert not is_transient and credential_failure is not None
     finally:
         await client.aclose()
 

@@ -293,7 +293,7 @@ A 429 or positive transport evidence that no connection was obtained records
 `canResend` and retries. A checkpoint that cannot be read returns Retry without
 sending. Credential or data source lookup failures before the first POST record
 `notSent`, so a later attempt may send. Reauthorization, an absent or
-unselected connection, a broker refusal, and an invalid API token select
+unselected connection, a broker refusal, malformed stored credentials, and an invalid API token select
 `defect` after recording `notSent`, or `uncertain` once an earlier send may
 have created the page. Every other credential failure Retries.
 
