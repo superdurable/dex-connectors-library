@@ -170,6 +170,9 @@ func (write *fencedWrite[OUT]) resendOrSelectUncertain(failure sdkgo.Failure, re
 
 // isWriteOutcomeUnknown reports an outcome after a send that does not prove QuickBooks refused the write.
 func isWriteOutcomeUnknown(result quickbooksExchange) bool {
+	if result.isErrorBodyIncomplete && !isSuccessStatus(result.response.statusCode) {
+		return true
+	}
 	switch result.outcome {
 	case exchangeRetry:
 		return true

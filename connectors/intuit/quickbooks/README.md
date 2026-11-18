@@ -267,15 +267,17 @@ write also runs under the SDK single-dispatch fence, which records a Dex
 heartbeat claim with the possible send count of the Call ID before the request:
 
 - HTTP 429, 503, and a request that provably never left the process, such as a
-  refused connection or a credential failure, are retried without counting the
-  send;
+  refused connection, a failed token refresh, or an unavailable Dex credential
+  broker, are retried without counting the send;
 - any other unknown outcome is resent with the identical request while the
   possible sends stay below `maxSends` (3 unless the application sets the
   factory's `MaxSends`), and selects `uncertain` at the cap: a lost response, a
   timeout, HTTP 408, 409, 425, 501, another 5xx, a 3xx, an unlisted 4xx, a
-  `SystemFault`, and error 600, Duplicate Request ID, which QuickBooks sends
-  while the first request may still run;
-- an accepted 2xx whose body is interrupted, cannot be decoded, or names another customer,
+  `SystemFault`, error 600, Duplicate Request ID, which QuickBooks sends
+  while the first request may still run, and a refusal status whose error body
+  breaks mid-read or exceeds the 64 KiB error prefix;
+- an accepted 2xx whose body is interrupted, including by the end of the fence's
+  write window after 2xx headers arrived, cannot be decoded, or names another customer,
   invoice, or invoice application is read back. When the reply contains a valid
   entity ID, the connector records it in the claim and reads that customer,
   invoice, or payment by ID, and selects success only when the read-back

@@ -153,6 +153,8 @@ def _is_write_outcome_unknown(exchange: Exchange) -> bool:
     """Report an outcome after a send that does not prove QuickBooks refused the write."""
     if exchange.outcome == "retry":
         return True
+    if exchange.is_error_body_incomplete and not 200 <= exchange.status < 300:
+        return True
     # A Fault at 2xx or 400 is a definite business refusal; other unlisted statuses are unknown.
     return (
         exchange.outcome == "rejected"
@@ -191,15 +193,34 @@ class _FencedWrite:
         # A refusal of this send cannot prove nothing was written.
         self._has_possible_earlier_send = decision.prior_send_upper_bound > 0
 
-    async def dispatch(self, send: Callable[[], Awaitable[Exchange]]) -> Exchange | MutationAttempt[Any]:
-        """Send once under the fence; an attempt result means nothing was sent."""
+    async def dispatch(
+        self, send: Callable[[list[int]], Awaitable[Exchange]]
+    ) -> Exchange | MutationAttempt[Any]:
+        """Send once under the fence; an attempt result needs no further mapping.
+
+        `send` appends each response status to its list when headers arrive.
+        """
+        observed_statuses: list[int] = []
         try:
-            return await self._fence.dispatch(lambda _deadline: send())
+            return await self._fence.dispatch(lambda _deadline: send(observed_statuses))
         except CheckpointError:
             message = "Dex did not record the dispatch checkpoint; nothing was sent in this attempt"
         except (InsufficientAttemptTimeError, DispatchNotAllowedError):
             message = "too little of the Step deadline remained to send; nothing was sent in this attempt"
         except TimeoutError:
+            accepted = next((status for status in observed_statuses if 200 <= status < 300), 0)
+            if accepted:
+                # QuickBooks accepted the write and its ID was never read, so it is never resent.
+                return MutationAttempt.uncertain(
+                    self._requested,
+                    _failure(
+                        self._operation,
+                        FailureKind.TRANSPORT,
+                        f"QuickBooks accepted the write (HTTP {accepted}), but the write window ended "
+                        "before its answer was read",
+                    ),
+                    self._client.receipt(self._call, Exchange("interrupted", status=accepted)),
+                )
             return Exchange(
                 "retry",
                 _failure(
@@ -656,8 +677,14 @@ class CreateCustomerOperation:
         if isinstance(write, MutationAttempt):
             return write
         exchange = await write.dispatch(
-            lambda: self.client.exchange(
-                call, "createCustomer", "POST", "/customer", payload=_json_body(payload), mutation=True
+            lambda observed: self.client.exchange(
+                call,
+                "createCustomer",
+                "POST",
+                "/customer",
+                payload=_json_body(payload),
+                mutation=True,
+                observed_statuses=observed,
             )
         )
         if isinstance(exchange, MutationAttempt):
@@ -808,8 +835,14 @@ class CreateInvoiceOperation:
         if isinstance(write, MutationAttempt):
             return write
         exchange = await write.dispatch(
-            lambda: self.client.exchange(
-                call, "createInvoice", "POST", "/invoice", payload=encoded, mutation=True
+            lambda observed: self.client.exchange(
+                call,
+                "createInvoice",
+                "POST",
+                "/invoice",
+                payload=encoded,
+                mutation=True,
+                observed_statuses=observed,
             )
         )
         if isinstance(exchange, MutationAttempt):
@@ -887,13 +920,14 @@ class SendInvoiceOperation:
         if isinstance(write, MutationAttempt):
             return write
         exchange = await write.dispatch(
-            lambda: self.client.exchange(
+            lambda observed: self.client.exchange(
                 call,
                 "sendInvoice",
                 "POST",
                 "/invoice/" + identifier + "/send",
                 {"sendTo": send_to} if send_to else None,
                 mutation=True,
+                observed_statuses=observed,
             )
         )
         if isinstance(exchange, MutationAttempt):
@@ -999,8 +1033,14 @@ class RecordPaymentOperation:
         if isinstance(write, MutationAttempt):
             return write
         exchange = await write.dispatch(
-            lambda: self.client.exchange(
-                call, "recordPayment", "POST", "/payment", payload=encoded, mutation=True
+            lambda observed: self.client.exchange(
+                call,
+                "recordPayment",
+                "POST",
+                "/payment",
+                payload=encoded,
+                mutation=True,
+                observed_statuses=observed,
             )
         )
         if isinstance(exchange, MutationAttempt):
