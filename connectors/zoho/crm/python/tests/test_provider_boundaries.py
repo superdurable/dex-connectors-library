@@ -35,6 +35,7 @@ from dex_connectors.zoho_crm import (
     UpsertRecordInput,
     new_project_connection,
 )
+from dex_connectors.zoho_crm._generated.connection import CredentialMaterialError
 from dex_connectors.zoho_crm.client import Exchange
 from dex_connectors.zoho_crm.operations import (
     GetRecordOperation,
@@ -163,6 +164,18 @@ class _FailingCredentials:
         raise self.error
 
 
+def _sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError that the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Zoho CRM credential access_token is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("unreachable")
+
+
 @pytest.mark.parametrize(
     ("error", "outcome"),
     [
@@ -170,6 +183,8 @@ class _FailingCredentials:
         (ObjectNotFoundError("connection"), "rejected"),
         (ConnectionNotSelectedError("connection"), "rejected"),
         (CredentialBrokerRejectedError("broker"), "rejected"),
+        (CredentialMaterialError("Zoho CRM credential access_token is required"), "rejected"),
+        (_sdk_wrapped_material_error(), "rejected"),
         (CredentialBrokerUnavailableError("broker"), "retry"),
         (ValueError("connection is not configured"), "retry"),
     ],
@@ -255,6 +270,20 @@ async def test_whitespace_duplicate_check_sends_nothing() -> None:
             UpsertRecordInput("Contacts", ("Email",), {"Email": "   "}),
         )
     assert result.branch == "defect"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [405, 409, 425])
+async def test_upsert_retries_an_unlisted_status(status: int) -> None:
+    body = {"code": "UNLISTED", "details": {}, "message": "SENTINEL", "status": "error"}
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda _: httpx.Response(status, json=body))
+    ) as http_client:
+        result = await UpsertRecordOperation(_client(http_client)).invoke(
+            _call("upsertRecord"),
+            UpsertRecordInput("Contacts", ("Email",), {"Email": "ada@example.test"}),
+        )
+    assert result.kind == "retry"
 
 
 def test_modified_time_counts_within_fifty_selected_fields() -> None:

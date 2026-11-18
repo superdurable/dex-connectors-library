@@ -528,12 +528,17 @@ func mutationAttemptForExchange[OUT any](result crmExchange, receipt sdkgo.Recei
 	case exchangeRetry:
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
 	case exchangeInvalid:
-		return sdkgo.NewMutationBranch(branches.invalidResponse, value, &result.failure, receipt), true
+		// Both writes are safe to repeat, so an unusable answer retries instead of selecting invalidResponse.
+		return sdkgo.NewMutationRetry[OUT](result.failure, 0), true
 	case exchangeDefect:
 		return sdkgo.NewMutationBranch(branches.defect, value, &result.failure, receipt), true
 	}
 	status, summary := result.response.statusCode, result.summary
 	switch {
+	case status >= 300 && !isDefiniteRefusalStatus(status):
+		failure := result.failure
+		failure.Kind = sdkgo.FailureAvailability
+		return sdkgo.NewMutationRetry[OUT](failure, result.retryAfter), true
 	case summary.code == errorCodeDuplicateData:
 		return sdkgo.NewMutationBranch(branches.conflict, value, &result.failure, receipt), true
 	case branches.notFound != "" && summary.isRecordIDInvalid():
@@ -543,6 +548,16 @@ func mutationAttemptForExchange[OUT any](result crmExchange, receipt sdkgo.Recei
 	default:
 		return sdkgo.NewMutationBranch(branches.recordRejected, value, &result.failure, receipt), true
 	}
+}
+
+// isDefiniteRefusalStatus reports an HTTP status that proves Zoho CRM refused the write; any other status is unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func safeCreditCount(value string) string {
