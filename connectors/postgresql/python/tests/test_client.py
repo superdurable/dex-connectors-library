@@ -17,11 +17,18 @@ from dex_connectors.sdk import (
     FailureKind,
     IdempotencyKey,
     OperationRef,
+    ReauthorizationRequiredError,
     RepeatOnUnknown,
     SecretString,
     StaticCredentialProvider,
 )
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    RejectedCredentialNotRefreshedError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker, State
 from psycopg import generators, pq
 
@@ -516,14 +523,22 @@ async def test_execute_limits_commit_and_retries_unknown_commit(monkeypatch: pyt
 
 
 @pytest.mark.asyncio
-async def test_missing_credentials_are_terminal() -> None:
-    client = Client(Config("localhost", "test", "test", ssl_mode="disable"), StaticCredentialProvider({}))
+async def test_an_empty_password_is_terminal_and_an_unconfigured_connection_retries() -> None:
+    empty = StaticCredentialProvider({REFERENCE: Credentials(SecretString(""))})
+    client = Client(Config("localhost", "test", "test", ssl_mode="disable"), empty)
     query = await client.query().invoke(_call("query"), QueryRowsInput("SELECT 1"))
     execute = await client.execute().invoke(
         _call("execute"), ExecuteStatementInput("INSERT INTO t VALUES (1)")
     )
     assert query.branch == "defect" and query.failure.kind == FailureKind.AUTHENTICATION
     assert execute.branch == "defect" and execute.failure.kind == FailureKind.AUTHENTICATION
+    unconfigured = Client(
+        Config("localhost", "test", "test", ssl_mode="disable"), StaticCredentialProvider({})
+    )
+    retried = await unconfigured.execute().invoke(
+        _call("execute"), ExecuteStatementInput("INSERT INTO t VALUES (1)")
+    )
+    assert retried.kind == "retry" and retried.failure.kind == FailureKind.AVAILABILITY
 
 
 @pytest.mark.asyncio
@@ -819,6 +834,49 @@ async def test_an_unavailable_credential_broker_returns_retry(monkeypatch: pytes
     assert execute.kind == "retry" and execute.failure.kind == FailureKind.AVAILABILITY
     assert fenced.kind == "retry" and fenced.failure.kind == FailureKind.AVAILABILITY
     assert context.marker is not None and context.marker.state == State.NOT_SENT
+    assert connection.statements == []
+
+
+_CREDENTIAL_FAILURES: list[tuple[Exception, bool]] = [
+    (ReauthorizationRequiredError(), True),
+    (ObjectNotFoundError(), True),
+    (ConnectionNotSelectedError(), True),
+    (CredentialBrokerRejectedError(), True),
+    (CredentialBrokerUnavailableError(), False),
+    (ValueError("connection is not configured"), False),
+    (RejectedCredentialNotRefreshedError(), False),
+    (TimeoutError(), False),
+    (RuntimeError("unlisted"), False),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("error", "is_terminal"), _CREDENTIAL_FAILURES)
+async def test_credential_failures_are_classified_before_and_after_a_possible_commit(
+    monkeypatch: pytest.MonkeyPatch, error: Exception, is_terminal: bool
+) -> None:
+    connection = _balance_connection(monkeypatch)
+
+    class _FailingCredentials:
+        async def resolve(self, call: Call) -> Credentials:
+            raise error
+
+    client = Client(Config("localhost", "test", "test", ssl_mode="disable"), _FailingCredentials())
+    execute = await client.execute().invoke(_call("execute"), _BALANCE_INPUT)
+    context = _AttemptContext()
+    first = await client.execute_non_idempotent().invoke(_fenced_call(context), _BALANCE_INPUT)
+    for attempt in (execute, first):
+        if is_terminal:
+            assert attempt.branch == "defect"
+        else:
+            assert attempt.kind == "retry"
+    assert context.marker is not None and context.marker.state == State.NOT_SENT
+
+    later_context = _AttemptContext()
+    later_context.heartbeat_value = Marker(CALL_ID, 2, State.CAN_RESEND, send_count=1)
+    later_context.attempt = 3
+    later = await client.execute_non_idempotent().invoke(_fenced_call(later_context), _BALANCE_INPUT)
+    assert later.kind == ("uncertain" if is_terminal else "retry")
     assert connection.statements == []
 
 

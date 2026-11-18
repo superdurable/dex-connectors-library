@@ -179,14 +179,14 @@ func (client *Client) newCallContext(call sdkgo.Call) (context.Context, context.
 	return context.WithTimeout(call.Context, client.connectTimeout+client.statementTimeout+commitAllowance)
 }
 
-// resolvePassword returns the password, or the failure to report before connecting: Retry for a
-// temporarily unavailable credential broker, defect for any other credential failure.
+// resolvePassword returns the password, or the failure to report before connecting: defect for a
+// terminal credential failure or an empty password, Retry for any other credential failure.
 func (client *Client) resolvePassword(call sdkgo.Call) (string, classifiedFailure, bool) {
 	credentials, err := client.credentials.Resolve(call)
-	if errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) {
+	if err != nil && !isTerminalCredentialError(err) {
 		return "", classifiedFailure{
 			disposition: dispositionRetry, kind: sdkgo.FailureAvailability,
-			message: "the credential broker is temporarily unavailable, so nothing was sent",
+			message: "MySQL connection credentials are temporarily unavailable, so nothing was sent",
 		}, false
 	}
 	if err != nil || credentials.Password.Reveal() == "" {
@@ -195,6 +195,13 @@ func (client *Client) resolvePassword(call sdkgo.Call) (string, classifiedFailur
 		}, false
 	}
 	return credentials.Password.Reveal(), classifiedFailure{}, true
+}
+
+// isTerminalCredentialError reports a credential failure that no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // openSession connects, reads the session identity, and pins the session settings the type mapping depends on.

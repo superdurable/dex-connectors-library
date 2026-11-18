@@ -39,6 +39,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -266,14 +267,26 @@ func (client *Client) GetObjectText() GetObjectTextOperation {
 func (client *Client) PutObject() PutObjectOperation { return PutObjectOperation{client: client} }
 
 // startSession resolves the credential, reread before every call; the caller must call the returned cancel.
-func (client *Client) startSession(call sdkgo.Call, operationID string) (*operationSession, context.CancelFunc, *sdkgo.Failure) {
+// shouldRetry reports a transient credential failure, which returns Retry instead of selecting defect.
+func (client *Client) startSession(call sdkgo.Call, operationID string) (session *operationSession, cancel context.CancelFunc, failure *sdkgo.Failure, shouldRetry bool) {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return nil, nil, failurePointer(operationID, sdkgo.FailureAvailability,
+			"S3 connection credentials are temporarily unavailable; nothing was sent"), true
+	}
 	if err != nil || validateResolvedCredentials(credentials) != nil {
 		return nil, nil, failurePointer(operationID, sdkgo.FailureAuthentication,
-			"S3 connection credentials are unavailable; save an access key ID and secret access key for the connection")
+			"S3 connection credentials are unavailable; save an access key ID and secret access key for the connection"), false
 	}
 	operationContext, cancel := context.WithTimeout(call.Context, operationDeadline)
-	return &operationSession{context: operationContext, call: call, credentials: credentials}, cancel, nil
+	return &operationSession{context: operationContext, call: call, credentials: credentials}, cancel, nil, false
+}
+
+// isTerminalCredentialError reports a credential failure that no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // resolveBucket returns the input bucket, or the connection's default bucket when the input leaves it blank.

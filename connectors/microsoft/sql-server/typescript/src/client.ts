@@ -109,6 +109,11 @@ function isLoopbackHost(host: string): boolean {
 export class ConnectionConfigurationError extends Error {}
 /** Strict TDS 8 TLS cannot be verified before LOGIN7 through Tedious's connector API. */
 export class UnsupportedStrictVerificationError extends Error {}
+
+/** Resolved credential material that fails a local check, which no retry repairs. */
+export class InvalidCredentialMaterialError extends Error {
+  constructor() { super('SQL Server connection credentials are unavailable'); this.name = 'InvalidCredentialMaterialError'; }
+}
 const numberGroups: Array<[Failure['kind'], number[]]> = [
   ['CONFLICT', [1205, 1222, 3960, 3961, 3902, 3903, 515, 547, 2601, 2627]],
   ['AVAILABILITY', [615, 701, 926, 1101, 1105, 4221, 6005, 8628, 8645, 8651, 9002, 10922, 10928, 10929, 10936, 18401, 40197, 40501, 40613, 49918, 49919, 49920, 40549, 40550, 40551, 40552, 40553]],
@@ -190,7 +195,7 @@ export class SQLServerClient {
   /** Resolve the password for this call before entering the driver error path. */
   async resolvePassword(call: Call): Promise<string> {
     const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-    if (!(credentials.password instanceof SecretString) || !credentials.password.reveal()) throw new TypeError('SQL Server connection credentials are unavailable');
+    if (!(credentials.password instanceof SecretString) || !credentials.password.reveal()) throw new InvalidCredentialMaterialError();
     return credentials.password.reveal();
   }
   /** Open the driver using credentials already resolved by the operation. */

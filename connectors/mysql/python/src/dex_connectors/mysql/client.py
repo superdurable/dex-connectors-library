@@ -29,9 +29,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     QueryAttempt,
     QueryDefinition,
+    ReauthorizationRequiredError,
     Receipt,
 )
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import (
     CheckpointError,
     DecisionKind,
@@ -327,18 +329,20 @@ class Client:
     async def _resolve_password(self, call: Call) -> str | _Disposition:
         """Return the password, or the failure to report before connecting.
 
-        A temporarily unavailable credential broker returns Retry; any other failure selects defect.
+        A terminal credential failure or an empty password selects defect; any other failure returns Retry.
         """
         try:
-            password = (await self.credentials.resolve(call)).password.reveal()
-        except CredentialBrokerUnavailableError:
-            return _Disposition(
-                "retry",
-                FailureKind.AVAILABILITY,
-                "the credential broker is temporarily unavailable, so nothing was sent",
-            )
-        except (ValueError, LookupError, OSError):
+            credentials = await self.credentials.resolve(call)
+        except Exception as error:
+            if not _is_terminal_credential_error(error):
+                return _Disposition(
+                    "retry",
+                    FailureKind.AVAILABILITY,
+                    "MySQL connection credentials are temporarily unavailable, so nothing was sent",
+                )
             password = ""
+        else:
+            password = credentials.password.reveal()
         if not password:
             return _Disposition(
                 "defect", FailureKind.AUTHENTICATION, "MySQL connection credentials are unavailable"
@@ -722,6 +726,19 @@ def _close_connection(connection: Any) -> None:
     except (MySQLError, OSError):
         # A failed close cannot change an already classified operation result.
         pass
+
+
+def _is_terminal_credential_error(error: Exception) -> bool:
+    """Report a credential failure that no later attempt resolves without a person."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 async def _settle_before_commit(

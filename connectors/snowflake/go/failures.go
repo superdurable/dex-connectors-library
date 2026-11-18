@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -37,6 +38,21 @@ type credentialError struct{ message string }
 
 // Error returns the safe description.
 func (err *credentialError) Error() string { return err.message }
+
+// credentialUnavailableError reports a transient credential failure; nothing was sent.
+type credentialUnavailableError struct{}
+
+// Error returns a safe description.
+func (*credentialUnavailableError) Error() string {
+	return "Snowflake connection credentials are temporarily unavailable; nothing was sent"
+}
+
+// isTerminalCredentialError reports a credential failure that no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
 
 // transportError reports that no complete HTTP response was received; it never repeats a URL or header.
 type transportError struct{}
@@ -178,6 +194,10 @@ func invalidResponseFailure(message string) classifiedFailure {
 
 // requestFailure classifies an error from Client.send, which happens before any response was read.
 func requestFailure(err error) classifiedFailure {
+	var unavailable *credentialUnavailableError
+	if errors.As(err, &unavailable) {
+		return classifiedFailure{disposition: dispositionRetry, kind: sdkgo.FailureAvailability, message: unavailable.Error()}
+	}
 	var credentials *credentialError
 	if errors.As(err, &credentials) {
 		return classifiedFailure{disposition: dispositionDefect, kind: sdkgo.FailureAuthentication, message: credentials.Error()}

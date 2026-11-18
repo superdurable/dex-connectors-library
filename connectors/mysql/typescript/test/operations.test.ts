@@ -4,8 +4,8 @@
 import { describe, expect, it } from 'vitest';
 import { Readable } from 'node:stream';
 import type { ConnectionOptions } from 'mysql2/promise';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
-import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
 import { MySQLClient } from '../src/client.js';
 import { classifyDriverError } from '../src/failures.js';
 
@@ -172,7 +172,7 @@ it('rejects invalid SQL and unavailable credentials before opening a session', a
   const client = new MySQLClient(config, credentials, { connect: async () => { connections++; throw new Error('must not connect'); } });
   const invalid = await client.query().invoke(call, { statement: 'DELETE FROM refunds' });
   expect(invalid).toMatchObject({ kind: 'branch', branch: 'defect' });
-  const missing = new MySQLClient(config, { resolve: async () => { throw new Error('unavailable'); } }, { connect: async () => { connections++; throw new Error('must not connect'); } });
+  const missing = new MySQLClient(config, { resolve: async () => ({ password: new SecretString('') }) }, { connect: async () => { connections++; throw new Error('must not connect'); } });
   expect(await missing.execute().invoke(call, { statement: 'INSERT INTO refunds VALUES (1)' })).toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'AUTHENTICATION' } });
   expect(connections).toBe(0);
 });
@@ -332,6 +332,30 @@ describe('executeNonIdempotent', () => {
     const context = new AttemptContext();
     expect(await unavailable.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
     expect(context.marker?.state).toBe('notSent');
+    expect(connections).toBe(0);
+  });
+
+  it.each([
+    ['reauthorization required', new ReauthorizationRequiredError(), true],
+    ['connection object not found', new ObjectNotFoundError(), true],
+    ['connection not selected', new ConnectionNotSelectedError(), true],
+    ['credential broker rejected', new CredentialBrokerRejectedError(), true],
+    ['credential broker unavailable', new CredentialBrokerUnavailableError(), false],
+    ['static connection not configured', new Error('connection is not configured'), false],
+    ['rejected credential not refreshed', new RejectedCredentialNotRefreshedError(), false],
+    ['unlisted error', new TypeError('unlisted'), false],
+  ])('classifies a %s credential failure before and after a possible COMMIT', async (_name, failure, isTerminal) => {
+    let connections = 0;
+    const failing = new MySQLClient(config, { resolve: async () => { throw failure; } }, { connect: async () => { connections++; throw new Error('must not connect'); } });
+    const firstExpected = isTerminal ? { kind: 'branch', branch: 'defect' } : { kind: 'retry', failure: { kind: 'AVAILABILITY' } };
+    expect(await failing.execute().invoke(call, balanceInput)).toMatchObject(firstExpected);
+    const context = new AttemptContext();
+    expect(await failing.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject(firstExpected);
+    expect(context.marker?.state).toBe('notSent');
+    const later = new AttemptContext();
+    later.marker = { callId: fencedCall(later).id, attempt: 2, state: 'canResend', sendCount: 1 } as { state?: string };
+    later.attempt = 3;
+    expect(await failing.executeNonIdempotent().invoke(fencedCall(later), balanceInput)).toMatchObject({ kind: isTerminal ? 'uncertain' : 'retry' });
     expect(connections).toBe(0);
   });
 

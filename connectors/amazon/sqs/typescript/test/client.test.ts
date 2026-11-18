@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { SQSClient } from '../src/client.js';
 
 const queueUrl = 'https://sqs.eu-west-1.amazonaws.com/123456789012/orders.fifo';
@@ -24,6 +25,24 @@ describe('SQS client', () => {
     expect(() => new SQSClient({ region: 'eu-west-1', maxMessagesPerReceive: 11 }, source)).toThrow();
     expect(() => new SQSClient({ region: 'eu-west-1', receiveWaitSeconds: 21 }, source)).toThrow();
     expect(() => new SQSClient({ region: 'eu-west-1', maxResponseBytes: -1 }, source)).toThrow();
+  });
+
+  it.each([
+    ['reauthorization required', new ReauthorizationRequiredError(), true],
+    ['connection object not found', new ObjectNotFoundError(), true],
+    ['connection not selected', new ConnectionNotSelectedError(), true],
+    ['credential broker rejected', new CredentialBrokerRejectedError(), true],
+    ['credential broker unavailable', new CredentialBrokerUnavailableError(), false],
+    ['static connection not configured', new Error('connection is not configured'), false],
+    ['unlisted error', new TypeError('unlisted'), false],
+  ])('classifies a %s credential failure without sending', async (_name, credentialFailure, isTerminal) => {
+    let requests = 0;
+    const client = new SQSClient({ region: 'eu-west-1', endpoint: 'http://127.0.0.1:21096', defaultQueueUrl: queueUrl }, { resolve: async () => { throw credentialFailure; } }, {
+      send: async () => { requests++; throw new Error('unexpected request'); },
+    });
+    const expected = isTerminal ? { kind: 'branch', branch: 'defect' } : { kind: 'retry', failure: { kind: 'AVAILABILITY' } };
+    expect(await client.deleteMessage().invoke(call, { receiptHandle: 'receipt-1' })).toMatchObject(expected);
+    expect(requests).toBe(0);
   });
 
   it('rereads credentials, signs the selected queue, and keeps provider text out of failures', async () => {

@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 import sql from 'mssql';
-import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
-import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, ReauthorizationRequiredError, type Call, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { ExecuteStatementDefinition, ExecuteStatementNonIdempotentDefinition, QueryRowsDefinition } from './generated/definitions.js';
 import type { Column, ExecuteStatementInput, QueryRowsInput, RowSet, StatementExecution } from './generated/models.js';
-import { AttemptDeadline, classifyDriverError, type ClassifiedFailure, type ResponseBudget, type SQLServerClient } from './client.js';
+import { AttemptDeadline, classifyDriverError, InvalidCredentialMaterialError, type ClassifiedFailure, type ResponseBudget, type SQLServerClient } from './client.js';
 
 const emptyRows = (): RowSet => ({ columns: [], rows: [] });
 const emptyExecution = (): StatementExecution => ({ rowsAffected: 0, columns: [], rows: [] });
@@ -452,10 +452,16 @@ function isFenceInsufficientTimeAggregateError(error: unknown): boolean {
   return error instanceof AggregateError && error.errors.some(cause => cause instanceof InsufficientTimeError);
 }
 
-/** Retry a temporarily unavailable credential broker; any other credential failure selects defect. */
+/** Select defect for a terminal credential failure or invalid material; any other credential failure returns Retry. */
 function credentialFailure(error: unknown): ClassifiedFailure {
-  if (error instanceof CredentialBrokerUnavailableError) return { disposition: 'retry', kind: 'AVAILABILITY', message: 'the credential broker is temporarily unavailable, so nothing was sent' };
+  if (!isTerminalCredentialError(error)) return { disposition: 'retry', kind: 'AVAILABILITY', message: 'SQL Server connection credentials are temporarily unavailable, so nothing was sent' };
   return { disposition: 'defect', kind: 'AUTHENTICATION', message: 'SQL Server connection credentials are unavailable' };
+}
+
+/** Report a credential failure that no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof InvalidCredentialMaterialError || error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
 }
 
 function bindExecuteValues(call: Call, input: ExecuteStatementInput): unknown[] | ClassifiedFailure {

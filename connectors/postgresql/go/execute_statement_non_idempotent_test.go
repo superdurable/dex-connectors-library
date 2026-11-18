@@ -195,7 +195,7 @@ func TestExecuteStatementNonIdempotentRetriesAnUnavailableCredentialBroker(t *te
 	require.Equal(t, singledispatch.StateNotSent, lastMarker(t, step).State, "the next attempt may send")
 	require.Empty(t, server.EventsOfKind(scriptedpostgresql.EventStartup))
 
-	withoutPassword := newClientWithCredentials(t, server, sdkgo.StaticCredentialProvider[postgresql.Credentials]{})
+	withoutPassword := newClientWithCredentials(t, server, sdkgo.StaticCredentialProvider[postgresql.Credentials]{scriptedConnection: {}})
 	result, err := executeNonIdempotent(t, withoutPassword, newFencedStep(), addToBalanceInput)
 	require.NoError(t, err)
 	require.Equal(t, postgresql.ExecuteStatementNonIdempotentBranchDefect, result.Branch, "a missing password is terminal before any COMMIT")

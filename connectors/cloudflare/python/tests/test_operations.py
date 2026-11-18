@@ -11,12 +11,19 @@ from dex_connectors.sdk import (
     CallID,
     ConnectionRef,
     FailureKind,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
     run_query,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.cloudflare import (
     DEFECT,
@@ -58,6 +65,47 @@ def make_client(
         StaticCredentialProvider({CONNECTION: Credentials(SecretString(token))}),
         httpx.AsyncClient(transport=httpx.MockTransport(respond)),
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (ReauthorizationRequiredError(), True),
+        (ObjectNotFoundError(), True),
+        (ConnectionNotSelectedError(), True),
+        (CredentialBrokerRejectedError(), True),
+        (CredentialBrokerUnavailableError(), False),
+        (ValueError("connection is not configured"), False),
+        (RuntimeError("unlisted"), False),
+    ],
+)
+async def test_credential_failures_select_defect_only_when_terminal(
+    error: Exception, is_terminal: bool
+) -> None:
+    requests: list[httpx.Request] = []
+
+    class FailingCredentials:
+        async def resolve(self, call: Call) -> Credentials:
+            raise error
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={})
+
+    client = Client(
+        Config("http://localhost:8848/client/v4"),
+        FailingCredentials(),
+        httpx.AsyncClient(transport=httpx.MockTransport(respond)),
+    )
+    if is_terminal:
+        result = await run_mutation(client.purge_cache_by_urls(), purge_call(), PURGE)
+        assert result.branch == DEFECT
+    else:
+        with pytest.raises(RetryError) as raised:
+            await run_mutation(client.purge_cache_by_urls(), purge_call(), PURGE)
+        assert raised.value.failure.kind == FailureKind.AVAILABILITY
+    assert requests == []
 
 
 def list_call() -> Call:

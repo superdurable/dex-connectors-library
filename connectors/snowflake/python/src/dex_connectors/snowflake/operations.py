@@ -31,7 +31,7 @@ from dex_connectors.sdk.providerhttp import (
 )
 
 from ._generated import definitions as definitions
-from .client import Client, CredentialError
+from .client import Client, CredentialError, CredentialUnavailableError
 from .models import (
     CancelStatementInput,
     Column,
@@ -145,6 +145,8 @@ async def _request(
 ) -> tuple[int, object, dict[str, str]] | Failure:
     try:
         response = await client.send(call, method, target, body)
+    except CredentialUnavailableError as error:
+        return _failure(operation, FailureKind.AVAILABILITY, str(error))
     except CredentialError as error:
         return _failure(operation, FailureKind.AUTHENTICATION, str(error))
     except ProviderTransportError:
@@ -406,7 +408,12 @@ class CancelStatementOperation:
 
 
 def _mutation_request_failure(operation: str, failure: Failure, empty: Output) -> MutationAttempt[Output]:
-    if failure.kind in (FailureKind.TRANSPORT, FailureKind.RESPONSE_TOO_LARGE, FailureKind.PROTOCOL):
+    if failure.kind in (
+        FailureKind.TRANSPORT,
+        FailureKind.RESPONSE_TOO_LARGE,
+        FailureKind.PROTOCOL,
+        FailureKind.AVAILABILITY,
+    ):
         return MutationAttempt.retry(failure)
     return MutationAttempt.branch_result(definitions.DEFECT, empty, Receipt(), failure)
 
@@ -414,7 +421,7 @@ def _mutation_request_failure(operation: str, failure: Failure, empty: Output) -
 def _query_request_failure(
     operation: str, failure: Failure, empty: StatementResult
 ) -> QueryAttempt[StatementResult]:
-    if failure.kind == FailureKind.TRANSPORT:
+    if failure.kind in (FailureKind.TRANSPORT, FailureKind.AVAILABILITY):
         return QueryAttempt.retry(failure)
     branch = (
         definitions.INVALID_RESPONSE

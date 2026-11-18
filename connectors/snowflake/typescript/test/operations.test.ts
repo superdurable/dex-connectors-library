@@ -3,7 +3,8 @@
 
 import { generateKeyPairSync, createPublicKey, verify } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { SnowflakeClient } from '../src/client.js';
 
@@ -49,6 +50,26 @@ describe('Snowflake SQL API adapter', () => {
     const result = await client.getStatementResult().invoke(call, { statementHandle: handle });
     expect(result.kind).toBe('branch');
     if (result.kind === 'branch') expect(result.branch).toBe('invalidResponse');
+  });
+
+  it.each([
+    ['reauthorization required', new ReauthorizationRequiredError(), true],
+    ['connection object not found', new ObjectNotFoundError(), true],
+    ['connection not selected', new ConnectionNotSelectedError(), true],
+    ['credential broker rejected', new CredentialBrokerRejectedError(), true],
+    ['credential broker unavailable', new CredentialBrokerUnavailableError(), false],
+    ['static connection not configured', new Error('connection is not configured'), false],
+    ['unlisted error', new TypeError('unlisted'), false],
+  ])('classifies a %s credential failure without sending', async (_name, credentialFailure, isTerminal) => {
+    let requests = 0;
+    const client = new SnowflakeClient({ accountIdentifier: 'myorg-analytics' }, { resolve: async () => { throw credentialFailure; } }, {
+      localProviderUrl: 'http://127.0.0.1', send: async () => { requests++; throw new Error('unexpected request'); },
+    });
+    const expected = isTerminal ? { kind: 'branch', branch: 'defect' } : { kind: 'retry', failure: { kind: 'AVAILABILITY' } };
+    expect(await client.submitStatement().invoke(call, { statement: 'SELECT 1' })).toMatchObject(expected);
+    expect(await client.cancelStatement().invoke(call, { statementHandle: handle })).toMatchObject(expected);
+    expect(await client.getStatementResult().invoke(call, { statementHandle: handle })).toMatchObject(expected);
+    expect(requests).toBe(0);
   });
 
   it('rejects a credential without an authentication method before sending', async () => {

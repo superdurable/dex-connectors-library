@@ -2,9 +2,19 @@
 // SPDX-License-Identifier: MIT
 
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call, type CredentialProvider, type Failure } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 import { QueryVectorsOperation, UpsertVectorsOperation } from './operations.js';
+
+/** A transient credential failure that a later attempt may resolve; nothing was sent. */
+class CredentialUnavailableError extends Error {}
+
+/** Report a credential failure that no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+}
 
 /** Injectable bounded provider request sender. */
 export type PineconeRequestSender = (request: ProviderRequest) => Promise<ProviderResponse>;
@@ -53,10 +63,15 @@ export class PineconeClient {
   async exchange(call: Call, operation: string, path: string, input: unknown): Promise<PineconeExchange> {
     let token: string;
     try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
+      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal).catch((error: unknown) => {
+        throw isTerminalCredentialError(error) ? error : new CredentialUnavailableError();
+      });
       if (!(credentials.apiKey instanceof SecretString)) throw new TypeError('invalid Pinecone credential');
       token = credentials.apiKey.reveal();
-    } catch { return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'connection credentials are unavailable') }; }
+    } catch (error) {
+      if (error instanceof CredentialUnavailableError) return { outcome: this.failure('retry', operation, 'AVAILABILITY', 'connection credentials are temporarily unavailable; nothing was sent') };
+      return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'connection credentials are unavailable') };
+    }
     if (!token || !isHeaderSafeCredential(token)) return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'connection credential is invalid') };
     let body: Uint8Array;
     try { body = Buffer.from(JSON.stringify(input), 'utf8'); }

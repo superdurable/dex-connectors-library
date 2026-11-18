@@ -4,8 +4,8 @@
 import { EventEmitter } from 'node:events';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import sql from 'mssql';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
-import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
 import { SQLServerClient } from '../src/client.js';
 import { ExecuteStatementDefinition, ExecuteStatementNonIdempotentDefinition } from '../src/generated/definitions.js';
 
@@ -143,6 +143,30 @@ describe('SQL Server writes', () => {
     const context = new AttemptContext();
     expect(await unavailable.executeNonIdempotent().invoke(writeCall('executeNonIdempotent', context), balanceInput)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
     expect(context.marker?.state).toBe('notSent');
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['reauthorization required', new ReauthorizationRequiredError(), true],
+    ['connection object not found', new ObjectNotFoundError(), true],
+    ['connection not selected', new ConnectionNotSelectedError(), true],
+    ['credential broker rejected', new CredentialBrokerRejectedError(), true],
+    ['credential broker unavailable', new CredentialBrokerUnavailableError(), false],
+    ['static connection not configured', new Error('connection is not configured'), false],
+    ['rejected credential not refreshed', new RejectedCredentialNotRefreshedError(), false],
+    ['unlisted error', new TypeError('unlisted'), false],
+  ])('classifies a %s credential failure before and after a possible COMMIT', async (_name, credentialFailure, isTerminal) => {
+    const failing = new SQLServerClient({ host: '127.0.0.1', database: 'master', user: 'sa', encrypt: 'disable' }, { resolve: async () => { throw credentialFailure; } });
+    const open = vi.spyOn(failing, 'open');
+    const firstExpected = isTerminal ? { kind: 'branch', branch: 'defect' } : { kind: 'retry', failure: { kind: 'AVAILABILITY' } };
+    expect(await failing.execute().invoke(writeCall('execute', new AttemptContext()), balanceInput)).toMatchObject(firstExpected);
+    const context = new AttemptContext();
+    expect(await failing.executeNonIdempotent().invoke(writeCall('executeNonIdempotent', context), balanceInput)).toMatchObject(firstExpected);
+    expect(context.marker?.state).toBe('notSent');
+    const later = new AttemptContext();
+    later.marker = { callId, attempt: 2, state: 'canResend', sendCount: 1 } as { state?: string };
+    later.attempt = 3;
+    expect(await failing.executeNonIdempotent().invoke(writeCall('executeNonIdempotent', later), balanceInput)).toMatchObject({ kind: isTerminal ? 'uncertain' : 'retry' });
     expect(open).not.toHaveBeenCalled();
   });
 

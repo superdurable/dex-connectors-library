@@ -2,12 +2,34 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { SupabaseClient } from '../src/client.js';
 
 const call = { id: 'test-call', context: { cancellationSignal: new AbortController().signal } } as Call;
 const client = new SupabaseClient({ baseUrl: 'http://127.0.0.1:28801/rest/v1' }, { resolve: async () => ({ apiKey: new SecretString('test-token') }) }, {
   send: async () => ({ status: 200, headers: {}, body: Buffer.from('[]') }),
+});
+
+describe('credential classification', () => {
+  it.each([
+    ['reauthorization required', new ReauthorizationRequiredError(), true],
+    ['connection object not found', new ObjectNotFoundError(), true],
+    ['connection not selected', new ConnectionNotSelectedError(), true],
+    ['credential broker rejected', new CredentialBrokerRejectedError(), true],
+    ['credential broker unavailable', new CredentialBrokerUnavailableError(), false],
+    ['static connection not configured', new Error('connection is not configured'), false],
+    ['unlisted error', new TypeError('unlisted'), false],
+  ])('classifies a %s credential failure without sending', async (_name, credentialFailure, isTerminal) => {
+    let requests = 0;
+    const failing = new SupabaseClient({ baseUrl: 'http://127.0.0.1:28801/rest/v1' }, { resolve: async () => { throw credentialFailure; } }, {
+      send: async () => { requests++; return { status: 200, headers: {}, body: Buffer.from('[]') }; },
+    });
+    const expected = isTerminal ? { kind: 'branch', branch: 'defect' } : { kind: 'retry', failure: { kind: 'AVAILABILITY' } };
+    expect(await failing.upsertRows().invoke(call, { table: 'projects', onConflict: 'id', rows: [{ id: 1 }] })).toMatchObject(expected);
+    expect(await failing.selectRows().invoke(call, { table: 'projects' })).toMatchObject(expected);
+    expect(requests).toBe(0);
+  });
 });
 
 describe('input validation', () => {

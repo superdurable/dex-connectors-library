@@ -12,7 +12,23 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.hashes import SHA256
-from dex_connectors.sdk import ConnectionRef, FailureKind, SecretString, StaticCredentialProvider
+from dex_connectors.sdk import (
+    Call,
+    CallID,
+    ConnectionRef,
+    FailureKind,
+    IdempotencyKey,
+    OperationRef,
+    ReauthorizationRequiredError,
+    SecretString,
+    StaticCredentialProvider,
+)
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.snowflake import Client, Config, Credentials
 from dex_connectors.snowflake.operations import _bind_statement, _rejection
@@ -182,3 +198,44 @@ def test_result_byte_limit_counts_go_json_string_escapes() -> None:
     assert not complete.truncated
     assert truncated.rows == ()
     assert truncated.truncated
+
+
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (ReauthorizationRequiredError(), True),
+        (ObjectNotFoundError(), True),
+        (ConnectionNotSelectedError(), True),
+        (CredentialBrokerRejectedError(), True),
+        (CredentialBrokerUnavailableError(), False),
+        (ValueError("connection is not configured"), False),
+        (RuntimeError("unlisted"), False),
+    ],
+)
+async def test_credential_failures_select_defect_only_when_terminal(
+    error: Exception, is_terminal: bool
+) -> None:
+    """Only a terminal credential failure selects defect; every other one Retries without sending."""
+    from dex_connectors.snowflake import CancelStatementInput, GetStatementResultInput, SubmitStatementInput
+
+    class _FailingCredentials:
+        async def resolve(self, call: Call) -> Credentials:
+            raise error
+
+    client = Client(Config(account_identifier="myorg-analytics"), _FailingCredentials())
+    handle = "00000000-0000-4000-8000-000000000003"
+    call = Call(
+        CallID(handle),
+        ConnectionRef("snowflake", "warehouse"),
+        OperationRef("snowflake", "x"),
+        IdempotencyKey(handle),
+    )
+    submitted = await client.submit_statement().invoke(call, SubmitStatementInput(statement="SELECT 1"))
+    canceled = await client.cancel_statement().invoke(call, CancelStatementInput(statement_handle=handle))
+    read = await client.get_statement_result().invoke(call, GetStatementResultInput(statement_handle=handle))
+    for attempt in (submitted, canceled, read):
+        if is_terminal:
+            assert attempt.branch == "defect"
+        else:
+            assert attempt.kind == "retry"
+            assert attempt.failure is not None and attempt.failure.kind == FailureKind.AVAILABILITY

@@ -170,7 +170,7 @@ func TestExecuteStatementNonIdempotentRetriesAnUnavailableCredentialBroker(t *te
 	require.Equal(t, singledispatch.StateNotSent, lastMarker(t, step).State, "the next attempt may send")
 	require.Empty(t, server.EventsOfKind(scriptedtds.EventLogin))
 
-	withoutPassword := newClientWithCredentials(t, server, sdkgo.StaticCredentialProvider[sqlserver.Credentials]{})
+	withoutPassword := newClientWithCredentials(t, server, sdkgo.StaticCredentialProvider[sqlserver.Credentials]{scriptedConnection: {}})
 	result, err := executeNonIdempotent(t, withoutPassword, newFencedStep(), addToBalanceInput)
 	require.NoError(t, err)
 	require.Equal(t, sqlserver.ExecuteStatementNonIdempotentBranchDefect, result.Branch, "a missing password is terminal before any COMMIT")

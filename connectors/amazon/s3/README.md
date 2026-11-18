@@ -172,7 +172,10 @@ return Retry, honoring `Retry-After` up to one hour. 401, 403, 400, 404 for a
 bucket, 501, and other 4xx select `providerRejected`. Failures name the HTTP
 status and the S3 error code, such as `HTTP 403 SignatureDoesNotMatch`, never
 the error message text. Receipts carry the Call ID, `bucket/key`, and the
-`x-amz-request-id` response header.
+`x-amz-request-id` response header. A credential failure selects `defect` only
+when reauthorization is required, the connection is missing or not selected,
+the credential broker refused, or the credential fails a local check; any other
+credential failure, such as an unavailable credential broker, returns Retry.
 
 ### listObjects
 

@@ -102,7 +102,10 @@ func (operation PutObjectOperation) Invoke(call sdkgo.Call, input PutObjectInput
 		return sdkgo.NewMutationBranch(PutObjectBranchDefect, StoredObject{}, failurePointer(putObjectOperationID, sdkgo.FailureLocalDefect,
 			"idempotency key is missing or not header-safe"), sdkgo.Receipt{})
 	}
-	session, cancel, failure := client.startSession(call, putObjectOperationID)
+	session, cancel, failure, shouldRetry := client.startSession(call, putObjectOperationID)
+	if shouldRetry {
+		return sdkgo.NewMutationRetry[StoredObject](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(PutObjectBranchDefect, StoredObject{}, failure, sdkgo.Receipt{})
 	}

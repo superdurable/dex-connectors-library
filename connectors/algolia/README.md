@@ -31,8 +31,8 @@ The displayed `baseUrl` default is a host template: the connector changes `https
 | Valid search or queued replacement | `searched` or `saved` |
 | Definite provider rejection | `providerRejected` |
 | Malformed or oversized response | `invalidResponse` |
-| Invalid input or missing credentials | `defect` |
-| Transport failure, 408, 409, 429, or 5xx | Retry with Dex's default one-hour budget |
+| Invalid input, invalid credentials, a required reauthorization, a missing or unselected connection, or a credential broker refusal | `defect` |
+| Transport failure, 408, 409, 429, 5xx, or a transient credential failure such as an unavailable credential broker | Retry with Dex's default one-hour budget |
 
 Only the happy branch is wired in the [index search example](go/examples/index-search). Optional branches fail its Flow. There is no `uncertain` branch because full replacement by `objectID` is repeat-safe.
 

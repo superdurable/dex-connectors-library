@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"net/http"
 	"net/url"
@@ -113,6 +114,9 @@ type providerResponse struct {
 
 func (client *Client) send(call sdkgo.Call, operationID, method, path string, query url.Values, body []byte, hasNotFound bool, successStatus int) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return providerResponse{retry: true, failure: failure(operationID, sdkgo.FailureAvailability, "connection credentials are temporarily unavailable; nothing was sent")}
+	}
 	if err != nil {
 		return providerResponse{branch: sdkgo.DefectBranchID, failure: failure(operationID, sdkgo.FailureAuthentication, "connection credentials are unavailable")}
 	}
@@ -240,6 +244,14 @@ func (operation UpsertVectorsOperation) Invoke(call sdkgo.Call, input UpsertVect
 	}
 	return sdkgo.NewMutationBranch(UpsertVectorsBranchUpserted, output, nil, sdkgo.Receipt{})
 }
+
+// isTerminalCredentialError reports a credential failure that no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
 func encodeUpsertVectorsInput(input UpsertVectorsInput) (string, url.Values, []byte, error) {
 	if len(input.Vectors) == 0 || len(input.Vectors) > 1000 {
 		return "", nil, nil, fmt.Errorf("vectors must contain 1 through 1000 items")

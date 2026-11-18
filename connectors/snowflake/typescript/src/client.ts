@@ -3,7 +3,8 @@
 
 import { createHash, createPrivateKey, createPublicKey, sign } from 'node:crypto';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 import { SubmitStatementOperation, GetStatementResultOperation, CancelStatementOperation } from './operations.js';
 
@@ -98,8 +99,14 @@ export class SnowflakeClient {
   async exchange(call: Call, operation: string, method: string, target: string, body?: Uint8Array): Promise<SnowflakeExchange> {
     let token: string;
     let tokenType: string;
+    let credentials: Credentials;
     try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
+      credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
+    } catch (error) {
+      if (!isTerminalCredentialError(error)) return { outcome: this.failure('retry', operation, 'AVAILABILITY', 'Snowflake connection credentials are temporarily unavailable; nothing was sent') };
+      return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'Snowflake connection credentials are unavailable') };
+    }
+    try {
       if (credentials.authMethodId === 'programmatic-access-token') {
         if (!(credentials.programmaticAccessToken instanceof SecretString) || !isHeaderSafeCredential(credentials.programmaticAccessToken.reveal())) throw new Error('the Snowflake programmatic access token is blank or contains spaces or non-ASCII characters');
         token = credentials.programmaticAccessToken.reveal(); tokenType = 'PROGRAMMATIC_ACCESS_TOKEN';
@@ -197,6 +204,12 @@ export function decodeStatus(body: Uint8Array): SnowflakeStatus {
 
 /** Check a Snowflake statement handle before placing it in a path. */
 export function isStatementHandle(value: string): boolean { return handlePattern.test(value); }
+
+/** Report a credential failure that no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+}
 
 function statementFailureKind(status: SnowflakeStatus): Failure['kind'] {
   if (status.code === '000709' || status.sqlState === '02000') return 'NOT_FOUND';

@@ -255,7 +255,7 @@ func TestQueryRowsSelectsDefectBeforeContactingTheServer(t *testing.T) {
 	require.Empty(t, server.EventsOfKind(scriptedpostgresql.EventExecute), "a placeholder mismatch is caught at Prepare")
 
 	withoutCredentials, err := postgresql.New(postgresql.Config{Host: "127.0.0.1", Port: int64(server.Port()), Database: "app", User: "dex_app", SSLMode: postgresql.SSLModeDisable},
-		sdkgo.StaticCredentialProvider[postgresql.Credentials]{})
+		sdkgo.StaticCredentialProvider[postgresql.Credentials]{scriptedConnection: {}})
 	require.NoError(t, err)
 	missing, err := query(t, withoutCredentials, postgresql.QueryRowsInput{Statement: "SELECT 1"})
 	require.NoError(t, err)
