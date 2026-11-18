@@ -7,6 +7,7 @@ from typing import NoReturn
 import pytest
 from dex_connectors.sdk import Call, CallID, ConnectionRef, FailureKind, IdempotencyKey, OperationRef
 from dex_connectors.sdk.credentials import ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
 from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
 
 from dex_connectors.xero import Client, Config
@@ -99,6 +100,7 @@ def test_local_provider_url_rejects_non_loopback_host() -> None:
     [
         (ReauthorizationRequiredError(), "rejected", FailureKind.AUTHENTICATION),
         (RefreshFailedError("unavailable"), "retry", FailureKind.AVAILABILITY),
+        (CredentialBrokerUnavailableError(), "retry", FailureKind.AVAILABILITY),
         (ValueError("broken"), "defect", FailureKind.AUTHENTICATION),
     ],
 )
@@ -231,3 +233,21 @@ def test_later_write_attempt_selects_uncertain_for_a_credential_or_local_failure
     assert attempt is not None and attempt.branch == expected_branch
     first = _mutation_outcome(client, _call(), result, None)
     assert first is not None and first.branch != "uncertain"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("error", [CredentialBrokerUnavailableError(), TimeoutError()])
+async def test_write_retries_a_transient_credential_failure_on_every_attempt(error: Exception) -> None:
+    """A broker outage sends nothing, so neither defect nor uncertain may be selected."""
+    from dataclasses import replace
+
+    from dex_connectors.xero.operations import _mutation_outcome
+
+    client = Client(Config(), _FailedCredentials(error))
+    try:
+        for call in (_call(), replace(_call(), context=_LaterAttemptContext())):  # type: ignore[arg-type]
+            result = await client.exchange(call, "createInvoice", "PUT", "/Invoices", mutation=True)
+            attempt = _mutation_outcome(client, call, result, None)
+            assert attempt is not None and attempt.kind == "retry"
+    finally:
+        await client.aclose()
