@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of monday.com creates and updates whose outcome is unknown."""
 
+import asyncio
 import json
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
@@ -10,6 +11,7 @@ from typing import Any
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk import projectconfig
 from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.monday as monday
@@ -73,6 +75,25 @@ class _BrokenBody(httpx.AsyncByteStream):
         raise httpx.ReadError("connection reset")
 
 
+class _StalledBody(httpx.AsyncByteStream):
+    """A response body that stalls after its first bytes until the write window ends."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        yield b'{"data":{"create_item":'
+        await asyncio.sleep(30)
+
+
+class _FailingCredentials:
+    """A credential provider whose every resolution raises one error."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: sdk.Call) -> monday.Credentials:
+        """Raise the configured resolution error."""
+        raise self.error
+
+
 async def run(
     operation_name: str,
     status: int,
@@ -82,7 +103,10 @@ async def run(
     *,
     max_sends: int = CREATE_ITEM_DEFINITION.max_sends,
     breaks_body: bool = False,
+    stalls_body: bool = False,
     has_credentials: bool = True,
+    credential_error: Exception | None = None,
+    max_response_bytes: int = 0,
 ) -> str:
     """Run one Execute attempt of a monday.com write and return its branch or `retry`."""
 
@@ -90,16 +114,21 @@ async def run(
         requests.append(request)
         if breaks_body:
             return httpx.Response(status, stream=_BrokenBody(), headers={"Content-Type": "application/json"})
+        if stalls_body:
+            return httpx.Response(status, stream=_StalledBody(), headers={"Content-Type": "application/json"})
         content = body if isinstance(body, str) else json.dumps(body)
         return httpx.Response(status, content=content.encode(), headers={"Content-Type": "application/json"})
 
+    credentials: Any = sdk.StaticCredentialProvider(
+        {CONNECTION: monday.Credentials("personal-api-token", sdk.SecretString(TOKEN))}
+        if has_credentials
+        else {}
+    )
+    if credential_error is not None:
+        credentials = _FailingCredentials(credential_error)
     client = monday.Client(
-        monday.Config(),
-        sdk.StaticCredentialProvider(
-            {CONNECTION: monday.Credentials("personal-api-token", sdk.SecretString(TOKEN))}
-            if has_credentials
-            else {}
-        ),
+        monday.Config(max_response_bytes=max_response_bytes) if max_response_bytes else monday.Config(),
+        credentials,
         httpx.AsyncClient(transport=httpx.MockTransport(respond)),
         endpoint="http://127.0.0.1:45101/v2",
     )
@@ -203,6 +232,62 @@ async def test_two_xx_whose_body_breaks_is_uncertain_without_resend() -> None:
     assert await run("createItem", 200, "", context, requests, breaks_body=True) == "uncertain"
     assert context.marker is not None and context.marker.state == "claimed"
     assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_name", ["createItem", "addUpdate"])
+async def test_two_xx_headers_then_the_write_deadline_cuts_the_body_is_uncertain(operation_name: str) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    # The Fence's write window is seven twelfths of this budget, after the client's dispatch minimum.
+    context.deadline = datetime.now(UTC) + timedelta(seconds=6.5)
+    assert await run(operation_name, 200, "", context, requests, stalls_body=True) == "uncertain"
+    assert context.marker is not None and context.marker.state == "claimed"
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_transient"),
+    [
+        (projectconfig.CredentialBrokerUnavailableError("broker down"), True),
+        (projectconfig.ObjectNotFoundError("absent"), False),
+        (projectconfig.ConnectionNotSelectedError("not selected"), False),
+        (projectconfig.CredentialBrokerRejectedError("rejected"), False),
+    ],
+)
+async def test_transient_credential_failure_retries_and_only_a_terminal_one_is_defect(
+    error: Exception, is_transient: bool
+) -> None:
+    requests: list[httpx.Request] = []
+    first_send = AttemptContext()
+    branch = await run("addUpdate", 200, ADDED_UPDATE, first_send, requests, credential_error=error)
+    if is_transient:
+        assert branch == "retry"
+        assert first_send.marker is not None and first_send.marker.state == "notSent"
+    else:
+        assert branch == "defect"
+    after_send = AttemptContext()
+    assert await run("addUpdate", 500, "{}", after_send, requests) == "retry"
+    before = after_send.heartbeat_value
+    after_send.attempt = 2
+    branch = await run("addUpdate", 200, ADDED_UPDATE, after_send, requests, credential_error=error)
+    assert branch == ("retry" if is_transient else "uncertain")
+    assert after_send.heartbeat_value is before
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_oversized_refusal_body_is_unknown_and_resends_below_the_cap() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    oversized = json.dumps({"errors": [{"message": "x" * 4096}]})
+    for attempt in range(1, CREATE_ITEM_DEFINITION.max_sends):
+        context.attempt = attempt
+        assert await run("addUpdate", 403, oversized, context, requests, max_response_bytes=1024) == "retry"
+    context.attempt = CREATE_ITEM_DEFINITION.max_sends
+    assert await run("addUpdate", 403, oversized, context, requests, max_response_bytes=1024) == "uncertain"
+    assert len(requests) == CREATE_ITEM_DEFINITION.max_sends
 
 
 @pytest.mark.asyncio

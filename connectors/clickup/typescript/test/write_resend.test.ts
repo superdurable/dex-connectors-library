@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ClickUpClient } from '../src/client.js';
 import { AddCommentDefinition, CreateTaskDefinition } from '../src/generated/definitions.js';
@@ -19,7 +20,7 @@ class AttemptContext {
   readonly flowId = 'clickup-resend-flow';
   readonly flowStartedAt = new Date('1970-01-01T00:00:01Z');
   readonly firstAttemptAt = firstAttemptAt;
-  readonly deadline = new Date(Date.now() + 30_000);
+  deadline = new Date(Date.now() + 30_000);
   readonly cancellationSignal = new AbortController().signal;
   constructor(public attempt = 1, marker?: unknown) { this.marker = marker; }
   hasLastHeartbeatValue(): boolean { return this.marker !== undefined; }
@@ -41,6 +42,14 @@ function newClient(respond: Responder, hasCredentials = true) {
     return { apiToken: new SecretString('pk_4411723_TESTTOKEN') };
   } }, {
     send: async (request: ProviderRequest) => { requests.push(request); return respond(request, requests.length - 1); },
+  });
+  return { client, requests };
+}
+
+function newClientWithCredentialError(error: Error) {
+  const requests: ProviderRequest[] = [];
+  const client = new ClickUpClient({}, { resolve: async () => { throw error; } }, {
+    send: async (request: ProviderRequest) => { requests.push(request); return json(200, task(taskId)); },
   });
   return { client, requests };
 }
@@ -177,12 +186,51 @@ describe('ClickUp read-back and bounded resend of unknown writes', () => {
     }
   });
 
-  it('retries a credential failure after a possible send without recording notSent', async () => {
+  it.each(['createTask', 'addComment'] as const)('%s retries a transient credential failure after a possible send without recording notSent', async operation => {
     const { client, requests } = newClient(() => { throw new Error('request sent'); }, false);
     const context = new AttemptContext(2, { callId, attempt: 1, state: 'claimed', sendCount: 1 });
-    expect(await run(client, 'createTask', context)).toBe('retry');
+    expect(await run(client, operation, context)).toBe('retry');
     expect(context.marker).toMatchObject({ state: 'claimed', attempt: 1 });
     expect(requests).toHaveLength(0);
+  });
+
+  it.each([
+    ['reauthorization', () => new ReauthorizationRequiredError()],
+    ['not selected', () => new ConnectionNotSelectedError()],
+    ['broker rejected', () => new CredentialBrokerRejectedError()],
+    ['object not found', () => new ObjectNotFoundError()],
+  ])('selects uncertain for a terminal credential failure (%s) after a possible send', async (_name, newError) => {
+    for (const operation of ['createTask', 'addComment'] as const) {
+      const { client, requests } = newClientWithCredentialError(newError());
+      const context = new AttemptContext(2, { callId, attempt: 1, state: 'claimed', sendCount: 1 });
+      expect(branchOf(await run(client, operation, context))).toBe('uncertain');
+      expect(context.marker).toMatchObject({ state: 'claimed', attempt: 1 });
+      expect(requests).toHaveLength(0);
+    }
+  });
+
+  it('retries a transient credential failure before any send and selects defect for a terminal one', async () => {
+    const transient = newClientWithCredentialError(new CredentialBrokerUnavailableError());
+    expect(await run(transient.client, 'createTask', new AttemptContext())).toBe('retry');
+    const terminal = newClientWithCredentialError(new ReauthorizationRequiredError());
+    expect(branchOf(await run(terminal.client, 'addComment', new AttemptContext()))).toBe('defect');
+    expect([...transient.requests, ...terminal.requests]).toHaveLength(0);
+  });
+
+  it.each(['createTask', 'addComment'] as const)('%s selects uncertain when the write window aborts a 2xx body', async operation => {
+    const requests: ProviderRequest[] = [];
+    const client = new ClickUpClient({}, { resolve: async () => ({ apiToken: new SecretString('pk_4411723_TESTTOKEN') }) }, {
+      send: async request => {
+        requests.push(request);
+        // The SDK keeps the status of a body that an abort cuts after the headers arrived.
+        await new Promise<void>(resolve => { request.signal?.addEventListener('abort', () => resolve(), { once: true }); });
+        throw new ProviderTransportError(false, 200, {});
+      },
+    });
+    const context = new AttemptContext();
+    context.deadline = new Date(Date.now() + 1_200);
+    expect(branchOf(await run(client, operation, context))).toBe('uncertain');
+    expect(methods(requests)).toEqual(['POST']);
   });
 
   it('applies the application send cap through the fence', async () => {

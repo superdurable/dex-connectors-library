@@ -3,7 +3,8 @@
 
 import { AddressRefusal, BodyTooLargeError, isHeaderSafeCredential, MaxErrorBodyBytes, parseRetryAfter, ProviderStalledError, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
 import { AddCommentOperation, CreateTicketOperation, FindCustomerByEmailOperation, GetTicketOperation, SearchTicketsOperation, TransitionTicketOperation, UpdateTicketOperation } from './operations.js';
@@ -60,8 +61,10 @@ export class JiraServiceManagementClient {
       const credential = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
       token = credential.accessToken.reveal();
       if (!isHeaderSafeCredential(token)) throw new TypeError('invalid credential');
-    } catch {
-      return this.classification('defect', operation, 'AUTHENTICATION', 'Jira Service Management connection credentials are unavailable; reconnect the connection', {});
+    } catch (error) {
+      if (isTerminalCredentialError(error)) return this.classification('defect', operation, 'AUTHENTICATION', 'Jira Service Management connection credentials are unavailable; reconnect the connection', {});
+      // A credential store or broker outage is transient; a later attempt resolves again.
+      return this.classification('retry', operation, 'AVAILABILITY', 'Jira Service Management credential lookup is temporarily unavailable', {});
     }
     if (this.configuredCloudID || this.resolvedCloudID) return { token, cloudID: this.configuredCloudID || this.resolvedCloudID };
     const result = await this.exchange(call, { token, cloudID: '' }, { method: 'GET', api: 'gateway', path: '/oauth/token/accessible-resources' });
@@ -147,6 +150,8 @@ export class JiraServiceManagementClient {
     }
     if (response.status === 429 || response.status === 503) return this.classification('retry', operation, response.status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY', `Jira Service Management did not write the ${subject}`, receipt, this.retryAfter(response));
     if (response.status === 409) return this.classification('uncertain', operation, 'CONFLICT', `Jira Service Management ${subject} outcome requires read-back after HTTP 409`, receipt);
+    // A refusal status proves nothing when its body could not be read in full.
+    if (!isCompleteResponse(result)) return this.classification('uncertain', operation, 'TRANSPORT', `Jira Service Management ${subject} outcome is unknown after HTTP ${response.status} with an unreadable body`, receipt);
     if (response.status === 404) return this.classification('notFound', operation, 'NOT_FOUND', `Jira Service Management ${subject} was not found`, receipt);
     if (definiteWriteRefusalStatuses.has(response.status)) return this.classification('rejected', operation, statusFailureKind(response.status), `Jira Service Management rejected the ${subject} with HTTP ${response.status}`, receipt);
     return this.classification('uncertain', operation, 'AVAILABILITY', `Jira Service Management ${subject} outcome is unknown after HTTP ${response.status}`, receipt);
@@ -175,6 +180,16 @@ export class JiraServiceManagementClient {
   }
 
   private retryAfter(response: JiraResponse): number { return parseRetryAfter(String(response.headers['retry-after'] ?? ''), this.now()); }
+}
+
+/** Report a credential failure no retry fixes; a store or broker outage may pass. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof TypeError || error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
+}
+
+/** Report a response whose body was read in full; only then can it prove a refusal. */
+export function isCompleteResponse(result: JiraResult): boolean {
+  return !!result.response && !result.error && !result.response.isTooLarge && !result.response.reflectedSecret;
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value); }

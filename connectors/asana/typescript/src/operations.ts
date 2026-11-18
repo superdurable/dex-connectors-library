@@ -23,6 +23,16 @@ const parseTime = (value: unknown): string | undefined => {
 };
 const queryForFields = (fields: string): URLSearchParams => new URLSearchParams({ opt_fields: fields });
 
+const createdTaskStringFields = ['permalink_url', 'created_at'];
+/** Whether each field is absent, null, or a string, as the Go connector's typed decode requires. */
+const hasTypedFields = (resource: Record<string, unknown>, fields: string[]): boolean => fields.every(name => resource[name] === undefined || resource[name] === null || typeof resource[name] === 'string');
+/** Whether a story decodes as the Go connector's story: string fields and an object author. */
+const hasTypedStoryFields = (resource: Record<string, unknown>): boolean => {
+  const author = resource.created_by;
+  const isAuthorTyped = author === undefined || author === null || (typeof author === 'object' && !Array.isArray(author) && hasTypedFields(author as Record<string, unknown>, ['gid', 'name']));
+  return isAuthorTyped && hasTypedFields(resource, ['created_at']);
+};
+
 /** Statuses proving Asana refused a write; any other status leaves its outcome unknown. */
 const definiteWriteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 
@@ -48,12 +58,27 @@ class FencedWrite {
     return new FencedWrite(operation, fence, decision, operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1);
   }
 
-  /** Map unavailable credentials before the send. */
+  /**
+   * Map unavailable credentials before this attempt's send. After a possible earlier send, including one
+   * Asana accepted, it never records notSent: a transient failure retries and a terminal one selects
+   * uncertain. Before any send, a transient failure records notSent and retries, and a terminal one selects defect.
+   */
   async credentialFailure<T>(value: T, cause: Failure): Promise<MutationAttempt<T>> {
-    // notSent would hide an earlier send, and Asana credential failures cannot be told apart as transient.
-    if (this.hasPossibleEarlierSend) return newMutationRetry(failure(this.operation, cause.kind, `an earlier attempt of this Step may have sent the request and the connection credentials are unavailable: ${cause.message}`));
+    const isTerminal = cause.kind === 'AUTHENTICATION';
+    if (this.hasPossibleEarlierSend || this.decision.kind !== 'sendAllowed' || this.decision.marker?.providerId) {
+      if (isTerminal) return newMutationUncertain(value, failure(this.operation, cause.kind, `an earlier attempt of this Step may have sent the request and the connection credentials cannot read it back: ${cause.message}`), zeroReceipt());
+      return newMutationRetry(failure(this.operation, cause.kind, `an earlier attempt of this Step may have sent the request and the connection credentials are unavailable: ${cause.message}`));
+    }
     try { await this.fence.recordNotSent(); } catch { return newMutationRetry(failure(this.operation, 'AVAILABILITY', 'Asana setup failed and the not-sent checkpoint could not be recorded')); }
+    if (!isTerminal) return newMutationRetry(cause);
     return newMutationBranch('defect', value, zeroReceipt(), cause);
+  }
+
+  /** Retry an unusable 2xx only when its ID is saved, so the next attempt reads it back; otherwise select uncertain. */
+  async retryAcceptedReadBackOrSelectUncertain<T>(objectId: string, value: T, message: string, receipt: ReceiptDraft): Promise<MutationAttempt<T>> {
+    try { await this.fence.recordProviderId(objectId); }
+    catch { return this.acceptedWithoutIdentity(value, message, receipt); }
+    return newMutationRetry(failure(this.operation, 'PROTOCOL', `${message}, so the next attempt reads it back`));
   }
 
   /** Select uncertain for a 2xx without a usable ID; the accepted write is never sent again. */
@@ -144,8 +169,9 @@ export class ListTasksOperation implements Query<ListTasksInput, ListTasksOutput
     let query: URLSearchParams;
     try { query = listQuery(input); }
     catch (error) { return newQueryBranch('defect', emptyList, zeroReceipt(), failure('listTasks', 'VALIDATION', String(error))); }
-    const token = await this.client.token(call);
-    if (!token) return newQueryBranch('defect', emptyList, zeroReceipt(), failure('listTasks', 'AUTHENTICATION', 'Asana connection credentials are unavailable'));
+    const resolved = await this.client.tokenOrFailure(call, 'listTasks');
+    if ('failure' in resolved) return resolved.failure.kind === 'AUTHENTICATION' ? newQueryBranch('defect', emptyList, zeroReceipt(), resolved.failure) : newQueryRetry(resolved.failure);
+    const { token } = resolved;
     const exchange = await this.client.exchange(call, token, 'GET', '/tasks', query);
     const classified = readOutcome(this.client, 'listTasks', 'task list', exchange);
     if (classified.kind === 'retry') return newQueryRetry(classified.error!, classified.delay);
@@ -172,8 +198,9 @@ export class GetTaskOperation implements Query<GetTaskInput, Task> {
     let taskId: string;
     try { taskId = gid(input.taskId, 'taskId'); }
     catch (error) { return newQueryBranch('defect', emptyTask, zeroReceipt(), failure('getTask', 'VALIDATION', String(error))); }
-    const token = await this.client.token(call);
-    if (!token) return newQueryBranch('defect', emptyTask, zeroReceipt(), failure('getTask', 'AUTHENTICATION', 'Asana connection credentials are unavailable'));
+    const resolved = await this.client.tokenOrFailure(call, 'getTask');
+    if ('failure' in resolved) return resolved.failure.kind === 'AUTHENTICATION' ? newQueryBranch('defect', emptyTask, zeroReceipt(), resolved.failure) : newQueryRetry(resolved.failure);
+    const { token } = resolved;
     const exchange = await this.client.exchange(call, token, 'GET', `/tasks/${taskId}`, queryForFields(taskDetailFields));
     const classified = readOutcome(this.client, 'getTask', 'task', exchange);
     if (classified.kind === 'retry') return newQueryRetry(classified.error!, classified.delay);
@@ -200,8 +227,9 @@ export class CreateTaskOperation implements Mutation<CreateTaskInput, CreateTask
     const { fence, decision } = write;
     const taskId = decision.marker?.providerId;
     if (decision.kind === 'readBackRequired' && !taskId) return newMutationUncertain(requested, failure('createTask', 'TRANSPORT', 'earlier attempts of this Step may have sent the task and the send cap is reached, so it is not sent again'), this.client.receipt(call));
-    const token = await this.client.token(call);
-    if (!token) return taskId ? newMutationRetry(failure('createTask', 'AUTHENTICATION', 'Asana connection credentials are unavailable')) : write.credentialFailure(requested, failure('createTask', 'AUTHENTICATION', 'Asana connection credentials are unavailable'));
+    const resolved = await this.client.tokenOrFailure(call, 'createTask');
+    if ('failure' in resolved) return write.credentialFailure(requested, resolved.failure);
+    const { token } = resolved;
     if (taskId) return this.readBack(call, token, requested, taskId);
     let exchange: Exchange;
     try { exchange = await fence.dispatch(signal => this.client.exchange(call, token, 'POST', '/tasks', queryForFields(createdTaskFields), { data: fields }, signal)); }
@@ -214,6 +242,7 @@ export class CreateTaskOperation implements Mutation<CreateTaskInput, CreateTask
     try { resource = dataObject(exchange); gid(string(resource.gid), 'task gid'); }
     catch { return write.acceptedWithoutIdentity(requested, 'Asana accepted the task but returned an unusable task reference', receipt); }
     const createdId = string(resource.gid);
+    if (!hasTypedFields(resource, createdTaskStringFields)) return write.retryAcceptedReadBackOrSelectUncertain(createdId, requested, 'Asana accepted the task but returned an unusable task reference', receipt);
     try { await fence.recordProviderId(createdId); } catch { /* A lost checkpoint cannot authorize another POST. */ }
     return newMutationBranch('created', { ...requested, taskId: createdId, ...(string(resource.permalink_url) ? { permalinkUrl: string(resource.permalink_url) } : {}), ...(parseTime(resource.created_at) ? { createdAt: parseTime(resource.created_at) } : {}) }, this.client.receipt(call, createdId));
   }
@@ -225,7 +254,7 @@ export class CreateTaskOperation implements Mutation<CreateTaskInput, CreateTask
     if (classified.kind !== 'success') return newMutationUncertain(requested, failure('createTask', 'PROTOCOL', 'Asana task could not be confirmed by ID'), receipt);
     try {
       const resource = dataObject(exchange);
-      if (resource.gid !== taskId) throw new TypeError('task ID differs');
+      if (resource.gid !== taskId || !hasTypedFields(resource, createdTaskStringFields)) throw new TypeError('task ID differs');
       return newMutationBranch('created', { ...requested, taskId, ...(string(resource.permalink_url) ? { permalinkUrl: string(resource.permalink_url) } : {}), ...(parseTime(resource.created_at) ? { createdAt: parseTime(resource.created_at) } : {}) }, receipt);
     } catch { return newMutationUncertain(requested, failure('createTask', 'PROTOCOL', 'Asana task read-back did not match the checkpointed ID'), receipt); }
   }
@@ -242,8 +271,9 @@ export class UpdateTaskOperation implements Mutation<UpdateTaskInput, UpdateTask
     let fields: Record<string, unknown>, taskId: string, sectionId: string;
     try { ({ fields, taskId, sectionId } = updateFields(input)); }
     catch (error) { return newMutationBranch('defect', output, zeroReceipt(), failure('updateTask', 'VALIDATION', String(error))); }
-    const token = await this.client.token(call);
-    if (!token) return newMutationBranch('defect', output, zeroReceipt(), failure('updateTask', 'AUTHENTICATION', 'Asana connection credentials are unavailable'));
+    const resolved = await this.client.tokenOrFailure(call, 'updateTask');
+    if ('failure' in resolved) return resolved.failure.kind === 'AUTHENTICATION' ? newMutationBranch('defect', output, zeroReceipt(), resolved.failure) : newMutationRetry(resolved.failure);
+    const { token } = resolved;
     const receipt = this.client.receipt(call, taskId);
     if (sectionId) {
       const exchange = await this.client.exchange(call, token, 'POST', `/sections/${sectionId}/addTask`, new URLSearchParams(), { data: { task: taskId } });
@@ -296,8 +326,9 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
     const { fence, decision } = write;
     const storyId = decision.marker?.providerId;
     if (decision.kind === 'readBackRequired' && !storyId) return newMutationUncertain(requested, failure('addComment', 'TRANSPORT', 'earlier attempts of this Step may have sent the comment and the send cap is reached, so it is not sent again'), this.client.receipt(call));
-    const token = await this.client.token(call);
-    if (!token) return storyId ? newMutationRetry(failure('addComment', 'AUTHENTICATION', 'Asana connection credentials are unavailable')) : write.credentialFailure(requested, failure('addComment', 'AUTHENTICATION', 'Asana connection credentials are unavailable'));
+    const resolved = await this.client.tokenOrFailure(call, 'addComment');
+    if ('failure' in resolved) return write.credentialFailure(requested, resolved.failure);
+    const { token } = resolved;
     if (storyId) return this.readBack(call, token, requested, storyId);
     let exchange: Exchange;
     try { exchange = await fence.dispatch(signal => this.client.exchange(call, token, 'POST', `/tasks/${taskId}/stories`, queryForFields(createdStoryFields), { data: { text: input.text } }, signal)); }
@@ -310,6 +341,7 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
     try { resource = dataObject(exchange); gid(string(resource.gid), 'story gid'); }
     catch { return write.acceptedWithoutIdentity(requested, 'Asana accepted the comment but returned an unusable story reference', receipt); }
     const createdId = string(resource.gid);
+    if (!hasTypedStoryFields(resource)) return write.retryAcceptedReadBackOrSelectUncertain(createdId, requested, 'Asana accepted the comment but returned an unusable story reference', receipt);
     try { await fence.recordProviderId(createdId); } catch { /* A lost checkpoint cannot authorize another POST. */ }
     return newMutationBranch('added', storyOutput(requested, resource), this.client.receipt(call, createdId));
   }
@@ -321,7 +353,7 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
     if (classified.kind !== 'success') return newMutationUncertain(requested, failure('addComment', 'PROTOCOL', 'Asana comment could not be confirmed by ID'), receipt);
     try {
       const resource = dataObject(exchange);
-      if (resource.gid !== storyId) throw new TypeError('story ID differs');
+      if (resource.gid !== storyId || !hasTypedStoryFields(resource)) throw new TypeError('story ID differs');
       return newMutationBranch('added', storyOutput(requested, resource), receipt);
     } catch { return newMutationUncertain(requested, failure('addComment', 'PROTOCOL', 'Asana comment read-back did not match the checkpointed ID'), receipt); }
   }

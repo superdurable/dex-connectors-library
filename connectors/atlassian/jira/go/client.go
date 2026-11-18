@@ -527,6 +527,9 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureRateLimit, "Jira rate limited the "+subject+" before writing it")}
 	case response.statusCode == http.StatusServiceUnavailable:
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, "Jira "+subject+" is temporarily unavailable")}
+	case !isCompleteResponse(response):
+		// A refusal status proves nothing when its body could not be read in full.
+		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureTransport, fmt.Sprintf("Jira %s outcome is unknown after HTTP %d with an unreadable body", subject, response.statusCode))}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode, nil)}
 	case isDefiniteWriteRefusalStatus(response.statusCode):

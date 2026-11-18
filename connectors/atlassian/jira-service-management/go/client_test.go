@@ -153,10 +153,16 @@ func TestRateLimitedReadRetriesAfterRetryAfter(t *testing.T) {
 func TestUnavailableCredentialsSelectDefectWithoutAProviderRequest(t *testing.T) {
 	provider := newRecordingProvider(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
 	client, err := jiraservicemanagement.New(jiraservicemanagement.Config{CloudID: testCloudID, Endpoint: provider.URL},
-		sdkgo.StaticCredentialProvider[jiraservicemanagement.Credentials]{})
+		unavailableCredentials{isTerminal: true})
 	require.NoError(t, err)
 	result, err := sdkgo.RunMutation(newTestDexContext("no-credentials"), client.CreateTicket(), jsmConnection, validCreateTicketInput())
 	require.NoError(t, err)
 	require.Equal(t, jiraservicemanagement.CreateTicketBranchDefect, result.Branch)
 	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+
+	unconfigured, err := jiraservicemanagement.New(jiraservicemanagement.Config{CloudID: testCloudID, Endpoint: provider.URL},
+		sdkgo.StaticCredentialProvider[jiraservicemanagement.Credentials]{})
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(newTestDexContext("credential-lookup-failure"), unconfigured.CreateTicket(), jsmConnection, validCreateTicketInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
 }

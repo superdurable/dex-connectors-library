@@ -1490,17 +1490,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
+        "branch": "",
         "failureKind": "NOT_FOUND",
-        "output": {
-          "content": "",
-          "description": "",
-          "id": "",
-          "isCompleted": false,
-          "projectId": ""
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1557,17 +1550,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
+        "branch": "",
         "failureKind": "AUTHORIZATION",
-        "output": {
-          "content": "",
-          "description": "",
-          "id": "",
-          "isCompleted": false,
-          "projectId": ""
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

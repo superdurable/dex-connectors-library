@@ -54,8 +54,8 @@ UPDATE_TASK_CONTENT_DEFINITION = MutationDefinition(
     OperationRef(CONNECTOR_ID, UPDATE_TASK_CONTENT_OPERATION_ID),
     (
         BranchDefinition(UPDATED, "Todoist confirmed every specified field and returned the task.", False),
-        BranchDefinition(NOT_FOUND, "Todoist reports that the task does not exist, or the read-back after an unusable answer found no active task.", True),
-        BranchDefinition(PROVIDER_REJECTED, "Todoist conclusively rejected the update, or rejected the read-back that would confirm an unusable answer.", True),
+        BranchDefinition(NOT_FOUND, "Todoist reports that the task does not exist. An accepted update whose read-back finds no active task repeats instead.", True),
+        BranchDefinition(PROVIDER_REJECTED, "Todoist conclusively rejected the update. An accepted update whose read-back is rejected repeats instead.", True),
         BranchDefinition(DEFECT, "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", True),
     ),
     StepDefaults(

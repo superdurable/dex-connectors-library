@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 import { AddCommentOperation, CreateTaskOperation, FindMemberByEmailOperation, GetTaskOperation, SearchTasksOperation, UpdateTaskOperation, UpdateTaskTagsOperation } from './operations.js';
 
@@ -66,15 +67,15 @@ export class ClickUpClient {
 
   /** Send a bounded API request and classify its response; signal can bound a multi-request operation. */
   async exchange(call: Call, operation: string, method: string, path: string, query?: URLSearchParams, payload?: unknown, signal = call.context.cancellationSignal): Promise<Exchange> {
-    let token: string;
-    try {
-      const credentials = await this.credentials.resolve(call, signal);
-      if (!(credentials.apiToken instanceof SecretString)) throw new TypeError('missing token');
-      token = credentials.apiToken.reveal();
-      if (!isHeaderSafeCredential(token) || !token.startsWith('pk_') || token.length <= 3) throw new TypeError('invalid token');
-    } catch {
-      return this.outcome('defect', operation, 'AUTHENTICATION', 'ClickUp connection credentials are unavailable');
+    let credentials: Credentials;
+    try { credentials = await this.credentials.resolve(call, signal); }
+    catch (error) {
+      if (isTerminalCredentialError(error)) return this.outcome('defect', operation, 'AUTHENTICATION', 'ClickUp connection credentials are missing or need reauthorization');
+      // A transient store or broker failure happens before the request, so it is proven not sent.
+      return this.outcome('notSent', operation, 'AVAILABILITY', 'ClickUp connection credentials could not be read, so nothing was sent');
     }
+    const token = credentials.apiToken instanceof SecretString ? credentials.apiToken.reveal() : '';
+    if (!isHeaderSafeCredential(token) || !token.startsWith('pk_') || token.length <= 3) return this.outcome('defect', operation, 'AUTHENTICATION', 'ClickUp connection credentials are invalid');
     let body: Uint8Array | undefined;
     try { if (payload !== undefined) body = Buffer.from(JSON.stringify(payload)); }
     catch { return this.outcome('defect', operation, 'LOCAL_DEFECT', 'ClickUp request could not be built'); }
@@ -132,6 +133,11 @@ export class ClickUpClient {
   private outcome(kind: Exclude<Exchange['kind'], 'succeeded'>, operation: string, failureKind: Failure['kind'], message: string, retryAfterMs = 0, status = 0): Exchange {
     return { kind, failure: { kind: failureKind, provider: 'clickup', operation, message }, retryAfterMs, status };
   }
+}
+
+/** Report a credential resolution failure that no retry fixes; others, such as store reads, may pass. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
 }
 
 function readErrorCode(body: Uint8Array): string {

@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/asana/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -50,9 +51,16 @@ var unkeyedWriteTestOperations = []unkeyedWriteTestOperation{
 	},
 }
 
-type failingAttemptCredentials struct{ attempt int32 }
+// failingAttemptCredentials fails one attempt's resolution with err, or a transient store error when err is nil.
+type failingAttemptCredentials struct {
+	attempt int32
+	err     error
+}
 
 func (credentials failingAttemptCredentials) Resolve(call sdkgo.Call) (asana.Credentials, error) {
+	if call.Context.Attempt() == credentials.attempt && credentials.err != nil {
+		return asana.Credentials{}, credentials.err
+	}
 	if call.Context.Attempt() == credentials.attempt {
 		return asana.Credentials{}, errors.New("credential store unavailable")
 	}
@@ -98,6 +106,13 @@ func newClientWithCredentialFailure(t *testing.T, endpoint string, failedAttempt
 	return client
 }
 
+func newClientWithTerminalCredentialFailure(t *testing.T, endpoint string, failedAttempt int32, resolveErr error) *asana.Client {
+	t.Helper()
+	client, err := asana.New(asana.Config{Endpoint: endpoint}, failingAttemptCredentials{attempt: failedAttempt, err: resolveErr})
+	require.NoError(t, err)
+	return client
+}
+
 func changedCheckpoint(t *testing.T, original json.RawMessage, change func(map[string]any)) json.RawMessage {
 	t.Helper()
 	var checkpoint map[string]any
@@ -127,7 +142,7 @@ func TestUnkeyedWritesRetryCredentialFailureAfterAcceptedIDWithoutAnotherPost(t 
 			require.Equal(t, operation.successBranch, branch)
 			second := newReplayAsanaDexContext("credential-id", 2, first.lastHeartbeat())
 			_, _, err = operation.run(client, second)
-			requireRetry(t, err, sdkgo.FailureAuthentication)
+			requireRetry(t, err, sdkgo.FailureAvailability)
 			require.Equal(t, 1, provider.requestCount())
 			third := newReplayAsanaDexContext("credential-id", 3, first.lastHeartbeat())
 			branch, receipt, err := operation.run(client, third)
@@ -136,6 +151,35 @@ func TestUnkeyedWritesRetryCredentialFailureAfterAcceptedIDWithoutAnotherPost(t 
 			require.Equal(t, operation.objectID, receipt.ProviderObjectID)
 			require.Equal(t, 2, provider.requestCount())
 		})
+	}
+}
+
+func TestUnkeyedWritesTerminalCredentialFailureAfterAPossibleSendIsUncertain(t *testing.T) {
+	for _, operation := range unkeyedWriteTestOperations {
+		for name, resolveErr := range map[string]error{
+			"reauthorization required": sdkgo.ErrReauthorizationRequired,
+			"connection not selected":  projectconfig.ErrConnectionNotSelected,
+			"broker rejected":          projectconfig.ErrCredentialBrokerRejected,
+			"object not found":         projectconfig.ErrObjectNotFound,
+		} {
+			t.Run(operation.name+"/"+name, func(t *testing.T) {
+				for _, firstStatus := range []int{http.StatusCreated, http.StatusInternalServerError} {
+					provider := newRecordingAsana(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+						writeJSON(t, response, firstStatus, operation.acceptedBody)
+					})
+					client := newClientWithTerminalCredentialFailure(t, provider.URL, 2, resolveErr)
+					first := newReplayAsanaDexContext("credential-terminal", 1, nil)
+					first.keepOnlyFirst = true
+					_, _, _ = operation.run(client, first)
+					second := newReplayAsanaDexContext("credential-terminal", 2, first.lastHeartbeat())
+					branch, _, err := operation.run(client, second)
+					require.NoError(t, err)
+					require.Equal(t, operation.uncertainBranch, branch, "an accepted or unknown earlier send may have written")
+					require.Equal(t, first.lastHeartbeat(), second.lastHeartbeat(), "notSent would hide the earlier send")
+					require.Equal(t, 1, provider.requestCount())
+				}
+			})
+		}
 	}
 }
 
@@ -154,11 +198,12 @@ func TestUnkeyedWritesCredentialFailureAfterDispatchCannotSelectDefect(t *testin
 			// An earlier send may have applied, so the attempt retries without defect or a notSent marker.
 			second := newReplayAsanaDexContext("credential-dispatch", 2, first.lastHeartbeat())
 			_, _, err = operation.run(client, second)
-			requireRetry(t, err, sdkgo.FailureAuthentication)
+			requireRetry(t, err, sdkgo.FailureAvailability)
 			require.Equal(t, first.lastHeartbeat(), second.lastHeartbeat(), "notSent would hide the earlier send")
+			// A second attempt without a checkpoint may follow an unrecorded send, so it records nothing.
 			missing := newReplayAsanaDexContext("credential-dispatch", 2, nil)
 			_, _, err = operation.run(client, missing)
-			requireRetry(t, err, sdkgo.FailureAuthentication)
+			requireRetry(t, err, sdkgo.FailureAvailability)
 			require.Empty(t, missing.lastHeartbeat())
 			require.Equal(t, 1, provider.requestCount())
 		})
@@ -327,11 +372,14 @@ func TestUnkeyedWriteCredentialFailureAfterResendPermissionIsDefect(t *testing.T
 			provider := newRecordingAsana(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 				writeJSON(t, response, http.StatusServiceUnavailable, `{}`)
 			})
-			client := newClientWithCredentialFailure(t, provider.URL, 2)
+			client := newClientWithTerminalCredentialFailure(t, provider.URL, 2, sdkgo.ErrReauthorizationRequired)
 			first := newReplayAsanaDexContext("credential-resend", 1, nil)
 			_, _, err := operation.run(client, first)
 			requireRetry(t, err, sdkgo.FailureAvailability)
 			second := newReplayAsanaDexContext("credential-resend", 2, first.lastHeartbeat())
+			_, _, err = operation.run(newClientWithCredentialFailure(t, provider.URL, 2), second)
+			requireRetry(t, err, sdkgo.FailureAvailability)
+			second = newReplayAsanaDexContext("credential-resend", 2, first.lastHeartbeat())
 			branch, _, err := operation.run(client, second)
 			require.NoError(t, err)
 			switch operation.operationID {

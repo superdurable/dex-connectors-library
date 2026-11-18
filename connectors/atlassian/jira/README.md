@@ -25,7 +25,7 @@ API behavior remain unverified.
 | `searchIssues` | Query | async | `searched` | `providerRejected`, `invalidResponse`, `defect` |
 | `getIssue` | Query | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `createIssue` | Mutation | sync | `created` | `providerRejected`, `uncertain`, `defect` |
-| `transitionIssue` | Mutation | async | `transitioned` | `notFound`, `transitionUnavailable`, `providerRejected`, `invalidResponse`, `defect` |
+| `transitionIssue` | Mutation | sync | `transitioned` | `notFound`, `transitionUnavailable`, `providerRejected`, `invalidResponse`, `defect` |
 | `addComment` | Mutation | sync | `added` | `notFound`, `providerRejected`, `uncertain`, `defect` |
 
 Status, issue type, and priority names are the site's own values and are never
@@ -361,19 +361,26 @@ screen's resolution. The operation:
    status;
 3. selects `transitionUnavailable` when no available transition matches, or
    several do, with the current status and up to 50 available transitions;
-4. performs the transition, and after any response other than 204, 404, or
-   429 reads the issue again. When the issue reached the destination, the
-   result is `transitioned`. Otherwise a conclusive 4xx selects
-   `providerRejected` with the field IDs, and a 409, 5xx, or dropped connection
-   retries.
+4. performs the transition once behind the `sdkgo/singledispatch` fence, and
+   after any response other than 2xx, 404, 429, or 503 reads the issue again.
+   When the issue reached the destination, the result is `transitioned`.
+   Otherwise a conclusive 4xx with a fully read body selects
+   `providerRejected` with the field IDs, and a 409, other 5xx, cut body, or
+   dropped connection retries. A 2xx whose body breaks, even at the write
+   deadline, is `transitioned`.
 
-Jira refuses a transition that is not available from the issue's current
-status, so a repeated or concurrent attempt cannot move an issue twice; the
-manifest declares `repeatOnUnknown: safe`, and an unknown outcome retries. Set
-`DestinationStatusName` whenever the destination is known: a retried or backup
-attempt then recognizes a transition Jira already made. With only a transition
-ID or name, such an attempt finds the transition no longer offered and selects
-`transitionUnavailable` with `Status` already at the destination.
+The manifest declares `repeatOnUnknown: safe` because a repeated attempt never
+sends the transition again after a possible earlier send: a workflow can offer
+a transition with the same name back, so a second POST could undo the first. A
+429, 503, refusal, or provably unsent request records `canResend`, and only
+then may the next attempt transition. After a possible earlier send, the
+attempt rereads the issue and selects `transitioned` when its status equals
+`DestinationStatusName` or the matched transition leads to the current status.
+Otherwise it returns Retry, never `notFound`, `transitionUnavailable`,
+`providerRejected`, `invalidResponse`, or `defect`, until the retry budget
+ends and the Flow fails for review. Set `DestinationStatusName` whenever the
+destination is known so a retried attempt can recognize a transition Jira
+already made.
 
 ### addComment
 
@@ -390,9 +397,17 @@ attempt and retry rules. The create test records one request and one issue;
 the timeout tests check that an unconfirmed write is resent at most up to the
 send cap before `uncertain`. Keep these Steps sync to reduce replay risk.
 
-`transitionIssue` keeps the async default. A lost Worker after Jira applies
-the transition causes another Execute; it reads the destination status and
-does not send the transition again. The integration test checks one POST.
+`transitionIssue` is also sync, because its fence checkpoint must be visible to
+the next attempt. A lost Worker after Jira applies the transition causes
+another Execute; it reads the issue and does not send the transition again.
+The integration test checks one POST.
+
+In Python, the fence's write window cancels a dispatch whose body is still
+being read. Each write records the HTTP status when headers arrive, so a 2xx
+cut off by the write deadline counts as accepted: creates and comments are
+read back by their Call ID property and otherwise select `uncertain`, and a
+transition is `transitioned`. A refusal status whose body could not be read in
+full is an unknown outcome in every language.
 
 Each create and comment includes a non-secret hash of the stable Call ID in a
 Jira entity property. The released `sdkgo/singledispatch` fence owns the Dex

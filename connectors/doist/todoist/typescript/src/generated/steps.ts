@@ -46,9 +46,9 @@ export interface UpdateTaskStepConfig<StepInput, OperationInput = UpdateTaskInpu
   connectionName: string;
   /** Todoist confirmed every specified field and returned the task. */
   updated: StepTarget<MutationResult<OperationOutput>>;
-  /** Todoist reports that the task does not exist, or the read-back after an unusable answer found no active task. */
+  /** Todoist reports that the task does not exist. An accepted update whose read-back finds no active task repeats instead. */
   notFound?: StepTarget<MutationResult<OperationOutput>>;
-  /** Todoist conclusively rejected the update, or rejected the read-back that would confirm an unusable answer. */
+  /** Todoist conclusively rejected the update. An accepted update whose read-back is rejected repeats instead. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

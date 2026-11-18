@@ -1134,7 +1134,7 @@ func TestCreateTaskCredentialFailureAfterRateLimitedResendNeverRecordsNotSent(t 
 	require.Equal(t, int32(2), posts.Load())
 }
 
-func TestUpdateReadBackOfInactiveTaskSelectsNotFound(t *testing.T) {
+func TestUpdateReadBackOfInactiveTaskRetries(t *testing.T) {
 	for name, postBody := range map[string]string{
 		"malformed answer":  "{",
 		"mismatched answer": taskJSON("A concurrent edit"),
@@ -1152,18 +1152,18 @@ func TestUpdateReadBackOfInactiveTaskSelectsNotFound(t *testing.T) {
 				require.NoError(t, err)
 			}))
 			defer server.Close()
-			result, err := updateTask(newTestClient(t, server.URL), "Requested title")
-			require.NoError(t, err)
-			require.Equal(t, UpdateTaskBranchNotFound, result.Branch)
-			require.Equal(t, sdkgo.FailureNotFound, result.Failure.Kind)
-			require.Contains(t, result.Failure.Message, "no longer active")
+			_, err := updateTask(newTestClient(t, server.URL), "Requested title")
+			// An accepted update never selects notFound from its read-back.
+			retry := requireRetry(t, err)
+			require.Equal(t, sdkgo.FailureNotFound, retry.Failure.Kind)
+			require.Contains(t, retry.Failure.Message, "no longer active")
 			require.Equal(t, int32(1), posts.Load())
 			require.Equal(t, int32(1), reads.Load())
 		})
 	}
 }
 
-func TestUpdateReadBackRejectionSelectsProviderRejected(t *testing.T) {
+func TestUpdateReadBackRejectionRetries(t *testing.T) {
 	for _, scenario := range []struct {
 		status int
 		kind   sdkgo.FailureKind
@@ -1195,18 +1195,16 @@ func TestUpdateReadBackRejectionSelectsProviderRejected(t *testing.T) {
 				require.NoError(t, err)
 			}))
 			defer server.Close()
-			result, err := updateTask(newTestClient(t, server.URL), "Requested title")
+			_, err := updateTask(newTestClient(t, server.URL), "Requested title")
 			require.Equal(t, int32(1), posts.Load())
 			require.Equal(t, int32(1), reads.Load())
+			// An accepted update never selects providerRejected from its read-back.
+			retry := requireRetry(t, err)
 			if scenario.kind == "" {
-				var retry *sdkgo.RetryError
-				require.ErrorAs(t, err, &retry)
 				return
 			}
-			require.NoError(t, err)
-			require.Equal(t, UpdateTaskBranchProviderRejected, result.Branch)
-			require.Equal(t, scenario.kind, result.Failure.Kind)
-			require.Equal(t, fmt.Sprintf("Todoist rejected the read-back with HTTP %d, so the update could not be confirmed; repeating it is safe because it sets absolute field values", scenario.status), result.Failure.Message)
+			require.Equal(t, scenario.kind, retry.Failure.Kind)
+			require.Equal(t, fmt.Sprintf("Todoist rejected the read-back with HTTP %d, so the update could not be confirmed; repeating it is safe because it sets absolute field values", scenario.status), retry.Failure.Message)
 		})
 	}
 }

@@ -151,8 +151,8 @@ async def test_budget_timeout_distinguishes_dispatch(headers_started: bool) -> N
 
 
 @pytest.mark.asyncio
-async def test_update_read_back_request_construction_defect() -> None:
-    """A local GET construction failure after an accepted write is terminal."""
+async def test_update_read_back_request_construction_failure_retries() -> None:
+    """A local GET construction failure after an accepted write retries; it never selects defect."""
 
     def answer_update(request: httpx.Request) -> httpx.Response:
         assert request.method == "POST"
@@ -184,7 +184,7 @@ async def test_update_read_back_request_construction_defect() -> None:
         answer = await client.update_task_content().invoke(
             _call("updateTaskContent"), UpdateTaskInput("task-123", content="new")
         )
-        assert answer.kind == "branch" and answer.branch == "defect"
+        assert answer.kind == "retry"
         assert answer.failure is not None
         assert answer.failure.kind == sdk.FailureKind.LOCAL_DEFECT
 

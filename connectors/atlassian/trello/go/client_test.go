@@ -4,6 +4,7 @@
 package trello_test
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/atlassian/trello/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -146,11 +148,31 @@ func TestUnavailableOrUnsafeCredentialsSelectDefectWithoutAProviderRequest(t *te
 		require.Equal(t, trello.CreateCardBranchDefect, result.Branch, name)
 		require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind, name)
 	}
-	unknown, err := trello.New(trello.Config{Endpoint: provider.URL}, sdkgo.StaticCredentialProvider[trello.Credentials]{})
+	unknown, err := trello.New(trello.Config{Endpoint: provider.URL}, failingTrelloCredentials{fmt.Errorf("read connection: %w", projectconfig.ErrObjectNotFound)})
 	require.NoError(t, err)
 	result, err := sdkgo.RunQuery(newTrelloDexContext("unknown-connection"), unknown.GetCard(), trelloConnection, trello.GetCardInput{CardID: testCardID})
 	require.NoError(t, err)
 	require.Equal(t, trello.GetCardBranchDefect, result.Branch)
+}
+
+func TestTransientCredentialFailuresRetryAndRecordNotSentOnAFirstSend(t *testing.T) {
+	provider := newRecordingTrello(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	for name, source := range map[string]sdkgo.CredentialProvider[trello.Credentials]{
+		"broker unavailable": failingTrelloCredentials{fmt.Errorf("resolve: %w", projectconfig.ErrCredentialBrokerUnavailable)},
+		"untyped store read": failingTrelloCredentials{errors.New("project object read failed")},
+	} {
+		client, err := trello.New(trello.Config{Endpoint: provider.URL}, source)
+		require.NoError(t, err)
+		ctx := newTrelloDexContext("transient-credentials")
+		_, err = sdkgo.RunMutation(ctx, client.CreateCard(), trelloConnection, validCreateCardInput())
+		requireRetry(t, err, sdkgo.FailureAvailability)
+		require.Contains(t, string(ctx.recordedHeartbeat), `"state":"notSent"`, name)
+		_, err = sdkgo.RunMutation(newTrelloDexContext("transient-credentials-update"), client.UpdateCard(), trelloConnection,
+			trello.UpdateCardInput{CardID: testCardID, IsClosed: boolPointer(true)})
+		requireRetry(t, err, sdkgo.FailureAvailability)
+		_, err = sdkgo.RunQuery(newTrelloDexContext("transient-credentials-read"), client.GetCard(), trelloConnection, trello.GetCardInput{CardID: testCardID})
+		requireRetry(t, err, sdkgo.FailureAvailability)
+	}
 }
 
 func TestRedirectsAreNeverFollowed(t *testing.T) {

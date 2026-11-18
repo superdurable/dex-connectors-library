@@ -44,6 +44,19 @@ func TestUpdateCardSendsAbsoluteValuesAndConfirmsThemOnARead(t *testing.T) {
 	require.Equal(t, http.MethodGet, provider.request(1).method)
 }
 
+func TestUpdateCardRetriesARefusalWhoseBodyIsInterrupted(t *testing.T) {
+	provider := newRecordingTrello(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		response.Header().Set("Content-Length", "100")
+		response.WriteHeader(http.StatusBadRequest)
+		_, err := response.Write([]byte(`partial`))
+		require.NoError(t, err)
+	})
+	_, err := sdkgo.RunMutation(newTrelloDexContext("update-interrupted-refusal"), newTrelloClient(t, provider.URL).UpdateCard(),
+		trelloConnection, trello.UpdateCardInput{CardID: testCardID, IsClosed: boolPointer(true)})
+	requireRetry(t, err, sdkgo.FailureTransport)
+	require.Equal(t, 1, provider.requestCount())
+}
+
 func TestUpdateCardReadsBackAfterAcceptedPutBodyIsInterrupted(t *testing.T) {
 	provider := newRecordingTrello(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		if request.Method == http.MethodPut {
@@ -70,12 +83,12 @@ func TestUpdateCardClearsDueAndEveryLabelWithExplicitValues(t *testing.T) {
 	})
 	noLabels := []string{}
 	isDueComplete := true
-	result, err := sdkgo.RunMutation(newTrelloDexContext("update-clear"), newTrelloClient(t, provider.URL).UpdateCard(), trelloConnection,
+	_, err := sdkgo.RunMutation(newTrelloDexContext("update-clear"), newTrelloClient(t, provider.URL).UpdateCard(), trelloConnection,
 		trello.UpdateCardInput{CardID: testCardID, ShouldClearDue: true, LabelIDs: &noLabels, IsDueComplete: &isDueComplete})
-	require.NoError(t, err)
 	require.JSONEq(t, `{"due":null,"idLabels":"","dueComplete":true}`, provider.request(0).body)
-	require.Equal(t, trello.UpdateCardBranchInvalidResponse, result.Branch, "the read-back card is not due-complete")
-	require.Equal(t, "Trello accepted the update but the card read back does not show the requested due-complete state", result.Failure.Message)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "the read-back card is not due-complete, so the accepted update repeats")
+	require.Equal(t, "Trello accepted the update but the card read back does not show the requested due-complete state, so the update is sent again", retry.Failure.Message)
 }
 
 func TestUpdateCardAddsAndRemovesLabelsFromAFreshRead(t *testing.T) {
@@ -164,10 +177,11 @@ func TestUpdateCardDetectsAReadBackThatDoesNotShowTheChange(t *testing.T) {
 		provider := newRecordingTrello(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 			writeJSON(t, response, http.StatusOK, cardJSON(cardJSONOptions{labelIDs: []string{testLabelID}}))
 		})
-		result, err := sdkgo.RunMutation(newTrelloDexContext("update-unapplied"), newTrelloClient(t, provider.URL).UpdateCard(), trelloConnection, test.input)
-		require.NoError(t, err, name)
-		require.Equal(t, trello.UpdateCardBranchInvalidResponse, result.Branch, name)
-		require.Equal(t, "Trello accepted the update but the card read back does not show the requested "+test.field, result.Failure.Message, name)
+		_, err := sdkgo.RunMutation(newTrelloDexContext("update-unapplied"), newTrelloClient(t, provider.URL).UpdateCard(), trelloConnection, test.input)
+		// An accepted update never selects invalidResponse; it repeats.
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, name)
+		require.Equal(t, "Trello accepted the update but the card read back does not show the requested "+test.field+", so the update is sent again", retry.Failure.Message, name)
 	}
 }
 

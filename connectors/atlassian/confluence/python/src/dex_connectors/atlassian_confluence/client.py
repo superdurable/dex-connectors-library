@@ -16,6 +16,7 @@ from dex_connectors.sdk import (
     Call,
     Failure,
     FailureKind,
+    ReauthorizationRequiredError,
     Receipt,
 )
 from dex_connectors.sdk.providerhttp import (
@@ -106,6 +107,11 @@ class Classification:
     retry_after: float = 0
 
 
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential failure no retry fixes; others, such as broker outages, may pass."""
+    return isinstance(error, (ValueError, LookupError, AttributeError, ReauthorizationRequiredError))
+
+
 @dataclass(frozen=True, slots=True)
 class SessionError(Exception):
     """A terminal or retryable failure before operation dispatch."""
@@ -186,6 +192,15 @@ class Client:
             if not is_header_safe_credential(token):
                 raise ValueError("invalid token")
         except Exception as error:
+            if not _is_terminal_credential_error(error):
+                raise SessionError(
+                    failure(
+                        operation,
+                        FailureKind.AVAILABILITY,
+                        "Confluence connection credentials could not be read, so nothing was sent",
+                    ),
+                    True,
+                ) from error
             raise SessionError(
                 failure(
                     operation,
@@ -293,8 +308,12 @@ class Client:
         path: str,
         query: dict[str, str] | None = None,
         payload: object | None = None,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Send one bounded exchange and refresh a rejected token once."""
+        """Send one bounded exchange and refresh a rejected token once.
+
+        ``observed_statuses`` receives each status once headers arrive, before the body is read.
+        """
         prefix = (
             ""
             if api == "gateway"
@@ -324,6 +343,8 @@ class Client:
                 return Exchange(error="transport", is_dispatched=not error.provably_not_sent)
             except (ValueError, httpx.InvalidURL):
                 return Exchange(error="request")
+            if observed_statuses is not None:
+                observed_statuses.append(response.status_code)
             if (
                 response.status_code == 401
                 and attempt == 0
@@ -490,6 +511,16 @@ class Client:
                     f"Confluence was unavailable, so no {subject} was written",
                 ),
                 self.retry_after(response),
+            )
+        if response.body_failed or response.is_too_large:
+            # A refusal status proves nothing without its full body, so the outcome is unknown.
+            return Classification(
+                "ambiguous",
+                failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    f"Confluence {subject} outcome is unknown after HTTP {status} with an unreadable body",
+                ),
             )
         if status == 404:
             return Classification(

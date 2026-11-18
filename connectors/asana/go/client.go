@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -225,6 +226,10 @@ func (client *Client) startSession(call sdkgo.Call, operationID string) (*operat
 		}
 	}
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		// Kind FailureAvailability marks a transient failure; FailureAuthentication a terminal one.
+		return nil, nil, failurePointer(operationID, sdkgo.FailureAvailability, "Asana connection credentials could not be read, so nothing was sent")
+	}
 	if err != nil || validateResolvedCredentials(credentials) != nil {
 		return nil, nil, failurePointer(operationID, sdkgo.FailureAuthentication, "Asana connection credentials are unavailable; save a personal access token for the connection")
 	}
@@ -519,6 +524,13 @@ func (observation *dispatchObservation) recordConnectionFailure() {
 	observation.mutex.Lock()
 	defer observation.mutex.Unlock()
 	observation.hasFailedToConnect = true
+}
+
+// isTerminalCredentialError reports a credential resolution failure that no retry fixes; others, such as store reads, may pass.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // validateResolvedCredentials accepts a token that can authorize one request without breaking its header.

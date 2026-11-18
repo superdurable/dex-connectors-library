@@ -3,7 +3,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import { ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { MondayClient } from '../src/client.js';
 import { AddUpdateDefinition, CreateItemDefinition, UpdateItemColumnValuesDefinition } from '../src/generated/definitions.js';
 
@@ -137,7 +138,7 @@ describe('monday.com bounded resend of unconfirmed writes', () => {
       expect(await run(newClient(status).client, 'addUpdate', context)).toBe('retry');
     }
     const before = context.marker;
-    const missing = async () => { throw new Error('connection credentials are unavailable'); };
+    const missing = async () => { throw new ObjectNotFoundError(); };
     const requests: ProviderRequest[] = [];
     const broken = new MondayClient({}, { resolve: missing, resolveWithRefresh: missing }, {
       apiURL: 'http://127.0.0.1/v2', send: async (request: ProviderRequest) => { requests.push(request); return { status: 200, headers: {}, body: Buffer.from(JSON.stringify(addedUpdate)) }; },
@@ -146,6 +147,63 @@ describe('monday.com bounded resend of unconfirmed writes', () => {
     expect(await run(broken, 'addUpdate', context)).toBe('uncertain');
     expect(context.marker).toBe(before);
     expect(requests).toHaveLength(0);
+  });
+
+  it.each([
+    ['broker unavailable', () => new CredentialBrokerUnavailableError(), true],
+    ['store read', () => new Error('project storage read timed out'), true],
+    ['object not found', () => new ObjectNotFoundError(), false],
+    ['connection not selected', () => new ConnectionNotSelectedError(), false],
+    ['broker rejected', () => new CredentialBrokerRejectedError(), false],
+  ] as const)('retries a transient credential failure and selects defect only for a terminal one: %s', async (_name, newError, isTransient) => {
+    const failing = async () => { throw newError(); };
+    const requests: ProviderRequest[] = [];
+    const broken = new MondayClient({}, { resolve: failing, resolveWithRefresh: failing }, {
+      apiURL: 'http://127.0.0.1/v2', send: async (request: ProviderRequest) => { requests.push(request); return { status: 200, headers: {}, body: Buffer.from(JSON.stringify(addedUpdate)) }; },
+    });
+    const firstSend = new AttemptContext();
+    expect(await run(broken, 'addUpdate', firstSend)).toBe(isTransient ? 'retry' : 'defect');
+    // The checkpoint format differs across SDK releases, so match only the recorded state.
+    if (isTransient) expect(JSON.stringify(firstSend.marker)).toContain('"state":"notSent"');
+    const afterSend = new AttemptContext();
+    expect(await run(newClient(500).client, 'addUpdate', afterSend)).toBe('retry');
+    const before = afterSend.marker;
+    afterSend.attempt = 2;
+    expect(await run(broken, 'addUpdate', afterSend)).toBe(isTransient ? 'retry' : 'uncertain');
+    expect(afterSend.marker).toBe(before);
+    expect(requests).toHaveLength(0);
+  });
+
+  it('treats an oversized or broken refusal body as unknown and resends it below the cap', async () => {
+    for (const failure of [new BodyTooLargeError(403, {}), new ProviderTransportError(false, 403, {})]) {
+      const requests: ProviderRequest[] = [];
+      const credentials = async () => ({ authMethodId: 'personal-api-token', apiToken: new SecretString(token) });
+      const client = new MondayClient({}, { resolve: credentials, resolveWithRefresh: credentials }, {
+        apiURL: 'http://127.0.0.1/v2', send: async (request: ProviderRequest) => { requests.push(request); throw failure; },
+      });
+      const context = new AttemptContext();
+      for (; context.attempt < AddUpdateDefinition.maxSends!; context.attempt++) expect(await run(client, 'addUpdate', context)).toBe('retry');
+      expect(await run(client, 'addUpdate', context)).toBe('uncertain');
+      expect(requests).toHaveLength(AddUpdateDefinition.maxSends!);
+      expect(requests[0]).not.toHaveProperty('ignoreErrorBodyReadFailure');
+    }
+  });
+
+  it('selects uncertain when the write window aborts a 2xx body after its headers', async () => {
+    const requests: ProviderRequest[] = [];
+    const credentials = async () => ({ authMethodId: 'personal-api-token', apiToken: new SecretString(token) });
+    const client = new MondayClient({}, { resolve: credentials, resolveWithRefresh: credentials }, {
+      apiURL: 'http://127.0.0.1/v2',
+      send: (request: ProviderRequest) => new Promise((_resolve, reject) => {
+        requests.push(request);
+        // The SDK keeps the status when an abort cuts a body whose headers arrived.
+        request.signal!.addEventListener('abort', () => reject(new ProviderTransportError(false, 200, {})), { once: true });
+      }),
+    });
+    const context = new AttemptContext();
+    (context as { deadline: Date }).deadline = new Date(Date.now() + 7_000);
+    expect(await run(client, 'createItem', context)).toBe('uncertain');
+    expect(requests).toHaveLength(1);
   });
 
   it('records canResend for a definite refusal of a first send and never resends it', async () => {

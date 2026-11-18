@@ -83,6 +83,9 @@ func (operation FindMemberByEmailOperation) Invoke(call sdkgo.Call, input FindMe
 		return sdkgo.NewQueryBranch(FindMemberByEmailBranchDefect, Member{}, clickupFailurePointer(sdkgo.FailureValidation, findMemberByEmailOperation, err.Error()), sdkgo.Receipt{})
 	}
 	credentials, failure := operation.client.resolveCredentials(call, findMemberByEmailOperation)
+	if failure != nil && failure.Kind != sdkgo.FailureAuthentication {
+		return sdkgo.NewQueryRetry[Member](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(FindMemberByEmailBranchDefect, Member{}, failure, sdkgo.Receipt{})
 	}

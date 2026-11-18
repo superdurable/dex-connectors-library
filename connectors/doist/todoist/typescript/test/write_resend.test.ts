@@ -77,6 +77,21 @@ describe('Todoist bounded resend of unconfirmed creates', () => {
     }
   });
 
+  it('selects uncertain when the write window aborts a 2xx body after its headers', async () => {
+    const requests: ProviderRequest[] = [];
+    const client = new TodoistClient({ baseUrl: 'http://127.0.0.1:12345/api/v1' }, { resolve: async () => ({ apiToken: new SecretString('todoist-test-token') }) }, {
+      send: (request: ProviderRequest) => new Promise<ProviderResponse>((_resolve, reject) => {
+        requests.push(request);
+        // The SDK keeps the status when an abort cuts a body whose headers arrived.
+        request.signal!.addEventListener('abort', () => reject(new ProviderTransportError(false, 200, {})), { once: true });
+      }),
+    });
+    const context = new AttemptContext();
+    (context as { deadline: Date }).deadline = new Date(Date.now() + 1_200);
+    expect(await run(client, 'createTask', context)).toBe('uncertain');
+    expect(requests).toHaveLength(1);
+  });
+
   it('passes the Fence write-window signal to the creation request', async () => {
     const { client, requests } = newClient(status(200, task));
     const context = new AttemptContext();

@@ -1,9 +1,10 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type FailureKind, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
+import { BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type FailureKind, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
 import { SearchPagesOperation, GetPageOperation, CreatePageOperation, UpdatePageOperation, AddCommentOperation } from './operations.js';
@@ -101,7 +102,8 @@ export class ConfluenceClient {
       credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
       const token = credentials.accessToken.reveal();
       if (!isHeaderSafeCredential(token)) throw new TypeError('invalid access token');
-    } catch {
+    } catch (error) {
+      if (!isTerminalCredentialError(error)) return { error: { failure: confluenceFailure(operation, 'AVAILABILITY', 'Confluence connection credentials could not be read, so nothing was sent'), isRetryable: true, retryAfterMs: 0 } };
       return { error: { failure: confluenceFailure(operation, 'AUTHENTICATION', 'Confluence connection credentials are unavailable; reconnect the connection'), isRetryable: false, retryAfterMs: 0 } };
     }
     const session: ConfluenceSession = { call, cloudId: this.configuredCloudId || this.resolvedCloudId, token: credentials.accessToken.reveal() };
@@ -145,7 +147,9 @@ export class ConfluenceClient {
       };
       try {
         const received = await this.send(request);
-        response = { ...received, isTooLarge: false, isDispatched: true,
+        const isSuccess = received.status >= 200 && received.status < 300;
+        if (!isSuccess && received.body.length > MaxErrorBodyBytes) response = { status: received.status, headers: received.headers, body: new Uint8Array(), isTooLarge: true, isDispatched: true };
+        else response = { ...received, isTooLarge: false, isDispatched: true,
           reflectsSecret: Buffer.from(received.body).includes(Buffer.from(session.token)) };
       } catch (error) {
         if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers !== undefined) response = { status: error.status, headers: error.headers, body: new Uint8Array(), isTooLarge: true, isDispatched: true };
@@ -191,6 +195,8 @@ export class ConfluenceClient {
     }
     if (response.status === 429) return classified('notApplied', confluenceFailure(operation, 'RATE_LIMIT', `Confluence rate limited the ${subject} before writing it`), this.retryAfter(response));
     if (response.status === 503) return classified('notApplied', confluenceFailure(operation, 'AVAILABILITY', `Confluence was unavailable, so no ${subject} was written`), this.retryAfter(response));
+    // A refusal status proves nothing without its full body, so the outcome is unknown.
+    if (response.hasBodyReadFailed || response.isTooLarge) return classified('ambiguous', confluenceFailure(operation, 'TRANSPORT', `Confluence ${subject} outcome is unknown after HTTP ${response.status} with an unreadable body`));
     if (response.status === 404) return classified('notFound', confluenceFailure(operation, 'NOT_FOUND', `Confluence rejected the ${subject} with HTTP 404`));
     if (definiteWriteRefusalStatuses.has(response.status)) return classified('rejected', confluenceFailure(operation, statusFailureKind(response.status), `Confluence rejected the ${subject} with HTTP ${response.status}`));
     return classified('ambiguous', confluenceFailure(operation, 'AVAILABILITY', `Confluence ${subject} outcome is unknown after HTTP ${response.status}`), this.retryAfter(response));
@@ -210,6 +216,12 @@ export class ConfluenceClient {
     const header = response.headers['retry-after'];
     return parseRetryAfter(typeof header === 'string' ? header : '', this.now());
   }
+}
+
+/** Report a credential failure that no retry fixes; others, such as broker outages, may pass. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof TypeError || error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError ||
+    error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
 }
 
 function classified(outcome: ConfluenceClassification['outcome'], failure?: Failure, retryAfterMs = 0): ConfluenceClassification { return { outcome, ...(failure ? { failure } : {}), retryAfterMs }; }

@@ -90,7 +90,7 @@ UPDATE_CARD_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "Trello applied every requested change, including when the card already had those values, and the Value holds the card Trello returned.", False),
         BranchDefinition(NOT_FOUND, "The card does not exist.", True),
         BranchDefinition(PROVIDER_REJECTED, "Trello conclusively rejected a change, such as an unknown list, label, or member, or missing permission.", True),
-        BranchDefinition(INVALID_RESPONSE, "Trello returned an invalid or oversized card, or a card that does not show a requested change.", True),
+        BranchDefinition(INVALID_RESPONSE, "No longer selected. An invalid or oversized card, or a card that does not show a requested change, is retried because a repeated update converges; the branch stays declared for compatibility.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

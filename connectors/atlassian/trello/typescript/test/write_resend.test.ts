@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { TrelloClient } from '../src/client.js';
-import { AddCommentDefinition, CreateCardDefinition } from '../src/generated/definitions.js';
+import { AddCommentDefinition, CreateCardDefinition, UpdateCardDefinition } from '../src/generated/definitions.js';
 
 const callId = 'fed5a116-c5f6-53ac-81b1-a823fb443a88';
 const listId = '6512f0a1c2d3e4f5a6b70101';
@@ -108,6 +108,54 @@ describe('Trello bounded resend of unconfirmed writes', () => {
       expect(requests).toHaveLength(1);
     });
   }
+
+  for (const [name, failure] of [
+    ['an interrupted 400', () => new ProviderTransportError(false, 400, {})],
+    ['an oversized 404', () => new BodyTooLargeError(404, {})],
+  ] as const) {
+    it(`treats ${name} as an unknown outcome`, async () => {
+      const requests: ProviderRequest[] = [];
+      const client = new TrelloClient({}, { resolve: async () => ({ apiKey: new SecretString('test-key'), token: new SecretString('test-token') }) }, {
+        send: async (request: ProviderRequest) => { requests.push(request); throw failure(); },
+      });
+      const context = new AttemptContext();
+      expect(await run(client, 'addComment', context)).toBe('retry');
+      expect(context.marker).toMatchObject({ state: 'claimed', sendCount: 1 });
+      expect(requests).toHaveLength(1);
+    });
+  }
+
+  it('treats a 404 whose body exceeds the error-body limit as an unknown outcome', async () => {
+    const { client } = newClient(404, 'x'.repeat(MaxErrorBodyBytes + 1));
+    const context = new AttemptContext();
+    expect(await run(client, 'createCard', context)).toBe('retry');
+    expect(context.marker).toMatchObject({ state: 'claimed' });
+  });
+
+  it('retries a transient credential failure and selects uncertain for a terminal one after a possible send', async () => {
+    const failingClient = (error: Error) => new TrelloClient({}, { resolve: async () => { throw error; } }, {
+      send: async () => { throw new Error('no request is expected'); },
+    });
+    const first = new AttemptContext();
+    expect(await run(failingClient(new Error('credential store unavailable')), 'createCard', first)).toBe('retry');
+    expect(first.marker).toMatchObject({ state: 'canResend' });
+    expect(await run(failingClient(new ReauthorizationRequiredError()), 'createCard', new AttemptContext())).toBe('defect');
+    const earlier = { callId, attempt: 2, state: 'canResend', sendCount: 1 };
+    const later = new AttemptContext(3, earlier);
+    expect(await run(failingClient(new Error('credential store unavailable')), 'createCard', later)).toBe('retry');
+    expect(later.marker).toMatchObject({ state: 'canResend', sendCount: 1 });
+    expect(await run(failingClient(new ReauthorizationRequiredError()), 'createCard', new AttemptContext(3, earlier))).toBe('uncertain');
+  });
+
+  it('retries an update whose refusal body broke', async () => {
+    const requests: ProviderRequest[] = [];
+    const client = new TrelloClient({}, { resolve: async () => ({ apiKey: new SecretString('test-key'), token: new SecretString('test-token') }) }, {
+      send: async (request: ProviderRequest) => { requests.push(request); throw new ProviderTransportError(false, 400, {}); },
+    });
+    const call = { id: callId, connection: { provider: 'trello', name: 'trello-test' }, operation: UpdateCardDefinition.operation, context: new AttemptContext() } as unknown as Call;
+    await expect(runMutation(client.updateCard(), call, { cardId, isClosed: true })).rejects.toBeInstanceOf(RetryError);
+    expect(requests).toHaveLength(1);
+  });
 
   it('retries an untrusted checkpoint without sending', async () => {
     const { client, requests } = newClient(200, `{"id":"${cardId}"}`);

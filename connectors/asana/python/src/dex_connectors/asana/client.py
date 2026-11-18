@@ -9,7 +9,14 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -118,14 +125,33 @@ class Client:
 
     async def token(self, call: Call) -> str | None:
         """Resolve and validate a secret without storing it in Flow state."""
+        token, _ = await self.token_or_failure(call, "")
+        return token
+
+    async def token_or_failure(self, call: Call, operation: str) -> tuple[str | None, Failure | None]:
+        """Resolve and validate a secret, or return why it is unavailable.
+
+        A terminal failure, such as a missing connection or one that needs reauthorization, has kind
+        AUTHENTICATION; a transient one, such as a store or credential broker read, has kind
+        AVAILABILITY.
+        """
+        terminal = failure(
+            operation, FailureKind.AUTHENTICATION, "Asana connection credentials are unavailable"
+        )
         try:
             credentials = await self._credentials.resolve(call)
-            if not isinstance(credentials, Credentials):
-                return None
-            token = credentials.access_token.reveal()
-            return token if is_header_safe_credential(token) else None
+        except (ValueError, LookupError, ReauthorizationRequiredError):
+            return None, terminal
         except Exception:
-            return None
+            return None, failure(
+                operation,
+                FailureKind.AVAILABILITY,
+                "Asana connection credentials could not be read, so nothing was sent",
+            )
+        if not isinstance(credentials, Credentials):
+            return None, terminal
+        token = credentials.access_token.reveal()
+        return (token, None) if is_header_safe_credential(token) else (None, terminal)
 
     async def exchange(
         self,
@@ -135,8 +161,12 @@ class Client:
         path: str,
         query: Mapping[str, str] | None = None,
         payload: object | None = None,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Send one JSON request without redirects and bound the complete body."""
+        """Send one JSON request without redirects and bound the complete body.
+
+        ``observed_statuses`` receives the HTTP status once headers arrive, before the body is read.
+        """
         target = self.endpoint + path
         if query:
             target += "?" + str(httpx.QueryParams(sorted(query.items())))
@@ -156,6 +186,8 @@ class Client:
             response, _ = await send_traced(self._http_client, request)
         except ProviderTransportError as error:
             return Exchange(error="beforeSend" if error.provably_not_sent else "afterSend")
+        if observed_statuses is not None:
+            observed_statuses.append(response.status_code)
         limit = self.max_response_bytes if 200 <= response.status_code < 300 else MAX_ERROR_BODY_BYTES
         try:
             contents = await read_bounded_body(response, limit)
