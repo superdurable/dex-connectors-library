@@ -10,8 +10,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -122,24 +124,39 @@ func (TransitionIssueOperation) IdempotencyKey(callID sdkgo.CallID, _ Transition
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke reads the issue, skips a transition the issue has already made, performs the matched transition,
-// and reads the issue again after any ambiguous response instead of guessing its outcome.
+// Invoke reads the issue, skips a transition the issue has already made, performs the matched transition
+// behind a single-dispatch fence, and reads the issue again after any ambiguous response. After a possible
+// earlier transition it never transitions again: it succeeds only when the issue is provably in the
+// destination status and otherwise returns Retry.
 func (operation TransitionIssueOperation) Invoke(call sdkgo.Call, input TransitionIssueInput) sdkgo.MutationAttempt[TransitionIssueOutput] {
 	client := operation.client
 	selection, err := validateTransitionSelection(input)
 	if err != nil {
 		return sdkgo.NewMutationBranch(TransitionIssueBranchDefect, TransitionIssueOutput{}, failurePointer(transitionIssueOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
+	// The default cap of one send: a repeated transition could move the issue again.
+	fence, err := singledispatch.NewFence(call, TransitionIssueDefinition.StepDefaults.ExecuteMethodTimeout)
+	if err != nil {
+		return sdkgo.NewMutationBranch(TransitionIssueBranchDefect, TransitionIssueOutput{}, failurePointer(transitionIssueOperationID, sdkgo.FailureLocalDefect, "Jira dispatch fence could not be constructed"), sdkgo.Receipt{})
+	}
+	decision := fence.Decide()
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[TransitionIssueOutput](newFailure(transitionIssueOperationID, sdkgo.FailureAvailability, "Jira dispatch checkpoint is unreadable, so nothing was sent in this attempt"), 0)
+	}
+	attempt := transitionAttempt{fence: fence, hasPossibleEarlierTransition: needsReadBack(decision)}
 	session, cancel, sessionErr := client.startSession(call, transitionIssueOperationID)
 	if sessionErr != nil {
-		if sessionErr.isRetryable {
-			return sdkgo.NewMutationRetry[TransitionIssueOutput](sessionErr.failure, sessionErr.retryAfter)
+		if sessionErr.isRetryable || attempt.hasPossibleEarlierTransition {
+			return attempt.retryBeforeSend(sessionErr.failure, sessionErr.retryAfter)
 		}
 		return sdkgo.NewMutationBranch(TransitionIssueBranchDefect, TransitionIssueOutput{}, sessionErr.pointer(), sdkgo.Receipt{})
 	}
 	defer cancel()
 	snapshot, response, readFailure := operation.readIssueTransitions(session, selection.issueIDOrKey)
 	if readFailure != nil {
+		if readFailure.classification.outcome == readRetry || attempt.hasPossibleEarlierTransition {
+			return attempt.retryBeforeSend(readFailure.classification.failure, readFailure.classification.retryAfter)
+		}
 		return readFailure.attempt(client.receipt(session, response, selection.issueIDOrKey))
 	}
 	receipt := client.receipt(session, response, snapshot.issueKey)
@@ -149,39 +166,88 @@ func (operation TransitionIssueOperation) Invoke(call sdkgo.Call, input Transiti
 		return sdkgo.NewMutationBranch(TransitionIssueBranchTransitioned, output, nil, receipt)
 	}
 	matches := selection.matchingTransitions(snapshot.transitions)
+	if len(matches) == 1 && matches[0].DestinationStatus.ID == snapshot.status.ID {
+		output.Transition = &matches[0]
+		output.IsAlreadyInDestinationStatus = true
+		return sdkgo.NewMutationBranch(TransitionIssueBranchTransitioned, output, nil, receipt)
+	}
+	if attempt.hasPossibleEarlierTransition {
+		return attempt.retryBeforeSend(newFailure(transitionIssueOperationID, sdkgo.FailureAvailability, unprovenEarlierTransitionMessage), 0)
+	}
 	if len(matches) != 1 {
 		output.AvailableTransitions = snapshot.transitions
 		return sdkgo.NewMutationBranch(TransitionIssueBranchTransitionUnavailable, output, describeUnavailableTransition(snapshot.status, len(matches)), receipt)
 	}
 	chosen := matches[0]
 	output.Transition = &chosen
-	if chosen.DestinationStatus.ID == snapshot.status.ID {
-		output.IsAlreadyInDestinationStatus = true
-		return sdkgo.NewMutationBranch(TransitionIssueBranchTransitioned, output, nil, receipt)
-	}
-	result := client.exchange(session, jiraRequest{
+	write := &jiraWriteAttempt{client: client, session: session, request: jiraRequest{
 		method: http.MethodPost, path: issuePath(selection.issueIDOrKey) + "/transitions", payload: selection.requestBody(chosen.ID),
-	})
+	}}
+	if err := fence.Dispatch(write.send); err != nil {
+		return sdkgo.NewMutationRetry[TransitionIssueOutput](newFailure(transitionIssueOperationID, sdkgo.FailureAvailability, "Jira dispatch checkpoint or request budget is unavailable, so the issue was not transitioned"), 0)
+	}
+	result := write.result
 	receipt = client.receipt(session, result.response, snapshot.issueKey)
 	switch {
 	case errors.Is(result.err, errRequestNotBuilt):
+		// Nothing was sent; a lost checkpoint only keeps the claim.
+		_ = fence.RecordCanResend()
 		return sdkgo.NewMutationBranch(TransitionIssueBranchDefect, output, failurePointer(transitionIssueOperationID, sdkgo.FailureLocalDefect, "Jira request could not be built"), receipt)
 	case result.err == nil && isSuccessStatus(result.response.statusCode):
 		output.Status = chosen.DestinationStatus
 		return sdkgo.NewMutationBranch(TransitionIssueBranchTransitioned, output, nil, receipt)
-	case result.err == nil && result.response.statusCode == http.StatusNotFound:
-		return sdkgo.NewMutationBranch(TransitionIssueBranchNotFound, output, failurePointer(transitionIssueOperationID, sdkgo.FailureNotFound, "Jira issue was not found or is not visible to the connection"), receipt)
+	case result.err == nil && result.response.statusCode == http.StatusNotFound && isCompleteResponse(result.response):
+		return attempt.rejectFirstSend(TransitionIssueBranchNotFound, output, newFailure(transitionIssueOperationID, sdkgo.FailureNotFound, "Jira issue was not found or is not visible to the connection"), receipt)
 	case result.err == nil && result.response.statusCode == http.StatusTooManyRequests:
-		return sdkgo.NewMutationRetry[TransitionIssueOutput](newFailure(transitionIssueOperationID, sdkgo.FailureRateLimit, "Jira rate limited the transition before performing it"), client.retryAfter(result.response))
+		return attempt.retryUnprocessedSend(newFailure(transitionIssueOperationID, sdkgo.FailureRateLimit, "Jira rate limited the transition before performing it"), client.retryAfter(result.response))
+	case result.err == nil && result.response.statusCode == http.StatusServiceUnavailable:
+		return attempt.retryUnprocessedSend(newFailure(transitionIssueOperationID, sdkgo.FailureAvailability, "Jira transitions are temporarily unavailable"), client.retryAfter(result.response))
 	case result.err != nil && !result.isDispatched:
-		return sdkgo.NewMutationRetry[TransitionIssueOutput](newFailure(transitionIssueOperationID, sdkgo.FailureTransport, "Jira could not be reached, so the issue was not transitioned"), 0)
+		return attempt.retryUnprocessedSend(newFailure(transitionIssueOperationID, sdkgo.FailureTransport, "Jira could not be reached, so the issue was not transitioned"), 0)
 	}
-	return operation.reconcileTransition(session, selection, chosen, output, result)
+	return operation.reconcileTransition(session, attempt, selection, chosen, output, result)
+}
+
+// unprovenEarlierTransitionMessage explains why a repeated attempt does not transition again.
+const unprovenEarlierTransitionMessage = "an earlier attempt may have transitioned the issue and its status does not prove the destination, " +
+	"so the transition is not sent again; set destinationStatusName so a retried Step recognizes it"
+
+// transitionAttempt is one attempt's fence and whether an earlier attempt may have transitioned the issue.
+type transitionAttempt struct {
+	fence                        *singledispatch.Fence
+	hasPossibleEarlierTransition bool
+}
+
+// retryBeforeSend returns Retry before any send; a first attempt records notSent so the next may send.
+func (attempt transitionAttempt) retryBeforeSend(failure sdkgo.Failure, retryAfter time.Duration) sdkgo.MutationAttempt[TransitionIssueOutput] {
+	if !attempt.hasPossibleEarlierTransition {
+		// A lost notSent only makes the next attempt read without transitioning.
+		_ = attempt.fence.RecordNotSent()
+	}
+	return sdkgo.NewMutationRetry[TransitionIssueOutput](failure, retryAfter)
+}
+
+// retryUnprocessedSend records that Jira did not process this send, then returns Retry.
+func (attempt transitionAttempt) retryUnprocessedSend(failure sdkgo.Failure, retryAfter time.Duration) sdkgo.MutationAttempt[TransitionIssueOutput] {
+	if err := attempt.fence.RecordCanResend(); err != nil {
+		return sdkgo.NewMutationRetry[TransitionIssueOutput](newFailure(transitionIssueOperationID, sdkgo.FailureAvailability, "Jira retry checkpoint could not be recorded"), retryAfter)
+	}
+	return sdkgo.NewMutationRetry[TransitionIssueOutput](failure, retryAfter)
+}
+
+// rejectFirstSend selects a definite refusal of this attempt's only possible send.
+func (attempt transitionAttempt) rejectFirstSend(branch sdkgo.BranchID, output TransitionIssueOutput, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[TransitionIssueOutput] {
+	if err := attempt.fence.RecordCanResend(); err != nil {
+		return sdkgo.NewMutationRetry[TransitionIssueOutput](newFailure(transitionIssueOperationID, sdkgo.FailureAvailability, "Jira rejection checkpoint could not be recorded"), 0)
+	}
+	return sdkgo.NewMutationBranch(branch, output, &failure, receipt)
 }
 
 // reconcileTransition rereads the issue, because a concurrent duplicate may have made the transition first.
+// An unknown outcome returns Retry with the claim kept, so later attempts never transition again.
 func (operation TransitionIssueOperation) reconcileTransition(
 	session *operationSession,
+	attempt transitionAttempt,
 	selection transitionSelection,
 	chosen TransitionReference,
 	output TransitionIssueOutput,
@@ -195,22 +261,29 @@ func (operation TransitionIssueOperation) reconcileTransition(
 		return sdkgo.NewMutationBranch(TransitionIssueBranchTransitioned, output, nil, receipt)
 	}
 	statusCode := result.response.statusCode
+	isDefiniteRefusal := result.err == nil && isDefiniteWriteRefusalStatus(statusCode) && isCompleteResponse(result.response)
 	switch {
+	case readFailure != nil && isDefiniteRefusal:
+		return attempt.retryUnprocessedSend(newFailure(transitionIssueOperationID, sdkgo.FailureAvailability, "Jira refused the transition and the issue could not be read back"), 0)
 	case readFailure != nil:
 		return sdkgo.NewMutationRetry[TransitionIssueOutput](newFailure(transitionIssueOperationID, sdkgo.FailureAvailability, "Jira transition outcome could not be read back"), 0)
-	case result.err == nil && isDefiniteWriteRefusalStatus(statusCode):
+	case isDefiniteRefusal:
 		output.Status = reread.status
 		output.RejectedFieldIDs = readJiraRejectedFieldIDs(result.response.body)
 		failure := rejectionFailure(transitionIssueOperationID, transitionIssueFailureSubject, statusCode, output.RejectedFieldIDs)
-		return sdkgo.NewMutationBranch(TransitionIssueBranchProviderRejected, output, &failure, receipt)
+		return attempt.rejectFirstSend(TransitionIssueBranchProviderRejected, output, failure, receipt)
 	case result.err == nil && statusCode < 400:
-		// An unexpected status leaves the outcome unknown; the next attempt rereads before writing.
 		return sdkgo.NewMutationRetry[TransitionIssueOutput](newFailure(transitionIssueOperationID, sdkgo.FailureProtocol, fmt.Sprintf("Jira returned unexpected HTTP %d for the transition", statusCode)), 0)
 	case result.err == nil && statusCode == http.StatusConflict:
-		return sdkgo.NewMutationRetry[TransitionIssueOutput](newFailure(transitionIssueOperationID, sdkgo.FailureConflict, "Jira reported a conflicting update, so the transition is retried"), client.retryAfter(result.response))
+		return sdkgo.NewMutationRetry[TransitionIssueOutput](newFailure(transitionIssueOperationID, sdkgo.FailureConflict, "Jira reported a conflicting update; the outcome of the transition is unknown"), client.retryAfter(result.response))
 	default:
 		return sdkgo.NewMutationRetry[TransitionIssueOutput](newFailure(transitionIssueOperationID, sdkgo.FailureAvailability, "Jira did not confirm the transition and the issue has not moved yet"), client.retryAfter(result.response))
 	}
+}
+
+// isCompleteResponse reports a response whose body was read in full; only then can it prove a refusal.
+func isCompleteResponse(response jiraResponse) bool {
+	return !response.hasBodyReadFailed && !response.isBodyTooLarge && !response.reflectsSecret
 }
 
 // readIssueTransitions reads the issue's status and its available transitions in one request.

@@ -25,7 +25,8 @@ export interface JiraClientOptions {
 }
 /** One response or sanitized request error. */
 /** A failed exchange keeps `acceptedStatus` when 2xx headers arrived before its body broke. */
-export type JiraExchange = { response: ProviderResponse; isTooLarge?: boolean; reflectsSecret?: boolean } | { error: Error; isProvablyNotSent: boolean; acceptedStatus?: number };
+/** `isBodyIncomplete` marks a non-2xx whose body exceeded its limit, so it cannot prove a refusal. */
+export type JiraExchange = { response: ProviderResponse; isTooLarge?: boolean; reflectsSecret?: boolean; isBodyIncomplete?: boolean } | { error: Error; isProvablyNotSent: boolean; acceptedStatus?: number };
 /** Resolved credential and Jira Cloud site for one operation. */
 export interface JiraSession { token: string; cloudId: string; call: Call; signal: AbortSignal; }
 /** Session failure is a terminal defect or a safe retry. */
@@ -169,7 +170,10 @@ export class JiraClient {
       const reflectsSecret = !!session.token && Buffer.from(response.body).includes(Buffer.from(session.token));
       return { response: { ...response, body: isTooLarge || reflectsSecret ? new Uint8Array() : response.body }, isTooLarge, reflectsSecret };
     } catch (error) {
-      if (error instanceof BodyTooLargeError && error.status !== undefined) return { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, isTooLarge: error.status >= 200 && error.status < 300 };
+      if (error instanceof BodyTooLargeError && error.status !== undefined) {
+        const isSuccess = error.status >= 200 && error.status < 300;
+        return { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, isTooLarge: isSuccess, isBodyIncomplete: !isSuccess };
+      }
       const status = error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.status : undefined;
       return { error: error instanceof Error ? error : new Error('Jira request failed'), isProvablyNotSent: error instanceof AddressRefusal || (error instanceof ProviderTransportError && error.isProvablyNotSent), ...(status !== undefined && status >= 200 && status < 300 ? { acceptedStatus: status } : {}) };
     }

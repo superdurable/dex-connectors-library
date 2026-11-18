@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/atlassian/jira/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 // workflowJira fakes one issue on a To Do -> In Progress -> Done workflow.
@@ -246,4 +247,132 @@ func TestTransitionRequiresASelector(t *testing.T) {
 		require.Equal(t, jira.TransitionIssueBranchDefect, result.Branch)
 	}
 	require.Zero(t, provider.requestCount())
+}
+
+func runTransitionInContext(t *testing.T, ctx *singledispatchtest.Context, provider *workflowJira, input jira.TransitionIssueInput) (sdkgo.MutationResult[jira.TransitionIssueOutput], error) {
+	t.Helper()
+	return sdkgo.RunMutation(ctx, newJiraClient(t, provider.URL).TransitionIssue(), jiraConnection, input)
+}
+
+func TestTransitionAfterAnUnknownOutcomeIsNeverSentAgain(t *testing.T) {
+	// Stop Progress and Start Progress toggle, so a resend after a late success would undo the move.
+	provider := newWorkflowJira(t, "3")
+	provider.postResponse = func(response http.ResponseWriter, _ int) bool {
+		writeJSON(provider.t, response, http.StatusBadGateway, `{}`)
+		return true
+	}
+	ctx := singledispatchtest.NewContext("jira-flow", "transition-unknown")
+	input := jira.TransitionIssueInput{IssueIDOrKey: "OPS-42", TransitionName: "Stop Progress"}
+	_, err := runTransitionInContext(t, ctx, provider, input)
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Equal(t, 1, provider.posts())
+	// Jira applied the transition late; the next attempt cannot tell that from the input.
+	provider.statusID = "1"
+	for range 2 {
+		ctx.AdvanceAttempt()
+		_, err = runTransitionInContext(t, ctx, provider, input)
+		requireRetry(t, err, sdkgo.FailureAvailability)
+	}
+	require.Equal(t, 1, provider.posts(), "a possible earlier transition is never sent again")
+}
+
+func TestRepeatedTransitionRecognizesTheDestinationStatus(t *testing.T) {
+	provider := newWorkflowJira(t, "1")
+	provider.postResponse = func(response http.ResponseWriter, _ int) bool {
+		response.WriteHeader(http.StatusGatewayTimeout)
+		return true
+	}
+	ctx := singledispatchtest.NewContext("jira-flow", "transition-recognized")
+	input := jira.TransitionIssueInput{IssueIDOrKey: "OPS-42", TransitionID: "11", DestinationStatusName: "In Progress"}
+	_, err := runTransitionInContext(t, ctx, provider, input)
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	// Jira applied the transition after the first attempt gave up.
+	provider.statusID = "3"
+	ctx.AdvanceAttempt()
+	result, err := runTransitionInContext(t, ctx, provider, input)
+	require.NoError(t, err)
+	require.Equal(t, jira.TransitionIssueBranchTransitioned, result.Branch)
+	require.Equal(t, "In Progress", result.Value.Status.Name)
+	require.Equal(t, 1, provider.posts())
+}
+
+func TestRepeatedTransitionNeverSelectsAFailureBranchAfterAPossibleSend(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		serve func(http.ResponseWriter)
+	}{
+		{name: "missing issue", serve: func(response http.ResponseWriter) { response.WriteHeader(http.StatusNotFound) }},
+		{name: "invalid issue", serve: func(response http.ResponseWriter) {
+			response.Header().Set("Content-Type", "application/json")
+			_, _ = response.Write([]byte(`{"id":"x"}`))
+		}},
+		{name: "rejected read", serve: func(response http.ResponseWriter) { response.WriteHeader(http.StatusForbidden) }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingJira(t, func(response http.ResponseWriter, _ *http.Request, _ int) { test.serve(response) })
+			// A later attempt without a checkpoint assumes the earlier one sent.
+			ctx := laterFenceContext("transition-repeat")
+			_, err := sdkgo.RunMutation(ctx, newJiraClient(t, provider.URL).TransitionIssue(), jiraConnection,
+				jira.TransitionIssueInput{IssueIDOrKey: "OPS-42", TransitionID: "11"})
+			require.Error(t, err)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			require.Equal(t, 1, provider.requestCount())
+		})
+	}
+}
+
+func TestTransitionRefusalWithAnUnreadableBodyIsUnknown(t *testing.T) {
+	provider := newWorkflowJira(t, "1")
+	provider.postResponse = func(response http.ResponseWriter, _ int) bool {
+		writeTruncatedJSON(response, http.StatusBadRequest)
+		return true
+	}
+	ctx := singledispatchtest.NewContext("jira-flow", "transition-truncated-refusal")
+	_, err := runTransitionInContext(t, ctx, provider, jira.TransitionIssueInput{IssueIDOrKey: "OPS-42", TransitionID: "11"})
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	ctx.AdvanceAttempt()
+	_, err = runTransitionInContext(t, ctx, provider, jira.TransitionIssueInput{IssueIDOrKey: "OPS-42", TransitionID: "11"})
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Equal(t, 1, provider.posts(), "a cut refusal body cannot prove that nothing moved")
+}
+
+func TestTransitionRateLimitAllowsTheNextAttemptToSend(t *testing.T) {
+	provider := newWorkflowJira(t, "1")
+	provider.postResponse = func(response http.ResponseWriter, post int) bool {
+		if post == 1 {
+			writeJSON(provider.t, response, http.StatusTooManyRequests, `{}`)
+			return true
+		}
+		return false
+	}
+	ctx := singledispatchtest.NewContext("jira-flow", "transition-rate-limited")
+	input := jira.TransitionIssueInput{IssueIDOrKey: "OPS-42", TransitionID: "11"}
+	_, err := runTransitionInContext(t, ctx, provider, input)
+	requireRetry(t, err, sdkgo.FailureRateLimit)
+	ctx.AdvanceAttempt()
+	result, err := runTransitionInContext(t, ctx, provider, input)
+	require.NoError(t, err)
+	require.Equal(t, jira.TransitionIssueBranchTransitioned, result.Branch)
+	require.Equal(t, 2, provider.posts())
+}
+
+func TestTransitionCredentialFailureAfterAPossibleSendRetries(t *testing.T) {
+	ctx := laterFenceContext("transition-credential")
+	credentials := &delayedJiraCredentials{isReady: true, hasInvalidCredentials: true}
+	client, err := jira.New(jira.Config{CloudID: testCloudID, Endpoint: "http://127.0.0.1:1"}, credentials)
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(ctx, client.TransitionIssue(), jiraConnection, jira.TransitionIssueInput{IssueIDOrKey: "OPS-42", TransitionID: "11"})
+	requireRetry(t, err, sdkgo.FailureAuthentication)
+
+	first := singledispatchtest.NewContext("jira-flow", "transition-credential-first")
+	result, err := sdkgo.RunMutation(first, client.TransitionIssue(), jiraConnection, jira.TransitionIssueInput{IssueIDOrKey: "OPS-42", TransitionID: "11"})
+	require.NoError(t, err)
+	require.Equal(t, jira.TransitionIssueBranchDefect, result.Branch, "a terminal credential failure before any send is a defect")
+
+	credentials.hasInvalidCredentials, credentials.isReady = false, false
+	transient := singledispatchtest.NewContext("jira-flow", "transition-credential-transient")
+	_, err = sdkgo.RunMutation(transient, client.TransitionIssue(), jiraConnection, jira.TransitionIssueInput{IssueIDOrKey: "OPS-42", TransitionID: "11"})
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.NotEmpty(t, transient.Heartbeats(), "a transient failure before any send records notSent")
 }

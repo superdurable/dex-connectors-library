@@ -342,6 +342,11 @@
       "expected": {
         "branch": "transitioned",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+          "state": "claimed"
+        },
         "output": {
           "issueId": "10043",
           "issueKey": "OPS-43",
@@ -1030,6 +1035,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1077,6 +1087,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1151,6 +1166,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2475,6 +2495,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+          "state": "canResend"
+        },
         "output": {
           "issueId": "10043",
           "issueKey": "OPS-43",
@@ -2606,6 +2631,172 @@
       },
       "name": "transition_defect",
       "operation": "transitionIssue"
+    },
+    {
+      "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"10043\",\"key\":\"OPS-43\",\"fields\":{\"status\":{\"id\":\"3\",\"name\":\"In Progress\",\"statusCategory\":{\"key\":\"indeterminate\"}}},\"transitions\":[{\"id\":\"21\",\"name\":\"Start Progress\",\"to\":{\"id\":\"1\",\"name\":\"To Do\",\"statusCategory\":{\"key\":\"new\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "input": {
+        "issueIdOrKey": "OPS-43",
+        "transitionName": "Start Progress"
+      },
+      "name": "transition_repeat_after_possible_send_never_transitions_again",
+      "operation": "transitionIssue",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"10043\",\"key\":\"OPS-43\",\"fields\":{\"status\":{\"id\":\"3\",\"name\":\"In Progress\",\"statusCategory\":{\"key\":\"indeterminate\"}}},\"transitions\":[{\"id\":\"21\",\"name\":\"Stop Progress\",\"to\":{\"id\":\"1\",\"name\":\"To Do\",\"statusCategory\":{\"key\":\"new\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "transitioned",
+        "failureKind": "",
+        "output": {
+          "isAlreadyInDestinationStatus": true,
+          "issueId": "10043",
+          "issueKey": "OPS-43",
+          "previousStatus": {
+            "categoryKey": "indeterminate",
+            "id": "3",
+            "name": "In Progress"
+          },
+          "status": {
+            "categoryKey": "indeterminate",
+            "id": "3",
+            "name": "In Progress"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "input": {
+        "destinationStatusName": "In Progress",
+        "issueIdOrKey": "OPS-43",
+        "transitionId": "11"
+      },
+      "name": "transition_repeat_after_possible_send_recognizes_destination",
+      "operation": "transitionIssue",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "exchanges": [
+        {
+          "body": "{\"errorMessages\":[\"Issue does not exist\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "NOT_FOUND",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "input": {
+        "issueIdOrKey": "OPS-43",
+        "transitionId": "11"
+      },
+      "name": "transition_repeat_after_possible_send_not_found_retries",
+      "operation": "transitionIssue",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+        "sendCount": 1,
+        "state": "claimed"
+      }
     },
     {
       "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
