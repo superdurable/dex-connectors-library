@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { expect, it } from 'vitest';
-import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { SalesforceClient } from '../src/client.js';
 
 const connection = { provider: 'salesforce', name: 'salesforce-crm' };
@@ -36,4 +37,20 @@ it('retries an updateRecord answered with HTTP 300, which is defined only for ex
   });
   const update = await client.updateRecord().invoke(call, { sObjectType: 'Opportunity', recordId: '006RM000001AbcdYAC', fields: { StageName: 'Closed Won' } });
   expect(update.kind).toBe('retry');
+});
+
+it.each([
+  ['broker unavailable', new CredentialBrokerUnavailableError(), 'retry', undefined],
+  ['static not configured', new Error('connection is not configured'), 'retry', undefined],
+  ['unlisted error', new RangeError('credential store hiccup'), 'retry', undefined],
+  ['reauthorization', new ReauthorizationRequiredError(), 'branch', 'providerRejected'],
+  ['object not found', new ObjectNotFoundError(), 'branch', 'defect'],
+  ['connection not selected', new ConnectionNotSelectedError(), 'branch', 'defect'],
+  ['broker rejected', new CredentialBrokerRejectedError(), 'branch', 'defect'],
+])('classifies a %s credential failure on a write', async (_name, error, kind, branch) => {
+  const failing = async () => { throw error; };
+  const client = new SalesforceClient({}, { resolve: failing, resolveWithRefresh: failing }, { send: async () => { throw new Error('no request may be sent'); } });
+  const update = await client.updateRecord().invoke(call, { sObjectType: 'Opportunity', recordId: '006RM000001AbcdYAC', fields: { StageName: 'Closed Won' } });
+  expect(update.kind).toBe(kind);
+  if (update.kind === 'branch') expect(update.branch).toBe(branch);
 });
