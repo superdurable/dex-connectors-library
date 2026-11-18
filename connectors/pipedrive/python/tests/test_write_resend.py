@@ -235,3 +235,52 @@ async def test_update_retries_a_status_that_does_not_prove_a_refusal(status: int
         AttemptContext(),
     )
     assert isinstance(result, RetryError)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"success": True, "data": {"id": 43, "title": "Other"}},
+        {"success": True, "data": "unusable"},
+        {"success": False},
+    ],
+)
+async def test_update_retries_an_accepted_update_with_an_unusable_body(body: object) -> None:
+    def respond(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=body)
+
+    result = await run(
+        "updateObject", UpdateObjectInput("deals", "42", {"stage_id": 3}), respond, AttemptContext()
+    )
+    assert isinstance(result, RetryError)
+
+
+@pytest.mark.asyncio
+async def test_upsert_selects_uncertain_for_several_matches_after_a_possible_create() -> None:
+    requests: list[httpx.Request] = []
+    search = {
+        "success": True,
+        "data": {
+            "items": [
+                {"item": {"id": 901, "name": "Jane", "emails": ["jane@acme.example.com"]}},
+                {"item": {"id": 902, "name": "Jane S", "emails": ["jane@acme.example.com"]}},
+            ]
+        },
+        "additional_data": {"next_cursor": None},
+    }
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=search)
+
+    context = AttemptContext()
+    context.heartbeat_value = Marker(CALL_ID, 1, State.CLAIMED, send_count=1)
+    context.attempt = 2
+    result = await run("upsertObject", person(), respond, context, UPSERT_OBJECT_DEFINITION.max_sends)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert [request.method for request in requests] == ["GET"]
+    context.heartbeat_value = None
+    context.attempt = 1
+    result = await run("upsertObject", person(), respond, context, UPSERT_OBJECT_DEFINITION.max_sends)
+    assert isinstance(result, MutationResult) and result.branch == "multipleMatches"

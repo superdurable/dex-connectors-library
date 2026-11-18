@@ -102,13 +102,13 @@ export interface UpsertObjectStepConfig<StepInput, OperationInput = UpsertObject
   connectionName: string;
   /** Pipedrive created the record or updated the one record that carries the identity value. */
   upserted: StepTarget<MutationResult<OperationOutput>>;
-  /** More than one record carries the identity value, so the connector changed nothing; the Result lists their IDs. */
+  /** More than one record carries the identity value before any create of this Step was sent, so the connector changed nothing; the Result lists their IDs. */
   multipleMatches?: StepTarget<MutationResult<OperationOutput>>;
   /** Pipedrive conclusively rejected the search or the write, such as an invalid field value, a revoked token, or a missing scope; nothing was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Pipedrive returned an invalid or oversized search page or updated record. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** Creates sent up to the Step's send cap were not confirmed, or Pipedrive refused a create after an earlier possible one, and identity read-back finds no record or cannot complete; the record may exist, so the connector does not create it again. */
+  /** Creates sent up to the Step's send cap were not confirmed, or Pipedrive refused a create after an earlier possible one, and identity read-back finds no record, finds several records, or cannot complete; the record may exist, so the connector does not create it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -168,7 +168,7 @@ export interface UpdateObjectStepConfig<StepInput, OperationInput = UpdateObject
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Pipedrive conclusively rejected the update, such as an invalid field value, an unknown stage or owner, or a revoked token. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Pipedrive applied or rejected the update but returned an invalid or oversized record. */
+  /** No longer selected. An invalid or oversized record after the update is retried, because a repeated PATCH converges; the branch stays declared for compatibility. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

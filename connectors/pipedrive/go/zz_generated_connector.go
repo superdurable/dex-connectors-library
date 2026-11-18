@@ -548,10 +548,10 @@ var UpsertObjectDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "upsertObject"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpsertObjectBranchUpserted, Description: "Pipedrive created the record or updated the one record that carries the identity value."},
-		{ID: UpsertObjectBranchMultipleMatches, Description: "More than one record carries the identity value, so the connector changed nothing; the Result lists their IDs.", Optional: true},
+		{ID: UpsertObjectBranchMultipleMatches, Description: "More than one record carries the identity value before any create of this Step was sent, so the connector changed nothing; the Result lists their IDs.", Optional: true},
 		{ID: UpsertObjectBranchProviderRejected, Description: "Pipedrive conclusively rejected the search or the write, such as an invalid field value, a revoked token, or a missing scope; nothing was created.", Optional: true},
 		{ID: UpsertObjectBranchInvalidResponse, Description: "Pipedrive returned an invalid or oversized search page or updated record.", Optional: true},
-		{ID: UpsertObjectBranchUncertain, Description: "Creates sent up to the Step's send cap were not confirmed, or Pipedrive refused a create after an earlier possible one, and identity read-back finds no record or cannot complete; the record may exist, so the connector does not create it again.", Optional: true},
+		{ID: UpsertObjectBranchUncertain, Description: "Creates sent up to the Step's send cap were not confirmed, or Pipedrive refused a create after an earlier possible one, and identity read-back finds no record, finds several records, or cannot complete; the record may exist, so the connector does not create it again.", Optional: true},
 		{ID: UpsertObjectBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -717,7 +717,7 @@ var UpdateObjectDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateObjectBranchUpdated, Description: "Pipedrive updated the record and returned it."},
 		{ID: UpdateObjectBranchNotFound, Description: "No record of that object type has the ID, or the connection's user cannot see it.", Optional: true},
 		{ID: UpdateObjectBranchProviderRejected, Description: "Pipedrive conclusively rejected the update, such as an invalid field value, an unknown stage or owner, or a revoked token.", Optional: true},
-		{ID: UpdateObjectBranchInvalidResponse, Description: "Pipedrive applied or rejected the update but returned an invalid or oversized record.", Optional: true},
+		{ID: UpdateObjectBranchInvalidResponse, Description: "No longer selected. An invalid or oversized record after the update is retried, because a repeated PATCH converges; the branch stays declared for compatibility.", Optional: true},
 		{ID: UpdateObjectBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

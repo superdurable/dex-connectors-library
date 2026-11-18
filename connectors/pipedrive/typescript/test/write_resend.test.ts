@@ -105,11 +105,33 @@ describe('upsertObject bounded resend', () => {
     expect(await run(client.upsertObject(), UpsertObjectDefinition.operation, input, context)).toMatchObject({ branch });
     expect(requests.map(request => request.method)).toEqual(methods);
   });
+
+  it('selects uncertain for several matches after a possible create, and multipleMatches before one', async () => {
+    const search = '{"success":true,"data":{"items":[{"item":{"id":901,"name":"Jane","emails":["jane@acme.example.com"]}},{"item":{"id":902,"name":"Jane S","emails":["jane@acme.example.com"]}}]},"additional_data":{"next_cursor":null}}';
+    const { client, requests } = newClient(() => ({ status: 200, body: search }));
+    const input = { objectType: 'persons', idProperty: 'email', idValue: 'jane@acme.example.com', fields: { name: 'Jane Smith' } };
+    const context = new AttemptContext();
+    context.marker = { callId, attempt: 1, state: 'claimed', sendCount: 1 };
+    context.attempt = 2;
+    expect(await run(client.upsertObject(), UpsertObjectDefinition.operation, input, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests.map(request => request.method)).toEqual(['GET']);
+    expect(await run(client.upsertObject(), UpsertObjectDefinition.operation, input, new AttemptContext())).toMatchObject({ branch: 'multipleMatches' });
+  });
 });
 
 describe('updateObject repeat-safe retry', () => {
   it.each([402, 302, 418])('retries HTTP %i, which does not prove a refusal', async status => {
     const { client } = newClient(() => ({ status, body: '{"success":false}' }));
+    const input = { objectType: 'deals', objectId: '42', fields: { stage_id: 3 } };
+    expect(await run(client.updateObject(), UpdateObjectDefinition.operation, input, new AttemptContext())).toBeInstanceOf(RetryError);
+  });
+
+  it.each([
+    '{"success":true,"data":{"id":43,"title":"Other"}}',
+    '{"success":true,"data":',
+    '{"success":false}',
+  ])('retries an accepted update whose body is unusable: %s', async body => {
+    const { client } = newClient(() => ({ status: 200, body }));
     const input = { objectType: 'deals', objectId: '42', fields: { stage_id: 3 } };
     expect(await run(client.updateObject(), UpdateObjectDefinition.operation, input, new AttemptContext())).toBeInstanceOf(RetryError);
   });

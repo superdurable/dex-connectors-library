@@ -21,7 +21,7 @@ stage or create it.
 | `listObjects` | Query | async | `GET /api/v2/{objectType}` | `listed` | `providerRejected`, `invalidResponse`, `defect` |
 | `upsertObject` | Mutation | sync | search, then `POST /api/v2/{objectType}` or `PATCH .../{id}` | `upserted` | `multipleMatches`, `providerRejected`, `invalidResponse`, `uncertain`, `defect` |
 | `createObject` | Mutation | sync | `POST /api/v2/{objectType}` | `created` | `providerRejected`, `uncertain`, `defect` |
-| `updateObject` | Mutation | async | `PATCH /api/v2/{objectType}/{id}` | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `updateObject` | Mutation | async | `PATCH /api/v2/{objectType}/{id}` | `updated` | `notFound`, `providerRejected`, `invalidResponse` (retired, never selected), `defect` |
 
 `ObjectType` is `persons`, `organizations`, or `deals`. Only each operation's
 happy branch is required; an unwired optional branch fails the Flow when
@@ -145,7 +145,9 @@ is updated with `PATCH` and the result reports `Created: false`; no match is
 created, with the email written as the person's primary work email or the name
 as the organization's name, and the result reports `Created: true`. More than
 one match selects `multipleMatches` with `MatchingIDs` and writes nothing,
-because Pipedrive does not enforce either value as unique. A person upsert
+because Pipedrive does not enforce either value as unique. After an earlier
+create of this Step may have been sent, several matches select `uncertain`
+instead, because one of them may be that create. A person upsert
 requires `Fields["name"]`, and neither type may set the identity field itself.
 
 ### createObject
@@ -208,8 +210,8 @@ require.Equal(t, PhaseCompleted, intake.Phase)
 | `408`, `409`, `5xx` except `501` | Retry, honoring `Retry-After`; creates resend below the send cap and select `uncertain` at it, and `upsertObject` searches the identity first |
 | connection never opened | Retry, nothing was sent |
 | dropped connection after sending | Retry; creates resend below the send cap and select `uncertain` at it |
-| oversized, malformed, `success: false`, or ID-less success | `invalidResponse` on reads and repeatable updates; `uncertain` for `createObject`; `upsertObject` reads back an accepted create by identity within the attempt |
-| a response that echoes the credential | `invalidResponse`, and the body is discarded |
+| oversized, malformed, `success: false`, or ID-less success | `invalidResponse` on reads and on the `upsertObject` update of a match; Retry on `updateObject`, whose PATCH converges when repeated; `uncertain` for `createObject`; `upsertObject` reads back an accepted create by identity within the attempt |
+| a response that echoes the credential | `invalidResponse` on reads, Retry on `updateObject`, and the body is discarded |
 | invalid input | `defect`, no request; transient credential resolution before a fenced create returns Retry with a not-sent marker; reauthorization-required credentials select `providerRejected` with a reconnect hint and no request; missing credentials or an empty token select `defect` with a reconnect hint |
 
 After a fenced create, transient credential resolution during read-back returns Retry without another POST. Terminal credential failures select `uncertain` with an authentication failure and keep any saved provider ID in the receipt. A write 401 retries only after refresh supplies a changed, valid token; reauthorization failures ask for a reconnect, while transient refresh failures say the credentials are temporarily unavailable.

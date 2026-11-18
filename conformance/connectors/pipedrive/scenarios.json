@@ -2013,14 +2013,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "objectType": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2036,7 +2032,7 @@
         "objectId": "301",
         "objectType": "deals"
       },
-      "name": "updateObject-invalid-response",
+      "name": "updateObject-unusable-accepted-retry",
       "operation": "updateObject"
     },
     {
@@ -4180,6 +4176,77 @@
         "attempt": 3,
         "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
         "sendCount": 3,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[{\"item\":{\"id\":101,\"name\":\"Jane Smith\",\"emails\":[\"jane@example.com\"]}},{\"item\":{\"id\":102,\"name\":\"Jane Smith\",\"emails\":[\"jane@example.com\"]}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "CONFLICT",
+        "output": {
+          "created": false,
+          "object": {
+            "id": "",
+            "objectType": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-prior-multiple-matches",
+      "operation": "upsertObject",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+        "sendCount": 1,
         "state": "claimed"
       }
     },

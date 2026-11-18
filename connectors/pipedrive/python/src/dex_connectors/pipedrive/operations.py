@@ -452,6 +452,9 @@ class UpdateObjectOperation:
         if _is_unknown_write_outcome(result):
             # The PATCH is repeat-safe, so a status that does not prove a refusal is retried.
             return MutationAttempt.retry(cast(Failure, result.failure), result.retry_after)
+        if result.outcome == "invalid":
+            # An unusable 2xx leaves the update unconfirmed; repeating the PATCH converges.
+            return MutationAttempt.retry(cast(Failure, result.failure))
         if result.outcome != "succeeded":
             return _mutation_result(result, receipt, CRMObject(""), not_found=True)
         try:
@@ -459,11 +462,8 @@ class UpdateObjectOperation:
             if record.id != input.object_id:
                 raise ValueError("Pipedrive returned an invalid record")
         except ValueError:
-            return MutationAttempt.branch_result(
-                definitions.INVALID_RESPONSE,
-                CRMObject(""),
-                receipt,
-                failure(operation, FailureKind.PROTOCOL, "Pipedrive returned an invalid record"),
+            return MutationAttempt.retry(
+                failure(operation, FailureKind.PROTOCOL, "Pipedrive returned an invalid record")
             )
         return MutationAttempt.branch_result(definitions.UPDATED, record, receipt)
 
@@ -912,6 +912,14 @@ class UpsertObjectOperation:
                 except Exception:
                     return _fence_retry(operation)
             return _mutation_result(result, receipt, _upsert_empty())
+        if (len(matches) > 1 or has_more) and earlier_create:
+            # One of the matches may be this Step's own earlier create.
+            return _uncertain(
+                operation,
+                "Pipedrive search finds several records with the identity value",
+                receipt,
+                FailureKind.CONFLICT,
+            )
         if len(matches) > 1 or has_more:
             return MutationAttempt.branch_result(
                 definitions.MULTIPLE_MATCHES,

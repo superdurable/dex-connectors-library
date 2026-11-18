@@ -55,6 +55,10 @@ func (operation UpdateObjectOperation) Invoke(call sdkgo.Call, input UpdateObjec
 	defer cancel()
 	object, result := operation.client.patchRecord(session, input.ObjectType, input.ObjectID, body)
 	receipt := operation.client.receipt(call, result.response, input.ObjectID)
+	// An unusable 2xx leaves the update unconfirmed; repeating the PATCH converges.
+	if result.outcome == exchangeInvalid {
+		return sdkgo.NewMutationRetry[CRMObject](result.failure, 0)
+	}
 	if result.outcome != exchangeSucceeded {
 		return repeatSafeWriteAttemptForExchange[CRMObject](result, receipt, updateBranches)
 	}

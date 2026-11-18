@@ -234,3 +234,19 @@ func TestUpdateObjectRetriesAnUnconfirmedUpdateBecauseItIsSafeToRepeat(t *testin
 		require.NotEqual(t, sdkgo.UncertainBranchID, branch.ID)
 	}
 }
+
+func TestUpdateObjectRetriesAnAcceptedUpdateWithAnUnusableBody(t *testing.T) {
+	bodies := map[string]string{
+		"malformed":      `{"success":true,"data":`,
+		"another record": `{"success":true,"data":{"id":43,"title":"Other"}}`,
+		"no success":     `{"success":false}`,
+	}
+	for name, body := range bodies {
+		provider := newRecordingPipedrive(t, func(response http.ResponseWriter, _ recordedRequest) { writeJSON(t, response, http.StatusOK, body) })
+		_, err := sdkgo.RunMutation(newStepDexContext("update-unusable"), newAPITokenClient(t, provider.URL).UpdateObject(), pipedriveConnection, pipedrive.UpdateObjectInput{
+			ObjectType: pipedrive.ObjectTypeDeals, ObjectID: "42", Fields: map[string]json.RawMessage{"stage_id": pipedrive.IDValue("3")},
+		})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, name)
+	}
+}

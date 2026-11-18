@@ -86,10 +86,12 @@ export class UpdateObjectOperation implements Mutation<UpdateObjectInput, CRMObj
     const result = await this.client.exchange(call, 'updateObject', started.session, 'PATCH', `/api/v2/${input.objectType}/${input.objectId}`, undefined, body);
     // The PATCH is repeat-safe, so a status that does not prove a refusal is retried.
     if (isUnknownWriteOutcome(result)) return newMutationRetry(result.failure!, result.retryAfterMs);
-    const failed = failedMutation(this.client, call, result, zeroObject, true, input.objectId, true);
+    // An unusable 2xx leaves the update unconfirmed; repeating the PATCH converges.
+    if (result.kind === 'invalid') return newMutationRetry(result.failure!);
+    const failed = failedMutation(this.client, call, result, zeroObject, false, input.objectId, true);
     if (failed) return failed;
     try { return newMutationBranch('updated', decodeMatchingRecord(input.objectType, input.objectId, result), this.client.receipt(call, result.response, input.objectId)); }
-    catch { return invalidMutation(this.client, call, 'updateObject', zeroObject, result, input.objectId); }
+    catch { return newMutationRetry(this.client.failure('updateObject', 'PROTOCOL', 'Pipedrive returned an invalid record')); }
   }
 }
 
@@ -204,6 +206,8 @@ export class UpsertObjectOperation implements Mutation<UpsertObjectInput, Upsert
       if (!earlierCreate && isRetryable(matches.result)) { try { await fence.recordNotSent(); } catch { return fenceRetry(this.client, 'upsertObject'); } }
       return failedMutation(this.client, call, matches.result, zeroUpsert, true) ?? newMutationRetry(matches.result.failure!);
     }
+    // One of the matches may be this Step's own earlier create.
+    if ((matches.ids.length > 1 || matches.hasMore) && earlierCreate) return uncertainUpsert(this.client, call, this.client.failure('upsertObject', 'CONFLICT', 'Pipedrive search finds several records with the identity value'), '', matches.result);
     if (matches.ids.length > 1 || matches.hasMore) return newMutationBranch('multipleMatches', { ...zeroUpsert, matchingIds: matches.ids }, this.client.receipt(call, matches.result.response), this.client.failure('upsertObject', 'CONFLICT', `${Math.max(matches.ids.length, 2)} or more Pipedrive ${input.objectType} carry the identity value, so nothing was written`));
     if (matches.ids.length === 1) return this.updateMatch(call, session, input.objectType, matches.ids[0]!, updateBody, earlierCreate, fence);
     if (!canCreate) return uncertainUpsert(this.client, call, this.client.failure('upsertObject', 'TRANSPORT', 'creates reached the send cap, and Pipedrive search finds no record with the identity value'));

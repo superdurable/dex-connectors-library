@@ -4,6 +4,7 @@
 package pipedrive_test
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -22,11 +23,13 @@ import (
 
 // fakePersonStore answers persons requests; like Pipedrive, its exact search ignores case and returns look-alike addresses.
 type fakePersonStore struct {
-	mutex            sync.Mutex
-	persons          map[string]map[string]any
-	nextID           int
-	failsNextCreate  bool
-	searchExtraEmail string
+	mutex           sync.Mutex
+	persons         map[string]map[string]any
+	nextID          int
+	failsNextCreate bool
+	// createFailureStatus replaces the default 503 of a failed create.
+	createFailureStatus int
+	searchExtraEmail    string
 }
 
 func newFakePersonStore() *fakePersonStore {
@@ -71,7 +74,7 @@ func (store *fakePersonStore) serve(t *testing.T) func(http.ResponseWriter, reco
 			store.persons[fmt.Sprint(store.nextID)] = body
 			if store.failsNextCreate {
 				store.failsNextCreate = false
-				writeError(t, response, http.StatusServiceUnavailable)
+				writeError(t, response, cmp.Or(store.createFailureStatus, http.StatusServiceUnavailable))
 				return
 			}
 			store.writePerson(t, response, body)
@@ -153,6 +156,25 @@ func TestUpsertObjectWritesNothingWhenSeveralPersonsShareTheEmail(t *testing.T) 
 	require.ElementsMatch(t, []string{first, second}, result.Value.MatchingIDs)
 	require.Equal(t, sdkgo.FailureConflict, result.Failure.Kind)
 	require.Len(t, provider.recordedRequests(), 1, "only the search was sent")
+}
+
+func TestUpsertObjectSelectsUncertainForSeveralMatchesAfterAPossibleCreate(t *testing.T) {
+	store := newFakePersonStore()
+	store.failsNextCreate = true
+	store.createFailureStatus = http.StatusBadGateway
+	provider := newRecordingPipedrive(t, store.serve(t))
+	client := newAPITokenClient(t, provider.URL)
+	ctx := newStepDexContext("upsert-duplicates-after-create")
+	_, err := sdkgo.RunMutation(ctx, client.UpsertObject(), pipedriveConnection, personUpsert("jane@acme.example.com"))
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an unconfirmed create is retried")
+	store.add("Jane S", "jane@acme.example.com")
+
+	ctx.nextAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.UpsertObject(), pipedriveConnection, personUpsert("jane@acme.example.com"))
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.UncertainBranchID, result.Branch, "one match may be this Step's own create")
+	require.Equal(t, 2, store.count())
 }
 
 func TestUpsertObjectReadsBackAnUnconfirmedCreateInsteadOfCreatingAgain(t *testing.T) {

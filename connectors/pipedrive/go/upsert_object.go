@@ -148,6 +148,9 @@ func (operation UpsertObjectOperation) Invoke(call sdkgo.Call, input UpsertObjec
 			}
 		}
 		return repeatableMutationAttemptForExchange[UpsertedObject](result, receipt, upsertBranches)
+	case (len(matchingIDs) > 1 || hasMoreMatches) && isEarlierCreatePossible:
+		// One of the matches may be this Step's own earlier create.
+		return unconfirmedCreateAttempt(providerFailure(operationID, sdkgo.FailureConflict, "Pipedrive search finds several records with the identity value"), receipt)
 	case len(matchingIDs) > 1 || hasMoreMatches:
 		return sdkgo.NewMutationBranch(UpsertObjectBranchMultipleMatches, UpsertedObject{MatchingIDs: matchingIDs}, providerFailurePointer(operationID, sdkgo.FailureConflict,
 			fmt.Sprintf("%d or more Pipedrive %s carry the identity value, so nothing was written", max(len(matchingIDs), 2), input.ObjectType)), receipt)
