@@ -17,17 +17,17 @@ export const SendEventBranch = {
 } as const;
 /** The receiver answered 2xx and accepted the event. */
 export const SendEventBranchDelivered = SendEventBranch.Delivered;
-/** The receiver answered a redirect or a 4xx other than 408, 409, 425, and 429, so it refused the event; the Result carries the status code. A 409 is retried with the same webhook-id instead, and fails the Flow when the retry budget runs out. */
+/** On the Step's first attempt the receiver answered 400, 401, 403, 404, 411, 413, 414, 415, or 422, so it refused the event; the Result carries the status code. Any other status, and a refusal on a later attempt that may follow a delivered event, is retried with the same webhook-id and fails the Flow when the retry budget runs out. */
 export const SendEventBranchRejected = SendEventBranch.Rejected;
-/** The connection has no valid deliveryUrl or signing secret, or the payload is not one JSON value within maxBodyBytes. */
+/** On the Step's first attempt the connection has no valid deliveryUrl or signing secret, or the payload is not one JSON value within maxBodyBytes. A later attempt retries instead. */
 export const SendEventBranchDefect = SendEventBranch.Defect;
 /** Manifest definition for sendEvent. */
 export const SendEventDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "sendEvent" },
   branches: [
     { id: "delivered", description: "The receiver answered 2xx and accepted the event." },
-    { id: "rejected", description: "The receiver answered a redirect or a 4xx other than 408, 409, 425, and 429, so it refused the event; the Result carries the status code. A 409 is retried with the same webhook-id instead, and fails the Flow when the retry budget runs out.", optional: true },
-    { id: "defect", description: "The connection has no valid deliveryUrl or signing secret, or the payload is not one JSON value within maxBodyBytes.", optional: true },
+    { id: "rejected", description: "On the Step's first attempt the receiver answered 400, 401, 403, 404, 411, 413, 414, 415, or 422, so it refused the event; the Result carries the status code. Any other status, and a refusal on a later attempt that may follow a delivered event, is retried with the same webhook-id and fails the Flow when the retry budget runs out.", optional: true },
+    { id: "defect", description: "On the Step's first attempt the connection has no valid deliveryUrl or signing secret, or the payload is not one JSON value within maxBodyBytes. A later attempt retries instead.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
 };

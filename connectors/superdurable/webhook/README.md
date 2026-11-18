@@ -1,6 +1,6 @@
 # Webhook Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/go@v0.24.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook`.
 
@@ -22,7 +22,7 @@ webhooks, and any Standard Webhooks sender.
 
 ## Python package
 
-The [Python package](python/README.md) implements `sendEvent` v0.1.0. It has
+The [Python package](python/README.md) implements `sendEvent` v0.1.1. It has
 no Trigger. Its [runnable Flow](python/examples/send_event/README.md) uses the
 static `webhook-forwarding` connection, signs one JSON event, and verifies a
 retry through a real Dex Worker and Client. The existing Go package continues
@@ -216,12 +216,16 @@ the project configuration that the application loads. `configuration` may be
 | `409`, such as a receiver's answer for a `webhook-id` still in flight | Retry with the same `webhook-id`, after `Retry-After` when sent |
 | Connection refused, DNS or TLS failure before the request was written | Retry with the same `webhook-id` |
 | The project's credential broker is temporarily unavailable, so the signing secret cannot be read | Retry; nothing was sent |
-| A redirect or a `4xx` other than `408`, `409`, `425`, and `429` | `rejected` (optional), with the status code |
+| `400`, `401`, `403`, `404`, `411`, `413`, `414`, `415`, or `422` on the Step's first attempt | `rejected` (optional), with the status code |
+| The same refusal on a later attempt, which may follow a delivered event | Retry with the same `webhook-id` |
+| A redirect, `410`, or any other unlisted `3xx` or `4xx` | Retry with the same `webhook-id`, after `Retry-After` when sent |
 | `5xx`, timeout, or a lost connection after the request was written | Retry with the same `webhook-id`, after `Retry-After` when sent |
-| Blank `deliveryUrl`, a missing, blank, or unusable secret, or an invalid payload | `defect` (optional), before any request |
+| Blank `deliveryUrl`, a missing, blank, or unusable secret, or an invalid payload | `defect` (optional) on the first attempt, before any request; Retry on a later attempt |
 
-`sendEvent` delivers at least once. After a `408`, `409`, `425`, `429`, or
-`5xx` answer, a timeout, or a lost connection or response, the Step sends the
+`sendEvent` declares `repeatOnUnknown: safe`: every resend carries the same
+`webhook-id`, which the receiver deduplicates on. It delivers at least once.
+After a redirect, a `408`, `409`, `425`, `429`, `5xx`, or other unknown
+answer, a timeout, or a lost connection or response, the Step sends the
 event again with the same `webhook-id`, so a receiver that already applied the
 first request sees the event a second time. A retry can also arrive while the first request is still
 being processed. To apply each event once, the receiver:

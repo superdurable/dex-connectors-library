@@ -213,12 +213,13 @@ func TestSendEventMapsReceiverStatusesToBranches(t *testing.T) {
 	}{
 		{http.StatusOK, webhook.SendEventBranchDelivered, ""},
 		{http.StatusAccepted, webhook.SendEventBranchDelivered, ""},
-		{http.StatusFound, webhook.SendEventBranchRejected, sdkgo.FailureProviderRejection},
 		{http.StatusBadRequest, webhook.SendEventBranchRejected, sdkgo.FailureProviderRejection},
 		{http.StatusUnauthorized, webhook.SendEventBranchRejected, sdkgo.FailureAuthentication},
 		{http.StatusForbidden, webhook.SendEventBranchRejected, sdkgo.FailureAuthorization},
 		{http.StatusNotFound, webhook.SendEventBranchRejected, sdkgo.FailureNotFound},
-		{http.StatusGone, webhook.SendEventBranchRejected, sdkgo.FailureNotFound},
+		{http.StatusLengthRequired, webhook.SendEventBranchRejected, sdkgo.FailureProviderRejection},
+		{http.StatusRequestEntityTooLarge, webhook.SendEventBranchRejected, sdkgo.FailureProviderRejection},
+		{http.StatusUnsupportedMediaType, webhook.SendEventBranchRejected, sdkgo.FailureProviderRejection},
 		{http.StatusUnprocessableEntity, webhook.SendEventBranchRejected, sdkgo.FailureProviderRejection},
 	} {
 		t.Run(strconv.Itoa(test.statusCode), func(t *testing.T) {
@@ -237,6 +238,36 @@ func TestSendEventMapsReceiverStatusesToBranches(t *testing.T) {
 			requireSecretFree(t, result)
 		})
 	}
+}
+
+func TestSendEventRetriesAnswersThatDoNotProveARefusal(t *testing.T) {
+	for _, statusCode := range []int{http.StatusFound, http.StatusMethodNotAllowed, http.StatusGone, http.StatusPreconditionFailed, http.StatusTeapot} {
+		t.Run(strconv.Itoa(statusCode), func(t *testing.T) {
+			receiver := newFakeReceiver(t, standardKey(t), statusCode)
+			_, err := sendEvent(t, newSendingClient(t, receiver.URL, standardSecret, receiver.Client()), "forward", forwardedPayload)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "an unlisted status is an unknown outcome of a safe write")
+			require.Equal(t, sdkgo.FailureProtocol, retry.Failure.Kind)
+			require.Len(t, receiver.receivedDeliveries(), 1, "redirects are never followed")
+		})
+	}
+}
+
+func TestSendEventRetriesARefusalOrLocalFailureOnALaterAttempt(t *testing.T) {
+	receiver := newFakeReceiver(t, standardKey(t), http.StatusUnprocessableEntity)
+	client := newSendingClient(t, receiver.URL, standardSecret, receiver.Client())
+	_, err := sdkgo.RunMutation(newLaterAttemptStepContext("forward"), client.SendEvent(), testConnection,
+		webhook.SendEventInput{Payload: json.RawMessage(forwardedPayload)})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an earlier attempt may have delivered the event, so a refusal is not final")
+	require.Len(t, receiver.receivedDeliveries(), 1)
+
+	blankSecret := newSendingClient(t, receiver.URL, "", receiver.Client())
+	_, err = sdkgo.RunMutation(newLaterAttemptStepContext("forward"), blankSecret.SendEvent(), testConnection,
+		webhook.SendEventInput{Payload: json.RawMessage(forwardedPayload)})
+	require.ErrorAs(t, err, &retry, "a later attempt never selects defect")
+	require.Equal(t, sdkgo.FailureAuthentication, retry.Failure.Kind)
+	require.Len(t, receiver.receivedDeliveries(), 1)
 }
 
 func TestSendEventRetriesReceiverFailuresWithTheSameWebhookID(t *testing.T) {

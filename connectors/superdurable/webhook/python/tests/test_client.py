@@ -142,3 +142,43 @@ async def test_whsec_secret_accepts_base64_line_breaks() -> None:
         client = Client(_config("https://receiver.example.test/hook"), credentials, http_client)
         attempt = await client.send_event().invoke(_call(), SendEventInput(b"null"))
         assert attempt.branch == "delivered"
+
+
+class _LaterAttemptContext:
+    attempt = 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [302, 405, 410, 412, 418])
+async def test_unlisted_status_retries_as_an_unknown_outcome(status: int) -> None:
+    """Only the definite refusal statuses select rejected; others retry the safe write."""
+    transport = httpx.MockTransport(lambda request: httpx.Response(status))
+    async with httpx.AsyncClient(transport=transport) as http_client:
+        client = Client(_config("https://receiver.example.test/hook"), _credentials(), http_client)
+        attempt = await client.send_event().invoke(_call(), SendEventInput(b"null"))
+        assert attempt.kind == "retry"
+        assert attempt.failure is not None and attempt.failure.kind == FailureKind.PROTOCOL
+
+
+@pytest.mark.asyncio
+async def test_later_attempt_retries_a_refusal_and_never_selects_defect() -> None:
+    """A later attempt may follow a delivered event, so refusal and defect become Retry."""
+    sent: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        sent.append(request)
+        return httpx.Response(422)
+
+    later_call = replace(_call(), context=_LaterAttemptContext())  # type: ignore[arg-type]
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
+        client = Client(_config("https://receiver.example.test/hook"), _credentials(), http_client)
+        refused = await client.send_event().invoke(later_call, SendEventInput(b"null"))
+        assert refused.kind == "retry"
+        first = await client.send_event().invoke(_call(), SendEventInput(b"null"))
+        assert first.branch == "rejected"
+    blank = Client(_config(""), _credentials())
+    local_failure = await blank.send_event().invoke(later_call, SendEventInput(b"null"))
+    assert local_failure.kind == "retry"
+    assert local_failure.failure is not None and local_failure.failure.kind == FailureKind.VALIDATION
+    await blank.aclose()
+    assert len(sent) == 2
